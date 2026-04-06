@@ -8160,10 +8160,14 @@ function showToast(msg, type='success') {
 const SUPABASE_URL = 'https://ezkfnbrlqnruymhhfeei.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6a2ZuYnJscW5ydXltaGhmZWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg1MzAsImV4cCI6MjA5MDgwNDUzMH0.llrWSk5Kz-UvTPWY5fpeO7QD-aFaobcvAP9FxH8PhB4';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+if (!window.supabaseClient) {
+  window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
+
+const supabase = window.supabaseClient;
 
 // LOGIN
-async function doLogin() {
+window.doLogin = async function () {
   const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-pass').value;
 
@@ -8173,18 +8177,17 @@ async function doLogin() {
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password
+    email,
+    password
   });
 
   if (error) {
-    alert('Erro no login: ' + error.message);
+    alert(error.message);
     return;
   }
 
-  // Login OK
   startSession(data.user);
-}
+};
 
 // LOGOUT
 async function doLogout() {
