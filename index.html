@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClinicFlow — Sistema de Gestão</title>
@@ -4984,6 +4985,7 @@ function buildGuiaPrintHTML(d) {
 '<div class="rodape">'+fv(d.ans)+'-'+fv(d.operadora)+' — '+fv(d.guiaPrestador)+' — impresso por '+fv(d.profNome)+' em '+fv(d.dataImpressao)+'</div>\n\n' +
 '</div>\n' +
 '<script>window.onload=function(){window.print();};<\/script>\n' +
+'<script src="supabase_patch.js"></script>
 '</body>\n</html>';
 
   return html;
@@ -8154,7 +8156,5 @@ function showToast(msg, type='success') {
   setTimeout(() => { t.style.transition='0.3s'; t.style.opacity='0'; t.style.transform='translateX(20px)'; setTimeout(()=>t.remove(),300); }, 3000);
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-integration.js"></script>
 </body>
 </html>
