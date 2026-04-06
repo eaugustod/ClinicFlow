@@ -1023,7 +1023,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <div class="form-group">
       <label class="form-label">Senha</label>
-      <input class="form-input" type="password" id="login-pass" placeholder="••••••••" value="••••••••">
+      <input class="form-input" type="password" id="login-pass" placeholder="••••••••" value="">
     </div>
     <div class="form-group">
       <label class="form-label">Perfil (demo)</label>
@@ -4985,7 +4985,6 @@ function buildGuiaPrintHTML(d) {
 '<div class="rodape">'+fv(d.ans)+'-'+fv(d.operadora)+' — '+fv(d.guiaPrestador)+' — impresso por '+fv(d.profNome)+' em '+fv(d.dataImpressao)+'</div>\n\n' +
 '</div>\n' +
 '<script>window.onload=function(){window.print();};<\/script>\n' +
-'<script src="supabase_patch.js"></script>
 '</body>\n</html>';
 
   return html;
@@ -8155,6 +8154,78 @@ function showToast(msg, type='success') {
   c.appendChild(t);
   setTimeout(() => { t.style.transition='0.3s'; t.style.opacity='0'; t.style.transform='translateX(20px)'; setTimeout(()=>t.remove(),300); }, 3000);
 }
+
+const SUPABASE_URL = 'https://ezkfnbrlqnruymhhfeei.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6a2ZuYnJscW5ydXltaGhmZWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg1MzAsImV4cCI6MjA5MDgwNDUzMH0.llrWSk5Kz-UvTPWY5fpeO7QD-aFaobcvAP9FxH8PhB4';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// LOGIN
+async function doLogin() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-pass').value;
+
+  if (!email || !password) {
+    alert('Preencha e-mail e senha');
+    return;
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: password
+  });
+
+  if (error) {
+    alert('Erro no login: ' + error.message);
+    return;
+  }
+
+  // Login OK
+  startSession(data.user);
+}
+
+// LOGOUT
+async function doLogout() {
+  await supabase.auth.signOut();
+  location.reload();
+}
+
+// MANTER LOGIN ATIVO
+async function checkUser() {
+  const { data } = await supabase.auth.getUser();
+
+  if (data.user) {
+    startSession(data.user);
+  }
+}
+
+// INICIAR SISTEMA
+function startSession(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('active');
+
+  // Atualiza nome (opcional)
+  document.getElementById('sidebar-username').innerText =
+    user.email;
+}
+
+// LOGIN RÁPIDO (opcional - DEV)
+async function quickLogin(role) {
+  const users = {
+    admin: { email: 'admin@clinica.com', password: '123456' },
+    recepcao: { email: 'recepcao@clinica.com', password: '123456' },
+    prof: { email: 'prof@clinica.com', password: '123456' }
+  };
+
+  document.getElementById('login-email').value = users[role].email;
+  document.getElementById('login-pass').value = users[role].password;
+
+  doLogin();
+}
+
+// AUTO LOGIN AO ABRIR
+checkUser();
+</script>
 </script>
 </body>
 </html>
