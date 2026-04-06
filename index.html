@@ -2006,15 +2006,12 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           <div class="section-divider" style="margin-top:0">Integração Supabase (banco de dados)</div>
           <div class="form-row">
             <div class="form-group"><label>URL do projeto</label><input class="form-input" id="cfg-supa-url" placeholder="https://xxxx.supabase.co"></div>
-            <input id="supabase-url" type="text">
           </div>
           <div class="form-row">
             <div class="form-group"><label>Chave anon pública</label><input class="form-input" id="cfg-supa-key" placeholder="eyJhbGciOiJIUzI1NiIs..."></div>
-            <input id="supabase-key" type="text">
           </div>
           <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
-            <button onclick="salvarConfigSupabase()">Salvar</button>
-             <button class="btn-sm btn-accent" onclick="showToast('Conexão testada com sucesso!','success')">Testar conexão</button>            
+            <button class="btn-sm btn-accent" onclick="showToast('Conexão testada com sucesso!','success')">Testar conexão</button>
           </div>
         </div>
       </div>
@@ -3400,7 +3397,6 @@ function doLogin() {
   if (role === 'recepcao') { document.getElementById('nav-config-section').style.display='none'; document.getElementById('nav-fatur-section').style.display='none'; }
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('active');
-  carregarConfigSupabase(); // 👈 ESSENCIAL 
   initApp();
 }
 function doLogout() {
@@ -6199,40 +6195,6 @@ function salvarConfigWA() {
   WA_CONFIG.evoInstance = document.getElementById('cfg-evo-instance')?.value.trim() || 'clinica';
   WA_CONFIG.evoPhone    = document.getElementById('cfg-evo-phone')?.value.trim() || '';
   showToast('Configurações do WhatsApp salvas!','success');
-}
-
-function salvarConfigSupabase() {
-  const urlInput = document.getElementById('supabase-url');
-  const keyInput = document.getElementById('supabase-key');
-
-  if (!urlInput || !keyInput) {
-    alert('Campos de Supabase não encontrados.');
-    return;
-  }
-
-  const url = urlInput.value.trim();
-  const key = keyInput.value.trim();
-
-  if (!url || !key) {
-    alert('Preencha URL e KEY do Supabase.');
-    return;
-  }
-
-  localStorage.setItem('supabase_url', url);
-  localStorage.setItem('supabase_key', key);
-
-  showToast('Configuração salva com sucesso!', 'success');
-}
-
-function carregarConfigSupabase() {
-  const url = localStorage.getItem('supabase_url');
-  const key = localStorage.getItem('supabase_key');
-
-  const urlInput = document.getElementById('supabase-url');
-  const keyInput = document.getElementById('supabase-key');
-
-  if (urlInput && url) urlInput.value = url;
-  if (keyInput && key) keyInput.value = key;
 }
 
 function salvarConfigClinica() {
