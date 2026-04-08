@@ -1161,134 +1161,54 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <div class="stats-row">
+      <div class="stats-row" id="dash-stats-row">
         <div class="stat-card">
           <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2z"/></svg></div>
           <div class="stat-label">Consultas Hoje</div>
-          <div class="stat-value">24</div>
-          <div class="stat-delta up">↑ 3 a mais que ontem</div>
+          <div class="stat-value" id="dash-hoje-total">—</div>
+          <div class="stat-delta" id="dash-hoje-delta">carregando...</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-          <div class="stat-label">Confirmados</div>
-          <div class="stat-value">18</div>
-          <div class="stat-delta">75% do total</div>
+          <div class="stat-label">Confirmados hoje</div>
+          <div class="stat-value" id="dash-confirmados">—</div>
+          <div class="stat-delta" id="dash-confirmados-pct">—</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z"/></svg></div>
           <div class="stat-label">Profissionais Ativos</div>
-          <div class="stat-value">14</div>
-          <div class="stat-delta">de 16 cadastrados</div>
+          <div class="stat-value" id="dash-profs-ativos">—</div>
+          <div class="stat-delta" id="dash-profs-total">—</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div>
-          <div class="stat-label">Desmarcados</div>
-          <div class="stat-value">2</div>
-          <div class="stat-delta down">↑ 1 a mais que ontem</div>
+          <div class="stat-label">Cancelados/Desm. hoje</div>
+          <div class="stat-value" id="dash-cancelados">—</div>
+          <div class="stat-delta" id="dash-cancelados-delta">—</div>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 340px;gap:20px">
         <div class="table-card">
           <div class="table-header">
-            <div class="table-title">Próximas consultas</div>
+            <div class="table-title">Consultas de hoje</div>
             <button class="btn-sm btn-secondary" onclick="gotoPage('agenda', document.querySelector('[onclick*=agenda]'))">Ver agenda →</button>
           </div>
           <table class="data-table">
             <thead><tr>
               <th>Horário</th><th>Paciente</th><th>Profissional</th><th>Plano</th><th>Status</th><th></th>
             </tr></thead>
-            <tbody>
-              <tr>
-                <td><span style="font-family:var(--font-mono);color:var(--text-secondary)">09:00</span></td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <div class="avatar-sm" style="background:rgba(79,142,247,0.15);color:var(--accent)">AM</div>
-                    <span>Ana Maria Silva</span>
-                  </div>
-                </td>
-                <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#4f8ef7;display:inline-block"></span>Dra. Maria Cecília</span></td>
-                <td>SulAmérica</td>
-                <td><span class="chip blue">Agendado</span></td>
-                <td><div class="table-actions">
-                  <button class="action-btn" title="Confirmar" onclick="showToast('Consulta confirmada!','success')">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                  </button>
-                </div></td>
-              </tr>
-              <tr>
-                <td><span style="font-family:var(--font-mono);color:var(--text-secondary)">09:30</span></td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <div class="avatar-sm" style="background:rgba(52,211,153,0.15);color:var(--success)">RC</div>
-                    <span>Roberto Carvalho</span>
-                  </div>
-                </td>
-                <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block"></span>Dr. João Santos</span></td>
-                <td>Unimed</td>
-                <td><span class="chip green">Confirmado</span></td>
-                <td><div class="table-actions">
-                  <button class="action-btn" title="Atendido" onclick="showToast('Marcado como atendido!','success')">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                  </button>
-                </div></td>
-              </tr>
-              <tr>
-                <td><span style="font-family:var(--font-mono);color:var(--text-secondary)">10:00</span></td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <div class="avatar-sm" style="background:rgba(251,191,36,0.15);color:var(--warning)">LP</div>
-                    <span>Luciana Pereira</span>
-                  </div>
-                </td>
-                <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Dra. Carla Lima</span></td>
-                <td>Amil</td>
-                <td><span class="chip yellow">Aguardando</span></td>
-                <td></td>
-              </tr>
-              <tr>
-                <td><span style="font-family:var(--font-mono);color:var(--text-secondary)">11:00</span></td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <div class="avatar-sm" style="background:rgba(248,113,113,0.15);color:var(--danger)">MF</div>
-                    <span>Marcos Ferreira</span>
-                  </div>
-                </td>
-                <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#4f8ef7;display:inline-block"></span>Dra. Maria Cecília</span></td>
-                <td>Particular</td>
-                <td><span class="chip red">Desmarcado</span></td>
-                <td></td>
-              </tr>
-            </tbody>
+            <tbody id="dash-consultas-tbody"></tbody>
           </table>
         </div>
 
         <div>
           <div class="table-card" style="margin-bottom:16px">
-            <div class="table-header"><div class="table-title">Guias pendentes</div></div>
-            <div style="padding:12px 16px">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-                <div>
-                  <div style="font-size:13px;font-weight:500">Ana Maria Silva</div>
-                  <div style="font-size:11px;color:var(--text-muted)">SulAmérica · SADT</div>
-                </div>
-                <span class="chip yellow">Pendente</span>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-                <div>
-                  <div style="font-size:13px;font-weight:500">Pedro Alves</div>
-                  <div style="font-size:11px;color:var(--text-muted)">Unimed · SADT</div>
-                </div>
-                <span class="chip yellow">Pendente</span>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
-                <div>
-                  <div style="font-size:13px;font-weight:500">Clara Souza</div>
-                  <div style="font-size:11px;color:var(--text-muted)">Amil · SADT</div>
-                </div>
-                <span class="chip yellow">Pendente</span>
-              </div>
+            <div class="table-header">
+              <div class="table-title">Guias pendentes</div>
+              <span id="dash-guias-count" style="font-size:11px;color:var(--text-muted)"></span>
             </div>
+            <div style="padding:4px 0" id="dash-guias-list"></div>
           </div>
           <div class="table-card">
             <div class="table-header"><div class="table-title">Profissionais hoje</div></div>
@@ -1296,6 +1216,22 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
               <div id="prof-today-list"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Segunda linha: resumo geral -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px">
+        <div class="table-card" style="padding:16px">
+          <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;font-size:11px">Resumo geral</div>
+          <div id="dash-resumo-geral"></div>
+        </div>
+        <div class="table-card" style="padding:16px">
+          <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Por plano de saúde (mês atual)</div>
+          <div id="dash-por-plano"></div>
+        </div>
+        <div class="table-card" style="padding:16px">
+          <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Por profissional (mês atual)</div>
+          <div id="dash-por-prof"></div>
         </div>
       </div>
     </div>
@@ -1702,13 +1638,81 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- RELATÓRIOS -->
     <div class="page" id="page-relatorios">
-      <div class="stats-row">
-        <div class="stat-card"><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></div><div class="stat-label">Consultas Março</div><div class="stat-value">312</div></div>
-        <div class="stat-card"><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div><div class="stat-label">Faturamento Março</div><div class="stat-value" style="font-size:22px">R$&nbsp;42.800</div></div>
-        <div class="stat-card"><div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div><div class="stat-label">Taxa cancelamento</div><div class="stat-value">4,2%</div></div>
-        <div class="stat-card"><div class="stat-icon red"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z"/></svg></div><div class="stat-label">Novos pacientes</div><div class="stat-value">28</div></div>
+      <!-- Filtro de período -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="font-size:16px;font-weight:600;letter-spacing:-0.3px;flex:1">Relatórios</div>
+        <select class="form-select" id="rel-periodo" onchange="renderRelatorios()" style="width:180px;padding:7px 12px;font-size:13px">
+          <option value="mes">Mês atual</option>
+          <option value="mes_ant">Mês anterior</option>
+          <option value="trim">Últimos 3 meses</option>
+          <option value="ano">Ano atual</option>
+          <option value="total">Todo o período</option>
+        </select>
+        <button class="btn-sm btn-secondary" onclick="renderRelatorios()">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Atualizar
+        </button>
       </div>
-      <div class="table-card" style="padding:20px"><p style="color:var(--text-muted);text-align:center;padding:40px">Relatórios detalhados serão implementados com integração ao banco de dados.</p></div>
+
+      <!-- KPIs -->
+      <div class="stats-row" style="margin-bottom:20px">
+        <div class="stat-card">
+          <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></div>
+          <div class="stat-label">Total de consultas</div>
+          <div class="stat-value" id="rel-total-consultas">—</div>
+          <div class="stat-delta" id="rel-consultas-periodo">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div>
+          <div class="stat-label">Faturamento estimado</div>
+          <div class="stat-value" id="rel-faturamento" style="font-size:20px">—</div>
+          <div class="stat-delta" id="rel-fat-detalhes">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
+          <div class="stat-label">Taxa de cancelamento</div>
+          <div class="stat-value" id="rel-taxa-cancel">—</div>
+          <div class="stat-delta" id="rel-cancel-abs">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z"/></svg></div>
+          <div class="stat-label">Total de pacientes</div>
+          <div class="stat-value" id="rel-total-pacs">—</div>
+          <div class="stat-delta" id="rel-pacs-ativos">—</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <!-- Por profissional -->
+        <div class="table-card" style="padding:0;overflow:hidden">
+          <div class="table-header" style="padding:14px 20px"><div class="table-title">Consultas por profissional</div></div>
+          <table class="data-table">
+            <thead><tr><th>Profissional</th><th>Especialidade</th><th style="text-align:center">Consultas</th><th style="text-align:center">Atendidos</th><th style="text-align:center">Cancel.</th></tr></thead>
+            <tbody id="rel-tbody-profs"></tbody>
+          </table>
+        </div>
+        <!-- Por plano -->
+        <div class="table-card" style="padding:0;overflow:hidden">
+          <div class="table-header" style="padding:14px 20px"><div class="table-title">Consultas por plano de saúde</div></div>
+          <table class="data-table">
+            <thead><tr><th>Plano</th><th style="text-align:center">Consultas</th><th style="text-align:center">Guias</th><th style="text-align:right">Valor guias</th></tr></thead>
+            <tbody id="rel-tbody-planos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <!-- Guias e faturamento -->
+        <div class="table-card" style="padding:0;overflow:hidden">
+          <div class="table-header" style="padding:14px 20px"><div class="table-title">Status das guias SADT</div></div>
+          <div style="padding:16px 20px" id="rel-guias-status"></div>
+        </div>
+        <!-- Consultas por dia da semana -->
+        <div class="table-card" style="padding:0;overflow:hidden">
+          <div class="table-header" style="padding:14px 20px"><div class="table-title">Distribuição por status</div></div>
+          <div style="padding:16px 20px" id="rel-status-dist"></div>
+        </div>
+      </div>
     </div>
 
     <!-- CONFIG -->
@@ -3458,16 +3462,316 @@ function gotoPage(page, el) {
   document.getElementById('page-' + page).classList.add('active');
   if (el) el.classList.add('active');
   document.getElementById('topbar-title').textContent = pageTitles[page] || page;
-  if (page === 'config')  try { initConfigPage(); } catch(e) {}
-  if (page === 'importar') try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
-  if (page === 'senhas') try { renderSenhas(); } catch(e) {}
+  if (page === 'config')    try { initConfigPage(); } catch(e) {}
+  if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
+  if (page === 'senhas')    try { renderSenhas(); } catch(e) {}
   if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
   if (page === 'historico') try { renderHistPacList(); } catch(e) {}
+  if (page === 'dashboard') try { renderDashboard(); } catch(e) {}
+  if (page === 'relatorios') try { renderRelatorios(); } catch(e) {}
 }
 
 // ═══════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════
+
+// ═══════════════════════════════════════
+//  DASHBOARD — dados dinâmicos
+// ═══════════════════════════════════════
+function renderDashboard() {
+  const hoje = currentDate.toISOString().slice(0, 10);
+  const ontem = new Date(currentDate); ontem.setDate(ontem.getDate() - 1);
+  const ontemISO = ontem.toISOString().slice(0, 10);
+
+  const apptHoje   = APPOINTMENTS.filter(a => a.dataISO === hoje);
+  const apptOntem  = APPOINTMENTS.filter(a => a.dataISO === ontemISO);
+
+  const totalHoje       = apptHoje.length;
+  const totalOntem      = apptOntem.length;
+  const confirmados     = apptHoje.filter(a => a.status === 'confirmado' || a.status === 'atendido').length;
+  const cancelados      = apptHoje.filter(a => a.status === 'cancelado' || a.status === 'desmarcado').length;
+  const cancelOntem     = apptOntem.filter(a => a.status === 'cancelado' || a.status === 'desmarcado').length;
+  const profsAtivos     = PROFISSIONAIS.filter(p => p.status !== 'Inativo').length;
+
+  // KPI cards
+  const sv = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  sv('dash-hoje-total', totalHoje);
+  sv('dash-confirmados', confirmados);
+  sv('dash-profs-ativos', profsAtivos);
+  sv('dash-cancelados', cancelados);
+
+  const diffHoje = totalHoje - totalOntem;
+  sv('dash-hoje-delta', diffHoje === 0 ? '= igual a ontem' : (diffHoje > 0 ? '↑ ' : '↓ ') + Math.abs(diffHoje) + ' ' + (diffHoje > 0 ? 'a mais' : 'a menos') + ' que ontem');
+  const el = document.getElementById('dash-hoje-delta');
+  if (el) el.className = 'stat-delta ' + (diffHoje > 0 ? 'up' : diffHoje < 0 ? 'down' : '');
+
+  sv('dash-confirmados-pct', totalHoje > 0 ? Math.round(confirmados / totalHoje * 100) + '% do total de hoje' : '—');
+  sv('dash-profs-total', 'de ' + PROFISSIONAIS.length + ' cadastrados');
+
+  const diffCancel = cancelados - cancelOntem;
+  sv('dash-cancelados-delta', diffCancel === 0 ? '= igual a ontem' : (diffCancel > 0 ? '↑ ' : '↓ ') + Math.abs(diffCancel) + ' que ontem');
+  const elC = document.getElementById('dash-cancelados-delta');
+  if (elC) elC.className = 'stat-delta ' + (diffCancel > 0 ? 'down' : diffCancel < 0 ? 'up' : '');
+
+  // Tabela de consultas de hoje
+  const tbody = document.getElementById('dash-consultas-tbody');
+  if (tbody) {
+    const sorted = [...apptHoje].sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+    if (sorted.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma consulta agendada para hoje</td></tr>';
+    } else {
+      const statusMap = {
+        agendado:   {cls:'blue',  lbl:'Agendado'},
+        confirmado: {cls:'green', lbl:'Confirmado'},
+        atendido:   {cls:'green', lbl:'Atendido'},
+        desmarcado: {cls:'red',   lbl:'Desmarcado'},
+        cancelado:  {cls:'red',   lbl:'Cancelado'},
+      };
+      tbody.innerHTML = sorted.map(a => {
+        const prof = PROFISSIONAIS.find(p => p.id === a.profId);
+        const initials = a.paciente.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+        const s = statusMap[a.status] || {cls:'gray', lbl: a.status};
+        const cor = prof ? prof.cor : '#8b92a8';
+        return '<tr>' +
+          '<td><span style="font-family:var(--font-mono);color:var(--text-secondary)">' + (a.hora||'—') + '</span></td>' +
+          '<td><div style="display:flex;align-items:center;gap:8px"><div class="avatar-sm" style="background:rgba(79,142,247,0.12);color:var(--accent);flex-shrink:0">' + initials + '</div><span>' + a.paciente + '</span></div></td>' +
+          '<td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + cor + ';display:inline-block;flex-shrink:0"></span>' + (prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : '—') + '</span></td>' +
+          '<td>' + (a.plano || '—') + '</td>' +
+          '<td><span class="chip ' + s.cls + '">' + s.lbl + '</span></td>' +
+          '<td><div class="table-actions">' +
+            (a.status === 'agendado' ? '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="confirmado" title="Confirmar"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>' : '') +
+            (a.status !== 'atendido' && a.status !== 'cancelado' && a.status !== 'desmarcado' ? '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="atendido" title="Atendido"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></button>' : '') +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+      // Bind action buttons (data-attributes avoid inline quote issues)
+      tbody.querySelectorAll('.dash-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          updateStatus(parseInt(this.dataset.id), this.dataset.st);
+          setTimeout(renderDashboard, 400);
+        });
+      });
+    }
+  }
+
+  // Guias pendentes
+  const guiasPend = GUIAS.filter(g => g.status === 'Pendente').slice(0, 6);
+  const guiasList = document.getElementById('dash-guias-list');
+  const guiasCount = document.getElementById('dash-guias-count');
+  const totalPend = GUIAS.filter(g => g.status === 'Pendente').length;
+  if (guiasCount) guiasCount.textContent = totalPend + ' pendente' + (totalPend !== 1 ? 's' : '');
+  if (guiasList) {
+    if (guiasPend.length === 0) {
+      guiasList.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma guia pendente ✓</div>';
+    } else {
+      guiasList.innerHTML = guiasPend.map(g =>
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border)">' +
+          '<div><div style="font-size:13px;font-weight:500">' + g.pac + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted)">' + (g.plano||'—') + ' · SADT</div></div>' +
+          '<span class="chip yellow">Pendente</span>' +
+        '</div>'
+      ).join('') + (totalPend > 6 ? '<div style="padding:8px 16px;font-size:11px;color:var(--text-muted)">+ ' + (totalPend-6) + ' outras guias</div>' : '');
+    }
+  }
+
+  // Resumo geral
+  const mesAtual = hoje.slice(0, 7);
+  const apptMes  = APPOINTMENTS.filter(a => (a.dataISO||'').startsWith(mesAtual));
+  const resumoEl = document.getElementById('dash-resumo-geral');
+  if (resumoEl) {
+    const rows = [
+      ['Pacientes cadastrados', PACIENTES.length],
+      ['Pacientes ativos', PACIENTES.filter(p => p.status === 'Ativo').length],
+      ['Profissionais', PROFISSIONAIS.length],
+      ['Planos de saúde', PLANOS.length],
+      ['Consultas este mês', apptMes.length],
+      ['Guias pendentes', GUIAS.filter(g => g.status === 'Pendente').length],
+      ['Lista de espera', LISTA_ESPERA.filter(e => e.status === 'Aguardando').length],
+    ];
+    resumoEl.innerHTML = rows.map(([lbl, val]) =>
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">' +
+        '<span style="color:var(--text-secondary)">' + lbl + '</span>' +
+        '<span style="font-weight:600">' + val + '</span>' +
+      '</div>'
+    ).join('');
+  }
+
+  // Por plano (mês atual)
+  const porPlanoEl = document.getElementById('dash-por-plano');
+  if (porPlanoEl) {
+    const contagem = {};
+    apptMes.forEach(a => { contagem[a.plano||'Particular'] = (contagem[a.plano||'Particular']||0)+1; });
+    const sorted = Object.entries(contagem).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const maxVal = sorted[0]?.[1] || 1;
+    porPlanoEl.innerHTML = sorted.length ? sorted.map(([nome, n]) =>
+      '<div style="margin-bottom:8px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text-secondary)">' + nome + '</span><span style="font-weight:600">' + n + '</span></div>' +
+        '<div style="height:4px;background:var(--bg-overlay);border-radius:2px"><div style="height:4px;background:var(--accent);border-radius:2px;width:' + Math.round(n/maxVal*100) + '%"></div></div>' +
+      '</div>'
+    ).join('') : '<div style="color:var(--text-muted);font-size:13px">Sem dados este mês</div>';
+  }
+
+  // Por profissional (mês atual)
+  const porProfEl = document.getElementById('dash-por-prof');
+  if (porProfEl) {
+    const contagem = {};
+    apptMes.forEach(a => {
+      const prof = PROFISSIONAIS.find(p => p.id === a.profId);
+      const nome = prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : 'Outros';
+      const cor  = prof ? prof.cor : '#8b92a8';
+      if (!contagem[nome]) contagem[nome] = { n: 0, cor };
+      contagem[nome].n++;
+    });
+    const sorted = Object.entries(contagem).sort((a,b)=>b[1].n-a[1].n).slice(0,6);
+    const maxVal = sorted[0]?.[1]?.n || 1;
+    porProfEl.innerHTML = sorted.length ? sorted.map(([nome, {n, cor}]) =>
+      '<div style="margin-bottom:8px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text-secondary)">' + nome + '</span><span style="font-weight:600">' + n + '</span></div>' +
+        '<div style="height:4px;background:var(--bg-overlay);border-radius:2px"><div style="height:4px;background:' + cor + ';border-radius:2px;width:' + Math.round(n/maxVal*100) + '%"></div></div>' +
+      '</div>'
+    ).join('') : '<div style="color:var(--text-muted);font-size:13px">Sem dados este mês</div>';
+  }
+}
+
+// ═══════════════════════════════════════
+//  RELATÓRIOS — dados dinâmicos
+// ═══════════════════════════════════════
+function relGetPeriodo() {
+  const sel = document.getElementById('rel-periodo');
+  const val = sel ? sel.value : 'mes';
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  switch(val) {
+    case 'mes':     return { ini: new Date(y,m,1), fim: new Date(y,m+1,0), label: 'este mês' };
+    case 'mes_ant': return { ini: new Date(y,m-1,1), fim: new Date(y,m,0), label: 'mês anterior' };
+    case 'trim':    return { ini: new Date(y,m-2,1), fim: new Date(y,m+1,0), label: 'últimos 3 meses' };
+    case 'ano':     return { ini: new Date(y,0,1), fim: new Date(y,11,31), label: 'este ano' };
+    default:        return { ini: new Date(2000,0,1), fim: new Date(2099,11,31), label: 'todo o período' };
+  }
+}
+
+function renderRelatorios() {
+  const { ini, fim, label } = relGetPeriodo();
+  const iniISO = ini.toISOString().slice(0,10);
+  const fimISO = fim.toISOString().slice(0,10);
+
+  const appts = APPOINTMENTS.filter(a => a.dataISO >= iniISO && a.dataISO <= fimISO);
+  const total  = appts.length;
+  const atend  = appts.filter(a => a.status === 'atendido').length;
+  const cancel = appts.filter(a => a.status === 'cancelado' || a.status === 'desmarcado').length;
+  const taxaCancel = total > 0 ? (cancel / total * 100).toFixed(1) : '0.0';
+
+  // Faturamento: soma das guias do período (campo valor)
+  const guiasPeriodo = GUIAS.filter(g => (g.data||'') >= iniISO && (g.data||'') <= fimISO);
+  const fatGuias = guiasPeriodo.reduce((s,g)=>s+(g.valor||0),0);
+  const fatPart  = appts.filter(a=>a.plano==='Particular').length *
+                   (PROCEDIMENTOS.find(p=>p.valPart>0)?.valPart || 0);
+  const fatTotal = fatGuias || fatPart;
+
+  const sv = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+
+  sv('rel-total-consultas', total);
+  sv('rel-consultas-periodo', label + ' · ' + atend + ' atendidos');
+  sv('rel-faturamento', fatTotal > 0 ? 'R$ ' + fatTotal.toLocaleString('pt-BR', {minimumFractionDigits:2}) : 'ver guias SADT');
+  sv('rel-fat-detalhes', guiasPeriodo.length + ' guias no período');
+  sv('rel-taxa-cancel', taxaCancel + '%');
+  sv('rel-cancel-abs', cancel + ' cancelamentos/' + total + ' agendamentos');
+  sv('rel-total-pacs', PACIENTES.length);
+  sv('rel-pacs-ativos', PACIENTES.filter(p=>p.status==='Ativo').length + ' ativos');
+
+  // Por profissional
+  const tbodyProfs = document.getElementById('rel-tbody-profs');
+  if (tbodyProfs) {
+    const map = {};
+    appts.forEach(a => {
+      const prof = PROFISSIONAIS.find(p => p.id === a.profId);
+      const nome = prof ? prof.nome : 'Sem profissional';
+      const esp  = prof ? (prof.esp||'—') : '—';
+      if (!map[nome]) map[nome] = { esp, total:0, atend:0, cancel:0 };
+      map[nome].total++;
+      if (a.status==='atendido') map[nome].atend++;
+      if (a.status==='cancelado'||a.status==='desmarcado') map[nome].cancel++;
+    });
+    const rows = Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
+    tbodyProfs.innerHTML = rows.length ? rows.map(([nome,d])=>
+      '<tr><td style="font-weight:500">' + nome + '</td><td style="color:var(--text-muted)">' + d.esp +
+      '</td><td style="text-align:center">' + d.total +
+      '</td><td style="text-align:center;color:var(--success)">' + d.atend +
+      '</td><td style="text-align:center;color:var(--danger)">' + d.cancel + '</td></tr>'
+    ).join('') : '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Sem dados no período</td></tr>';
+  }
+
+  // Por plano
+  const tbodyPlanos = document.getElementById('rel-tbody-planos');
+  if (tbodyPlanos) {
+    const map = {};
+    appts.forEach(a => {
+      const plano = a.plano || 'Particular';
+      if (!map[plano]) map[plano] = { total:0, guias:0, valor:0 };
+      map[plano].total++;
+    });
+    GUIAS.filter(g=>(g.data||'')>=iniISO&&(g.data||'')<=fimISO).forEach(g=>{
+      const plano = g.plano || 'Particular';
+      if (!map[plano]) map[plano] = { total:0, guias:0, valor:0 };
+      map[plano].guias++;
+      map[plano].valor += g.valor||0;
+    });
+    const rows = Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
+    tbodyPlanos.innerHTML = rows.length ? rows.map(([nome,d])=>
+      '<tr><td style="font-weight:500">' + nome +
+      '</td><td style="text-align:center">' + d.total +
+      '</td><td style="text-align:center">' + d.guias +
+      '</td><td style="text-align:right;font-family:var(--font-mono)">' +
+        (d.valor>0 ? 'R$ '+d.valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—') +
+      '</td></tr>'
+    ).join('') : '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">Sem dados no período</td></tr>';
+  }
+
+  // Status das guias
+  const guiasStatusEl = document.getElementById('rel-guias-status');
+  if (guiasStatusEl) {
+    const statusMap = {};
+    GUIAS.forEach(g => { statusMap[g.status||'Pendente'] = (statusMap[g.status||'Pendente']||0)+1; });
+    const cores = { Pendente:'var(--warning)', Enviado:'var(--info)', Pago:'var(--success)', Negado:'var(--danger)', Glosado:'var(--danger)' };
+    const rows = Object.entries(statusMap).sort((a,b)=>b[1]-a[1]);
+    const totalGuias = GUIAS.length;
+    guiasStatusEl.innerHTML = rows.length ? rows.map(([status, n])=>
+      '<div style="margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">' +
+          '<span style="color:var(--text-secondary)">' + status + '</span>' +
+          '<span style="font-weight:600">' + n + ' <span style="color:var(--text-muted);font-weight:400">(' + (totalGuias>0?Math.round(n/totalGuias*100):0) + '%)</span></span>' +
+        '</div>' +
+        '<div style="height:6px;background:var(--bg-overlay);border-radius:3px">' +
+          '<div style="height:6px;border-radius:3px;background:' + (cores[status]||'var(--accent)') + ';width:' + (totalGuias>0?Math.round(n/totalGuias*100):0) + '%"></div>' +
+        '</div>' +
+      '</div>'
+    ).join('') + '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">' + totalGuias + ' guias no total</div>'
+    : '<div style="color:var(--text-muted);font-size:13px">Nenhuma guia cadastrada</div>';
+  }
+
+  // Distribuição por status de agendamento
+  const statusDistEl = document.getElementById('rel-status-dist');
+  if (statusDistEl) {
+    const statusMap = {};
+    appts.forEach(a => { statusMap[a.status||'agendado'] = (statusMap[a.status||'agendado']||0)+1; });
+    const cores = { agendado:'var(--accent)', confirmado:'var(--info)', atendido:'var(--success)', desmarcado:'var(--warning)', cancelado:'var(--danger)' };
+    const labels = { agendado:'Agendado', confirmado:'Confirmado', atendido:'Atendido', desmarcado:'Desmarcado', cancelado:'Cancelado' };
+    const rows = Object.entries(statusMap).sort((a,b)=>b[1]-a[1]);
+    statusDistEl.innerHTML = rows.length ? rows.map(([status, n])=>
+      '<div style="margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">' +
+          '<span style="color:var(--text-secondary)">' + (labels[status]||status) + '</span>' +
+          '<span style="font-weight:600">' + n + ' <span style="color:var(--text-muted);font-weight:400">(' + (total>0?Math.round(n/total*100):0) + '%)</span></span>' +
+        '</div>' +
+        '<div style="height:6px;background:var(--bg-overlay);border-radius:3px">' +
+          '<div style="height:6px;border-radius:3px;background:' + (cores[status]||'var(--accent)') + ';width:' + (total>0?Math.round(n/total*100):0) + '%"></div>' +
+        '</div>' +
+      '</div>'
+    ).join('') + '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">' + total + ' agendamentos ' + label + '</div>'
+    : '<div style="color:var(--text-muted);font-size:13px">Sem agendamentos no período</div>';
+  }
+}
+
 function initApp() {
   renderPacientesTable();
   renderProfissionaisTable();
@@ -3477,6 +3781,7 @@ function initApp() {
   renderAgenda();
   buildProfFilters();
   populateSelects();
+  try { renderDashboard(); } catch(e) {}
   const _profInc = document.getElementById('prof-data-inc'); if(_profInc) _profInc.valueAsDate = new Date();
   const _agData = document.getElementById('ag-data'); if(_agData) _agData.valueAsDate = currentDate;
   const _sadt = document.getElementById('sadt-data-solic'); if(_sadt) _sadt.valueAsDate = new Date();
@@ -8285,7 +8590,7 @@ function showToast(msg, type='success') {
       // Re-render all modules
       ['renderPacientesTable','renderProfissionaisTable','renderPlanosGrid','renderProcedimentosTable',
        'renderGuiasList','renderLotesTable','renderSenhas','renderHistPacList','buildProfFilters',
-       'populateSelects','renderDayView','renderSidebarLogo'].forEach(fn => { try { window[fn](); } catch(e) {} });
+       'populateSelects','renderDayView','renderSidebarLogo','renderDashboard','renderRelatorios'].forEach(fn => { try { window[fn](); } catch(e) {} });
       showToast('✓ Dados carregados com sucesso!', 'success');
     } catch (e) {
       showToast('Erro ao carregar dados: ' + e.message, 'error');
