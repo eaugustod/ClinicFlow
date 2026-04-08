@@ -7749,7 +7749,6 @@ function buildColMapUI() {
 }
 function impRunMapping() {
   const schema=IMP_SCHEMAS[IMP_TIPO];
-  IMP_FIELDS&&IMP_FIELDS;
   schema.fields.forEach(f=>{
     const sel=document.getElementById('imp-map-'+f.key);
     if(sel) impMapping[f.key]=parseInt(sel.value);
