@@ -8307,7 +8307,7 @@ function impFilterPreview(filter, btnEl) {
 async function impConfirmar() {
   const skipErr=document.getElementById('imp-skip-errors').checked;
   const toImport=skipErr?impParsed.filter(r=>r.status!=='err'):impParsed;
-  let imported=0, skipped=0;
+  let imported=0, skipped=0, dbErrors=0;
   const detalhes=[];
   const type=IMP_TIPO;
   const cores=['#4f8ef7','#34d399','#f59e0b','#a78bfa','#fb923c','#f87171','#38bdf8','#e879f9'];
@@ -8316,22 +8316,42 @@ async function impConfirmar() {
   const btn=document.querySelector('#imp-panel-3 .btn-accent');
   if(btn){btn.disabled=true;btn.textContent='Importando...';}
 
-  // Helper Supabase — usa window.getDb se disponível (definido no patch Supabase)
-  const sb=window._cfGetDb ? window._cfGetDb() : null;
+  // Obtém cliente Supabase — tenta 3 estratégias em ordem de confiabilidade
+  let sb = null;
+  try {
+    // 1) Cliente já inicializado pelo patch (mais eficiente — reutiliza conexão existente)
+    if (window._cfGetDb) sb = window._cfGetDb();
+    // 2) Cria novo cliente direto do localStorage (fallback se _cfGetDb não retornar nada)
+    if (!sb) {
+      const _url = localStorage.getItem('cf_supa_url');
+      const _key = localStorage.getItem('cf_supa_key');
+      if (_url && _key && window.supabase) sb = window.supabase.createClient(_url, _key);
+    }
+  } catch(e) { console.error('[Import] Erro ao obter cliente Supabase:', e); }
 
-  // Helper: upsert no Supabase e retorna o id real do banco (ou id local se sem conexão)
+  if (sb) {
+    console.log('[Import] Supabase conectado ✓ — dados serão gravados no banco');
+  } else {
+    console.warn('[Import] Supabase não disponível — gravando somente em memória local');
+    showToast('Supabase não conectado — dados salvos só em memória. Verifique as configurações.', 'error');
+  }
+
+  // Helper: INSERT no Supabase — retorna o id real do banco
   async function sbInsert(table, row) {
     if(!sb) return null;
     try {
       const {data,error}=await sb.from(table).insert([row]).select('id').single();
-      if(error) { console.warn('[Import Supabase]',table,error.message); return null; }
+      if(error) { console.error('[Import INSERT]',table,error.message,JSON.stringify(row)); dbErrors++; return null; }
       return data.id;
-    } catch(e){ console.warn('[Import Supabase]',table,e); return null; }
+    } catch(e){ console.error('[Import INSERT exception]',table,e); dbErrors++; return null; }
   }
+  // Helper: UPDATE no Supabase por id
   async function sbUpdate(table, row, id) {
     if(!sb) return;
-    try { await sb.from(table).update(row).eq('id',id); }
-    catch(e){ console.warn('[Import Supabase update]',table,e); }
+    try {
+      const {error}=await sb.from(table).update(row).eq('id',id);
+      if(error) { console.error('[Import UPDATE]',table,error.message,JSON.stringify(row)); dbErrors++; }
+    } catch(e){ console.error('[Import UPDATE exception]',table,e); dbErrors++; }
   }
 
   for(const r of toImport){
@@ -8557,8 +8577,11 @@ async function impConfirmar() {
   impGoStep(4);
   document.getElementById('imp-result-icon').textContent = imported>0?'✅':'⚠️';
   document.getElementById('imp-result-title').textContent = imported>0?'Importação concluída!':'Nada importado';
-  document.getElementById('imp-result-msg').textContent =
-    imported+' '+schema.label.toLowerCase()+' importado(s) · '+skipped+' pulado(s)'+(sb?' · sincronizado com Supabase ✓':' · apenas memória local (Supabase não configurado)');
+  let resultMsg = imported+' '+schema.label.toLowerCase()+' importado(s) · '+skipped+' pulado(s)';
+  if (sb && dbErrors === 0) resultMsg += ' · ✓ gravado no Supabase';
+  else if (sb && dbErrors > 0) resultMsg += ' · ⚠ '+dbErrors+' erro(s) ao gravar no banco (ver console)';
+  else resultMsg += ' · ⚠ apenas memória local — Supabase não conectado';
+  document.getElementById('imp-result-msg').textContent = resultMsg;
   document.getElementById('imp-result-details').innerHTML =
     '<div style="font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Registros importados:</div>'+
     (detalhes.length?detalhes.slice(0,30).map(d=>'<div style="padding:2px 0;border-bottom:1px solid var(--border)">'+d+'</div>').join('')+
