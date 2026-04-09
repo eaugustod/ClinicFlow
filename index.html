@@ -4158,7 +4158,7 @@ function slotClickWeek(e, dateISO, hora) {
 function buildProfFilters() {
   document.getElementById('prof-filters').innerHTML = PROFISSIONAIS.map(p =>
     `<div class="filter-chip" onclick="toggleProfFilter(${p.id},this)" data-id="${p.id}" style="border-color:${p.cor}40">
-      <span class="dot" style="background:${p.cor}"></span>${p.nome.split(' ').pop()}
+      <span class="dot" style="background:${p.cor}"></span>${p.nomeAgenda || p.nome.split(' ')[0]}
     </div>`).join('');
 }
 function toggleProfFilter(id, el) {
