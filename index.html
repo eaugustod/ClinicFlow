@@ -8290,7 +8290,7 @@ function impFilterPreview(filter, btnEl) {
 }
 
 // ── Confirm import ────────────────────────────────────────────────────────────
-function impConfirmar() {
+async function impConfirmar() {
   const skipErr=document.getElementById('imp-skip-errors').checked;
   const toImport=skipErr?impParsed.filter(r=>r.status!=='err'):impParsed;
   let imported=0, skipped=0;
@@ -8298,114 +8298,188 @@ function impConfirmar() {
   const type=IMP_TIPO;
   const cores=['#4f8ef7','#34d399','#f59e0b','#a78bfa','#fb923c','#f87171','#38bdf8','#e879f9'];
 
-  toImport.forEach(r=>{
-    if(r.status==='err'&&skipErr){skipped++;return;}
+  // Desabilita botão durante processamento
+  const btn=document.querySelector('#imp-panel-3 .btn-accent');
+  if(btn){btn.disabled=true;btn.textContent='Importando...';}
+
+  // Helper Supabase — usa window.getDb se disponível (definido no patch Supabase)
+  const sb=window._cfGetDb ? window._cfGetDb() : null;
+
+  // Helper: upsert no Supabase e retorna o id real do banco (ou id local se sem conexão)
+  async function sbInsert(table, row) {
+    if(!sb) return null;
+    try {
+      const {data,error}=await sb.from(table).insert([row]).select('id').single();
+      if(error) { console.warn('[Import Supabase]',table,error.message); return null; }
+      return data.id;
+    } catch(e){ console.warn('[Import Supabase]',table,e); return null; }
+  }
+  async function sbUpdate(table, row, id) {
+    if(!sb) return;
+    try { await sb.from(table).update(row).eq('id',id); }
+    catch(e){ console.warn('[Import Supabase update]',table,e); }
+  }
+
+  for(const r of toImport){
+    if(r.status==='err'&&skipErr){skipped++;continue;}
     try{
       switch(type){
         case 'pacientes':{
           const dup=PACIENTES.find(p=>p.nome.toLowerCase()===r.nome.toLowerCase());
           if(dup){
-            Object.assign(dup,{nasc:r.nasc||dup.nasc,cpf:r.cpf||dup.cpf,tel:r.tel||dup.tel,
+            const upd={nasc:r.nasc||dup.nasc,cpf:r.cpf||dup.cpf,tel:r.tel||dup.tel,
               email:r.email||dup.email,planoId:r.planoId||dup.planoId,plano:r.plano||dup.plano,
-              carteirinha:r.carteirinha||dup.carteirinha,end:r.end||dup.end,sexo:r.sexo||dup.sexo});
+              carteirinha:r.carteirinha||dup.carteirinha,end:r.end||dup.end,sexo:r.sexo||dup.sexo};
+            Object.assign(dup,upd);
+            await sbUpdate('pacientes',{nome:dup.nome,nasc:dup.nasc||null,cpf:dup.cpf||null,
+              tel:dup.tel||null,email:dup.email||null,end:dup.end||null,plano_id:dup.planoId,
+              plano:dup.plano,carteirinha:dup.carteirinha||null,sexo:dup.sexo||null},dup.id);
           } else {
-            PACIENTES.push({id:nextPacId++,nome:r.nome,nasc:r.nasc||'',cpf:r.cpf||'',
+            const obj={id:nextPacId++,nome:r.nome,nasc:r.nasc||'',cpf:r.cpf||'',
               tel:r.tel||'',email:r.email||'',planoId:r.planoId,plano:r.plano,
-              carteirinha:r.carteirinha||'—',end:r.end||'',sexo:r.sexo||'',obs:r.obs||'',status:'Ativo',ultima:''});
+              carteirinha:r.carteirinha||'—',end:r.end||'',sexo:r.sexo||'',obs:r.obs||'',status:'Ativo',ultima:''};
+            const dbId=await sbInsert('pacientes',{nome:obj.nome,nasc:obj.nasc||null,cpf:obj.cpf||null,
+              tel:obj.tel||null,email:obj.email||null,end:obj.end||null,plano_id:obj.planoId,
+              plano:obj.plano,carteirinha:obj.carteirinha||null,sexo:obj.sexo||null,status:'Ativo'});
+            if(dbId) obj.id=dbId;
+            PACIENTES.push(obj);
           }
           break;
         }
         case 'profissionais':{
           const dup=PROFISSIONAIS.find(p=>p.nome.toLowerCase()===r.nome.toLowerCase());
           if(dup){
-            Object.assign(dup,{nomeAgenda:r.nomeAgenda||dup.nomeAgenda,esp:r.esp||dup.esp,
+            const upd={nomeAgenda:r.nomeAgenda||dup.nomeAgenda,esp:r.esp||dup.esp,
               conselho:r.conselho||dup.conselho,num:r.num||dup.num,uf:r.uf||dup.uf,
-              cbo:r.cbo||dup.cbo,tel:r.tel||dup.tel,email:r.email||dup.email});
+              cbo:r.cbo||dup.cbo,tel:r.tel||dup.tel,email:r.email||dup.email};
+            Object.assign(dup,upd);
+            await sbUpdate('profissionais',{nome:dup.nome,nome_agenda:dup.nomeAgenda||null,
+              esp:dup.esp||null,conselho:dup.conselho||null,num:dup.num||null,uf:dup.uf||'SP',
+              cbo:dup.cbo||null,tel:dup.tel||null,email:dup.email||null,cor:dup.cor||'#4f8ef7',status:dup.status||'Ativo'},dup.id);
           } else {
-            const newProf={id:nextPrfId++,nome:r.nome,nomeAgenda:r.nomeAgenda||r.nome.split(' ')[0],
+            const obj={id:nextPrfId++,nome:r.nome,nomeAgenda:r.nomeAgenda||r.nome.split(' ')[0],
               esp:r.esp||'',conselho:r.conselho||'',num:r.num||'',uf:r.uf||'SP',cbo:r.cbo||'',
               tel:r.tel||'',email:r.email||'',cor:r.cor||cores[PROFISSIONAIS.length%cores.length],status:'Ativo'};
-            PROFISSIONAIS.push(newProf); activeProfFilters.add(newProf.id);
+            const dbId=await sbInsert('profissionais',{nome:obj.nome,nome_agenda:obj.nomeAgenda||null,
+              esp:obj.esp||null,conselho:obj.conselho||null,num:obj.num||null,uf:obj.uf||'SP',
+              cbo:obj.cbo||null,tel:obj.tel||null,email:obj.email||null,cor:obj.cor,status:'Ativo'});
+            if(dbId) obj.id=dbId;
+            PROFISSIONAIS.push(obj); activeProfFilters.add(obj.id);
           }
           break;
         }
         case 'agenda':{
-          // Ensure patient exists
           let pac=r.pac;
           if(!pac){
             const planoObj=r.planoNome?PLANOS.find(p=>p.nome.toLowerCase().includes(r.planoNome.toLowerCase())):null;
             pac={id:nextPacId++,nome:r.paciente,nasc:'',cpf:'',tel:'',email:'',
               planoId:planoObj?.id||5,plano:planoObj?.nome||'Particular',carteirinha:'—',status:'Ativo',ultima:''};
+            const dbId=await sbInsert('pacientes',{nome:pac.nome,plano_id:pac.planoId,plano:pac.plano,status:'Ativo'});
+            if(dbId) pac.id=dbId;
             PACIENTES.push(pac);
           }
-          // Ensure prof exists
           let prof=r.prof;
           if(!prof&&r.terapNome){
             prof={id:nextPrfId++,nome:r.terapNome,nomeAgenda:r.terapNome.split(' ')[0],
               esp:'',conselho:'',num:'',uf:'SP',cbo:'',cor:cores[PROFISSIONAIS.length%cores.length],status:'Ativo'};
+            const dbId=await sbInsert('profissionais',{nome:prof.nome,nome_agenda:prof.nomeAgenda,cor:prof.cor,status:'Ativo'});
+            if(dbId) prof.id=dbId;
             PROFISSIONAIS.push(prof); activeProfFilters.add(prof.id);
           }
-          if(!prof){skipped++;return;}
-          // Dedup check
+          if(!prof){skipped++;continue;}
           const dup=APPOINTMENTS.find(a=>a.profId===prof.id&&a.paciente===r.paciente&&a.hora===r.horaIni&&a.dataISO===r.dataISO);
-          if(dup){skipped++;return;}
+          if(dup){skipped++;continue;}
           const planoObj=r.planoNome?PLANOS.find(p=>p.nome.toLowerCase().includes(r.planoNome.toLowerCase())):null;
-          APPOINTMENTS.push({id:impNextId++,profId:prof.id,paciente:r.paciente,
+          const apptObj={id:nextPacId++,profId:prof.id,paciente:r.paciente,
             plano:planoObj?.nome||r.planoNome||'Particular',planoId:planoObj?.id||5,
             hora:r.horaIni||'08:00',horaFim:r.horaFim||'',durMin:r.durMin,
             dataISO:r.dataISO||'',status:(r.statusStr||'agendado').toLowerCase(),
-            obs:r.obs||'',modalidade:'presencial',meetLink:'',guia:null,waSent:false,carteirinha:''});
-          // Update patient's última consulta
+            obs:r.obs||'',modalidade:'presencial',meetLink:'',guia:null,waSent:false,carteirinha:''};
+          const dbId=await sbInsert('agendamentos',{prof_id:apptObj.profId,paciente:apptObj.paciente,
+            plano:apptObj.plano,plano_id:apptObj.planoId,hora:apptObj.hora,hora_fim:apptObj.horaFim||null,
+            dur_min:apptObj.durMin,data_iso:apptObj.dataISO,status:apptObj.status,obs:apptObj.obs||null,
+            modalidade:'presencial',wa_sent:false});
+          if(dbId) apptObj.id=dbId;
+          APPOINTMENTS.push(apptObj);
           if(pac) pac.ultima=r.dataStr||'';
           break;
         }
         case 'anamnese':{
           const pac=r.pac||(r.nomePac?PACIENTES.find(p=>p.nome.toLowerCase().includes(r.nomePac.toLowerCase().split(' ')[0])):null);
-          if(!pac){skipped++;return;}
-          HISTORICO.push({id:nextHistId++,pacId:pac.id,tipo:'anamnese',
+          if(!pac){skipped++;continue;}
+          const hObj={id:nextHistId++,pacId:pac.id,tipo:'anamnese',
             titulo:'Anamnese importada — '+r.nomePac,conteudo:r.conteudo,
-            data:new Date().toISOString().slice(0,10),fonte:'Importação CSV'});
+            data:new Date().toISOString().slice(0,10),fonte:'Importação CSV'};
+          const dbId=await sbInsert('historico',{pac_id:pac.id,tipo:'anamnese',
+            titulo:hObj.titulo,conteudo:hObj.conteudo,data:hObj.data,fonte:'Importação CSV'});
+          if(dbId) hObj.id=dbId;
+          HISTORICO.push(hObj);
           break;
         }
         case 'evolucoes':{
           const pac=r.pac;
-          if(!pac){skipped++;return;}
-          // Try to link to appointment
+          if(!pac){skipped++;continue;}
           const appt=APPOINTMENTS.find(a=>a.paciente===pac.nome&&(
             (r.dataISO&&a.dataISO===r.dataISO)||(r.horaIni&&a.hora===r.horaIni)));
-          HISTORICO.push({id:nextHistId++,pacId:pac.id,tipo:'evolucao',
+          const hObj={id:nextHistId++,pacId:pac.id,tipo:'evolucao',
             titulo:(r.presenca==='Presente'||r.presenca==='P'?'✓':'')+'Sessão — '+r.dataStr,
             conteudo:{texto:r.evolucao||'',presenca:r.presenca||'',horaIni:r.horaIni||'',horaFim:r.horaFim||''},
             profId:r.prof?.id||appt?.profId||0,data:r.dataISO||r.dataStr,
-            fonte:'Importação CSV',apptId:appt?.id||null});
-          if(appt&&(r.presenca==='Presente'||r.presenca==='P'||r.presenca==='Sim')) appt.status='atendido';
+            fonte:'Importação CSV',apptId:appt?.id||null};
+          const dbId=await sbInsert('historico',{pac_id:pac.id,tipo:'evolucao',titulo:hObj.titulo,
+            conteudo:hObj.conteudo,prof_id:hObj.profId||null,data:hObj.data,fonte:'Importação CSV'});
+          if(dbId) hObj.id=dbId;
+          HISTORICO.push(hObj);
+          if(appt&&(r.presenca==='Presente'||r.presenca==='P'||r.presenca==='Sim')){
+            appt.status='atendido';
+            await sbUpdate('agendamentos',{status:'atendido'},appt.id);
+          }
           break;
         }
         case 'planos':{
           const dup=PLANOS.find(p=>p.nome.toLowerCase()===r.nome.toLowerCase()&&p.ans===r.ans);
           if(dup){
-            Object.assign(dup,{cnpj:r.cnpj||dup.cnpj,tabela:r.tabela||dup.tabela,
+            const upd={cnpj:r.cnpj||dup.cnpj,tabela:r.tabela||dup.tabela,
               codPrestador:r.codPrestador||dup.codPrestador,nomeContratado:r.nomeContratado||dup.nomeContratado,
-              cnes:r.cnes||dup.cnes});
+              cnes:r.cnes||dup.cnes};
+            Object.assign(dup,upd);
+            await sbUpdate('planos_saude',{nome:dup.nome,cnpj:dup.cnpj||null,ans:dup.ans||null,
+              tabela:dup.tabela||'CBHPM',cod_prestador:dup.codPrestador||null,
+              nome_contratado:dup.nomeContratado||null,cnes:dup.cnes||null},dup.id);
           } else {
-            PLANOS.push({id:nextPlId++,nome:r.nome,nomeGuia:r.nome.toUpperCase(),
+            const obj={id:nextPlId++,nome:r.nome,nomeGuia:r.nome.toUpperCase(),
               cnpj:r.cnpj||'',ans:r.ans||'',tabela:r.tabela||'CBHPM',
               codPrestador:r.codPrestador||'',nomeContratado:r.nomeContratado||'',
               cnes:r.cnes||'',tel:r.tel||'',status:'Ativo',pacientes:0,
-              usaTiss:true,aplicaTodos:true,versaoTiss:'4.02.00',tipoId:'Código',numGuiaInicial:1});
+              usaTiss:true,aplicaTodos:true,versaoTiss:'4.02.00',tipoId:'Código',numGuiaInicial:1};
+            const dbId=await sbInsert('planos_saude',{nome:obj.nome,nome_guia:obj.nomeGuia,
+              cnpj:obj.cnpj||null,ans:obj.ans||null,tabela:obj.tabela,cod_prestador:obj.codPrestador||null,
+              nome_contratado:obj.nomeContratado||null,cnes:obj.cnes||null,tel:obj.tel||null,
+              status:'Ativo',usa_tiss:true,aplica_todos:true,versao_tiss:'4.02.00',
+              tipo_id:'Código',num_guia_inicial:1,pacientes:0});
+            if(dbId) obj.id=dbId;
+            PLANOS.push(obj);
           }
           break;
         }
         case 'tabela':{
           const dup=PROCEDIMENTOS.find(p=>p.codigo===r.codigo&&p.planoId===r.planoId);
           if(dup){
-            Object.assign(dup,{desc:r.desc||dup.desc,tipo:r.tipo||dup.tipo,
-              valPart:r.valPart||dup.valPart,valPlano:r.valPlano||dup.valPlano});
+            const upd={desc:r.desc||dup.desc,tipo:r.tipo||dup.tipo,
+              valPart:r.valPart||dup.valPart,valPlano:r.valPlano||dup.valPlano};
+            Object.assign(dup,upd);
+            await sbUpdate('procedimentos',{desc:dup.desc,tipo:dup.tipo,
+              val_part:dup.valPart,val_plano:dup.valPlano},dup.id);
           } else {
-            PROCEDIMENTOS.push({id:nextProcId++,codigo:r.codigo||'',desc:r.desc,
+            const obj={id:nextProcId++,codigo:r.codigo||'',desc:r.desc,
               descCurta:r.desc.substring(0,20),tipo:r.tipo||'Sessão',
               valPart:r.valPart,valPlano:r.valPlano,tabela:'TUSS',
-              planoId:r.planoId||0,status:'Ativo',obs:''});
+              planoId:r.planoId||0,status:'Ativo',obs:''};
+            const dbId=await sbInsert('procedimentos',{codigo:obj.codigo||null,desc:obj.desc,
+              desc_curta:obj.descCurta,tipo:obj.tipo,val_part:obj.valPart,
+              val_plano:obj.valPlano,tabela:'TUSS',plano_id:obj.planoId,status:'Ativo'});
+            if(dbId) obj.id=dbId;
+            PROCEDIMENTOS.push(obj);
             if(r.codigo) TUSS_TABLE[r.codigo]={desc:r.desc,valor:r.valPlano};
           }
           break;
@@ -8414,28 +8488,41 @@ function impConfirmar() {
           const pac=r.pacObj;
           const plano=r.planoObj||PLANOS.find(p=>p.nome==='Particular');
           const profId=pac?APPOINTMENTS.find(a=>a.paciente===pac.nome)?.profId||1:1;
-          GUIAS.push({id:nextGuiaId++,num:r.num||('G'+Date.now().toString().slice(-6)),
+          const obj={id:nextGuiaId++,num:r.num||('G'+Date.now().toString().slice(-6)),
             pac:r.pac,planoId:plano?.id||5,plano:plano?.nome||'Particular',
             profId,valor:r.valor,status:r.status||'Pendente',
-            data:r.dataISO||'',loteId:null,carteirinha:r.carteirinha||'',cid:r.cid||'',dados:{}});
+            data:r.dataISO||'',loteId:null,carteirinha:r.carteirinha||'',cid:r.cid||'',dados:{}};
+          const dbId=await sbInsert('guias_sadt',{num:obj.num,pac:obj.pac,plano_id:obj.planoId,
+            plano:obj.plano,prof_id:obj.profId,valor:obj.valor,status:obj.status,
+            data:obj.data||null,carteirinha:obj.carteirinha||null,cid:obj.cid||null,dados:{}});
+          if(dbId) obj.id=dbId;
+          GUIAS.push(obj);
           break;
         }
         case 'senhas':{
           const plano=r.planoObj;
-          if(!plano){skipped++;return;}
-          SENHAS_PLANO.push({id:nextSenhaId++,planoId:plano.id,paciente:r.paciente,
+          if(!plano){skipped++;continue;}
+          const obj={id:nextSenhaId++,planoId:plano.id,paciente:r.paciente,
             carteirinha:r.carteirinha||'',numGuiaOp:r.numGuiaOp||'',numSenha:r.numSenha,
             dataAut:new Date().toISOString().slice(0,10),validade:r.validade||'',
             qtdAutorizada:r.qtdAut,qtdUsada:0,cid:r.cid||'',
             procs:r.procedimento?[{codigo:'',desc:r.procedimento}]:[],
-            status:'Ativa',ativa:true,obs:''});
+            status:'Ativa',ativa:true,obs:''};
+          const dbId=await sbInsert('senhas_plano',{plano_id:obj.planoId,paciente:obj.paciente,
+            carteirinha:obj.carteirinha||null,num_guia_op:obj.numGuiaOp||null,num_senha:obj.numSenha,
+            data_aut:obj.dataAut,validade:obj.validade||null,qtd_autorizada:obj.qtdAutorizada,
+            qtd_usada:0,cid:obj.cid||null,procs:obj.procs,status:'Ativa',ativa:true});
+          if(dbId) obj.id=dbId;
+          SENHAS_PLANO.push(obj);
           break;
         }
       }
       imported++;
       detalhes.push(r.detail||(r.nome||r.pac||r.paciente||'Linha '+(r.rowIdx+2)));
     } catch(e){ skipped++; console.warn('Import error row',r.rowIdx,e); }
-  });
+  }
+
+  if(btn){btn.disabled=false;btn.textContent='Confirmar importação';}
 
   // Refresh affected modules
   try{renderPacientesTable();}catch(e){}
@@ -8449,6 +8536,7 @@ function impConfirmar() {
   try{buildProfFilters();}catch(e){}
   try{populateSelects();}catch(e){}
   try{renderDayView();}catch(e){}
+  try{renderDashboard();}catch(e){}
 
   // Show result
   const schema=IMP_SCHEMAS[type];
@@ -8456,7 +8544,7 @@ function impConfirmar() {
   document.getElementById('imp-result-icon').textContent = imported>0?'✅':'⚠️';
   document.getElementById('imp-result-title').textContent = imported>0?'Importação concluída!':'Nada importado';
   document.getElementById('imp-result-msg').textContent =
-    imported+' '+schema.label.toLowerCase()+' importado(s) · '+skipped+' pulado(s)';
+    imported+' '+schema.label.toLowerCase()+' importado(s) · '+skipped+' pulado(s)'+(sb?' · sincronizado com Supabase ✓':' · apenas memória local (Supabase não configurado)');
   document.getElementById('imp-result-details').innerHTML =
     '<div style="font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Registros importados:</div>'+
     (detalhes.length?detalhes.slice(0,30).map(d=>'<div style="padding:2px 0;border-bottom:1px solid var(--border)">'+d+'</div>').join('')+
@@ -9139,6 +9227,7 @@ function showToast(msg, type='success') {
   });
 
   window.loadFromSupabase = loadFromSupabase;
+  window._cfGetDb = getDb; // expõe getDb para impConfirmar e outros módulos
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 })();
 </script>
