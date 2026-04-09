@@ -3414,7 +3414,7 @@ const APPOINTMENTS = [
 // ═══════════════════════════════════════
 let currentUser  = null;
 let currentView  = 'dia';
-let currentDate  = new Date(2026, 2, 30);
+let currentDate  = new Date();
 let activeProfFilters = new Set(PROFISSIONAIS.map(p => p.id));
 let selectedColor = '#4f8ef7';
 let currentApptId = null; // agendamento aberto no modal
@@ -3479,8 +3479,8 @@ function gotoPage(page, el) {
 //  DASHBOARD — dados dinâmicos
 // ═══════════════════════════════════════
 function renderDashboard() {
-  const hoje = currentDate.toISOString().slice(0, 10);
-  const ontem = new Date(currentDate); ontem.setDate(ontem.getDate() - 1);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
   const ontemISO = ontem.toISOString().slice(0, 10);
 
   const apptHoje   = APPOINTMENTS.filter(a => a.dataISO === hoje);
@@ -4073,7 +4073,7 @@ function changeDate(dir) {
   else                        currentDate.setDate(currentDate.getDate()+dir);
   updateDateLabel(); renderAgenda();
 }
-function gotoToday() { currentDate=new Date(2026,2,30); updateDateLabel(); renderAgenda(); }
+function gotoToday() { currentDate=new Date(); updateDateLabel(); renderAgenda(); }
 function updateDateLabel() {
   const months=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const days=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
@@ -4416,14 +4416,28 @@ function editarProfissional(id) {
   openModal('modal-profissional');
 }
 function renderProfToday() {
-  document.getElementById('prof-today-list').innerHTML = PROFISSIONAIS.slice(0,5).map(p => {
-    const count = APPOINTMENTS.filter(a=>a.profId===p.id).length;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+  const hoje = new Date().toISOString().slice(0,10);
+  // Conta agendamentos de hoje por profissional (exceto cancelados)
+  const counts = {};
+  APPOINTMENTS.filter(a => a.dataISO === hoje && a.status !== 'cancelado' && a.status !== 'desmarcado')
+    .forEach(a => { counts[a.profId] = (counts[a.profId]||0) + 1; });
+  // Mostra só profissionais com agendamentos hoje, ordenados por quantidade
+  const profsHoje = PROFISSIONAIS
+    .filter(p => counts[p.id] > 0)
+    .sort((a,b) => (counts[b.id]||0) - (counts[a.id]||0));
+  const el = document.getElementById('prof-today-list');
+  if (!el) return;
+  if (profsHoje.length === 0) {
+    el.innerHTML = '<div style="padding:12px 0;text-align:center;color:var(--text-muted);font-size:12px">Nenhum agendamento hoje</div>';
+    return;
+  }
+  el.innerHTML = profsHoje.map(p =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
       <div style="width:8px;height:8px;border-radius:50%;background:${p.cor};flex-shrink:0"></div>
-      <div style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nome}</div>
-      <div style="font-size:12px;color:var(--text-muted)">${count} pac.</div>
-    </div>`;
-  }).join('');
+      <div style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nomeAgenda||p.nome.split(' ')[0]}</div>
+      <div style="font-size:12px;color:var(--text-muted)">${counts[p.id]} pac.</div>
+    </div>`
+  ).join('');
 }
 
 // renderPlanosGrid moved to CRUD section
