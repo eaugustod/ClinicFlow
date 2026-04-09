@@ -8359,22 +8359,32 @@ async function impConfirmar() {
     try{
       switch(type){
         case 'pacientes':{
+          // Converte data dd/mm/aaaa → yyyy-mm-dd para o banco
+          const nascISO = parseISODate(r.nasc) || null;
+          // Só envia plano_id se o plano realmente existe no banco (evita FK violation)
+          const planoExiste = PLANOS.find(p=>p.id===r.planoId && r.planoId !== 5);
+          const dbPlanoId = planoExiste ? r.planoId : null;
           const dup=PACIENTES.find(p=>p.nome.toLowerCase()===r.nome.toLowerCase());
           if(dup){
+            const nascDupISO = parseISODate(r.nasc||dup.nasc) || dup.nasc || null;
+            const updPlanoExiste = PLANOS.find(p=>p.id===(r.planoId||dup.planoId) && (r.planoId||dup.planoId) !== 5);
+            const updDbPlanoId = updPlanoExiste ? (r.planoId||dup.planoId) : null;
             const upd={nasc:r.nasc||dup.nasc,cpf:r.cpf||dup.cpf,tel:r.tel||dup.tel,
               email:r.email||dup.email,planoId:r.planoId||dup.planoId,plano:r.plano||dup.plano,
               carteirinha:r.carteirinha||dup.carteirinha,end:r.end||dup.end,sexo:r.sexo||dup.sexo};
             Object.assign(dup,upd);
-            await sbUpdate('pacientes',{nome:dup.nome,nasc:dup.nasc||null,cpf:dup.cpf||null,
-              tel:dup.tel||null,email:dup.email||null,end:dup.end||null,plano_id:dup.planoId,
-              plano:dup.plano,carteirinha:dup.carteirinha||null,sexo:dup.sexo||null},dup.id);
+            await sbUpdate('pacientes',{nome:dup.nome,nasc:nascDupISO,cpf:dup.cpf||null,
+              tel:dup.tel||null,email:dup.email||null,end:dup.end||null,
+              plano_id:updDbPlanoId,plano:dup.plano,
+              carteirinha:dup.carteirinha||null,sexo:dup.sexo||null},dup.id);
           } else {
             const obj={id:nextPacId++,nome:r.nome,nasc:r.nasc||'',cpf:r.cpf||'',
               tel:r.tel||'',email:r.email||'',planoId:r.planoId,plano:r.plano,
               carteirinha:r.carteirinha||'—',end:r.end||'',sexo:r.sexo||'',obs:r.obs||'',status:'Ativo',ultima:''};
-            const dbId=await sbInsert('pacientes',{nome:obj.nome,nasc:obj.nasc||null,cpf:obj.cpf||null,
-              tel:obj.tel||null,email:obj.email||null,end:obj.end||null,plano_id:obj.planoId,
-              plano:obj.plano,carteirinha:obj.carteirinha||null,sexo:obj.sexo||null,status:'Ativo'});
+            const dbId=await sbInsert('pacientes',{nome:obj.nome,nasc:nascISO,cpf:obj.cpf||null,
+              tel:obj.tel||null,email:obj.email||null,end:obj.end||null,
+              plano_id:dbPlanoId,plano:obj.plano,
+              carteirinha:obj.carteirinha||null,sexo:obj.sexo||null,status:'Ativo'});
             if(dbId) obj.id=dbId;
             PACIENTES.push(obj);
           }
