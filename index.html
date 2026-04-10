@@ -8512,14 +8512,14 @@ async function impConfirmar() {
             const upd={desc:r.desc||dup.desc,tipo:r.tipo||dup.tipo,
               valPart:r.valPart||dup.valPart,valPlano:r.valPlano||dup.valPlano};
             Object.assign(dup,upd);
-            await sbUpdate('procedimentos',{desc:dup.desc,tipo:dup.tipo,
+            await sbUpdate('procedimentos',{descricao:dup.desc,tipo:dup.tipo,
               val_part:dup.valPart,val_plano:dup.valPlano},dup.id);
           } else {
             const obj={id:nextProcId++,codigo:r.codigo||'',desc:r.desc,
               descCurta:r.desc.substring(0,20),tipo:r.tipo||'Sessão',
               valPart:r.valPart,valPlano:r.valPlano,tabela:'TUSS',
               planoId:r.planoId||0,status:'Ativo',obs:''};
-            const dbId=await sbInsert('procedimentos',{codigo:obj.codigo||null,desc:obj.desc,
+            const dbId=await sbInsert('procedimentos',{codigo:obj.codigo||null,descricao:obj.desc,
               desc_curta:obj.descCurta,tipo:obj.tipo,val_part:obj.valPart,
               val_plano:obj.valPlano,tabela:'TUSS',plano_id:obj.planoId,status:'Ativo'});
             if(dbId) obj.id=dbId;
@@ -8665,8 +8665,8 @@ function showToast(msg, type='success') {
     dbToProf: r => ({ id:r.id, nome:r.nome, nomeAgenda:r.nome_agenda||r.nome?.split(' ')[0]||'', esp:r.esp||'', conselho:r.conselho||'', num:r.num||'', uf:r.uf||'SP', cbo:r.cbo||'', tel:r.tel||'', email:r.email||'', cor:r.cor||'#4f8ef7', status:r.status||'Ativo', instagram:r.instagram||'', linkedin:r.linkedin||'', googleCalendarId:r.google_cal_id||'' }),
     planoToDb: p => ({ nome:p.nome, nome_guia:p.nomeGuia||null, cnpj:p.cnpj||null, ans:p.ans||null, tabela:p.tabela||'CBHPM', cod_prestador:p.codPrestador||null, nome_contratado:p.nomeContratado||null, cnes:p.cnes||null, num_guia_inicial:p.numGuiaInicial||1, usa_tiss:p.usaTiss!==false, aplica_todos:p.aplicaTodos!==false, tipo_id:p.tipoId||'Código', versao_tiss:p.versaoTiss||'4.02.00', tel:p.tel||null, email:p.email||null, obs:p.obs||null, status:p.status||'Ativo', pacientes:p.pacientes||0, juntar_guia:p.juntarGuia!==false, nome_plano_guia:p.nomePlanoGuia||null }),
     dbToPlano: r => ({ id:r.id, nome:r.nome, nomeGuia:r.nome_guia||'', cnpj:r.cnpj||'', ans:r.ans||'', tabela:r.tabela||'CBHPM', codPrestador:r.cod_prestador||'', nomeContratado:r.nome_contratado||'', cnes:r.cnes||'', numGuiaInicial:r.num_guia_inicial||1, usaTiss:r.usa_tiss!==false, aplicaTodos:r.aplica_todos!==false, tipoId:r.tipo_id||'Código', versaoTiss:r.versao_tiss||'4.02.00', tel:r.tel||'', email:r.email||'', obs:r.obs||'', status:r.status||'Ativo', pacientes:r.pacientes||0, juntarGuia:r.juntar_guia!==false, nomePlanoGuia:r.nome_plano_guia||'' }),
-    procToDb: p => ({ codigo:p.codigo||null, desc:p.desc, desc_curta:p.descCurta||null, tipo:p.tipo||'Sessão', val_part:p.valPart||0, val_plano:p.valPlano||0, tabela:p.tabela||'TUSS', plano_id:p.planoId||0, status:p.status||'Ativo', obs:p.obs||null }),
-    dbToProc: r => ({ id:r.id, codigo:r.codigo||'', desc:r.desc||'', descCurta:r.desc_curta||'', tipo:r.tipo||'Sessão', valPart:r.val_part||0, valPlano:r.val_plano||0, tabela:r.tabela||'TUSS', planoId:r.plano_id||0, status:r.status||'Ativo', obs:r.obs||'' }),
+    procToDb: p => ({ codigo:p.codigo||null, descricao:p.desc, desc_curta:p.descCurta||null, tipo:p.tipo||'Sessão', val_part:p.valPart||0, val_plano:p.valPlano||0, tabela:p.tabela||'TUSS', plano_id:p.planoId||0, status:p.status||'Ativo', obs:p.obs||null }),
+    dbToProc: r => ({ id:r.id, codigo:r.codigo||'', desc:r.descricao||r.desc||'', descCurta:r.desc_curta||'', tipo:r.tipo||'Sessão', valPart:r.val_part||0, valPlano:r.val_plano||0, tabela:r.tabela||'TUSS', planoId:r.plano_id||0, status:r.status||'Ativo', obs:r.obs||'' }),
     apptToDb: a => ({ prof_id:a.profId, paciente:a.paciente, plano:a.plano||'Particular', plano_id:a.planoId||5, hora:a.hora, hora_fim:a.horaFim||null, dur_min:a.durMin||30, data_iso:a.dataISO||null, status:a.status||'agendado', obs:a.obs||null, modalidade:a.modalidade||'presencial', meet_link:a.meetLink||null, wa_sent:a.waSent||false, carteirinha:a.carteirinha||null, guia:a.guia||null }),
     dbToAppt: r => ({ id:r.id, profId:r.prof_id, paciente:r.paciente, plano:r.plano||'Particular', planoId:r.plano_id, hora:r.hora, horaFim:r.hora_fim||'', durMin:r.dur_min||30, dataISO:r.data_iso||'', status:r.status||'agendado', obs:r.obs||'', modalidade:r.modalidade||'presencial', meetLink:r.meet_link||'', waSent:r.wa_sent||false, carteirinha:r.carteirinha||'', guia:r.guia||null }),
     guiaToDb: g => ({ num:g.num, pac:g.pac, plano_id:g.planoId, plano:g.plano, prof_id:g.profId, valor:g.valor||0, status:g.status||'Pendente', data:g.data||null, lote_id:g.loteId||null, lote_num:g.loteNum||null, dados:g.dados||null, carteirinha:g.carteirinha||null, num_op:g.numOp||null, cid:g.cid||null }),
@@ -8690,7 +8690,7 @@ function showToast(msg, type='success') {
         sb.from('pacientes').select('*').order('nome'),
         sb.from('profissionais').select('*').order('nome'),
         sb.from('planos_saude').select('*').order('nome'),
-        sb.from('procedimentos').select('*').order('desc'),
+        sb.from('procedimentos').select('*').order('descricao'),
         sb.from('agendamentos').select('*').order('data_iso,hora'),
         sb.from('guias_sadt').select('*').order('created_at', { ascending: false }),
         sb.from('lotes_tiss').select('*').order('created_at', { ascending: false }),
