@@ -3933,11 +3933,49 @@ function autoFillSadt(appt) {
     sv('sadt-exec-cod',       plano.codPrestador  || CLINICA.codPrestador);
     sv('sadt-exec-nome',      plano.nomeContratado|| CLINICA.nome);
 
-    // Senhas/autorizações cadastradas para este paciente neste plano
-    const senhaObj = SENHAS_PLANO.find(s => s.planoId===plano.id && s.paciente===appt.paciente && s.ativa);
+    // Senhas/autorizações — busca por paciente+plano, com ou sem carteirinha
+    const cartPac = pac?.carteirinha && pac.carteirinha !== '—' ? pac.carteirinha : null;
+    const senhaObj = SENHAS_PLANO.find(s =>
+      s.ativa &&
+      s.planoId === plano.id &&
+      (s.paciente === appt.paciente || s.paciente.toLowerCase() === appt.paciente.toLowerCase()) &&
+      (cartPac ? (s.carteirinha === cartPac || !s.carteirinha) : true) &&
+      s.qtdUsada < s.qtdAutorizada
+    );
     if (senhaObj) {
-      sv('sadt-autorizacao', senhaObj.numSenha);
+      sv('sadt-senha',          senhaObj.numSenha);
+      sv('sadt-autorizacao',    senhaObj.numSenha);
       sv('sadt-guia-principal', senhaObj.numGuiaOp || '');
+      // Validade da senha
+      const valEl = document.getElementById('sadt-val-senha');
+      if (valEl && senhaObj.validade) valEl.value = senhaObj.validade;
+      // Data de autorização (usa sadt-data-solic como proxy se não houver campo específico)
+      const autEl = document.getElementById('sadt-data-aut') || document.getElementById('sadt-data-solic');
+      if (autEl && senhaObj.dataAut) autEl.value = senhaObj.dataAut;
+      // Procedimentos da senha → campos 20 e 40
+      if (senhaObj.procs && senhaObj.procs.length > 0) {
+        senhaObj.procs.forEach((proc, idx) => {
+          const codEl20  = document.getElementById('sadt-proc-cod-'  + idx);
+          const descEl20 = document.getElementById('sadt-proc-desc-' + idx);
+          const codEl40  = document.getElementById('sadt-ep-cod-'    + idx);
+          const descEl40 = document.getElementById('sadt-ep-desc-'   + idx);
+          if (codEl20)  codEl20.value  = proc.codigo || '';
+          if (descEl20) descEl20.value = proc.desc   || '';
+          if (codEl40)  codEl40.value  = proc.codigo || '';
+          if (descEl40) descEl40.value = proc.desc   || '';
+          // Valor do procedimento
+          const procObj = PROCEDIMENTOS.find(p => p.codigo === proc.codigo);
+          if (procObj) {
+            const valProcEl = document.getElementById('sadt-proc-val-' + idx);
+            if (valProcEl) valProcEl.value = brl(procObj.valPlano || procObj.valPart || 0);
+          }
+        });
+      }
+      // Exibe sessões restantes como aviso
+      const restantes = senhaObj.qtdAutorizada - senhaObj.qtdUsada;
+      if (restantes <= 3) {
+        showToast('Atenção: apenas ' + restantes + ' sessão(ões) restante(s) nesta senha!', 'error');
+      }
     }
   } else {
     sv('sadt-prestador',     CLINICA.nome);
@@ -4655,25 +4693,56 @@ function salvarGuia() {
     dados:       { procs },
     loteId:      null,
   };
-  // Increment qtdUsada on the matching senha
-  const senhaUsada = SENHAS_PLANO.find(s=>s.planoId===planoId&&s.paciente===pac&&s.status==='Ativa');
+  // Incrementa qtdUsada na senha correspondente (em memória + Supabase)
+  const senhaUsada = SENHAS_PLANO.find(s =>
+    s.planoId === planoId && s.ativa &&
+    (s.paciente === pac || s.paciente.toLowerCase() === pac.toLowerCase())
+  );
   if (senhaUsada) {
-    senhaUsada.qtdUsada = (senhaUsada.qtdUsada||0) + 1;
+    senhaUsada.qtdUsada = (senhaUsada.qtdUsada || 0) + 1;
     if (senhaUsada.qtdUsada >= senhaUsada.qtdAutorizada) {
-      senhaUsada.status='Usada'; senhaUsada.ativa=false;
-      showToast('Atenção: qtd. máxima de sessões atingida para esta senha!','error');
+      senhaUsada.status = 'Usada'; senhaUsada.ativa = false;
+      showToast('Atenção: qtd. máxima de sessões atingida para esta senha!', 'error');
+    }
+    // Persiste no Supabase
+    const _sbG = window._cfGetDb ? window._cfGetDb() : null;
+    if (_sbG) {
+      _sbG.from('senhas_plano').update({
+        qtd_usada: senhaUsada.qtdUsada,
+        status: senhaUsada.status,
+        ativa: senhaUsada.ativa
+      }).eq('id', senhaUsada.id).then(({error}) => {
+        if (error) console.error('[Guia] Erro ao atualizar qtdUsada:', error.message);
+      });
     }
   }
 
+  const _sb = window._cfGetDb ? window._cfGetDb() : null;
   if (editingGuiaId !== null) {
-    const g = GUIAS.find(x=>x.id===editingGuiaId);
+    const g = GUIAS.find(x => x.id === editingGuiaId);
     if (g) { Object.assign(g, dados); g.num = document.getElementById('g-num').value; }
-    showToast('Guia atualizada!','success');
+    if (_sb) _sb.from('guias_sadt').update({
+      pac:g.pac, plano_id:g.planoId, plano:g.plano, prof_id:g.profId,
+      valor:g.valor, status:g.status, data:g.data||null,
+      carteirinha:g.carteirinha||null, num_op:g.numOp||null, cid:g.cid||null, dados:g.dados||null
+    }).eq('id', editingGuiaId).then(({error}) => { if(error) console.error('[Guia UPDATE]', error.message); });
+    showToast('Guia atualizada!', 'success');
   } else {
     dados.id  = nextGuiaId++;
-    dados.num = document.getElementById('g-num').value || ('G'+Date.now().toString().slice(-8));
+    dados.num = document.getElementById('g-num').value || ('G' + Date.now().toString().slice(-8));
     GUIAS.push(dados);
-    showToast('Guia SADT criada!','success');
+    if (_sb) {
+      _sb.from('guias_sadt').insert([{
+        num:dados.num, pac:dados.pac, plano_id:dados.planoId, plano:dados.plano,
+        prof_id:dados.profId, valor:dados.valor, status:dados.status,
+        data:dados.data||null, carteirinha:dados.carteirinha||null,
+        num_op:dados.numOp||null, cid:dados.cid||null, dados:dados.dados||null
+      }]).select('id').single().then(({data:d, error}) => {
+        if (error) console.error('[Guia INSERT]', error.message);
+        else if (d) dados.id = d.id;
+      });
+    }
+    showToast('Guia SADT criada!', 'success');
   }
   closeModal('modal-guia');
   renderGuiasList();
@@ -8416,6 +8485,23 @@ async function impConfirmar() {
           if(dbId) apptObj.id=dbId;
           APPOINTMENTS.push(apptObj);
           if(pac) pac.ultima=r.dataStr||'';
+          // Atualiza qtdUsada se há agendamento com plano
+          if (apptObj.planoId && apptObj.planoId !== 5) {
+            const senhaImp = SENHAS_PLANO.find(s =>
+              s.ativa && s.planoId === apptObj.planoId &&
+              s.paciente.toLowerCase() === apptObj.paciente.toLowerCase() &&
+              s.qtdUsada < s.qtdAutorizada
+            );
+            if (senhaImp) {
+              senhaImp.qtdUsada = (senhaImp.qtdUsada || 0) + 1;
+              if (senhaImp.qtdUsada >= senhaImp.qtdAutorizada) {
+                senhaImp.status = 'Usada'; senhaImp.ativa = false;
+              }
+              await sbUpdate('senhas_plano', {
+                qtd_usada: senhaImp.qtdUsada, status: senhaImp.status, ativa: senhaImp.ativa
+              }, senhaImp.id);
+            }
+          }
           break;
         }
         case 'anamnese':{
@@ -8920,7 +9006,54 @@ function showToast(msg, type='success') {
       const temSadt = document.getElementById('sadt-beneficiario')?.value;
       if (temSadt) {
         const tot = parseFloat((document.getElementById('sadt-total')?.textContent || '0').replace(/[R$\s]/g, '').replace(',', '.')) || 0;
-        dados.guia = { autorizacao: document.getElementById('sadt-autorizacao')?.value || 'Pendente', total: tot };
+        const numSenha  = document.getElementById('sadt-senha')?.value || '';
+        const numGuiaOp = document.getElementById('sadt-autorizacao')?.value || '';
+        dados.guia = { autorizacao: numGuiaOp || numSenha || 'Pendente', total: tot, senha: numSenha };
+        // Cria guia SADT no banco quando há valor
+        if (sb && tot > 0) {
+          const guiaNum = document.getElementById('sadt-guia-prestador')?.value || ('G' + Date.now().toString().slice(-8));
+          const procsAg = [];
+          for (let i = 0; i < 5; i++) {
+            const codEl  = document.getElementById('sadt-proc-cod-'  + i);
+            const descEl = document.getElementById('sadt-proc-desc-' + i);
+            if (codEl?.value || descEl?.value)
+              procsAg.push({ codigo: codEl?.value||'', desc: descEl?.value||'' });
+          }
+          sb.from('guias_sadt').insert([{
+            num: guiaNum, pac: dados.paciente,
+            plano_id: dados.planoId || null, plano: dados.plano,
+            prof_id: dados.profId || null, valor: tot, status: 'Pendente',
+            data: dados.dataISO || null,
+            carteirinha: document.getElementById('ag-carteirinha')?.value || null,
+            num_op: numGuiaOp || null,
+            cid: document.getElementById('sadt-cid')?.value || null,
+            dados: { procs: procsAg, senha: numSenha }
+          }]).select('id').single().then(({data:gd, error:ge}) => {
+            if (ge) console.error('[Agendamento Guia INSERT]', ge.message);
+            else if (gd) {
+              GUIAS.push({ id:gd.id, num:guiaNum, pac:dados.paciente,
+                planoId:dados.planoId, plano:dados.plano, profId:dados.profId,
+                valor:tot, status:'Pendente', data:dados.dataISO||'',
+                loteId:null, dados:{procs:procsAg} });
+              renderGuiasList();
+            }
+          });
+          // Atualiza qtdUsada na senha
+          const senhaAppt = SENHAS_PLANO.find(s =>
+            s.ativa && s.planoId === dados.planoId &&
+            s.paciente.toLowerCase() === dados.paciente.toLowerCase() &&
+            s.qtdUsada < s.qtdAutorizada
+          );
+          if (senhaAppt) {
+            senhaAppt.qtdUsada = (senhaAppt.qtdUsada || 0) + 1;
+            if (senhaAppt.qtdUsada >= senhaAppt.qtdAutorizada) {
+              senhaAppt.status = 'Usada'; senhaAppt.ativa = false;
+            }
+            sb.from('senhas_plano').update({
+              qtd_usada: senhaAppt.qtdUsada, status: senhaAppt.status, ativa: senhaAppt.ativa
+            }).eq('id', senhaAppt.id);
+          }
+        }
       }
       if (sb) await sb.from('agendamentos').update(map.apptToDb(dados)).eq('id', currentApptId);
       const appt = APPOINTMENTS.find(a => a.id === currentApptId);
@@ -9277,7 +9410,6 @@ function showToast(msg, type='success') {
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 })();
 </script>
-<script src="clinicflow-fixes.js"></script>
-<script src="clinicflow-import-fixes.js"></script>
+
 </body>
 </html>
