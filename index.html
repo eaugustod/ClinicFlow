@@ -8651,36 +8651,63 @@ function showToast(msg, type='success') {
     dbToHist: r => ({ id:r.id, pacId:r.pac_id, tipo:r.tipo, titulo:r.titulo||'', conteudo:r.conteudo||{}, profId:r.prof_id||null, data:r.data||'', status:r.status||'', fonte:r.fonte||'' }),
   };
 
+  // ── Busca paginada — contorna o limite de 1000 registros do PostgREST ──────
+  async function fetchAll(query, orderCol, ascending = true) {
+    const PAGE = 1000;
+    let all = [], from = 0, hasMore = true;
+    while (hasMore) {
+      const q = ascending
+        ? query.order(orderCol).range(from, from + PAGE - 1)
+        : query.order(orderCol, { ascending: false }).range(from, from + PAGE - 1);
+      const { data, error } = await q;
+      if (error) throw error;
+      if (data && data.length > 0) {
+        all = all.concat(data);
+        from += PAGE;
+        hasMore = data.length === PAGE; // se retornou exato 1000, pode ter mais
+      } else {
+        hasMore = false;
+      }
+    }
+    return all;
+  }
+
   async function loadFromSupabase() {
     const sb = getDb();
     if (!sb) return;
     showToast('Carregando dados do banco de dados...', 'success');
     try {
-      const [pac, prof, pl, proc, ag, gu, lo, se, esp, hist, cfg] = await Promise.all([
-        sb.from('pacientes').select('*').order('nome'),
-        sb.from('profissionais').select('*').order('nome'),
-        sb.from('planos_saude').select('*').order('nome'),
-        sb.from('procedimentos').select('*').order('descricao'),
-        sb.from('agendamentos').select('*').order('data_iso,hora'),
-        sb.from('guias_sadt').select('*').order('created_at', { ascending: false }),
-        sb.from('lotes_tiss').select('*').order('created_at', { ascending: false }),
-        sb.from('senhas_plano').select('*').order('created_at', { ascending: false }),
-        sb.from('lista_espera').select('*').order('created_at', { ascending: false }),
-        sb.from('historico').select('*').order('data', { ascending: false }),
+      // Tabelas grandes (pacientes, agendamentos, historico) usam paginação
+      // Tabelas pequenas (planos, profissionais, etc.) usam query simples com limit alto
+      const [prof, pl, proc, lo, se, esp, cfg] = await Promise.all([
+        sb.from('profissionais').select('*').order('nome').limit(5000),
+        sb.from('planos_saude').select('*').order('nome').limit(500),
+        sb.from('procedimentos').select('*').order('descricao').limit(5000),
+        sb.from('lotes_tiss').select('*').order('created_at', { ascending: false }).limit(2000),
+        sb.from('senhas_plano').select('*').order('created_at', { ascending: false }).limit(5000),
+        sb.from('lista_espera').select('*').order('created_at', { ascending: false }).limit(2000),
         sb.from('config_clinica').select('*').limit(1),
       ]);
+
+      // Tabelas grandes: paginação completa
+      const pac  = await fetchAll(sb.from('pacientes').select('*'),  'nome');
+      const ag   = await fetchAll(sb.from('agendamentos').select('*'), 'data_iso');
+      const gu   = await fetchAll(sb.from('guias_sadt').select('*'),  'created_at', false);
+      const hist = await fetchAll(sb.from('historico').select('*'),   'data', false);
+
       const rep = (arr, data, fn) => { arr.length = 0; (data || []).forEach(r => arr.push(fn(r))); };
-      rep(PACIENTES,    pac.data,  map.dbToPac);
-      rep(PROFISSIONAIS,prof.data, map.dbToProf);
-      rep(PLANOS,       pl.data,   map.dbToPlano);
-      rep(PROCEDIMENTOS,proc.data, map.dbToProc);
-      rep(APPOINTMENTS, ag.data,   map.dbToAppt);
-      rep(GUIAS,        gu.data,   map.dbToGuia);
-      rep(LOTES,        lo.data,   map.dbToLote);
-      rep(SENHAS_PLANO, se.data,   map.dbToSenha);
-      rep(LISTA_ESPERA, esp.data,  map.dbToEspera);
-      rep(HISTORICO,    hist.data, map.dbToHist);
+      rep(PACIENTES,    pac,        map.dbToPac);
+      rep(PROFISSIONAIS,prof.data,  map.dbToProf);
+      rep(PLANOS,       pl.data,    map.dbToPlano);
+      rep(PROCEDIMENTOS,proc.data,  map.dbToProc);
+      rep(APPOINTMENTS, ag,         map.dbToAppt);
+      rep(GUIAS,        gu,         map.dbToGuia);
+      rep(LOTES,        lo.data,    map.dbToLote);
+      rep(SENHAS_PLANO, se.data,    map.dbToSenha);
+      rep(LISTA_ESPERA, esp.data,   map.dbToEspera);
+      rep(HISTORICO,    hist,       map.dbToHist);
       if (cfg.data && cfg.data.length > 0) Object.assign(CLINICA, cfg.data[0].dados || {});
+
       const maxId = (arr) => arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
       nextPacId    = maxId(PACIENTES);
       nextPrfId    = maxId(PROFISSIONAIS);
@@ -8692,11 +8719,13 @@ function showToast(msg, type='success') {
       nextEsperaId = maxId(LISTA_ESPERA);
       nextHistId   = maxId(HISTORICO);
       activeProfFilters = new Set(PROFISSIONAIS.map(p => p.id));
+
       // Re-render all modules
       ['renderPacientesTable','renderProfissionaisTable','renderPlanosGrid','renderProcedimentosTable',
        'renderGuiasList','renderLotesTable','renderSenhas','renderHistPacList','buildProfFilters',
        'populateSelects','renderDayView','renderSidebarLogo','renderDashboard','renderRelatorios'].forEach(fn => { try { window[fn](); } catch(e) {} });
-      showToast('✓ Dados carregados com sucesso!', 'success');
+
+      showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
     } catch (e) {
       showToast('Erro ao carregar dados: ' + e.message, 'error');
       console.error('[ClinicFlow Supabase]', e);
