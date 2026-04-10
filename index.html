@@ -3306,29 +3306,15 @@ let CLINICA = {
   logo: '',  // base64 da imagem
 };
 
-const PROFISSIONAIS = [
-  { id:1, nome:'Dra. Maria Cecília', esp:'Fonoaudiologia', conselho:'CRFa', num:'12345', uf:'SP', cbo:'223810', cor:'#4f8ef7', status:'Ativo' },
-  { id:2, nome:'Dr. João Santos',    esp:'Psicologia',     conselho:'CRP',  num:'67890', uf:'SP', cbo:'251510', cor:'#34d399', status:'Ativo' },
-  { id:3, nome:'Dra. Carla Lima',    esp:'Fonoaudiologia', conselho:'CRFa', num:'11223', uf:'SP', cbo:'223810', cor:'#f59e0b', status:'Ativo' },
-  { id:4, nome:'Dr. Pedro Alves',    esp:'Psicopedagogia', conselho:'CRP',  num:'44556', uf:'SP', cbo:'239415', cor:'#a78bfa', status:'Ativo' },
-  { id:5, nome:'Dra. Sofia Ramos',   esp:'Terapia Ocup.',  conselho:'CREFITO',num:'77889',uf:'SP', cbo:'223905', cor:'#fb923c', status:'Ativo' },
-];
+const PROFISSIONAIS = [];
 
 const PACIENTES = [
-  { id:1, nome:'Ana Maria Silva',    nasc:'1985-03-15', tel:'(11) 99123-4567', planoId:1, plano:'SulAmérica', carteirinha:'1234567890123', ultima:'15/03/2026' },
-  { id:2, nome:'Roberto Carvalho',   nasc:'1970-07-22', tel:'(11) 98765-4321', planoId:2, plano:'Unimed',     carteirinha:'9876543210987', ultima:'20/03/2026' },
-  { id:3, nome:'Luciana Pereira',    nasc:'1992-11-08', tel:'(11) 97654-3210', planoId:3, plano:'Amil',       carteirinha:'5551234567890', ultima:'10/03/2026' },
-  { id:4, nome:'Marcos Ferreira',    nasc:'1988-05-30', tel:'(11) 96543-2109', planoId:5, plano:'Particular', carteirinha:'—',            ultima:'05/03/2026' },
-  { id:5, nome:'Juliana Costa',      nasc:'2001-09-14', tel:'(11) 95432-1098', planoId:4, plano:'Bradesco',   carteirinha:'1122334455667', ultima:'22/03/2026' },
-  { id:6, nome:'Carlos Oliveira',    nasc:'1965-12-03', tel:'(11) 94321-0987', planoId:1, plano:'SulAmérica', carteirinha:'7788990011223', ultima:'18/03/2026' },
+  // Dados demo removidos — carregados do Supabase ao fazer login
+  // (mantidos vazios para evitar conflito com dados reais do banco)
 ];
 
 let PLANOS = [
-  { id:1, nome:'SulAmérica', nomeGuia:'SUL AMERICA COMPANHIA DE SEGURO SAUDE', cnpj:'01.685.053/0001-56', ans:'6246',   tabela:'CBHPM', tiss:'4.02.00', codPrestador:'100000019260', nomeContratado:'KOSMOS ESPACO TERAPEUTICO', cnes:'620904', numGuiaInicial:25045, usaTiss:true,  aplicaTodos:true,  tipoId:'Código', versaoTiss:'4.02.00', tel:'', email:'', obs:'', status:'Ativo',  pacientes:28 },
-  { id:2, nome:'Unimed',     nomeGuia:'UNIMED',                                  cnpj:'00.623.904/0001-73', ans:'302767', tabela:'AMB',   tiss:'4.02.00', codPrestador:'',             nomeContratado:'',                         cnes:'',      numGuiaInicial:1,     usaTiss:true,  aplicaTodos:true,  tipoId:'Código', versaoTiss:'4.02.00', tel:'', email:'', obs:'', status:'Ativo',  pacientes:19 },
-  { id:3, nome:'Amil',       nomeGuia:'AMIL',                                    cnpj:'29.309.127/0001-79', ans:'326305', tabela:'TUSS',  tiss:'4.02.00', codPrestador:'',             nomeContratado:'',                         cnes:'',      numGuiaInicial:1,     usaTiss:true,  aplicaTodos:true,  tipoId:'Código', versaoTiss:'4.02.00', tel:'', email:'', obs:'', status:'Ativo',  pacientes:14 },
-  { id:4, nome:'Bradesco',   nomeGuia:'BRADESCO SAUDE',                          cnpj:'92.693.904/0001-00', ans:'005355', tabela:'CBHPM', tiss:'4.02.00', codPrestador:'',             nomeContratado:'',                         cnes:'',      numGuiaInicial:1,     usaTiss:true,  aplicaTodos:true,  tipoId:'Código', versaoTiss:'4.02.00', tel:'', email:'', obs:'', status:'Ativo',  pacientes:11 },
-  { id:5, nome:'Particular', nomeGuia:'PARTICULAR',                              cnpj:'—',                  ans:'—',      tabela:'Própria',tiss:'',       codPrestador:'',             nomeContratado:'',                         cnes:'',      numGuiaInicial:1,     usaTiss:false, aplicaTodos:true,  tipoId:'Código', versaoTiss:'4.02.00', tel:'', email:'', obs:'', status:'Ativo',  pacientes:22 },
+  { id:5, nome:'Particular', nomeGuia:'PARTICULAR', cnpj:'', ans:'', tabela:'Própria', codPrestador:'', nomeContratado:'', cnes:'', numGuiaInicial:1, usaTiss:false, aplicaTodos:true, tipoId:'Código', versaoTiss:'4.02.00', tel:'', email:'', obs:'', status:'Ativo', pacientes:0, juntarGuia:true, nomePlanoGuia:'' },
 ];
 
 const TUSS_TABLE = {
@@ -3343,20 +3329,13 @@ const TUSS_TABLE = {
 };
 
 // Tabela de procedimentos (editável)
-let PROCEDIMENTOS = [
-  { id:1, codigo:'50000136', desc:'Avaliação / Anamnese',              descCurta:'Avaliação',       tipo:'Consulta', valPart:250.00, valPlano:180.00, tabela:'CBHPM', planoId:0, status:'Ativo', obs:'' },
-  { id:2, codigo:'50000195', desc:'Sessão de Fonoaudiologia',          descCurta:'Fonoterapia',     tipo:'Sessão',   valPart:180.00, valPlano:130.00, tabela:'TUSS',  planoId:0, status:'Ativo', obs:'' },
-  { id:3, codigo:'50000209', desc:'Psicoterapia Individual',           descCurta:'Psicoterapia',    tipo:'Sessão',   valPart:220.00, valPlano:160.00, tabela:'TUSS',  planoId:0, status:'Ativo', obs:'' },
-  { id:4, codigo:'50000217', desc:'Psicopedagogia – sessão',           descCurta:'Psicopedagogia',  tipo:'Sessão',   valPart:200.00, valPlano:150.00, tabela:'TUSS',  planoId:0, status:'Ativo', obs:'' },
-  { id:5, codigo:'50000225', desc:'Terapia Ocupacional – sessão',      descCurta:'Ter.Ocupacional', tipo:'Sessão',   valPart:190.00, valPlano:145.00, tabela:'TUSS',  planoId:0, status:'Ativo', obs:'' },
-  { id:6, codigo:'50000470', desc:'Sessão de Psicoterapia por Psicólogo',descCurta:'Psicoterapia CRP',tipo:'Sessão', valPart:220.00, valPlano:59.66, tabela:'TUSS',  planoId:1, status:'Ativo', obs:'' },
-];
-let nextProcId = 7;
+let PROCEDIMENTOS = [];
+let nextProcId = 1;
 
 // IDs para novos registros
-let nextPacId  = 7;
-let nextPrfId  = 6;
-let nextPlId   = 6;
+let nextPacId  = 1;
+let nextPrfId  = 1;
+let nextPlId   = 1;
 // Editing state
 let editingPacId  = null;
 let editingPrfId  = null;
@@ -3364,14 +3343,8 @@ let editingPlId   = null;
 let editingProcId = null;
 
 // ─── GUIAS SADT ───────────────────────────────────────────────────────────────
-let GUIAS = [
-  { id:1, num:'2026031401', pac:'Ana Maria Silva',  planoId:1, plano:'SulAmérica', profId:1, valor:180.00, status:'Pendente', data:'2026-03-30', loteId:null, dados:{} },
-  { id:2, num:'2026031402', pac:'Roberto Carvalho', planoId:2, plano:'Unimed',     profId:2, valor:160.00, status:'Enviado',  data:'2026-03-28', loteId:1,    dados:{} },
-  { id:3, num:'2026031403', pac:'Luciana Pereira',  planoId:3, plano:'Amil',       profId:3, valor:130.00, status:'Pendente', data:'2026-03-29', loteId:null, dados:{} },
-  { id:4, num:'2026031404', pac:'Marcos Ferreira',  planoId:5, plano:'Particular', profId:1, valor:250.00, status:'Pago',     data:'2026-03-25', loteId:null, dados:{} },
-  { id:5, num:'2026031405', pac:'Clara Souza',      planoId:1, plano:'SulAmérica', profId:3, valor:180.00, status:'Pendente', data:'2026-03-30', loteId:null, dados:{} },
-];
-let nextGuiaId  = 6;
+let GUIAS = [];
+let nextGuiaId  = 1;
 
 // ─── SENHAS / AUTORIZAÇÕES POR PLANO ─────────────────────────────────────────
 let SENHAS_PLANO = [];
@@ -3380,11 +3353,8 @@ let editingSenhaId = null;
 let editingGuiaId = null;
 
 // ─── LOTES TISS ────────────────────────────────────────────────────────────────
-let LOTES = [
-  { id:1, num:'20260001', competencia:'Março/2026', planoId:1, plano:'SulAmérica', qtd:18, valor:5240.00, status:'Enviado',  dataCriacao:'2026-03-28', dataEnvio:'2026-03-28', xml:'' },
-  { id:2, num:'20260002', competencia:'Março/2026', planoId:2, plano:'Unimed',     qtd:15, valor:4100.00, status:'Pendente', dataCriacao:'2026-03-29', dataEnvio:'',           xml:'' },
-];
-let nextLoteId  = 3;
+let LOTES = [];
+let nextLoteId  = 1;
 let editingLoteId = null;
 
 // ─── LISTA DE ESPERA ──────────────────────────────────────────────────────────
@@ -3397,17 +3367,7 @@ let HISTORICO = [];
 let nextHistId = 1;
 let historicoAtualPacId = null; // paciente aberto no módulo
 
-const APPOINTMENTS = [
-  { id:1, profId:1, paciente:'Ana Maria Silva',    plano:'SulAmérica', hora:'08:00', durMin:60, status:'confirmado', modalidade:'presencial', meetLink:'', guia:null },
-  { id:2, profId:1, paciente:'Ana Julia da Silva', plano:'Unimed',     hora:'09:00', durMin:30, status:'agendado',   modalidade:'presencial', meetLink:'', guia:null },
-  { id:3, profId:1, paciente:'Graziela Cardoso',   plano:'SulAmérica', hora:'09:30', durMin:30, status:'confirmado', modalidade:'online',     meetLink:'https://meet.google.com/abc-defg-hij', guia:null },
-  { id:4, profId:2, paciente:'Roberto Carvalho',   plano:'Unimed',     hora:'08:00', durMin:60, status:'confirmado', modalidade:'presencial', meetLink:'', guia:null },
-  { id:5, profId:2, paciente:'Kawan Almeida',      plano:'SulAmérica', hora:'11:00', durMin:30, status:'agendado',   modalidade:'presencial', meetLink:'', guia:null },
-  { id:6, profId:3, paciente:'Luciana Pereira',    plano:'Amil',       hora:'09:00', durMin:30, status:'agendado',   modalidade:'online',     meetLink:'', guia:null },
-  { id:7, profId:3, paciente:'Maria Clara Miranda',plano:'Particular', hora:'11:00', durMin:30, status:'confirmado', modalidade:'presencial', meetLink:'', guia:null },
-  { id:8, profId:4, paciente:'Isabella Camargo',   plano:'Amil',       hora:'10:00', durMin:60, status:'atendido',   modalidade:'presencial', meetLink:'', guia:{ autorizacao:'AUT2026001', total:160.00 } },
-  { id:9, profId:5, paciente:'Jeniffer Siqueira',  plano:'SulAmérica', hora:'15:00', durMin:30, status:'agendado',   modalidade:'presencial', meetLink:'', guia:null },
-];
+const APPOINTMENTS = [];
 
 // ═══════════════════════════════════════
 //  STATE
@@ -3415,7 +3375,7 @@ const APPOINTMENTS = [
 let currentUser  = null;
 let currentView  = 'dia';
 let currentDate  = new Date();
-let activeProfFilters = new Set(PROFISSIONAIS.map(p => p.id));
+let activeProfFilters = new Set();
 let selectedColor = '#4f8ef7';
 let currentApptId = null; // agendamento aberto no modal
 let procRowCount  = 1;    // controle de linhas de procedimento SADT
@@ -5374,6 +5334,11 @@ function populateSelects() {
   }
   const dl = document.getElementById('pacientes-list');
   if (dl) dl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
+  // Atualiza também os outros datalists de pacientes
+  const gPacDl = document.getElementById('g-pac-list');
+  if (gPacDl) gPacDl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
+  const senPacDl = document.getElementById('sen-pac-list');
+  if (senPacDl) senPacDl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
 }
 
 // ═══════════════════════════════════════
@@ -5391,7 +5356,12 @@ function switchAgTab(tab, btn) {
 //  AUTO-FILL from paciente input
 // ═══════════════════════════════════════
 function onPacienteChange(val) {
-  const pac = PACIENTES.find(p => p.nome.toLowerCase() === val.toLowerCase());
+  // Atualiza datalist dinamicamente a cada digitação (garante dados atuais do Supabase)
+  const dl = document.getElementById('pacientes-list');
+  if (dl) dl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
+  // Busca exata primeiro, depois parcial
+  const pac = PACIENTES.find(p => p.nome.toLowerCase() === val.toLowerCase())
+           || (val.length >= 3 ? PACIENTES.find(p => p.nome.toLowerCase().startsWith(val.toLowerCase())) : null);
   if (!pac) return;
   const planoSel = document.getElementById('ag-plano');
   if (planoSel) { planoSel.value = pac.planoId; onPlanoChange(); }
