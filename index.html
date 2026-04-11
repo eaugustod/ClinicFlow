@@ -1072,7 +1072,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <div class="nav-item" onclick="gotoPage('agenda',this)">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
           Agenda
-          <span class="nav-badge">12</span>
+          <span class="nav-badge" id="badge-agenda">0</span>
         </div>
       </div>
       <div class="nav-section" id="nav-admin-section">
@@ -1837,8 +1837,12 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Senhas &amp; Autorizações</h2>
             <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Senhas e autorizações liberadas pelos planos por paciente</p>
           </div>
-          <div style="display:flex;gap:8px">
-            <select class="form-select" id="senhas-filtro-plano" style="width:200px;padding:7px 12px;font-size:13px" onchange="renderSenhas()">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="search-input-wrap" style="width:220px">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <input class="search-input" id="senhas-busca-pac" placeholder="Buscar paciente..." oninput="renderSenhas()" style="width:220px">
+            </div>
+            <select class="form-select" id="senhas-filtro-plano" style="width:180px;padding:7px 12px;font-size:13px" onchange="renderSenhas()">
               <option value="">Todos os planos</option>
             </select>
             <button class="btn-sm btn-accent" onclick="abrirNovaSenha()">
@@ -2884,9 +2888,13 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       </div>
       <div class="form-row cols-2">
         <div class="form-group"><label>Plano de saúde *</label>
-          <select class="form-select" id="g-plano" onchange="guiaPlanoChange()"></select>
+          <select class="form-select" id="g-plano" onchange="guiaPlanoChange(); guiaSenhaAutoFill()"></select>
         </div>
-        <div class="form-group"><label>Nº guia operadora</label><input class="form-input" id="g-num-op" placeholder="Nº atribuído pelo plano"></div>
+        <div class="form-group"><label>Nº guia operadora (senha)</label><input class="form-input" id="g-num-op" placeholder="Nº atribuído pelo plano / senha"></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Dt. autorização</label><input class="form-input" type="date" id="g-dt-aut"></div>
+        <div class="form-group"><label>Validade da senha</label><input class="form-input" type="date" id="g-val-senha"></div>
       </div>
       <div class="form-row cols-2">
         <div class="form-group"><label>Profissional executante *</label>
@@ -2899,6 +2907,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <option value="08">Fonoterapia-8</option>
           </select>
         </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Indicação clínica / CID</label><input class="form-input" id="g-indicacao" placeholder="Ex: F80.0 — Transtorno da articulação"></div>
+        <div class="form-group"><label>Qtd. sessões restantes</label><input class="form-input" id="g-sessoes-rest" readonly style="background:var(--bg-overlay);color:var(--text-muted)" placeholder="—"></div>
       </div>
 
       <div class="sadt-section-label">Procedimentos</div>
@@ -3746,6 +3758,7 @@ function initApp() {
   buildProfFilters();
   populateSelects();
   try { renderDashboard(); } catch(e) {}
+  try { updateNavBadges(); } catch(e) {}
   const _profInc = document.getElementById('prof-data-inc'); if(_profInc) _profInc.valueAsDate = new Date();
   const _agData = document.getElementById('ag-data'); if(_agData) _agData.valueAsDate = currentDate;
   const _sadt = document.getElementById('sadt-data-solic'); if(_sadt) _sadt.valueAsDate = new Date();
@@ -3858,6 +3871,17 @@ function openAppt(id) {
   document.getElementById('ag-hora-fim').value          = appt.horaFim || '';
   document.getElementById('ag-paciente').value          = appt.paciente;
   document.getElementById('ag-status').value            = appt.status;
+  // Seta plano e carteirinha do agendamento (evita resetar para o primeiro da lista)
+  const agPlanoSel = document.getElementById('ag-plano');
+  if (agPlanoSel && appt.planoId) {
+    agPlanoSel.value = appt.planoId;
+    // Se não encontrou na lista, tenta pelo nome
+    if (agPlanoSel.value != appt.planoId) {
+      const planoByName = PLANOS.find(p => p.nome === appt.plano);
+      if (planoByName) agPlanoSel.value = planoByName.id;
+    }
+  }
+  document.getElementById('ag-carteirinha').value = appt.carteirinha || '';
   document.getElementById('ag-obs').value               = appt.obs || '';
 
   // Duration select
@@ -3953,9 +3977,14 @@ function autoFillSadt(appt) {
       // Validade da senha
       const valEl = document.getElementById('sadt-val-senha');
       if (valEl && senhaObj.validade) valEl.value = senhaObj.validade;
-      // Data de autorização (usa sadt-data-solic como proxy se não houver campo específico)
-      const autEl = document.getElementById('sadt-data-aut') || document.getElementById('sadt-data-solic');
-      if (autEl && senhaObj.dataAut) autEl.value = senhaObj.dataAut;
+      // Campo 4 — Data de autorização (vem da senha)
+      const autDtEl = document.getElementById('sadt-dt-autorizacao');
+      if (autDtEl && senhaObj.dataAut) autDtEl.value = senhaObj.dataAut;
+      // Campo 6 — Validade da senha
+      // (já preenchido acima com sadt-val-senha)
+      // Campo 23 — Indicação clínica (CID da senha)
+      const indicEl = document.getElementById('sadt-indicacao');
+      if (indicEl && senhaObj.cid) indicEl.value = senhaObj.cid;
       // Campos 25/26 (procedimentos solicitados) e 40 (executados) + valor
       const procsParaPreencher = senhaObj.procs && senhaObj.procs.length > 0
         ? senhaObj.procs
@@ -3969,7 +3998,12 @@ function autoFillSadt(appt) {
         );
         const codFinal  = proc.codigo || procObj?.codigo || '';
         const descFinal = proc.desc   || procObj?.desc   || '';
-        const valFinal  = procObj ? (procObj.valPlano || procObj.valPart || 0) : 0;
+        // Campo 46: valor pelo plano do paciente (prioriza valPlano do plano específico)
+        const valPorPlano = plano ? (
+          PROCEDIMENTOS.find(p => p.codigo === codFinal && p.planoId === plano.id)?.valPlano ||
+          procObj?.valPlano || procObj?.valPart || 0
+        ) : (procObj?.valPart || procObj?.valPlano || 0);
+        const valFinal = valPorPlano;
 
         // Campo 25 — Código do procedimento solicitado
         const codEl25  = document.getElementById('sadt-proc-cod-'  + idx);
@@ -4489,6 +4523,33 @@ function editarProfissional(id) {
   });
   openModal('modal-profissional');
 }
+function updateNavBadges() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  // Badge agenda = agendamentos de hoje pendentes/confirmados
+  const badgeAg = document.getElementById('badge-agenda');
+  if (badgeAg) {
+    const nHoje = APPOINTMENTS.filter(a =>
+      a.dataISO === hoje && ['agendado','confirmado'].includes(a.status)
+    ).length;
+    badgeAg.textContent = nHoje;
+    badgeAg.style.display = nHoje > 0 ? '' : 'none';
+  }
+  // Badge lista de espera = aguardando
+  const badgeEsp = document.getElementById('badge-espera');
+  if (badgeEsp) {
+    const nEsp = LISTA_ESPERA.filter(e => e.status === 'Aguardando').length;
+    badgeEsp.textContent = nEsp;
+    badgeEsp.style.display = nEsp > 0 ? '' : 'none';
+  }
+  // Badge guias pendentes
+  const badgeGuias = document.getElementById('badge-guias-pendentes');
+  if (badgeGuias) {
+    const nGuias = GUIAS.filter(g => g.status === 'Pendente').length;
+    badgeGuias.textContent = nGuias;
+    badgeGuias.style.display = nGuias > 0 ? '' : 'none';
+  }
+}
+
 function renderProfToday() {
   const hoje = new Date().toISOString().slice(0,10);
   // Conta agendamentos de hoje por profissional (exceto cancelados)
@@ -4627,6 +4688,10 @@ function abrirNovaGuia() {
   if (gPacList) gPacList.innerHTML = PACIENTES.map(p=>'<option value="'+p.nome+'">').join('');
 
   document.getElementById('g-total').textContent = 'R$ 0,00';
+  // Limpa campos extras
+  ['g-dt-aut','g-val-senha','g-indicacao','g-sessoes-rest'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   openModal('modal-guia');
 }
 
@@ -4652,6 +4717,30 @@ function editarGuia(id) {
   if (gProf)  { gProf.innerHTML  = PROFISSIONAIS.filter(p=>p.status!=='Inativo').map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join(''); gProf.value = g.profId; }
   const gPacList = document.getElementById('g-pac-list');
   if (gPacList) gPacList.innerHTML = PACIENTES.map(p=>'<option value="'+p.nome+'">').join('');
+
+  // Restaura campos da senha/autorização
+  const sv_g = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  // Busca dados da senha para preenchimento automático
+  const senhaEditG = SENHAS_PLANO.find(s =>
+    s.planoId === g.planoId && s.ativa &&
+    s.paciente.toLowerCase() === g.pac.toLowerCase()
+  );
+  if (senhaEditG) {
+    sv_g('g-num-op',    g.numOp || senhaEditG.numGuiaOp || senhaEditG.numSenha);
+    sv_g('g-dt-aut',    g.dados?.dataAut  || senhaEditG.dataAut  || '');
+    sv_g('g-val-senha', g.dados?.validade || senhaEditG.validade || '');
+    sv_g('g-indicacao', g.cid || senhaEditG.cid || '');
+    const restEl = document.getElementById('g-sessoes-rest');
+    if (restEl) {
+      const rest = senhaEditG.qtdAutorizada - senhaEditG.qtdUsada;
+      restEl.value = rest + ' de ' + senhaEditG.qtdAutorizada + ' sessões';
+      restEl.style.color = rest <= 3 ? 'var(--warning)' : 'var(--success)';
+    }
+  } else {
+    sv_g('g-dt-aut',    g.dados?.dataAut  || '');
+    sv_g('g-val-senha', g.dados?.validade || '');
+    sv_g('g-indicacao', g.cid || '');
+  }
 
   // Restaura carteirinha do paciente se não estiver salva na guia
   if (!g.carteirinha || g.carteirinha === '') {
@@ -4695,19 +4784,87 @@ function editarGuia(id) {
 
 function guiaAutoFill() {
   const nome = document.getElementById('g-pac').value;
-  const pac  = PACIENTES.find(p=>p.nome.toLowerCase()===nome.toLowerCase());
+  const pac  = PACIENTES.find(p => p.nome.toLowerCase() === nome.toLowerCase()
+             || p.nome.toLowerCase().startsWith(nome.toLowerCase()));
   if (!pac) return;
-  document.getElementById('g-carteirinha').value = pac.carteirinha!=='—'?pac.carteirinha:'';
+  document.getElementById('g-carteirinha').value = pac.carteirinha !== '—' ? pac.carteirinha : '';
   const gPlano = document.getElementById('g-plano');
-  if (gPlano) gPlano.value = pac.planoId || '';
+  if (gPlano && pac.planoId) { gPlano.value = pac.planoId; guiaPlanoChange(); }
+  guiaSenhaAutoFill();
+}
+
+function guiaSenhaAutoFill() {
+  const nomePac  = document.getElementById('g-pac')?.value || '';
+  const planoId  = parseInt(document.getElementById('g-plano')?.value || '0');
+  const cartPac  = document.getElementById('g-carteirinha')?.value || '';
+  if (!nomePac || !planoId) return;
+  // Busca senha ativa para este paciente e plano
+  const senhaG = SENHAS_PLANO.find(s =>
+    s.ativa &&
+    s.planoId === planoId &&
+    s.paciente.toLowerCase() === nomePac.toLowerCase() &&
+    (cartPac ? (s.carteirinha === cartPac || !s.carteirinha) : true) &&
+    s.qtdUsada < s.qtdAutorizada
+  );
+  if (!senhaG) return;
+  // Preenche campos da senha
+  const sv = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  sv('g-num-op',      senhaG.numGuiaOp || senhaG.numSenha);
+  sv('g-dt-aut',      senhaG.dataAut   || '');
+  sv('g-val-senha',   senhaG.validade  || '');
+  sv('g-indicacao',   senhaG.cid       || '');
+  // Sessões restantes
+  const restEl = document.getElementById('g-sessoes-rest');
+  if (restEl) {
+    const rest = senhaG.qtdAutorizada - senhaG.qtdUsada;
+    restEl.value = rest + ' de ' + senhaG.qtdAutorizada + ' sessões';
+    restEl.style.color = rest <= 3 ? 'var(--warning)' : 'var(--success)';
+  }
+  // Preenche procedimentos da senha
+  if (senhaG.procs && senhaG.procs.length > 0) {
+    const procList = document.getElementById('g-procs-list');
+    if (procList) {
+      procList.innerHTML = '';
+      guiaProcCount = 0;
+      senhaG.procs.forEach(proc => {
+        const procObj = PROCEDIMENTOS.find(p =>
+          (proc.codigo && p.codigo === proc.codigo) ||
+          (proc.desc   && p.desc?.toLowerCase().includes(proc.desc.toLowerCase().substring(0,10)))
+        );
+        const val = procObj
+          ? (PROCEDIMENTOS.find(p => p.codigo === proc.codigo && p.planoId === planoId)?.valPlano
+             || procObj.valPlano || procObj.valPart || 0)
+          : 0;
+        guiaAddProc(proc.codigo || '', proc.desc || '', 1, val);
+      });
+      guiaRecalcTotal();
+    }
+  }
 }
 
 function guiaPlanoChange() {
   const planoId = parseInt(document.getElementById('g-plano')?.value||'0');
   const plano   = PLANOS.find(p=>p.id===planoId);
   if (plano && plano.numGuiaInicial) {
-    document.getElementById('g-num').value = String(plano.numGuiaInicial).padStart(5,'0');
+    document.getElementById('g-num').value = String(plano.numGuiaInicial);
   }
+  // Recalcula valores dos procedimentos já preenchidos pelo novo plano
+  document.querySelectorAll('.sadt-proc-row').forEach(row => {
+    const idx    = row.dataset.idx;
+    const codEl  = document.getElementById('g-proc-cod-' + idx);
+    const valEl  = document.getElementById('g-proc-val-' + idx);
+    if (!codEl || !codEl.value || !valEl) return;
+    const procMatch = PROCEDIMENTOS.find(p => p.codigo === codEl.value && p.planoId === planoId)
+      || PROCEDIMENTOS.find(p => p.codigo === codEl.value);
+    if (procMatch) {
+      const val = planoId
+        ? (PROCEDIMENTOS.find(p => p.codigo === codEl.value && p.planoId === planoId)?.valPlano
+           || procMatch.valPlano || procMatch.valPart || 0)
+        : (procMatch.valPart || procMatch.valPlano || 0);
+      if (val > 0) valEl.value = val.toFixed(2).replace('.', ',');
+    }
+  });
+  guiaRecalcTotal();
 }
 
 function guiaAddProc(cod='', desc='', qtd=1, val=0) {
@@ -4737,14 +4894,23 @@ function guiaRemoveProc(btn) {
 
 function guiaLookupTuss(input) {
   const code = input.value.trim();
-  const found = TUSS_TABLE[code];
-  if (!found) return;
-  const row = input.closest('.sadt-proc-row');
-  const idx = row.dataset.idx;
+  if (!code) return;
+  const row  = input.closest('.sadt-proc-row');
+  const idx  = row?.dataset.idx;
   const descEl = document.getElementById('g-proc-desc-'+idx);
   const valEl  = document.getElementById('g-proc-val-'+idx);
-  if (descEl && !descEl.value) descEl.value = found.desc;
-  if (valEl  && !valEl.value)  { valEl.value = found.valor.toFixed(2).replace('.',','); guiaRecalcTotal(); }
+  // Busca pelo plano do paciente selecionado (valor correto para o plano)
+  const planoId = parseInt(document.getElementById('g-plano')?.value || '0');
+  const procMatch = PROCEDIMENTOS.find(p => p.codigo === code && p.planoId === planoId)
+    || PROCEDIMENTOS.find(p => p.codigo === code)
+    || (TUSS_TABLE[code] ? { desc: TUSS_TABLE[code].desc, valPlano: TUSS_TABLE[code].valor, valPart: TUSS_TABLE[code].valor } : null);
+  if (!procMatch) return;
+  const descVal = procMatch.desc || procMatch.descricao || '';
+  const val     = planoId
+    ? (PROCEDIMENTOS.find(p => p.codigo === code && p.planoId === planoId)?.valPlano || procMatch.valPlano || procMatch.valPart || 0)
+    : (procMatch.valPart || procMatch.valPlano || 0);
+  if (descEl && !descEl.value) descEl.value = descVal;
+  if (valEl  && !valEl.value && val > 0) { valEl.value = val.toFixed(2).replace('.', ','); guiaRecalcTotal(); }
 }
 
 function guiaRecalcTotal() {
@@ -4790,11 +4956,16 @@ function salvarGuia() {
     profId,
     carteirinha: document.getElementById('g-carteirinha')?.value||'',
     numOp:       document.getElementById('g-num-op')?.value||'',
-    cid:         document.getElementById('g-cid')?.value||'',
+    cid:         document.getElementById('g-indicacao')?.value || document.getElementById('g-cid')?.value||'',
     status:      document.getElementById('g-status')?.value||'Pendente',
     data:        document.getElementById('g-data')?.value||'',
     valor:       total,
-    dados:       { procs },
+    dados: {
+      procs,
+      dataAut:  document.getElementById('g-dt-aut')?.value  || '',
+      validade: document.getElementById('g-val-senha')?.value || '',
+      senha:    document.getElementById('g-num-op')?.value   || '',
+    },
     loteId:      null,
   };
   // Incrementa qtdUsada na senha correspondente (em memória + Supabase)
@@ -5734,14 +5905,24 @@ function removeExecProcRow(btn) {
 }
 function lookupTussExec(input) {
   const code = input.value.trim();
-  const found = TUSS_TABLE[code];
-  if (!found) return;
+  if (!code) return;
   const row  = input.closest('.sadt-exec-proc-row');
-  const idx  = row.dataset.eidx;
+  const idx  = row?.dataset.eidx;
   const descEl = document.getElementById(`sadt-ep-desc-${idx}`);
   const valEl  = document.getElementById(`sadt-ep-val-${idx}`);
-  if (descEl) descEl.value = found.desc;
-  if (valEl)  { valEl.value = `R$ ${found.valor.toFixed(2).replace('.',',')}`; recalcTotal(); }
+  // Busca valor pelo plano do paciente atual (mais preciso que TUSS_TABLE genérico)
+  const planoId = parseInt(document.getElementById('ag-plano')?.value || '0');
+  const procMatch = PROCEDIMENTOS.find(p =>
+    p.codigo === code && (p.planoId === planoId || p.planoId === 0)
+  ) || PROCEDIMENTOS.find(p => p.codigo === code)
+    || (TUSS_TABLE[code] ? { desc: TUSS_TABLE[code].desc, valPlano: TUSS_TABLE[code].valor } : null);
+  if (!procMatch) return;
+  const desc = procMatch.desc || procMatch.descricao || '';
+  const val  = planoId
+    ? (procMatch.valPlano || procMatch.valPart || procMatch.valPlano || 0)
+    : (procMatch.valPart  || procMatch.valPlano || 0);
+  if (descEl) descEl.value = desc;
+  if (valEl && val > 0) { valEl.value = val.toFixed(2).replace('.', ','); recalcTotal(); }
 }
 
 // ═══════════════════════════════════════
@@ -7624,7 +7805,10 @@ function renderSenhas() {
     });
   }
   const planoFiltro = parseInt(fpEl?.value || '0');
-  const list = planoFiltro ? SENHAS_PLANO.filter(s=>s.planoId===planoFiltro) : SENHAS_PLANO;
+  const buscaPac = (document.getElementById('senhas-busca-pac')?.value || '').toLowerCase().trim();
+  let list = SENHAS_PLANO;
+  if (planoFiltro) list = list.filter(s => s.planoId === planoFiltro);
+  if (buscaPac)    list = list.filter(s => s.paciente.toLowerCase().includes(buscaPac));
 
   // Stats
   const statsEl = document.getElementById('senhas-stats');
@@ -8933,7 +9117,8 @@ function showToast(msg, type='success') {
       // Re-render all modules
       ['renderPacientesTable','renderProfissionaisTable','renderPlanosGrid','renderProcedimentosTable',
        'renderGuiasList','renderLotesTable','renderSenhas','renderHistPacList','buildProfFilters',
-       'populateSelects','renderDayView','renderSidebarLogo','renderDashboard','renderRelatorios'].forEach(fn => { try { window[fn](); } catch(e) {} });
+       'populateSelects','renderDayView','renderSidebarLogo','renderDashboard','renderRelatorios',
+       'updateNavBadges'].forEach(fn => { try { window[fn](); } catch(e) {} });
 
       showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
     } catch (e) {
@@ -9135,6 +9320,21 @@ function showToast(msg, type='success') {
         dados.guia = { autorizacao: numGuiaOp || numSenha || 'Pendente', total: tot, senha: numSenha };
         // Cria guia SADT no banco quando há valor
         if (sb && tot > 0) {
+          // Verifica se já existe guia para este agendamento — se sim, atualiza em vez de criar
+          const guiaExistente = GUIAS.find(g =>
+            g.pac === dados.paciente && g.data === dados.dataISO && g.planoId === dados.planoId
+          );
+          if (guiaExistente) {
+            // Atualiza guia existente
+            sb.from('guias_sadt').update({ valor: tot, plano: dados.plano, plano_id: dados.planoId })
+              .eq('id', guiaExistente.id).then(({error:ue}) => {
+                if (ue) console.error('[Guia UPDATE]', ue.message);
+              });
+            guiaExistente.valor = tot;
+            guiaExistente.plano = dados.plano;
+            guiaExistente.planoId = dados.planoId;
+            renderGuiasList();
+          } else {
           const guiaNum = document.getElementById('sadt-guia-prestador')?.value || ('G' + Date.now().toString().slice(-8));
           const procsAg = [];
           for (let i = 0; i < 5; i++) {
@@ -9165,6 +9365,7 @@ function showToast(msg, type='success') {
               renderGuiasList();
             }
           });
+          } // end else (guia não existente)
           // Atualiza qtdUsada na senha
           const senhaAppt = SENHAS_PLANO.find(s =>
             s.ativa && s.planoId === dados.planoId &&
@@ -9194,6 +9395,7 @@ function showToast(msg, type='success') {
         dados.id = data.id;
       } else { dados.id = Math.max(...APPOINTMENTS.map(a => a.id), 0) + 1; }
       APPOINTMENTS.push(dados);
+      try { updateNavBadges(); } catch(e) {}
       showToast('Agendamento criado!', 'success');
     }
     closeModal('modal-agendamento'); renderDayView();
@@ -9438,7 +9640,25 @@ function showToast(msg, type='success') {
   };
   window.excluirGuia = async function (id) {
     if (!confirm('Excluir esta guia?')) return;
-    const sb = getDb(); if (sb) await sb.from('guias_sadt').delete().eq('id', id);
+    const sb = getDb();
+    // Reverte qtdUsada na senha antes de excluir
+    const guia = GUIAS.find(g => g.id === id);
+    if (guia) {
+      const senhaRev = SENHAS_PLANO.find(s =>
+        s.planoId === guia.planoId &&
+        s.paciente.toLowerCase() === guia.pac.toLowerCase() &&
+        s.qtdUsada > 0
+      );
+      if (senhaRev) {
+        senhaRev.qtdUsada = Math.max(0, senhaRev.qtdUsada - 1);
+        if (senhaRev.qtdUsada < senhaRev.qtdAutorizada) { senhaRev.status = 'Ativa'; senhaRev.ativa = true; }
+        if (sb) sb.from('senhas_plano').update({
+          qtd_usada: senhaRev.qtdUsada, status: senhaRev.status, ativa: senhaRev.ativa
+        }).eq('id', senhaRev.id);
+        renderSenhas();
+      }
+    }
+    if (sb) await sb.from('guias_sadt').delete().eq('id', id);
     const i = GUIAS.findIndex(g => g.id === id); if (i > -1) GUIAS.splice(i, 1);
     renderGuiasList(); showToast('Guia excluída.', 'error');
   };
