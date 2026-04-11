@@ -2457,6 +2457,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         Cancelar agendamento
       </button>
+      <button class="btn-sm" id="btn-excluir-agendamento" style="display:none;color:var(--danger);background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25)" onclick="excluirAgendamentoComGuia()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        Excluir agendamento
+      </button>
       <div style="flex:1"></div>
       <button class="btn-sm btn-secondary" id="btn-imprimir-guia" style="display:none" onclick="imprimirGuiaSADT()">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
@@ -3918,20 +3922,20 @@ function autoFillSadt(appt) {
     const lbl = document.getElementById('sadt-versao-tiss-label');
     if (lbl) lbl.textContent = 'TISS ' + (plano.versaoTiss || '4.02.00');
 
-    // Guia number from plano sequence
-    const guiaNum = plano.codPrestador
-      ? (plano.codPrestador + String(plano.numGuiaInicial || 1).padStart(5,'0'))
-      : ('G' + Date.now().toString().slice(-8));
-    sv('sadt-guia-prestador', guiaNum);
+    // Guia number — apenas sequencial (sem código do prestador)
+    const guiaSeq = String(plano.numGuiaInicial || (GUIAS.length + 1));
+    sv('sadt-guia-prestador', guiaSeq);
     const disp = document.getElementById('sadt-guia-num-display');
-    if (disp) disp.textContent = guiaNum;
+    if (disp) disp.textContent = guiaSeq;
 
-    // Prestador contratado (campos 13-16) — from plano if set, else CLINICA
-    sv('sadt-cod-prestador',  plano.codPrestador  || CLINICA.codPrestador);
-    sv('sadt-prestador',      plano.nomeContratado|| CLINICA.nome);
+    // Campos 13-14: Prestador contratado
+    sv('sadt-cod-prestador',  plano.codPrestador  || CLINICA.codPrestador || '');
+    sv('sadt-prestador',      plano.nomeContratado|| CLINICA.nome || '');
     sv('sadt-cnes',           plano.cnes          || CLINICA.cnes || '');
-    sv('sadt-exec-cod',       plano.codPrestador  || CLINICA.codPrestador);
-    sv('sadt-exec-nome',      plano.nomeContratado|| CLINICA.nome);
+
+    // Campos 29-30: Executante (contratado)
+    sv('sadt-exec-cod',  plano.codPrestador  || CLINICA.codPrestador || '');
+    sv('sadt-exec-nome', plano.nomeContratado|| CLINICA.nome || '');
 
     // Senhas/autorizações — busca por paciente+plano, com ou sem carteirinha
     const cartPac = pac?.carteirinha && pac.carteirinha !== '—' ? pac.carteirinha : null;
@@ -3952,25 +3956,41 @@ function autoFillSadt(appt) {
       // Data de autorização (usa sadt-data-solic como proxy se não houver campo específico)
       const autEl = document.getElementById('sadt-data-aut') || document.getElementById('sadt-data-solic');
       if (autEl && senhaObj.dataAut) autEl.value = senhaObj.dataAut;
-      // Procedimentos da senha → campos 20 e 40
-      if (senhaObj.procs && senhaObj.procs.length > 0) {
-        senhaObj.procs.forEach((proc, idx) => {
-          const codEl20  = document.getElementById('sadt-proc-cod-'  + idx);
-          const descEl20 = document.getElementById('sadt-proc-desc-' + idx);
-          const codEl40  = document.getElementById('sadt-ep-cod-'    + idx);
-          const descEl40 = document.getElementById('sadt-ep-desc-'   + idx);
-          if (codEl20)  codEl20.value  = proc.codigo || '';
-          if (descEl20) descEl20.value = proc.desc   || '';
-          if (codEl40)  codEl40.value  = proc.codigo || '';
-          if (descEl40) descEl40.value = proc.desc   || '';
-          // Valor do procedimento
-          const procObj = PROCEDIMENTOS.find(p => p.codigo === proc.codigo);
-          if (procObj) {
-            const valProcEl = document.getElementById('sadt-proc-val-' + idx);
-            if (valProcEl) valProcEl.value = brl(procObj.valPlano || procObj.valPart || 0);
-          }
-        });
-      }
+      // Campos 25/26 (procedimentos solicitados) e 40 (executados) + valor
+      const procsParaPreencher = senhaObj.procs && senhaObj.procs.length > 0
+        ? senhaObj.procs
+        : PROCEDIMENTOS.slice(0, 1).map(p => ({ codigo: p.codigo, desc: p.desc }));
+
+      procsParaPreencher.forEach((proc, idx) => {
+        // Busca informações completas do procedimento
+        const procObj = PROCEDIMENTOS.find(p =>
+          (proc.codigo && p.codigo === proc.codigo) ||
+          (proc.desc   && p.desc?.toLowerCase().includes(proc.desc.toLowerCase().substring(0,10)))
+        );
+        const codFinal  = proc.codigo || procObj?.codigo || '';
+        const descFinal = proc.desc   || procObj?.desc   || '';
+        const valFinal  = procObj ? (procObj.valPlano || procObj.valPart || 0) : 0;
+
+        // Campo 25 — Código do procedimento solicitado
+        const codEl25  = document.getElementById('sadt-proc-cod-'  + idx);
+        // Campo 26 — Descrição do procedimento solicitado
+        const descEl26 = document.getElementById('sadt-proc-desc-' + idx);
+        // Campo 40 — Código do procedimento executado
+        const codEl40  = document.getElementById('sadt-ep-cod-'    + idx);
+        // Descrição executado
+        const descEl40d= document.getElementById('sadt-ep-desc-'   + idx);
+        // Valor executado
+        const valEl    = document.getElementById('sadt-ep-val-'    + idx);
+
+        if (codEl25)   codEl25.value   = codFinal;
+        if (descEl26)  descEl26.value  = descFinal;
+        if (codEl40)   codEl40.value   = codFinal;
+        if (descEl40d) descEl40d.value = descFinal;
+        if (valEl && valFinal > 0) {
+          valEl.value = valFinal.toFixed(2).replace('.', ',');
+          recalcTotal();
+        }
+      });
       // Exibe sessões restantes como aviso
       const restantes = senhaObj.qtdAutorizada - senhaObj.qtdUsada;
       if (restantes <= 3) {
@@ -3984,19 +4004,32 @@ function autoFillSadt(appt) {
     sv('sadt-exec-cod',      CLINICA.codPrestador);
   }
 
-  // ── Solicitante / Executante (campos 15-27 / 48-55) ─────────────────
-  if (prof) {
-    sv('sadt-prof-nome',          prof.nome);
-    sv('sadt-conselho',           prof.conselho);
-    sv('sadt-num-conselho',       prof.num);
-    sv('sadt-uf-conselho',        prof.uf);
-    sv('sadt-cbo',                prof.cbo || '');
-    sv('sadt-exec-prof-nome',     prof.nome);
-    sv('sadt-exec-conselho',      prof.conselho);
-    sv('sadt-exec-num-conselho',  prof.num);
-    sv('sadt-exec-uf',            prof.uf);
-    sv('sadt-exec-cbo',           prof.cbo || '');
-  }
+  // ── Campos 15-19: Solicitante (sempre fixo por configuração da clínica) ──
+  // Campo 15 — Nome do profissional solicitante
+  sv('sadt-prof-nome',     'Maria Cecilia Benessuti Donato');
+  // Campo 16 — Conselho
+  if (prof) sv('sadt-conselho', prof.conselho || 'CRFa');
+  else      sv('sadt-conselho', 'CRFa');
+  // Campo 17 — Nº conselho
+  sv('sadt-num-conselho',  '71849');
+  // Campo 18 — UF
+  if (prof) sv('sadt-uf-conselho', prof.uf || 'SP');
+  else      sv('sadt-uf-conselho', 'SP');
+  // Campo 19 — CBO
+  sv('sadt-cbo', '201510');
+
+  // ── Campos 48-55: Profissional executante (sempre fixo) ────────────────
+  sv('sadt-exec-prof-nome',    'Maria Cecilia Benessuti Donato');
+  if (prof) sv('sadt-exec-conselho', prof.conselho || 'CRFa');
+  else      sv('sadt-exec-conselho', 'CRFa');
+  sv('sadt-exec-num-conselho', '71849');
+  if (prof) sv('sadt-exec-uf', prof.uf || 'SP');
+  else      sv('sadt-exec-uf', 'SP');
+  sv('sadt-exec-cbo', '201510');
+  // Campo 50 — CPF do executante
+  sv('sadt-exec-cpf', '27700196869');
+  // Campo 53 — Código na operadora do executante
+  sv('sadt-exec-cod-op', '71849');
 
   // ── Data da solicitação = data do agendamento ────────────────────────
   const dsEl = document.getElementById('sadt-data-solic');
@@ -4237,10 +4270,53 @@ function excluirHistorico(id) {
   });
 }
 function excluirAgendamento(id) {
-  confirmarExclusao('Excluir este agendamento permanentemente?', () => {
-    const idx = APPOINTMENTS.findIndex(a=>a.id===id);
-    if (idx>-1) { APPOINTMENTS.splice(idx,1); closeModal('modal-agendamento'); renderDayView(); showToast('Agendamento excluído.','error'); }
-  });
+  if (!confirm('Excluir este agendamento permanentemente?')) return;
+  const idx = APPOINTMENTS.findIndex(a=>a.id===id);
+  if (idx>-1) { APPOINTMENTS.splice(idx,1); closeModal('modal-agendamento'); renderDayView(); showToast('Agendamento excluído.','error'); }
+}
+
+function excluirAgendamentoComGuia() {
+  if (!currentApptId) return;
+  if (!confirm('Excluir este agendamento? Se houver guia SADT vinculada, ela também será excluída.')) return;
+  const appt = APPOINTMENTS.find(a => a.id === currentApptId);
+  // Remove guia vinculada por paciente + data
+  if (appt) {
+    const guiaIdx = GUIAS.findIndex(g =>
+      g.pac === appt.paciente && g.data === appt.dataISO
+    );
+    if (guiaIdx > -1) {
+      const guia = GUIAS[guiaIdx];
+      const _sb = window._cfGetDb ? window._cfGetDb() : null;
+      if (_sb) {
+        _sb.from('guias_sadt').delete().eq('id', guia.id).then(({error}) => {
+          if (error) console.error('[Excluir Guia]', error.message);
+        });
+        // Reverte qtdUsada na senha
+        const senhaRev = SENHAS_PLANO.find(s =>
+          s.planoId === appt.planoId &&
+          s.paciente.toLowerCase() === appt.paciente.toLowerCase() && s.qtdUsada > 0
+        );
+        if (senhaRev) {
+          senhaRev.qtdUsada = Math.max(0, senhaRev.qtdUsada - 1);
+          if (senhaRev.qtdUsada < senhaRev.qtdAutorizada) { senhaRev.status = 'Ativa'; senhaRev.ativa = true; }
+          _sb.from('senhas_plano').update({ qtd_usada: senhaRev.qtdUsada, status: senhaRev.status, ativa: senhaRev.ativa }).eq('id', senhaRev.id);
+        }
+      }
+      GUIAS.splice(guiaIdx, 1);
+      renderGuiasList();
+    }
+    // Remove agendamento do Supabase
+    const _sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (_sb) _sb.from('agendamentos').delete().eq('id', currentApptId).then(({error}) => {
+      if (error) console.error('[Excluir Agendamento]', error.message);
+    });
+  }
+  const idx = APPOINTMENTS.findIndex(a => a.id === currentApptId);
+  if (idx > -1) APPOINTMENTS.splice(idx, 1);
+  closeModal('modal-agendamento');
+  renderDayView();
+  renderDashboard();
+  showToast('Agendamento excluído.', 'error');
 }
 const CAL_ICON  = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2z"/></svg>`;
 
@@ -4577,14 +4653,42 @@ function editarGuia(id) {
   const gPacList = document.getElementById('g-pac-list');
   if (gPacList) gPacList.innerHTML = PACIENTES.map(p=>'<option value="'+p.nome+'">').join('');
 
-  // Restore procedures
+  // Restaura carteirinha do paciente se não estiver salva na guia
+  if (!g.carteirinha || g.carteirinha === '') {
+    const pacGuia = PACIENTES.find(p => p.nome === g.pac || p.nome.toLowerCase() === g.pac.toLowerCase());
+    if (pacGuia && pacGuia.carteirinha && pacGuia.carteirinha !== '—') {
+      document.getElementById('g-carteirinha').value = pacGuia.carteirinha;
+    }
+  }
+  // Restaura nº guia operadora dos dados jsonb se não no campo direto
+  if (!g.numOp && g.dados?.senha) {
+    document.getElementById('g-num-op').value = g.dados.senha || '';
+  }
+
+  // Restaura procedimentos — usa dados.procs ou busca por valor
   const procList = document.getElementById('g-procs-list');
   procList.innerHTML = '';
   guiaProcCount = 0;
-  const procs = g.dados?.procs || [{ codigo:'', desc:'', qtd:1, valor:g.valor }];
+  let procs = g.dados?.procs;
+  if (!procs || procs.length === 0) {
+    // Tenta reconstruir do valor: busca procedimento com valor mais próximo
+    const procMatch = PROCEDIMENTOS.find(p =>
+      Math.abs((p.valPlano || p.valPart || 0) - g.valor) < 1
+    );
+    procs = procMatch
+      ? [{ codigo: procMatch.codigo, desc: procMatch.desc, qtd: 1, valor: g.valor }]
+      : [{ codigo: '', desc: '', qtd: 1, valor: g.valor }];
+  }
   procs.forEach(p => {
-    guiaAddProc(p.codigo, p.desc, p.qtd, p.valor);
+    guiaAddProc(p.codigo || '', p.desc || '', p.qtd || 1, p.valor || 0);
   });
+
+  // Profissional executante sempre fixo (gProf já declarado acima)
+  {
+    const profFixo = PROFISSIONAIS.find(p => p.nome.toLowerCase().includes('maria cecilia') || p.nome === 'Maria Cecilia Benessuti Donato');
+    if (profFixo && gProf) gProf.value = profFixo.id;
+  }
+
   guiaRecalcTotal();
   openModal('modal-guia');
 }
@@ -5534,17 +5638,32 @@ function lookupTuss(input) {
 }
 
 function recalcTotal() {
-  // soma valores dos procedimentos executados
+  // Soma APENAS os valores dos procedimentos executados (sadt-exec-proc-row)
+  // Evita duplicação não somando também os procedimentos solicitados
   let total = 0;
-  document.querySelectorAll('.sadt-exec-proc-row').forEach(row => {
-    const idx = row.dataset.eidx;
-    const valEl = document.getElementById(`sadt-ep-val-${idx}`);
-    const qtdEl = document.getElementById(`sadt-ep-qtd-${idx}`);
-    if (!valEl) return;
-    const raw = valEl.value.replace(/[R$\s]/g,'').replace(',','.');
-    const qtd = qtdEl ? parseInt(qtdEl.value)||1 : 1;
-    total += (parseFloat(raw)||0) * qtd;
-  });
+  const execRows = document.querySelectorAll('.sadt-exec-proc-row');
+  if (execRows.length > 0) {
+    execRows.forEach(row => {
+      const idx = row.dataset.eidx;
+      const valEl = document.getElementById(`sadt-ep-val-${idx}`);
+      const qtdEl = document.getElementById(`sadt-ep-qtd-${idx}`);
+      if (!valEl || !valEl.value) return;
+      const raw = valEl.value.replace(/[R$\s.]/g,'').replace(',','.');
+      const qtd = qtdEl ? parseInt(qtdEl.value)||1 : 1;
+      total += (parseFloat(raw)||0) * qtd;
+    });
+  } else {
+    // fallback: usa proc solicitados se não houver executados
+    document.querySelectorAll('.sadt-proc-row').forEach(row => {
+      const idx = row.dataset.idx;
+      const valEl = document.getElementById(`sadt-proc-val-${idx}`);
+      const qtdEl = document.getElementById(`sadt-proc-qtd-${idx}`);
+      if (!valEl || !valEl.value) return;
+      const raw = valEl.value.replace(/[R$\s.]/g,'').replace(',','.');
+      const qtd = qtdEl ? parseInt(qtdEl.value)||1 : 1;
+      total += (parseFloat(raw)||0) * qtd;
+    });
+  }
   const totProcEl = document.getElementById('sadt-tot-proc');
   if (totProcEl) totProcEl.value = formatBRL(total);
   const totalEl = document.getElementById('sadt-total');
@@ -7961,28 +8080,30 @@ const IMP_SCHEMAS = {
   senhas: {
     label:'Senhas/Autorizações', icon:'🔑', modulo:'senhas',
     fields:[
-      {key:'paciente',    label:'Paciente',           required:true},
-      {key:'plano',       label:'Plano',              required:true},
-      {key:'numSenha',    label:'Nº senha/autorização',required:true},
-      {key:'validade',    label:'Validade',           required:false},
-      {key:'qtdAut',      label:'Qtd. autorizada',    required:false},
-      {key:'carteirinha', label:'Carteirinha',        required:false},
-      {key:'numGuiaOp',   label:'Nº guia operadora',  required:false},
-      {key:'cid',         label:'CID-10',             required:false},
-      {key:'procedimento',label:'Procedimento',       required:false},
+      {key:'paciente',    label:'Paciente',              required:true},
+      {key:'plano',       label:'Plano',                 required:true},
+      {key:'numSenha',    label:'Nº senha/autorização',  required:true},
+      {key:'dataAut',     label:'Data de autorização',   required:false},
+      {key:'validade',    label:'Validade / Vencimento', required:false},
+      {key:'qtdAut',      label:'Qtd. autorizada',       required:false},
+      {key:'carteirinha', label:'Carteirinha',           required:false},
+      {key:'numGuiaOp',   label:'Nº guia operadora',     required:false},
+      {key:'cid',         label:'CID-10',                required:false},
+      {key:'procedimento',label:'Procedimento',          required:false},
     ],
     autoMatch:{
       paciente:['paciente','beneficiario','nome'],
       plano:['plano','convenio'],
-      numSenha:['senha','autorização','autorizacao','nº senha'],
-      validade:['validade','val.','vencimento'],
-      qtdAut:['qtd','quantidade','sessões','sessoes','autorizado'],
-      carteirinha:['carteirinha','cartão'],
-      numGuiaOp:['guia op','nº guia','num guia op'],
+      numSenha:['senha','autorização','autorizacao','nº senha','num senha'],
+      dataAut:['data aut','data autorização','data autorizacao','dt aut','data da autorização','autorizacao data'],
+      validade:['validade','val.','vencimento','dt vencimento','data vencimento','data validade'],
+      qtdAut:['qtd','quantidade','sessões','sessoes','autorizado','qtd autorizada'],
+      carteirinha:['carteirinha','cartão','numero cartao','num carteirinha'],
+      numGuiaOp:['guia op','nº guia','num guia op','numero guia operadora'],
       cid:['cid','cid-10'],
-      procedimento:['procedimento','proc','código'],
+      procedimento:['procedimento','proc','código','descricao proc'],
     },
-    demo:"Paciente,Plano,NumSenha,Validade,QtdAutorizada,Carteirinha\nAna Maria Silva,SulAmérica,A30152689,30/06/2026,12,1234567890123",
+    demo:"Paciente,Plano,NumSenha,DataAutorizacao,Validade,QtdAutorizada,Carteirinha\nAna Maria Silva,SulAmérica,A30152689,01/04/2026,30/04/2026,12,1234567890123",
   },
 };
 
@@ -8286,7 +8407,9 @@ function processRowsByType() {
         item.paciente=impGetCell(row,'paciente');
         item.planoNome=impGetCell(row,'plano');
         item.numSenha=impGetCell(row,'numSenha');
-        item.validade=parseISODate(impGetCell(row,'validade'));
+        // Datas: converte dd/mm/yyyy → yyyy-mm-dd
+        item.dataAut=parseISODate(impGetCell(row,'dataAut')) || null;
+        item.validade=parseISODate(impGetCell(row,'validade')) || null;
         item.qtdAut=parseInt(impGetCell(row,'qtdAut'))||10;
         item.carteirinha=impGetCell(row,'carteirinha');
         item.numGuiaOp=impGetCell(row,'numGuiaOp');
@@ -8604,13 +8727,14 @@ async function impConfirmar() {
           if(!plano){skipped++;continue;}
           const obj={id:nextSenhaId++,planoId:plano.id,paciente:r.paciente,
             carteirinha:r.carteirinha||'',numGuiaOp:r.numGuiaOp||'',numSenha:r.numSenha,
-            dataAut:new Date().toISOString().slice(0,10),validade:r.validade||'',
+            dataAut: r.dataAut || null,   // usa data importada, não data de hoje
+            validade:r.validade || null,
             qtdAutorizada:r.qtdAut,qtdUsada:0,cid:r.cid||'',
             procs:r.procedimento?[{codigo:'',desc:r.procedimento}]:[],
             status:'Ativa',ativa:true,obs:''};
           const dbId=await sbInsert('senhas_plano',{plano_id:obj.planoId,paciente:obj.paciente,
             carteirinha:obj.carteirinha||null,num_guia_op:obj.numGuiaOp||null,num_senha:obj.numSenha,
-            data_aut:obj.dataAut,validade:obj.validade||null,qtd_autorizada:obj.qtdAutorizada,
+            data_aut:obj.dataAut,validade:obj.validade,qtd_autorizada:obj.qtdAutorizada,
             qtd_usada:0,cid:obj.cid||null,procs:obj.procs,status:'Ativa',ativa:true});
           if(dbId) obj.id=dbId;
           SENHAS_PLANO.push(obj);
@@ -9019,13 +9143,15 @@ function showToast(msg, type='success') {
             if (codEl?.value || descEl?.value)
               procsAg.push({ codigo: codEl?.value||'', desc: descEl?.value||'' });
           }
+          const cartGuiaAg = document.getElementById('ag-carteirinha')?.value ||
+            PACIENTES.find(p => p.nome === dados.paciente)?.carteirinha?.replace('—','') || null;
           sb.from('guias_sadt').insert([{
             num: guiaNum, pac: dados.paciente,
             plano_id: dados.planoId || null, plano: dados.plano,
             prof_id: dados.profId || null, valor: tot, status: 'Pendente',
             data: dados.dataISO || null,
-            carteirinha: document.getElementById('ag-carteirinha')?.value || null,
-            num_op: numGuiaOp || null,
+            carteirinha: cartGuiaAg || null,
+            num_op: numGuiaOp || numSenha || null,
             cid: document.getElementById('sadt-cid')?.value || null,
             dados: { procs: procsAg, senha: numSenha }
           }]).select('id').single().then(({data:gd, error:ge}) => {
@@ -9034,6 +9160,7 @@ function showToast(msg, type='success') {
               GUIAS.push({ id:gd.id, num:guiaNum, pac:dados.paciente,
                 planoId:dados.planoId, plano:dados.plano, profId:dados.profId,
                 valor:tot, status:'Pendente', data:dados.dataISO||'',
+                carteirinha: cartGuiaAg, numOp: numGuiaOp || numSenha || '',
                 loteId:null, dados:{procs:procsAg} });
               renderGuiasList();
             }
