@@ -1720,15 +1720,17 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     <div class="page" id="page-historico">
       <div style="display:flex;height:calc(100vh - 110px);gap:16px;overflow:hidden">
 
-        <!-- Coluna única: busca + histórico -->
-        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-
-          <!-- Busca de paciente -->
-          <div style="position:relative;margin-bottom:12px;flex-shrink:0">
-            <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-muted);pointer-events:none" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input id="hist-search-input" class="search-input" style="width:100%;padding-left:38px;font-size:13px;height:40px" placeholder="Buscar paciente pelo nome..." oninput="filterPacientesHist(this.value)" autocomplete="off">
-            <div id="hist-search-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg-surface);border:1px solid var(--border-mid);border-radius:var(--radius-md);box-shadow:var(--shadow-md);z-index:200;max-height:280px;overflow-y:auto"></div>
+        <!-- Coluna esquerda: lista de pacientes -->
+        <div style="width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:10px">
+          <div class="search-input-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input class="search-input" placeholder="Buscar paciente..." oninput="filterPacientesHist(this.value)">
           </div>
+          <div id="hist-pacientes-list" style="flex:1;overflow-y:auto;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-surface)"></div>
+        </div>
+
+        <!-- Coluna direita: histórico do paciente selecionado -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
 
           <!-- Cabeçalho do paciente -->
           <div id="hist-pac-header" style="display:none;padding:16px 20px;background:var(--bg-surface);border-radius:var(--radius-md);border:1px solid var(--border);margin-bottom:12px;flex-shrink:0">
@@ -7099,67 +7101,37 @@ function waEnviarConfirmacoesDoDia() {
 //  HISTÓRICO DO PACIENTE — MÓDULO
 // ═══════════════════════════════════════
 
-function renderHistPacList(filter) {
-  // Mantido para compatibilidade com chamadas internas — agora é no-op
-  // A lista lateral foi substituída por busca com dropdown
+function renderHistPacList(filter='') {
+  const el = document.getElementById('hist-pacientes-list');
+  if (!el) return;
+  let list = PACIENTES.filter(p=>p.status!=='Inativo');
+  if (filter) list = list.filter(p=>p.nome.toLowerCase().includes(filter.toLowerCase()));
+  el.innerHTML = '';
+  list.forEach(p => {
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)';
+    const apptCount = APPOINTMENTS.filter(a=>a.paciente===p.nome).length;
+    const evolCount = HISTORICO.filter(h=>h.pacId===p.id&&h.tipo==='evolucao').length;
+    div.innerHTML =
+      '<div style="font-size:13px;font-weight:500">'+p.nome+'</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">'+
+        apptCount+' consultas · '+evolCount+' evoluções</div>';
+    div.addEventListener('click', () => abrirHistPaciente(p.id));
+    div.addEventListener('mouseover', ()=>div.style.background='var(--bg-raised)');
+    div.addEventListener('mouseout',  ()=>div.style.background=(historicoAtualPacId===p.id?'var(--bg-overlay)':''));
+    if (historicoAtualPacId===p.id) div.style.background='var(--bg-overlay)';
+    el.appendChild(div);
+  });
 }
 
-function filterPacientesHist(v) {
-  var dropdown = document.getElementById('hist-search-dropdown');
-  if (!dropdown) return;
-  var q = (v||'').trim().toLowerCase();
-  if (!q) { dropdown.style.display = 'none'; return; }
-
-  var matches = PACIENTES.filter(function(p){
-    return p.status !== 'Inativo' && p.nome.toLowerCase().includes(q);
-  }).slice(0, 12);
-
-  if (!matches.length) {
-    dropdown.style.display = 'block';
-    dropdown.innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-muted)">Nenhum paciente encontrado.</div>';
-    return;
-  }
-
-  dropdown.style.display = 'block';
-  dropdown.innerHTML = matches.map(function(p) {
-    var apptCount = APPOINTMENTS.filter(function(a){ return a.paciente===p.nome; }).length;
-    var evolCount = HISTORICO.filter(function(h){ return h.pacId===p.id&&h.tipo==='evolucao'; }).length;
-    var initials  = p.nome.split(' ').map(function(n){ return n[0]; }).slice(0,2).join('');
-    return (
-      '<div onclick="selecionarPacienteHist('+p.id+')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)" onmouseover="this.style.background=&quot;var(--bg-raised)&quot;" onmouseout="this.style.background=&quot;&quot;">' +
-        '<div style="width:34px;height:34px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--accent);flex-shrink:0">'+initials+'</div>' +
-        '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.nome+'</div>' +
-          '<div style="font-size:11px;color:var(--text-muted)">'+apptCount+' consultas &middot; '+evolCount+' evolu&ccedil;&otilde;es &middot; '+p.plano+'</div>' +
-        '</div>' +
-      '</div>'
-    );
-  }).join('');
-}
-
-function selecionarPacienteHist(pacId) {
-  var dropdown = document.getElementById('hist-search-dropdown');
-  var input    = document.getElementById('hist-search-input');
-  var pac = PACIENTES.find(function(x){ return x.id===pacId; });
-  if (dropdown) dropdown.style.display = 'none';
-  if (input && pac) input.value = pac.nome;
-  abrirHistPaciente(pacId);
-}
-
-function _histDropdownClickOutside(e) {
-  var inp = document.getElementById('hist-search-input');
-  var dd  = document.getElementById('hist-search-dropdown');
-  if (dd && inp && !inp.contains(e.target) && !dd.contains(e.target)) {
-    dd.style.display = 'none';
-  }
-}
-document.removeEventListener('click', _histDropdownClickOutside);
-document.addEventListener('click', _histDropdownClickOutside);
+function filterPacientesHist(v) { renderHistPacList(v); }
 
 function abrirHistPaciente(pacId) {
   historicoAtualPacId = pacId;
   const p = PACIENTES.find(x=>x.id===pacId);
   if (!p) return;
+  renderHistPacList();
+
   // Header
   const header = document.getElementById('hist-pac-header');
   const empty  = document.getElementById('hist-empty');
@@ -7221,98 +7193,29 @@ function renderTimeline() {
   const el = document.getElementById('hist-timeline');
   if (!el) return;
 
-  const icons    = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
-  const colors   = { agendado:'var(--accent)', confirmado:'var(--success)', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
-  const evtColors= { evolucao:'#34d399', anamnese:'#f59e0b', avaliacao:'#60a5fa' };
-
-  // Coleta todos os agendamentos do paciente
-  const appts = APPOINTMENTS.filter(a=>a.paciente===p.nome);
-
-  // Coleta todo histórico do paciente
-  const allHist = HISTORICO.filter(h=>h.pacId===pacId);
-
-  // Evoluções vinculadas a um agendamento (apptId definido)
-  const evolByAppt = {};
-  allHist.filter(h=>h.tipo==='evolucao'&&h.apptId).forEach(h=>{
-    if(!evolByAppt[h.apptId]) evolByAppt[h.apptId]=[];
-    evolByAppt[h.apptId].push(h);
-  });
-
-  // Evoluções NÃO vinculadas a nenhum agendamento, mas que podem ser vinculadas pela data
-  const evolLinkedIds = new Set(allHist.filter(h=>h.tipo==='evolucao'&&h.apptId).map(h=>h.id));
-
-  // Tenta vincular evoluções sem apptId a um agendamento pela data
-  allHist.filter(h=>h.tipo==='evolucao'&&!h.apptId&&!evolLinkedIds.has(h.id)).forEach(h=>{
-    const dataEvo = (h.data||'').slice(0,10);
-    const apptMatch = appts.find(a=>{
-      const dataA = (a.dataISO||'').slice(0,10);
-      if(dataA!==dataEvo) return false;
-      const horaEvo = h.conteudo?.horaIni||'';
-      return !horaEvo || a.hora===horaEvo;
-    });
-    if(apptMatch){
-      if(!evolByAppt[apptMatch.id]) evolByAppt[apptMatch.id]=[];
-      evolByAppt[apptMatch.id].push(h);
-      evolLinkedIds.add(h.id);
-    }
-  });
-
-  // Monta eventos para a linha do tempo
+  // Merge appointments and historico events, sort by date desc
   const events = [];
-
-  // Agendamentos (com evoluções vinculadas embutidas)
-  appts.forEach(a=>{
-    events.push({
-      date: a.dataISO||'',
-      tipo: 'agendamento',
-      label: a.hora+' — '+a.plano,
-      status: a.status,
-      data: a,
-      evolucoes: evolByAppt[a.id]||[]
-    });
+  APPOINTMENTS.filter(a=>a.paciente===p.nome).forEach(a => {
+    events.push({ date:a.dataISO||'2026-03-30', tipo:'agendamento', label:a.hora+' — '+a.plano, status:a.status, data:a });
   });
-
-  // Histórico não vinculado a agendamentos
-  allHist.forEach(h=>{
-    if(evolLinkedIds.has(h.id)) return; // já embutido em um agendamento
-    events.push({ date:h.data||'', tipo:h.tipo, label:h.titulo||h.tipo, status:'', data:h, evolucoes:[] });
+  HISTORICO.filter(h=>h.pacId===pacId).forEach(h => {
+    events.push({ date:h.data||'', tipo:h.tipo, label:h.titulo||h.tipo, status:'', data:h });
   });
-
-  events.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  events.sort((a,b)=>b.date.localeCompare(a.date));
 
   if (!events.length) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted)">Nenhum evento registrado para este paciente.</div>';
     return;
   }
 
+  const icons = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
+  const colors = { agendado:'var(--accent)', confirmado:'var(--success)', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
+  const evtColors = { evolucao:'#34d399', anamnese:'#f59e0b', avaliacao:'#60a5fa' };
+
   el.innerHTML = events.map(ev => {
     const dotColor = ev.tipo==='agendamento' ? (colors[ev.status]||'var(--accent)') : (evtColors[ev.tipo]||'var(--accent)');
-    const dateFmt  = ev.date ? ev.date.slice(0,10).split('-').reverse().join('/') : '—';
+    const dateFmt  = ev.date ? ev.date.split('-').reverse().join('/') : '—';
     const chipStr  = ev.status ? '<span class="chip '+(ev.status==='atendido'?'gray':ev.status==='cancelado'?'red':'blue')+'" style="font-size:10px">'+ev.status+'</span>' : '';
-
-    // Evoluções vinculadas renderizadas dentro do card do agendamento
-    let evolHTML = '';
-    if(ev.evolucoes && ev.evolucoes.length){
-      evolHTML = '<div style="margin-top:8px;border-left:2px solid #34d399;padding-left:10px;display:flex;flex-direction:column;gap:6px">';
-      ev.evolucoes.forEach(evo=>{
-        const prof = PROFISSIONAIS.find(pr=>pr.id===evo.profId);
-        const horaStr = evo.conteudo?.horaIni ? ' · '+evo.conteudo.horaIni : '';
-        const presencaStr = evo.conteudo?.presenca ? ' · '+evo.conteudo.presenca : '';
-        const textoEvo = evo.conteudo?.texto || '';
-        evolHTML +=
-          '<div style="background:rgba(52,211,153,0.07);border-radius:var(--radius-sm);padding:8px 10px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' +
-              '<span style="font-size:12px">📝</span>' +
-              '<span style="font-size:12px;font-weight:600;color:#34d399">'+(evo.titulo||'Evolução')+'</span>' +
-              (prof?'<span style="font-size:11px;color:var(--text-muted)">· '+prof.nome+'</span>':'') +
-              '<span style="font-size:11px;color:var(--text-muted)">'+horaStr+presencaStr+'</span>' +
-            '</div>' +
-            (textoEvo?'<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5">'+textoEvo+'</div>':'') +
-          '</div>';
-      });
-      evolHTML += '</div>';
-    }
-
     return '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
       '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
         '<div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
@@ -7327,7 +7230,6 @@ function renderTimeline() {
         '</div>' +
         (ev.data.obs?'<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+ev.data.obs+'</div>':'') +
         (ev.data.conteudo?.resumo?'<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+ev.data.conteudo.resumo+'</div>':'') +
-        evolHTML +
       '</div>' +
     '</div>';
   }).join('');
@@ -7406,15 +7308,7 @@ function importarEvolucoes() {
     const iEvo   =fi('evolução')||fi('evolucao')||fi('evolution')||fi('notas');
 
     const pac=PACIENTES.find(x=>x.id===historicoAtualPacId);
-    let imported=0; const lines=[]; const promises=[];
-
-    // Tenta obter cliente Supabase
-    let sb=null;
-    try{ if(window._cfGetDb) sb=window._cfGetDb(); } catch(e){}
-    if(!sb){
-      const _url=localStorage.getItem('cf_supa_url'),_key=localStorage.getItem('cf_supa_key');
-      if(_url&&_key&&window.supabase) sb=window.supabase.createClient(_url,_key);
-    }
+    let imported=0; const lines=[];
 
     rows.slice(1).forEach(cells=>{
       const nomeCells=iPac>=0?(cells[iPac]||'').trim():'';
@@ -7437,35 +7331,18 @@ function importarEvolucoes() {
         if(m) dataISO=(m[3].length===2?'20'+m[3]:m[3])+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
       }
 
-      // Try to link to existing appointment — prioriza match por data+hora, fallback só por data
-      const appt=APPOINTMENTS.find(a=>a.paciente===pac?.nome&&(
-        (dataISO&&a.dataISO===dataISO&&(!horaIni||a.hora===horaIni))||
-        (!dataISO&&horaIni&&a.hora===horaIni)));
+      // Try to link to existing appointment
+      const appt=APPOINTMENTS.find(a=>a.paciente===pac?.nome&&(a.dataISO===dataISO||(horaIni&&a.hora===horaIni)));
 
-      const hObj={
+      HISTORICO.push({
         id:nextHistId++, pacId:historicoAtualPacId, tipo:'evolucao',
         titulo:(presenca==='Presente'||presenca==='P'||presenca==='Sim'?'✓':'✗')+' Sessão — '+dataStr,
         conteudo:{ texto:evoTxt, presenca, horaIni, horaFim, convênio:iConv>=0?cells[iConv]:'' },
         profId:appt?.profId||0, data:dataISO||dataStr, fonte:'Google Sheets',
         apptId:appt?.id||null,
-      };
-      HISTORICO.push(hObj);
-
-      // Salva no Supabase assincronamente
-      if(sb){
-        const p=sb.from('historico').insert([{
-          pac_id:hObj.pacId, tipo:'evolucao', titulo:hObj.titulo,
-          conteudo:hObj.conteudo, prof_id:hObj.profId||null,
-          data:hObj.data, fonte:'Google Sheets', appt_id:hObj.apptId||null
-        }]).select('id').single().then(({data:d,error})=>{
-          if(!error&&d) hObj.id=d.id;
-        });
-        promises.push(p);
-      }
-
+      });
       if(appt&&appt.status!=='atendido'&&(presenca==='Presente'||presenca==='P'||presenca==='Sim')){
         appt.status='atendido';
-        if(sb) sb.from('agendamentos').update({status:'atendido'}).eq('id',appt.id);
       }
       imported++;
       lines.push('<div style="font-size:11px;color:var(--success)">✓ '+dataStr+' '+horaIni+'</div>');
@@ -7473,593 +7350,59 @@ function importarEvolucoes() {
 
     const resEl=document.getElementById('evo-imp-result');
     if(resEl) resEl.innerHTML='<div style="max-height:120px;overflow-y:auto">'+lines.join('')+'</div>'+
-      '<div style="font-weight:600;margin-top:6px;font-size:13px">'+imported+' evolução(ões) importada(s)!'+(sb?' · ✓ Supabase':'')+'</div>';
+      '<div style="font-weight:600;margin-top:6px;font-size:13px">'+imported+' evolução(ões) importada(s)!</div>';
     showToast(imported+' evoluções importadas!','success');
     if(imported>0) setTimeout(()=>{ closeModal('modal-importar-evolucoes'); renderEvolucoes(); renderTimeline(); renderDayView(); },800);
   } catch(e){ showToast('Erro: '+e.message,'error'); }
 }
 
-// ══════════════════════════════════════════════════════════════════════
-//  ANAMNESE INFANTIL — Mapeamento completo do formulário Google Forms
-// ══════════════════════════════════════════════════════════════════════
+// Kosmos anamnese sections definition
 const ANAM_SECTIONS = {
-  '1. Identificação': [
-    'Nome completo do paciente','Idade','Data de Nascimento','Sexo',
-    'Cidade de nascimento','Escola','Ano escolar',
-  ],
-  '2. Família': [
-    'Nome completo do Pai','Profissão do Pai','Idade do Pai',
-    'Nome completo da Mãe','Profissão da Mãe','Idade da Mãe',
-    'Com quem a criança reside?','Possui irmãos?','Quantos irmãos?',
-    'Nome(s) dos irmãos','Idade(s) dos irmãos',
-  ],
-  '3. Queixa Principal': [
-    'Quem indicou a avaliação?','Nome de quem indicou (se aplicável)',
-    'Especialidade de quem indicou (se aplicável)',
-    '3.1 — Queixa principal e há quanto tempo','3.2 — Outras queixas',
-  ],
-  '4. Histórico Familiar': [
-    'Histórico familiar — Autismo','Grau de parentesco — Autismo',
-    'Histórico familiar — TDAH','Grau de parentesco — TDAH',
-    'Histórico familiar — Epilepsia','Grau de parentesco — Epilepsia',
-    'Histórico familiar — Déficit de Aprendizagem','Grau de parentesco — Déficit de Aprendizagem',
-    'Histórico familiar — Alcoolismo','Grau de parentesco — Alcoolismo',
-    'Histórico familiar — Suicídio','Grau de parentesco — Suicídio',
-    'Histórico familiar — Deficiência Intelectual','Grau de parentesco — Deficiência Intelectual',
-    'Histórico familiar — Esquizofrenia','Grau de parentesco — Esquizofrenia',
-    'Histórico familiar — Ansiedade / Depressão','Grau de parentesco — Ansiedade / Depressão',
-    'Histórico familiar — AVC','Grau de parentesco — AVC',
-    'Outros antecedentes familiares não listados acima',
-  ],
-  '5. Gestação': [
-    '4.1.1 — A gravidez foi planejada?','4.1.2 — Houve abortos naturais anteriores?',
-    '4.1.3 — Posição na ordem das gestações','4.1.4 — Houve natimortos?',
-    '4.2.1 — Fez acompanhamento pré-natal?','4.2.2 — Teve intercorrências durante a gestação?',
-    '4.2.3 — Teve pré-eclâmpsia?','4.2.4 — Sofreu traumatismo durante a gestação?',
-    '4.2.5 — Fez uso de medicamentos durante a gestação?',
-    '4.2.5.1 — Se sim, quais medicamentos utilizou?',
-    '4.2.6 — Duração da gestação (em semanas)','4.2.7 — Observações sobre a gestação',
-  ],
-  '6. Nascimento': [
-    '4.3.1 — Local do nascimento','4.3.2 — APGAR (índice ao nascer)','4.3.3 — Tipo de parto',
-    '4.4.1 — Ocorreu alguma das intercorrências abaixo?','4.4.2 — Chorou logo ao nascer?',
-    '4.4.3 — Ficou roxo(a)?','4.4.3.1 — Quanto tempo ficou roxo(a)?',
-    '4.4.4 — Precisou de oxigênio?','4.4.5 — Ficou ictérico(a) (amarelado)?',
-    '4.4.6 — Outras observações sobre o nascimento',
-  ],
-  '7. Desenvolvimento — Sono e Alimentação': [
-    '5.1.1 — Como era o sono na primeira infância?',
-    '5.1.1 — Características do sono na primeira infância (marque todas que se aplicam)',
-    '5.1.2 — Como é o sono atualmente?',
-    '5.2.1 — Como foi a introdução alimentar?',
-    '5.2.1 — Intercorrências na introdução alimentar (marque todas que se aplicam)',
-    '5.2.1 — Outras intercorrências na alimentação',
-    '5.2.2 — Como é a alimentação atualmente?',
-    '5.2.2 — Rejeitou alimentos alguma vez?','5.2.2 — Apresenta seletividade alimentar?',
-    '5.2.2 — Se sim, quais alimentos rejeita?',
-  ],
-  '8. Desenvolvimento Psicomotor': [
-    '5.3.1.1 — Rolamento (em meses)','5.3.1.2 — Engatinhar (em meses)',
-    '5.3.1.3 — Primeiros passos (em meses)',
-    '5.3.1.4 — Controle esfincteriano noturno/diurno (em meses)',
-    '5.3.1.4 — Desenvolvimento de habilidades [Movimento de Pinça]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Equilíbrio]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Mão dominante]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Correr]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Pular]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Subir escada]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Imitar]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Ficar em pé]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Fala]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Vestir-se]',
-    '5.3.1.4 — Desenvolvimento de habilidades [Comer sozinho]',
-  ],
-  '9. Sensibilidades': [
-    '5.3.1.5.1 — Som (audição) — Apresenta sensibilidade?',
-    '5.3.1.5.2 — Textura (tato) — Apresenta sensibilidade?',
-    '5.3.1.5.3 — Paladar — Apresenta sensibilidade?',
-    '5.3.1.5.4 — Olfativo (cheiros) — Apresenta sensibilidade?',
-    '5.3.1.5.5 — Visual (visão) — Apresenta sensibilidade?',
-    '5.3.1.5.6 — Apresenta movimentos involuntários?',
-    '5.3.1.5.7 — Observações sobre sensibilidades e desenvolvimento psicomotor',
-  ],
-  '10. Percurso Escolar': [
-    '6.1 — Descrição geral do percurso escolar','6.1.1 — Ano em que ingressou na escola',
-    '6.1.2 — Mudou de escola?','6.1.2.1 — Quantas vezes mudou de escola?',
-    '6.1.3 — Repetiu de ano?','6.1.3.1 — Se sim, por que repetiu?',
-    '6.1.4 — Dificuldades persistentes de leitura, escrita ou cálculo?','6.1.4 — Observações / Desde quando?',
-    '6.1.5 — Dificuldade em manter a atenção nas aulas?','6.1.5 — Observações / Desde quando?',
-    '6.1.6 — Problemas para seguir regras ou estruturas?','6.1.6 — Observações / Desde quando?',
-    '6.1.7 — Dificuldade de coordenação motora (segurar lápis, recortar)?','6.1.7 — Observações / Desde quando?',
-    '6.1.8 — Esquece tarefas ou instruções com frequência?','6.1.8 — Observações / Desde quando?',
-    '6.1.9 — Dificuldade em fazer amigos ou socializar?','6.1.9 — Observações / Desde quando?',
-    '6.1.10 — Esforça-se, mas tem desempenho escolar baixo?','6.1.10 — Observações / Desde quando?',
-    '6.1.11 — Dificuldade em organizar tarefas e planejar?','6.1.11 — Observações / Desde quando?',
-    '6.1.12 — Problemas com leitura ou interpretação de textos?','6.1.12 — Observações / Desde quando?',
-    '6.1.13 — Evita tarefas desafiadoras?','6.1.13 — Observações / Desde quando?',
-    '6.1.14 — Baixa tolerância à frustração escolar?','6.1.14 — Observações / Desde quando?',
-    '6.1.15 — Dificuldade em entender conceitos abstratos?','6.1.15 — Observações / Desde quando?',
-  ],
-  '11. Histórico de Saúde / Neurologia': [
-    '7.1 — Histórico de infecções ou doenças graves (meningite, encefalite)?','7.1 — Se sim, descreva',
-    '7.2 — Teve convulsões ou crises epilépticas?','7.2 — Se sim, descreva',
-    '7.3 — Histórico de traumatismo craniano ou lesões na cabeça?','7.3 — Se sim, descreva',
-    '7.4 — Histórico de doenças metabólicas (diabetes, hipotireoidismo)?','7.4 — Se sim, descreva',
-    '7.5 — Teve episódios de desmaios ou perda de consciência?','7.5 — Se sim, descreva',
-    '7.6 — Histórico de problemas de coordenação ou equilíbrio?','7.6 — Se sim, descreva',
-    '7.7 — Apresentou problemas de visão ou audição?','7.7 — Se sim, descreva',
-    '7.8 — Histórico de paralisia ou fraqueza muscular?','7.8 — Se sim, descreva',
-    '7.9 — Usa/usou medicamentos controlados por distúrbios neurológicos?','7.9 — Se sim, descreva',
-    '7.10 — Teve febre alta persistente durante a infância?','7.10 — Se sim, descreva',
-    '7.11 — Foi diagnosticado com algum distúrbio genético?','7.11 — Se sim, descreva',
-    '7.12 — Passou por algum procedimento cirúrgico?','7.12 — Se sim, descreva',
-    '7.13 — Foi hospitalizado por longos períodos?','7.13 — Se sim, descreva',
-    '7.14 — Tem histórico de desmaios ou perda de consciência?','7.14 — Se sim, descreva',
-  ],
-  '12. Linguagem': [
-    'Primeiras palavras (em meses)','Frases simples (em meses)',
-    'Marque Sim ou Não para as perguntas abaixo: [Troca letras?]',
-    'Nomeia objetos?','Troca sons?','Omite palavras?','Interage verbalmente?',
-    'Apresenta gagueira?','Outras dificuldades de fala?',
-    'Houve regressão na fala ou habilidades?',
-    'Associa palavras a gestos ou expressões?','Apresentou atraso na fala?',
-    'Apresenta ecolalia?','Observações sobre a linguagem',
-    'Marque Sim ou Não para as perguntas abaixo: [Nomeia objetos?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Troca sons?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Omite palavras?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Interage verbalmente?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Apresenta gagueira?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Outras dificuldades de fala?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Houve regressão na fala ou habilidades?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Associa palavras a gestos ou expressões?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Apresentou atraso na fala?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Apresenta ecolalia?]',
-  ],
-  '13. Hábitos e Comportamentos': [
-    'Marque Sim ou Não para as perguntas abaixo: [Usou/usa chupeta?]',
-    'Chupou/chupa dedo?','Roeu/rói as unhas?','Puxou/puxa a orelha?',
-    'Arrancou/arranca os cabelos?','Teve/tem fixação em temas?',
-    'Mordeu/morde os lábios?','Tem tiques?',
-    'Observações sobre manipulações e hábitos',
-    'Marque Sim ou Não para as perguntas abaixo: [Chupou/chupa dedo?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Roeu/rói as unhas?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Puxou/puxa a orelha?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Arrancou/arranca os cabelos?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Teve/tem fixação em temas?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Mordeu/morde os lábios?]',
-    'Marque Sim ou Não para as perguntas abaixo: [Tem tiques?]',
-  ],
-  '14. Aspectos Sociais': [
-    'Selecione Sim ou Não para a perguntas abaixo: [Tem dificuldade para interagir com outros da mesma idade?]',
-    'Mudanças abruptas de humor?','Tem empatia?',
-    'Balança o corpo ou agita as mãos?','Se isola?',
-    'Tem comportamento impulsivo ou agressivo?','Segue regras sociais?',
-    'Aceita perder/crítica?','Observações sobre aspectos sociais',
-    'Selecione Sim ou Não para a perguntas abaixo: [Mudanças abruptas de humor?]',
-    'Selecione Sim ou Não para a perguntas abaixo: [Tem empatia?]',
-    'Selecione Sim ou Não para a perguntas abaixo: [Balança o corpo ou agita as mãos?]',
-    'Selecione Sim ou Não para a perguntas abaixo: [Se isola?]',
-    'Selecione Sim ou Não para a perguntas abaixo: [Tem comportamento impulsivo ou agressivo?]',
-    'Selecione Sim ou Não para a perguntas abaixo: [Segue regras sociais?]',
-    'Selecione Sim ou Não para a perguntas abaixo: [Aceita perder/crítica?]',
-  ],
-  '15. Rotina': [
-    'Breve descrição da rotina da criança','Pratica atividade física com frequência?',
-    'Se sim, quais atividades físicas pratica?',
-    'Marque Sim ou Não para cada pergunta: [Frequenta a escola?]',
-    'Frequenta a escola?',
-    'Tem um horário fixo para estudar?','Consegue manter o foco durante o horário de estudo?',
-    'Precisa de lembretes para iniciar o estudo?','Acorda no mesmo horário todos os dias?',
-    'Sente-se descansado(a) após acordar?','Segue horários regulares para dormir?',
-    'Realiza atividades diárias sem muita dificuldade?','Adapta-se bem a mudanças na rotina?',
-    'Consegue organizar o tempo entre estudo e lazer?','Segue uma rotina definida?',
-    'Mantém o ambiente organizado?','Consegue cumprir compromissos e horários combinados?',
-    'Precisa de ajuda para iniciar ou concluir tarefas?','Realiza atividades extracurriculares?',
-    'Se realiza atividades extracurriculares, quais são?',
-    'Marque Sim ou Não para cada pergunta: [Tem um horário fixo para estudar?]',
-    'Marque Sim ou Não para cada pergunta: [Consegue manter o foco durante o horário de estudo?]',
-    'Marque Sim ou Não para cada pergunta: [Precisa de lembretes para iniciar o estudo?]',
-    'Marque Sim ou Não para cada pergunta: [Acorda no mesmo horário todos os dias?]',
-    'Marque Sim ou Não para cada pergunta: [Sente-se descansado(a) após acordar?]',
-    'Marque Sim ou Não para cada pergunta: [Segue horários regulares para dormir?]',
-    'Marque Sim ou Não para cada pergunta: [Realiza atividades diárias sem muita dificuldade?]',
-    'Marque Sim ou Não para cada pergunta: [Adapta-se bem a mudanças na rotina?]',
-    'Marque Sim ou Não para cada pergunta: [Consegue organizar o tempo entre estudo e lazer?]',
-    'Marque Sim ou Não para cada pergunta: [Segue uma rotina definida?]',
-    'Marque Sim ou Não para cada pergunta: [Mantém o ambiente organizado?]',
-    'Marque Sim ou Não para cada pergunta: [Consegue cumprir compromissos e horários combinados?]',
-    'Marque Sim ou Não para cada pergunta: [Precisa de ajuda para iniciar ou concluir tarefas?]',
-  ],
-  '16. Exames e Observações Finais': [
-    'Quais exames a criança já realizou?','Informações adicionais relevantes',
-  ],
+  '1. Identificação':     ['Nome completo do paciente','Data de Nascimento','Sexo','Cidade de nascimento','Escola','Ano escolar','Idade'],
+  '2. Família':           ['Nome completo do Pai','Profissão do Pai','Idade do Pai','Nome completo da Mãe','Profissão da Mãe','Idade da Mãe','Com quem a criança reside?','Possui irmãos?'],
+  '3. Queixa Principal':  ['3.1 — Queixa principal e há quanto tempo','3.2 — Outras queixas','Quem indicou a avaliação?','Nome de quem indicou (se aplicável)','Especialidade de quem indicou (se aplicável)'],
+  '4. Gestação/Nascimento':['4.1.1 — A gravidez foi planejada?','4.2.2 — Teve intercorrências durante a gestação?','4.2.6 — Duração da gestação (em semanas)','4.3.3 — Tipo de parto','4.4.1 — Ocorreu alguma das intercorrências abaixo?'],
+  '5. Desenvolvimento':   ['5.1.2 — Como é o sono atualmente?','5.2.2 — Como é a alimentação atualmente?','5.3.1.1 — Rolamento (em meses)','5.3.1.2 — Engatinhar (em meses)','5.3.1.3 — Primeiros passos (em meses)','5.3.1.4 — Desenvolvimento de habilidades [Fala]'],
+  '6. Percurso Escolar':  ['6.1 — Descrição geral do percurso escolar','6.1.4 — Dificuldades persistentes de leitura, escrita ou cálculo?','6.1.5 — Dificuldade em manter a atenção nas aulas?'],
+  '7. Saúde/Neurologia':  ['7.2 — Teve convulsões ou crises epilépticas?','7.9 — Usa/usou medicamentos controlados por distúrbios neurológicos?'],
+  '8. Linguagem':         ['Primeiras palavras (em meses)','Frases simples (em meses)','Apresentou atraso na fala?','Observações sobre a linguagem'],
+  '9. Comportamento':     ['Observações sobre aspectos sociais','Observações sobre manipulações e hábitos','Breve descrição da rotina da criança'],
 };
-
-// Rótulos legíveis — remove prefixos numéricos e colchetes
-function anamLabel(k){
-  return k
-    .replace(/^[\d\.]+\s*—\s*/,'')
-    .replace(/^Marque Sim ou Não para as perguntas abaixo:\s*/i,'')
-    .replace(/^Marque Sim ou Não para cada pergunta:\s*/i,'')
-    .replace(/^Selecione Sim ou Não para a perguntas abaixo:\s*/i,'')
-    .replace(/^\[/,'').replace(/\]$/,'');
-}
-
-// Cor do badge por resposta
-function anamBadge(v){
-  if(!v) return '';
-  const lv=v.toLowerCase();
-  if(lv==='sim'||lv==='s'||lv==='yes') return '<span style="display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:600;background:rgba(52,211,153,0.15);color:#34d399">Sim</span>';
-  if(lv==='não'||lv==='nao'||lv==='n'||lv==='no') return '<span style="display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:600;background:rgba(248,113,113,0.12);color:#f87171">Não</span>';
-  if(lv.includes('n (normal)')) return '<span style="display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;background:rgba(52,211,153,0.12);color:#34d399">Normal</span>';
-  return '<span style="font-size:12px;color:var(--text-primary)">'+v+'</span>';
-}
-
-// ── Formulário manual de anamnese infantil ──────────────────────────
-// Definição dos campos do formulário de preenchimento manual
-const ANAM_FORM_FIELDS = [
-  { section:'1. Identificação', fields:[
-    { key:'Nome completo do paciente', label:'Nome completo', type:'text' },
-    { key:'Idade', label:'Idade', type:'text' },
-    { key:'Data de Nascimento', label:'Data de nascimento', type:'text' },
-    { key:'Sexo', label:'Sexo', type:'select', opts:['Masculino','Feminino','Outro'] },
-    { key:'Cidade de nascimento', label:'Cidade de nascimento', type:'text' },
-    { key:'Escola', label:'Escola', type:'text' },
-    { key:'Ano escolar', label:'Ano escolar', type:'text' },
-  ]},
-  { section:'2. Família', fields:[
-    { key:'Nome completo do Pai', label:'Nome do Pai', type:'text' },
-    { key:'Profissão do Pai', label:'Profissão do Pai', type:'text' },
-    { key:'Idade do Pai', label:'Idade do Pai', type:'text' },
-    { key:'Nome completo da Mãe', label:'Nome da Mãe', type:'text' },
-    { key:'Profissão da Mãe', label:'Profissão da Mãe', type:'text' },
-    { key:'Idade da Mãe', label:'Idade da Mãe', type:'text' },
-    { key:'Com quem a criança reside?', label:'Com quem reside?', type:'text' },
-    { key:'Possui irmãos?', label:'Possui irmãos?', type:'yesno' },
-    { key:'Quantos irmãos?', label:'Quantos irmãos?', type:'text' },
-    { key:'Nome(s) dos irmãos', label:'Nome(s) dos irmãos', type:'text' },
-    { key:'Idade(s) dos irmãos', label:'Idade(s) dos irmãos', type:'text' },
-  ]},
-  { section:'3. Queixa Principal', fields:[
-    { key:'Quem indicou a avaliação?', label:'Quem indicou?', type:'text' },
-    { key:'Nome de quem indicou (se aplicável)', label:'Nome do indicante', type:'text' },
-    { key:'Especialidade de quem indicou (se aplicável)', label:'Especialidade', type:'text' },
-    { key:'3.1 — Queixa principal e há quanto tempo', label:'Queixa principal (e há quanto tempo)', type:'textarea' },
-    { key:'3.2 — Outras queixas', label:'Outras queixas', type:'textarea' },
-  ]},
-  { section:'4. Histórico Familiar', fields:[
-    { key:'Histórico familiar — Autismo', label:'Autismo na família?', type:'yesno' },
-    { key:'Grau de parentesco — Autismo', label:'Parentesco — Autismo', type:'text' },
-    { key:'Histórico familiar — TDAH', label:'TDAH na família?', type:'yesno' },
-    { key:'Grau de parentesco — TDAH', label:'Parentesco — TDAH', type:'text' },
-    { key:'Histórico familiar — Epilepsia', label:'Epilepsia na família?', type:'yesno' },
-    { key:'Grau de parentesco — Epilepsia', label:'Parentesco — Epilepsia', type:'text' },
-    { key:'Histórico familiar — Déficit de Aprendizagem', label:'Déficit de Aprendizagem na família?', type:'yesno' },
-    { key:'Histórico familiar — Ansiedade / Depressão', label:'Ansiedade / Depressão na família?', type:'yesno' },
-    { key:'Grau de parentesco — Ansiedade / Depressão', label:'Parentesco — Ansiedade/Depressão', type:'text' },
-    { key:'Outros antecedentes familiares não listados acima', label:'Outros antecedentes familiares', type:'textarea' },
-  ]},
-  { section:'5. Gestação', fields:[
-    { key:'4.1.1 — A gravidez foi planejada?', label:'Gravidez planejada?', type:'yesno' },
-    { key:'4.1.2 — Houve abortos naturais anteriores?', label:'Abortos anteriores?', type:'yesno' },
-    { key:'4.1.3 — Posição na ordem das gestações', label:'Posição na ordem das gestações', type:'text' },
-    { key:'4.2.1 — Fez acompanhamento pré-natal?', label:'Pré-natal?', type:'yesno' },
-    { key:'4.2.2 — Teve intercorrências durante a gestação?', label:'Intercorrências na gestação?', type:'yesno' },
-    { key:'4.2.3 — Teve pré-eclâmpsia?', label:'Pré-eclâmpsia?', type:'yesno' },
-    { key:'4.2.5 — Fez uso de medicamentos durante a gestação?', label:'Uso de medicamentos?', type:'yesno' },
-    { key:'4.2.5.1 — Se sim, quais medicamentos utilizou?', label:'Quais medicamentos?', type:'text' },
-    { key:'4.2.6 — Duração da gestação (em semanas)', label:'Duração da gestação (semanas)', type:'text' },
-    { key:'4.2.7 — Observações sobre a gestação', label:'Observações', type:'textarea' },
-  ]},
-  { section:'6. Nascimento', fields:[
-    { key:'4.3.1 — Local do nascimento', label:'Local do nascimento', type:'text' },
-    { key:'4.3.2 — APGAR (índice ao nascer)', label:'APGAR', type:'text' },
-    { key:'4.3.3 — Tipo de parto', label:'Tipo de parto', type:'select', opts:['Natural (sem intervenção)','Cesárea','Fórceps','A vácuo'] },
-    { key:'4.4.2 — Chorou logo ao nascer?', label:'Chorou logo ao nascer?', type:'yesno' },
-    { key:'4.4.3 — Ficou roxo(a)?', label:'Ficou roxo(a)?', type:'yesno' },
-    { key:'4.4.4 — Precisou de oxigênio?', label:'Precisou de oxigênio?', type:'yesno' },
-    { key:'4.4.5 — Ficou ictérico(a) (amarelado)?', label:'Ficou ictérico(a)?', type:'yesno' },
-    { key:'4.4.6 — Outras observações sobre o nascimento', label:'Outras observações', type:'textarea' },
-  ]},
-  { section:'7. Desenvolvimento — Sono e Alimentação', fields:[
-    { key:'5.1.1 — Como era o sono na primeira infância?', label:'Sono na primeira infância', type:'textarea' },
-    { key:'5.1.2 — Como é o sono atualmente?', label:'Sono atualmente', type:'textarea' },
-    { key:'5.2.1 — Como foi a introdução alimentar?', label:'Introdução alimentar', type:'textarea' },
-    { key:'5.2.2 — Como é a alimentação atualmente?', label:'Alimentação atualmente', type:'textarea' },
-    { key:'5.2.2 — Rejeitou alimentos alguma vez?', label:'Rejeitou alimentos?', type:'yesno' },
-    { key:'5.2.2 — Apresenta seletividade alimentar?', label:'Seletividade alimentar?', type:'yesno' },
-    { key:'5.2.2 — Se sim, quais alimentos rejeita?', label:'Quais alimentos rejeita?', type:'text' },
-  ]},
-  { section:'8. Desenvolvimento Psicomotor', fields:[
-    { key:'5.3.1.1 — Rolamento (em meses)', label:'Rolamento (meses)', type:'text' },
-    { key:'5.3.1.2 — Engatinhar (em meses)', label:'Engatinhar (meses)', type:'text' },
-    { key:'5.3.1.3 — Primeiros passos (em meses)', label:'Primeiros passos (meses)', type:'text' },
-    { key:'5.3.1.4 — Controle esfincteriano noturno/diurno (em meses)', label:'Controle esfincteriano (meses)', type:'text' },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Fala]', label:'Habilidade: Fala', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Movimento de Pinça]', label:'Habilidade: Pinça', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Equilíbrio]', label:'Habilidade: Equilíbrio', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Mão dominante]', label:'Habilidade: Mão dominante', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Correr]', label:'Habilidade: Correr', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Pular]', label:'Habilidade: Pular', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Subir escada]', label:'Habilidade: Subir escada', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Imitar]', label:'Habilidade: Imitar', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Ficar em pé]', label:'Habilidade: Ficar em pé', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Vestir-se]', label:'Habilidade: Vestir-se', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-    { key:'5.3.1.4 — Desenvolvimento de habilidades [Comer sozinho]', label:'Habilidade: Comer sozinho', type:'select', opts:['N (Normal)','Atrasado','Não desenvolveu'] },
-  ]},
-  { section:'9. Sensibilidades', fields:[
-    { key:'5.3.1.5.1 — Som (audição) — Apresenta sensibilidade?', label:'Sensibilidade sonora?', type:'yesno' },
-    { key:'5.3.1.5.2 — Textura (tato) — Apresenta sensibilidade?', label:'Sensibilidade tátil?', type:'yesno' },
-    { key:'5.3.1.5.3 — Paladar — Apresenta sensibilidade?', label:'Sensibilidade gustativa?', type:'yesno' },
-    { key:'5.3.1.5.4 — Olfativo (cheiros) — Apresenta sensibilidade?', label:'Sensibilidade olfativa?', type:'yesno' },
-    { key:'5.3.1.5.5 — Visual (visão) — Apresenta sensibilidade?', label:'Sensibilidade visual?', type:'yesno' },
-    { key:'5.3.1.5.6 — Apresenta movimentos involuntários?', label:'Movimentos involuntários?', type:'yesno' },
-    { key:'5.3.1.5.7 — Observações sobre sensibilidades e desenvolvimento psicomotor', label:'Observações', type:'textarea' },
-  ]},
-  { section:'10. Percurso Escolar', fields:[
-    { key:'6.1 — Descrição geral do percurso escolar', label:'Descrição geral', type:'textarea' },
-    { key:'6.1.1 — Ano em que ingressou na escola', label:'Ano de ingresso', type:'text' },
-    { key:'6.1.2 — Mudou de escola?', label:'Mudou de escola?', type:'yesno' },
-    { key:'6.1.2.1 — Quantas vezes mudou de escola?', label:'Quantas vezes?', type:'text' },
-    { key:'6.1.3 — Repetiu de ano?', label:'Repetiu de ano?', type:'yesno' },
-    { key:'6.1.3.1 — Se sim, por que repetiu?', label:'Por que repetiu?', type:'textarea' },
-    { key:'6.1.4 — Dificuldades persistentes de leitura, escrita ou cálculo?', label:'Dificuldades: leitura/escrita/cálculo?', type:'yesno' },
-    { key:'6.1.4 — Observações / Desde quando?', label:'Observações leitura/escrita', type:'text' },
-    { key:'6.1.5 — Dificuldade em manter a atenção nas aulas?', label:'Dificuldade de atenção?', type:'yesno' },
-    { key:'6.1.5 — Observações / Desde quando?', label:'Observações atenção', type:'text' },
-    { key:'6.1.6 — Problemas para seguir regras ou estruturas?', label:'Dificuldade em seguir regras?', type:'yesno' },
-    { key:'6.1.9 — Dificuldade em fazer amigos ou socializar?', label:'Dificuldade de socialização?', type:'yesno' },
-    { key:'6.1.9 — Observações / Desde quando?', label:'Observações socialização', type:'text' },
-  ]},
-  { section:'11. Saúde / Neurologia', fields:[
-    { key:'7.7 — Apresentou problemas de visão ou audição?', label:'Problemas de visão ou audição?', type:'yesno' },
-    { key:'7.7 — Se sim, descreva', label:'Descreva', type:'text' },
-    { key:'7.9 — Usa/usou medicamentos controlados por distúrbios neurológicos?', label:'Usa/usou medicamentos neurológicos?', type:'yesno' },
-    { key:'7.9 — Se sim, descreva', label:'Quais medicamentos?', type:'text' },
-    { key:'7.11 — Foi diagnosticado com algum distúrbio genético?', label:'Distúrbio genético?', type:'yesno' },
-    { key:'7.11 — Se sim, descreva', label:'Descreva', type:'text' },
-    { key:'7.12 — Passou por algum procedimento cirúrgico?', label:'Cirurgia?', type:'yesno' },
-    { key:'7.12 — Se sim, descreva', label:'Descreva', type:'text' },
-  ]},
-  { section:'12. Linguagem', fields:[
-    { key:'Primeiras palavras (em meses)', label:'Primeiras palavras (meses)', type:'text' },
-    { key:'Frases simples (em meses)', label:'Frases simples (meses)', type:'text' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Troca letras?]', label:'Troca letras?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Nomeia objetos?]', label:'Nomeia objetos?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Omite palavras?]', label:'Omite palavras?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Interage verbalmente?]', label:'Interage verbalmente?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Apresenta gagueira?]', label:'Apresenta gagueira?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Houve regressão na fala ou habilidades?]', label:'Regressão na fala?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Apresentou atraso na fala?]', label:'Atraso na fala?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Apresenta ecolalia?]', label:'Apresenta ecolalia?', type:'yesno' },
-    { key:'Observações sobre a linguagem', label:'Observações', type:'textarea' },
-  ]},
-  { section:'13. Hábitos e Comportamentos', fields:[
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Usou/usa chupeta?]', label:'Usou/usa chupeta?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Chupou/chupa dedo?]', label:'Chupou/chupa dedo?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Roeu/rói as unhas?]', label:'Roeu/rói as unhas?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Arrancou/arranca os cabelos?]', label:'Arrancou/arranca cabelos?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Teve/tem fixação em temas?]', label:'Fixação em temas?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Mordeu/morde os lábios?]', label:'Morde os lábios?', type:'yesno' },
-    { key:'Marque Sim ou Não para as perguntas abaixo: [Tem tiques?]', label:'Tem tiques?', type:'yesno' },
-    { key:'Observações sobre manipulações e hábitos', label:'Observações', type:'textarea' },
-  ]},
-  { section:'14. Aspectos Sociais', fields:[
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Tem dificuldade para interagir com outros da mesma idade?]', label:'Dificuldade de interação?', type:'yesno' },
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Mudanças abruptas de humor?]', label:'Mudanças de humor?', type:'yesno' },
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Tem empatia?]', label:'Tem empatia?', type:'yesno' },
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Balança o corpo ou agita as mãos?]', label:'Balança corpo/mãos?', type:'yesno' },
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Se isola?]', label:'Se isola?', type:'yesno' },
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Tem comportamento impulsivo ou agressivo?]', label:'Impulsivo/agressivo?', type:'yesno' },
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Segue regras sociais?]', label:'Segue regras sociais?', type:'yesno' },
-    { key:'Selecione Sim ou Não para a perguntas abaixo: [Aceita perder/crítica?]', label:'Aceita perder/crítica?', type:'yesno' },
-    { key:'Observações sobre aspectos sociais', label:'Observações', type:'textarea' },
-  ]},
-  { section:'15. Rotina', fields:[
-    { key:'Breve descrição da rotina da criança', label:'Descrição da rotina', type:'textarea' },
-    { key:'Pratica atividade física com frequência?', label:'Pratica atividade física?', type:'yesno' },
-    { key:'Se sim, quais atividades físicas pratica?', label:'Quais atividades?', type:'text' },
-    { key:'Realiza atividades extracurriculares?', label:'Atividades extracurriculares?', type:'yesno' },
-    { key:'Se realiza atividades extracurriculares, quais são?', label:'Quais extracurriculares?', type:'text' },
-  ]},
-  { section:'16. Exames e Informações Finais', fields:[
-    { key:'Quais exames a criança já realizou?', label:'Exames realizados', type:'textarea' },
-    { key:'Informações adicionais relevantes', label:'Informações adicionais', type:'textarea' },
-  ]},
-];
-
-// ── Modal de anamnese manual (preenchimento pelo profissional) ───────
-let _anamEditId = null;
-
-function abrirFormAnamnese(editId) {
-  _anamEditId = editId || null;
-  const pac = PACIENTES.find(x=>x.id===historicoAtualPacId);
-  if (!pac) { showToast('Selecione um paciente primeiro','error'); return; }
-
-  // Dados existentes para edição
-  const existing = editId ? HISTORICO.find(x=>x.id===editId) : null;
-  const campos = existing?.conteudo || {};
-
-  const overlay = document.createElement('div');
-  overlay.id = 'modal-anam-form';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,0.7);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
-
-  let formHTML = `
-    <div style="background:var(--bg-surface);border:1px solid var(--border-mid);border-radius:var(--radius-lg);width:100%;max-width:760px;box-shadow:var(--shadow-lg);margin:auto">
-      <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--bg-surface);z-index:10;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-        <span style="font-size:20px">📋</span>
-        <div>
-          <div style="font-weight:600;font-size:15px">Anamnese Infantil</div>
-          <div style="font-size:12px;color:var(--text-muted)">Paciente: ${pac.nome}</div>
-        </div>
-        <button onclick="document.getElementById('modal-anam-form').remove()" style="margin-left:auto;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:6px 14px;color:var(--text-secondary);cursor:pointer">✕ Fechar</button>
-        <button onclick="salvarFormAnamnese()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius-md);padding:7px 18px;font-weight:500;cursor:pointer">💾 Salvar anamnese</button>
-      </div>
-      <div style="padding:24px;display:flex;flex-direction:column;gap:24px">
-  `;
-
-  ANAM_FORM_FIELDS.forEach(sec=>{
-    formHTML += `<div><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.6px;padding:6px 10px;background:var(--bg-overlay);border-radius:var(--radius-sm);margin-bottom:12px">${sec.section}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">`;
-    sec.fields.forEach(f=>{
-      const val = campos[f.key]||'';
-      const inputId = 'af_'+btoa(f.key).replace(/[^a-zA-Z0-9]/g,'').slice(0,20);
-      const span = (f.type==='textarea')?'grid-column:1/-1':'';
-      if(f.type==='textarea'){
-        formHTML += `<div style="${span}"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">${f.label}</label><textarea id="${inputId}" data-anam-key="${f.key}" rows="3" style="width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:7px 10px;font-size:12px;resize:vertical;font-family:var(--font);outline:none">${val}</textarea></div>`;
-      } else if(f.type==='yesno'){
-        formHTML += `<div style="${span}"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">${f.label}</label><select id="${inputId}" data-anam-key="${f.key}" style="width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:7px 10px;font-size:12px;outline:none"><option value="">—</option><option ${val==='Sim'?'selected':''}>Sim</option><option ${val==='Não'?'selected':''}>Não</option></select></div>`;
-      } else if(f.type==='select'){
-        const optsHTML = f.opts.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('');
-        formHTML += `<div style="${span}"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">${f.label}</label><select id="${inputId}" data-anam-key="${f.key}" style="width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:7px 10px;font-size:12px;outline:none"><option value="">—</option>${optsHTML}</select></div>`;
-      } else {
-        formHTML += `<div style="${span}"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">${f.label}</label><input id="${inputId}" data-anam-key="${f.key}" type="text" value="${val.replace(/"/g,'&quot;')}" style="width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:7px 10px;font-size:12px;outline:none"/></div>`;
-      }
-    });
-    formHTML += `</div></div>`;
-  });
-
-  formHTML += `</div></div>`;
-  overlay.innerHTML = formHTML;
-  document.body.appendChild(overlay);
-}
-
-async function salvarFormAnamnese() {
-  const pac = PACIENTES.find(x=>x.id===historicoAtualPacId);
-  if (!pac) return;
-  const conteudo = {};
-  document.querySelectorAll('[data-anam-key]').forEach(el=>{
-    const k = el.getAttribute('data-anam-key');
-    const v = el.value?.trim();
-    if(v) conteudo[k] = v;
-  });
-
-  if(!Object.keys(conteudo).length){ showToast('Preencha ao menos um campo','error'); return; }
-
-  let sb=null;
-  try{ if(window._cfGetDb) sb=window._cfGetDb(); } catch(e){}
-  if(!sb){
-    const _url=localStorage.getItem('cf_supa_url'),_key=localStorage.getItem('cf_supa_key');
-    if(_url&&_key&&window.supabase) sb=window.supabase.createClient(_url,_key);
-  }
-
-  const data = new Date().toISOString().slice(0,10);
-  const titulo = 'Anamnese Infantil — '+pac.nome;
-
-  if(_anamEditId){
-    const h = HISTORICO.find(x=>x.id===_anamEditId);
-    if(h){ h.conteudo=conteudo; h.titulo=titulo; }
-    if(sb) await sb.from('historico').update({conteudo,titulo,data}).eq('id',_anamEditId);
-    showToast('Anamnese atualizada!','success');
-  } else {
-    const hObj={id:nextHistId++, pacId:pac.id, tipo:'anamnese', titulo, conteudo, data, fonte:'Manual'};
-    if(sb){
-      try{
-        const {data:d,error}=await sb.from('historico').insert([{
-          pac_id:pac.id,tipo:'anamnese',titulo,conteudo,data,fonte:'Manual'
-        }]).select('id').single();
-        if(!error&&d) hObj.id=d.id;
-      } catch(e){ console.error('[Anamnese save]',e); }
-    }
-    HISTORICO.push(hObj);
-    showToast('Anamnese registrada!','success');
-  }
-
-  document.getElementById('modal-anam-form')?.remove();
-  if(historicoAtualPacId) abrirHistPaciente(historicoAtualPacId);
-  histTab('anamnese', document.getElementById('htab-anamnese'));
-}
 
 function renderAnamnese() {
   const el = document.getElementById('hist-anamnese-content');
   if (!el) return;
   const anams = HISTORICO.filter(h=>h.pacId===historicoAtualPacId&&h.tipo==='anamnese')
     .sort((a,b)=>(b.data||'').localeCompare(a.data||''));
-
-  // Botões de ação no topo
-  const actionsHTML =
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
-      '<div style="font-size:13px;font-weight:600;color:var(--text-secondary)">Anamnese do paciente</div>' +
-      '<div style="display:flex;gap:6px">' +
-        '<button class="btn-sm btn-secondary" onclick="abrirImportarAnamnese()" style="font-size:12px">📥 Importar CSV</button>' +
-        '<button class="btn-sm btn-accent" onclick="abrirFormAnamnese()" style="font-size:12px">+ Novo formulário</button>' +
-      '</div>' +
-    '</div>';
-
   if (!anams.length) {
-    el.innerHTML = actionsHTML +
-      '<div style="text-align:center;padding:40px;color:var(--text-muted);border:1px dashed var(--border);border-radius:var(--radius-md)">' +
-        '<div style="font-size:32px;margin-bottom:8px">📋</div>' +
-        '<div style="font-size:14px;font-weight:500;margin-bottom:6px">Nenhuma anamnese registrada</div>' +
-        '<div style="font-size:12px;margin-bottom:16px">Preencha o formulário ou importe um CSV do Google Forms.</div>' +
-        '<div style="display:flex;gap:8px;justify-content:center">' +
-          '<button class="btn-sm btn-accent" onclick="abrirFormAnamnese()">📋 Novo formulário</button>' +
-          '<button class="btn-sm btn-secondary" onclick="abrirImportarAnamnese()">📥 Importar CSV</button>' +
-        '</div>' +
-      '</div>';
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Nenhuma anamnese importada.<br><button class="btn-sm btn-secondary" style="margin-top:12px" onclick="abrirImportarAnamnese()">📋 Importar anamnese (Google Forms)</button></div>';
     return;
   }
-
-  el.innerHTML = actionsHTML + anams.map(a => {
+  el.innerHTML = anams.map(a => {
     const campos = a.conteudo || {};
-    // Identifica quais chaves têm dados, evitando duplicatas (versões prefixadas vs não)
-    const usedKeys = new Set();
     let sectionsHTML = '';
-
+    // Render by sections
     Object.entries(ANAM_SECTIONS).forEach(([secName, keys]) => {
-      const rows = [];
-      keys.forEach(k=>{
-        if(usedKeys.has(k)) return;
-        const v = campos[k];
-        if(!v) return;
-        usedKeys.add(k);
-        const lbl = anamLabel(k);
-        const displayV = anamBadge(v);
-        rows.push(
-          '<tr>' +
-            '<td style="font-weight:500;color:var(--text-secondary);padding:5px 10px;font-size:12px;vertical-align:top;width:42%;white-space:normal;word-break:break-word">'+lbl+'</td>' +
-            '<td style="padding:5px 10px;font-size:12px;word-break:break-word">'+displayV+'</td>' +
-          '</tr>'
-        );
-      });
-      if (!rows.length) return;
-      sectionsHTML +=
-        '<div style="margin-bottom:10px">' +
-          '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;padding:5px 10px;background:var(--bg-overlay)">' + secName + '</div>' +
-          '<table style="width:100%;border-collapse:collapse">' + rows.join('') + '</table>' +
-        '</div>';
+      const rows = keys
+        .filter(k => campos[k])
+        .map(k=>'<tr><td style="font-weight:500;color:var(--text-secondary);padding:5px 10px;font-size:12px;white-space:nowrap;vertical-align:top;width:45%">'+k.replace(/^\d+\.\d*[\d.]* — /,'')+'</td><td style="padding:5px 10px;font-size:12px">'+campos[k]+'</td></tr>').join('');
+      if (!rows) return;
+      sectionsHTML += '<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;padding:6px 10px;background:var(--bg-overlay)">'+secName+'</div><table style="width:100%;border-collapse:collapse">'+rows+'</table></div>';
     });
+    // Any remaining fields not in sections
+    const coveredKeys = new Set(Object.values(ANAM_SECTIONS).flat());
+    const extraRows = Object.entries(campos).filter(([k])=>!coveredKeys.has(k))
+      .map(([k,v])=>'<tr><td style="font-weight:500;color:var(--text-secondary);padding:5px 10px;font-size:11px;vertical-align:top">'+k+'</td><td style="padding:5px 10px;font-size:11px">'+v+'</td></tr>').join('');
+    if (extraRows) sectionsHTML += '<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:6px 10px;background:var(--bg-overlay)">Outros campos</div><table style="width:100%;border-collapse:collapse">'+extraRows+'</table></div>';
 
-    // Campos extras não cobertos pelas seções
-    const extraRows = Object.entries(campos).filter(([k])=>!usedKeys.has(k)&&k&&campos[k])
-      .map(([k,v])=>
-        '<tr>' +
-          '<td style="color:var(--text-muted);padding:5px 10px;font-size:11px;vertical-align:top;width:42%">'+anamLabel(k)+'</td>' +
-          '<td style="padding:5px 10px;font-size:11px">'+anamBadge(v)+'</td>' +
-        '</tr>').join('');
-    if(extraRows) sectionsHTML +=
-      '<div style="margin-bottom:10px">' +
-        '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:5px 10px;background:var(--bg-overlay)">Outros campos</div>' +
-        '<table style="width:100%;border-collapse:collapse">'+extraRows+'</table>' +
-      '</div>';
-
-    return (
-      '<div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;margin-bottom:16px">' +
-        '<div style="padding:10px 14px;background:var(--bg-overlay);display:flex;align-items:center;justify-content:space-between;gap:8px">' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            '<span style="font-size:18px">📋</span>' +
-            '<div>' +
-              '<div style="font-weight:600;font-size:13px">'+(a.titulo||'Anamnese')+'</div>' +
-              '<div style="font-size:11px;color:var(--text-muted)">'+(a.data?a.data.split('-').reverse().join('/'):'')+' · '+Object.keys(campos).length+' campos · <span class="chip blue" style="font-size:10px">'+(a.fonte||'Manual')+'</span></div>' +
-            '</div>' +
-          '</div>' +
-          '<div style="display:flex;gap:4px">' +
-            '<button class="btn-sm btn-secondary" style="font-size:11px;padding:4px 10px" onclick="abrirFormAnamnese('+a.id+')">✏️ Editar</button>' +
-            '<button class="action-btn" style="color:var(--danger)" onclick="excluirHistorico('+a.id+')">'+DEL_ICON+'</button>' +
-          '</div>' +
-        '</div>' +
-        sectionsHTML +
-      '</div>'
-    );
+    return '<div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;margin-bottom:16px">' +
+      '<div style="padding:10px 14px;background:var(--bg-overlay);display:flex;align-items:center;justify-content:space-between">' +
+        '<div style="font-weight:600">📋 '+(a.titulo||'Anamnese')+' — '+(a.data?a.data.split('-').reverse().join('/'):'')+' <span style="font-size:11px;color:var(--text-muted)">('+Object.keys(campos).length+' campos)</span></div>' +
+        '<div style="display:flex;gap:6px"><span class="chip blue" style="font-size:10px">'+( a.fonte||'Manual')+'</span>' +
+        '<button class="action-btn" style="color:var(--danger)" onclick="excluirHistorico('+a.id+')">'+DEL_ICON+'</button></div>' +
+      '</div>' +
+      sectionsHTML +
+    '</div>';
   }).join('');
 }
 
@@ -8178,7 +7521,7 @@ function importarAnamnese() {
   processarCSVAnamnese(csvText);
 }
 
-async function processarCSVAnamnese(csvText) {
+function processarCSVAnamnese(csvText) {
   try {
     const rows    = parseCSVLines(csvText);
     if (rows.length < 2) { showToast('Arquivo sem dados','error'); return; }
@@ -8186,14 +7529,6 @@ async function processarCSVAnamnese(csvText) {
     const nomeIdx = headers.findIndex(h=>h.toLowerCase().includes('nome completo do paciente')||h.toLowerCase().includes('nome do paciente'));
     let importados=0, erros=0;
     const resultLines=[];
-
-    // Tenta obter cliente Supabase
-    let sb=null;
-    try{ if(window._cfGetDb) sb=window._cfGetDb(); } catch(e){}
-    if(!sb){
-      const _url=localStorage.getItem('cf_supa_url'),_key=localStorage.getItem('cf_supa_key');
-      if(_url&&_key&&window.supabase) sb=window.supabase.createClient(_url,_key);
-    }
 
     for(let i=1;i<rows.length;i++){
       const cells=rows[i];
@@ -8211,21 +7546,12 @@ async function processarCSVAnamnese(csvText) {
       if(!pac && historicoAtualPacId) pac=PACIENTES.find(x=>x.id===historicoAtualPacId);
 
       if(pac){
+        // Remove duplicate anamnese for same patient+date
         const data=new Date().toISOString().slice(0,10);
-        const hObj={id:nextHistId++, pacId:pac.id, tipo:'anamnese',
-          titulo:'Anamnese Infantil — '+nomePac, conteudo, data, fonte:'Google Forms', nomePac};
-        // Salva no Supabase
-        if(sb){
-          try{
-            const {data:d,error}=await sb.from('historico').insert([{
-              pac_id:pac.id, tipo:'anamnese', titulo:hObj.titulo,
-              conteudo:hObj.conteudo, data:hObj.data, fonte:'Google Forms'
-            }]).select('id').single();
-            if(!error&&d) hObj.id=d.id;
-          } catch(e){ console.error('[Anamnese Supabase]',e); }
-        }
-        HISTORICO.push(hObj);
-        resultLines.push('<div style="color:var(--success);padding:2px 0">✓ '+nomePac+' → '+pac.nome+(sb?' · ✓ Supabase':'')+'</div>');
+        HISTORICO.push({id:nextHistId++, pacId:pac.id, tipo:'anamnese',
+          titulo:'Anamnese Infantil Kosmos — '+nomePac, conteudo, data, fonte:'Google Forms',
+          nomePac});
+        resultLines.push('<div style="color:var(--success);padding:2px 0">✓ '+nomePac+' → '+pac.nome+'</div>');
         importados++;
       } else {
         resultLines.push('<div style="color:var(--warning);padding:2px 0">⚠ Paciente não encontrado: '+nomePac+'</div>');
@@ -8239,11 +7565,7 @@ async function processarCSVAnamnese(csvText) {
       '<div style="font-weight:600;margin-top:8px;font-size:13px">'+importados+' anamnese(s) importada(s)'+(erros?' · '+erros+' não encontrado(s)':'')+
       (erros?'<br><span style="font-size:11px;color:var(--text-muted)">Cadastre os pacientes e reimporte.</span>':'')+'</div>';
     showToast(importados+' anamnese(s) importada(s)!','success');
-    if(importados>0) setTimeout(()=>{
-      closeModal('modal-importar-anamnese');
-      if(historicoAtualPacId) abrirHistPaciente(historicoAtualPacId);
-      histTab('anamnese',document.getElementById('htab-anamnese'));
-    },1200);
+    if(importados>0) setTimeout(()=>{ closeModal('modal-importar-anamnese'); histTab('anamnese',document.getElementById('htab-anamnese')); },1200);
   } catch(e){ showToast('Erro: '+e.message,'error'); }
 }
 
@@ -9505,16 +8827,14 @@ async function impConfirmar() {
           const pac=r.pac;
           if(!pac){skipped++;continue;}
           const appt=APPOINTMENTS.find(a=>a.paciente===pac.nome&&(
-            (r.dataISO&&a.dataISO===r.dataISO&&(!r.horaIni||a.hora===r.horaIni))||
-            (!r.dataISO&&r.horaIni&&a.hora===r.horaIni)));
+            (r.dataISO&&a.dataISO===r.dataISO)||(r.horaIni&&a.hora===r.horaIni)));
           const hObj={id:nextHistId++,pacId:pac.id,tipo:'evolucao',
             titulo:(r.presenca==='Presente'||r.presenca==='P'?'✓':'')+'Sessão — '+r.dataStr,
             conteudo:{texto:r.evolucao||'',presenca:r.presenca||'',horaIni:r.horaIni||'',horaFim:r.horaFim||''},
             profId:r.prof?.id||appt?.profId||0,data:r.dataISO||r.dataStr,
             fonte:'Importação CSV',apptId:appt?.id||null};
           const dbId=await sbInsert('historico',{pac_id:pac.id,tipo:'evolucao',titulo:hObj.titulo,
-            conteudo:hObj.conteudo,prof_id:hObj.profId||null,data:hObj.data,fonte:'Importação CSV',
-            appt_id:hObj.apptId||null});
+            conteudo:hObj.conteudo,prof_id:hObj.profId||null,data:hObj.data,fonte:'Importação CSV'});
           if(dbId) hObj.id=dbId;
           HISTORICO.push(hObj);
           if(appt&&(r.presenca==='Presente'||r.presenca==='P'||r.presenca==='Sim')){
@@ -9625,13 +8945,6 @@ async function impConfirmar() {
   try{populateSelects();}catch(e){}
   try{renderDayView();}catch(e){}
   try{renderDashboard();}catch(e){}
-  // Se importou evoluções ou anamneses e há um paciente aberto no histórico, atualiza os painéis
-  if((type==='evolucoes'||type==='anamnese')&&typeof historicoAtualPacId!=='undefined'&&historicoAtualPacId){
-    try{renderEvolucoes();}catch(e){}
-    try{renderTimeline();}catch(e){}
-    try{renderAnamnese();}catch(e){}
-    try{abrirHistPaciente(historicoAtualPacId);}catch(e){}
-  }
 
   // Show result
   const schema=IMP_SCHEMAS[type];
@@ -9729,7 +9042,7 @@ function showToast(msg, type='success') {
     esperaToDb: e => ({ nome:e.nome, tel:e.tel, email:e.email||null, nasc:e.nasc||null, end:e.end||null, plano:e.plano||null, carteirinha:e.carteirinha||null, obs:e.obs||null, dias:e.dias||[], periodos:e.periodos||[], procedimentos:e.procedimentos||[], status:e.status||'Aguardando', data_entrada:e.dataEntrada||null }),
     dbToEspera: r => ({ id:r.id, nome:r.nome, tel:r.tel||'', email:r.email||'', nasc:r.nasc||'', end:r.end||'', plano:r.plano||'', carteirinha:r.carteirinha||'', obs:r.obs||'', dias:r.dias||[], periodos:r.periodos||[], procedimentos:r.procedimentos||[], status:r.status||'Aguardando', dataEntrada:r.data_entrada||'' }),
     histToDb: h => ({ pac_id:h.pacId, tipo:h.tipo, titulo:h.titulo||null, conteudo:h.conteudo||null, prof_id:h.profId||null, data:h.data||null, status:h.status||null, fonte:h.fonte||null }),
-    dbToHist: r => ({ id:r.id, pacId:r.pac_id, tipo:r.tipo, titulo:r.titulo||'', conteudo:r.conteudo||{}, profId:r.prof_id||null, data:r.data||'', status:r.status||'', fonte:r.fonte||'', apptId:r.appt_id||null }),
+    dbToHist: r => ({ id:r.id, pacId:r.pac_id, tipo:r.tipo, titulo:r.titulo||'', conteudo:r.conteudo||{}, profId:r.prof_id||null, data:r.data||'', status:r.status||'', fonte:r.fonte||'' }),
   };
 
   // ── Busca paginada — contorna o limite de 1000 registros do PostgREST ──────
@@ -9824,41 +9137,28 @@ function showToast(msg, type='success') {
     } catch(e) { console.error('[ClinicFlow Supabase] salvarConfig:', e); }
   }
 
-  // ── Hook no doLogin: carrega Supabase APÓS login ────────────────────────────
-  function _hookDoLogin() {
-    var orig = window.doLogin;
-    if (typeof orig !== 'function') return false;
+  // ── Hook no doLogin: carrega Supabase APÓS initApp rodar normalmente ────────
+  // Não sobrescrevemos initApp pois o patch carrega antes de ele ser definido no mesmo <script>.
+  // Em vez disso, interceptamos doLogin via window.load, quando todas as funções já existem.
+  window.addEventListener('load', function () {
+    const _origDoLogin = window.doLogin;
+    if (!_origDoLogin) { console.warn('[ClinicFlow Supabase] doLogin não encontrado'); return; }
     window.doLogin = function () {
-      orig();
-      if (getDb()) loadFromSupabase();
+      _origDoLogin(); // executa login + initApp originais (síncronos) — UI já fica pronta
+      if (getDb()) {
+        loadFromSupabase(); // carrega dados do banco em background sem bloquear
+      }
     };
-    var origQ = window.quickLogin;
-    if (typeof origQ === 'function') {
+    // Também intercepta quickLogin
+    const _origQuickLogin = window.quickLogin;
+    if (_origQuickLogin) {
       window.quickLogin = function (role) {
         document.getElementById('login-role').value = role;
         window.doLogin();
       };
     }
     console.log('[ClinicFlow Supabase] doLogin interceptado ✓');
-    return true;
-  }
-
-  // Tenta no DOMContentLoaded; se já passou, tenta imediatamente; fallback com retry
-  function _tryHook() {
-    if (_hookDoLogin()) return;
-    // Ainda não disponível — aguarda mais um tick
-    var attempts = 0;
-    var iv = setInterval(function () {
-      attempts++;
-      if (_hookDoLogin() || attempts > 20) clearInterval(iv);
-    }, 50);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _tryHook);
-  } else {
-    _tryHook();
-  }
+  });
 
   // ── Override salvarPaciente ───────────────────────────────────────────────
   window.salvarPaciente = async function () {
