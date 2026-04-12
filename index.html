@@ -7193,29 +7193,98 @@ function renderTimeline() {
   const el = document.getElementById('hist-timeline');
   if (!el) return;
 
-  // Merge appointments and historico events, sort by date desc
+  const icons    = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
+  const colors   = { agendado:'var(--accent)', confirmado:'var(--success)', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
+  const evtColors= { evolucao:'#34d399', anamnese:'#f59e0b', avaliacao:'#60a5fa' };
+
+  // Coleta todos os agendamentos do paciente
+  const appts = APPOINTMENTS.filter(a=>a.paciente===p.nome);
+
+  // Coleta todo histórico do paciente
+  const allHist = HISTORICO.filter(h=>h.pacId===pacId);
+
+  // Evoluções vinculadas a um agendamento (apptId definido)
+  const evolByAppt = {};
+  allHist.filter(h=>h.tipo==='evolucao'&&h.apptId).forEach(h=>{
+    if(!evolByAppt[h.apptId]) evolByAppt[h.apptId]=[];
+    evolByAppt[h.apptId].push(h);
+  });
+
+  // Evoluções NÃO vinculadas a nenhum agendamento, mas que podem ser vinculadas pela data
+  const evolLinkedIds = new Set(allHist.filter(h=>h.tipo==='evolucao'&&h.apptId).map(h=>h.id));
+
+  // Tenta vincular evoluções sem apptId a um agendamento pela data
+  allHist.filter(h=>h.tipo==='evolucao'&&!h.apptId&&!evolLinkedIds.has(h.id)).forEach(h=>{
+    const dataEvo = (h.data||'').slice(0,10);
+    const apptMatch = appts.find(a=>{
+      const dataA = (a.dataISO||'').slice(0,10);
+      if(dataA!==dataEvo) return false;
+      const horaEvo = h.conteudo?.horaIni||'';
+      return !horaEvo || a.hora===horaEvo;
+    });
+    if(apptMatch){
+      if(!evolByAppt[apptMatch.id]) evolByAppt[apptMatch.id]=[];
+      evolByAppt[apptMatch.id].push(h);
+      evolLinkedIds.add(h.id);
+    }
+  });
+
+  // Monta eventos para a linha do tempo
   const events = [];
-  APPOINTMENTS.filter(a=>a.paciente===p.nome).forEach(a => {
-    events.push({ date:a.dataISO||'2026-03-30', tipo:'agendamento', label:a.hora+' — '+a.plano, status:a.status, data:a });
+
+  // Agendamentos (com evoluções vinculadas embutidas)
+  appts.forEach(a=>{
+    events.push({
+      date: a.dataISO||'',
+      tipo: 'agendamento',
+      label: a.hora+' — '+a.plano,
+      status: a.status,
+      data: a,
+      evolucoes: evolByAppt[a.id]||[]
+    });
   });
-  HISTORICO.filter(h=>h.pacId===pacId).forEach(h => {
-    events.push({ date:h.data||'', tipo:h.tipo, label:h.titulo||h.tipo, status:'', data:h });
+
+  // Histórico não vinculado a agendamentos
+  allHist.forEach(h=>{
+    if(evolLinkedIds.has(h.id)) return; // já embutido em um agendamento
+    events.push({ date:h.data||'', tipo:h.tipo, label:h.titulo||h.tipo, status:'', data:h, evolucoes:[] });
   });
-  events.sort((a,b)=>b.date.localeCompare(a.date));
+
+  events.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   if (!events.length) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted)">Nenhum evento registrado para este paciente.</div>';
     return;
   }
 
-  const icons = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
-  const colors = { agendado:'var(--accent)', confirmado:'var(--success)', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
-  const evtColors = { evolucao:'#34d399', anamnese:'#f59e0b', avaliacao:'#60a5fa' };
-
   el.innerHTML = events.map(ev => {
     const dotColor = ev.tipo==='agendamento' ? (colors[ev.status]||'var(--accent)') : (evtColors[ev.tipo]||'var(--accent)');
-    const dateFmt  = ev.date ? ev.date.split('-').reverse().join('/') : '—';
+    const dateFmt  = ev.date ? ev.date.slice(0,10).split('-').reverse().join('/') : '—';
     const chipStr  = ev.status ? '<span class="chip '+(ev.status==='atendido'?'gray':ev.status==='cancelado'?'red':'blue')+'" style="font-size:10px">'+ev.status+'</span>' : '';
+
+    // Evoluções vinculadas renderizadas dentro do card do agendamento
+    let evolHTML = '';
+    if(ev.evolucoes && ev.evolucoes.length){
+      evolHTML = '<div style="margin-top:8px;border-left:2px solid #34d399;padding-left:10px;display:flex;flex-direction:column;gap:6px">';
+      ev.evolucoes.forEach(evo=>{
+        const prof = PROFISSIONAIS.find(pr=>pr.id===evo.profId);
+        const horaStr = evo.conteudo?.horaIni ? ' · '+evo.conteudo.horaIni : '';
+        const presencaStr = evo.conteudo?.presenca ? ' · '+evo.conteudo.presenca : '';
+        const textoEvo = evo.conteudo?.texto || '';
+        evolHTML +=
+          '<div style="background:rgba(52,211,153,0.07);border-radius:var(--radius-sm);padding:8px 10px">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' +
+              '<span style="font-size:12px">📝</span>' +
+              '<span style="font-size:12px;font-weight:600;color:#34d399">'+(evo.titulo||'Evolução')+'</span>' +
+              (prof?'<span style="font-size:11px;color:var(--text-muted)">· '+prof.nome+'</span>':'') +
+              '<span style="font-size:11px;color:var(--text-muted)">'+horaStr+presencaStr+'</span>' +
+            '</div>' +
+            (textoEvo?'<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5">'+textoEvo+'</div>':'') +
+          '</div>';
+      });
+      evolHTML += '</div>';
+    }
+
     return '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
       '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
         '<div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
@@ -7230,6 +7299,7 @@ function renderTimeline() {
         '</div>' +
         (ev.data.obs?'<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+ev.data.obs+'</div>':'') +
         (ev.data.conteudo?.resumo?'<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+ev.data.conteudo.resumo+'</div>':'') +
+        evolHTML +
       '</div>' +
     '</div>';
   }).join('');
@@ -7308,7 +7378,15 @@ function importarEvolucoes() {
     const iEvo   =fi('evolução')||fi('evolucao')||fi('evolution')||fi('notas');
 
     const pac=PACIENTES.find(x=>x.id===historicoAtualPacId);
-    let imported=0; const lines=[];
+    let imported=0; const lines=[]; const promises=[];
+
+    // Tenta obter cliente Supabase
+    let sb=null;
+    try{ if(window._cfGetDb) sb=window._cfGetDb(); } catch(e){}
+    if(!sb){
+      const _url=localStorage.getItem('cf_supa_url'),_key=localStorage.getItem('cf_supa_key');
+      if(_url&&_key&&window.supabase) sb=window.supabase.createClient(_url,_key);
+    }
 
     rows.slice(1).forEach(cells=>{
       const nomeCells=iPac>=0?(cells[iPac]||'').trim():'';
@@ -7331,18 +7409,35 @@ function importarEvolucoes() {
         if(m) dataISO=(m[3].length===2?'20'+m[3]:m[3])+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
       }
 
-      // Try to link to existing appointment
-      const appt=APPOINTMENTS.find(a=>a.paciente===pac?.nome&&(a.dataISO===dataISO||(horaIni&&a.hora===horaIni)));
+      // Try to link to existing appointment — prioriza match por data+hora, fallback só por data
+      const appt=APPOINTMENTS.find(a=>a.paciente===pac?.nome&&(
+        (dataISO&&a.dataISO===dataISO&&(!horaIni||a.hora===horaIni))||
+        (!dataISO&&horaIni&&a.hora===horaIni)));
 
-      HISTORICO.push({
+      const hObj={
         id:nextHistId++, pacId:historicoAtualPacId, tipo:'evolucao',
         titulo:(presenca==='Presente'||presenca==='P'||presenca==='Sim'?'✓':'✗')+' Sessão — '+dataStr,
         conteudo:{ texto:evoTxt, presenca, horaIni, horaFim, convênio:iConv>=0?cells[iConv]:'' },
         profId:appt?.profId||0, data:dataISO||dataStr, fonte:'Google Sheets',
         apptId:appt?.id||null,
-      });
+      };
+      HISTORICO.push(hObj);
+
+      // Salva no Supabase assincronamente
+      if(sb){
+        const p=sb.from('historico').insert([{
+          pac_id:hObj.pacId, tipo:'evolucao', titulo:hObj.titulo,
+          conteudo:hObj.conteudo, prof_id:hObj.profId||null,
+          data:hObj.data, fonte:'Google Sheets', appt_id:hObj.apptId||null
+        }]).select('id').single().then(({data:d,error})=>{
+          if(!error&&d) hObj.id=d.id;
+        });
+        promises.push(p);
+      }
+
       if(appt&&appt.status!=='atendido'&&(presenca==='Presente'||presenca==='P'||presenca==='Sim')){
         appt.status='atendido';
+        if(sb) sb.from('agendamentos').update({status:'atendido'}).eq('id',appt.id);
       }
       imported++;
       lines.push('<div style="font-size:11px;color:var(--success)">✓ '+dataStr+' '+horaIni+'</div>');
@@ -7350,7 +7445,7 @@ function importarEvolucoes() {
 
     const resEl=document.getElementById('evo-imp-result');
     if(resEl) resEl.innerHTML='<div style="max-height:120px;overflow-y:auto">'+lines.join('')+'</div>'+
-      '<div style="font-weight:600;margin-top:6px;font-size:13px">'+imported+' evolução(ões) importada(s)!</div>';
+      '<div style="font-weight:600;margin-top:6px;font-size:13px">'+imported+' evolução(ões) importada(s)!'+(sb?' · ✓ Supabase':'')+'</div>';
     showToast(imported+' evoluções importadas!','success');
     if(imported>0) setTimeout(()=>{ closeModal('modal-importar-evolucoes'); renderEvolucoes(); renderTimeline(); renderDayView(); },800);
   } catch(e){ showToast('Erro: '+e.message,'error'); }
@@ -8827,14 +8922,16 @@ async function impConfirmar() {
           const pac=r.pac;
           if(!pac){skipped++;continue;}
           const appt=APPOINTMENTS.find(a=>a.paciente===pac.nome&&(
-            (r.dataISO&&a.dataISO===r.dataISO)||(r.horaIni&&a.hora===r.horaIni)));
+            (r.dataISO&&a.dataISO===r.dataISO&&(!r.horaIni||a.hora===r.horaIni))||
+            (!r.dataISO&&r.horaIni&&a.hora===r.horaIni)));
           const hObj={id:nextHistId++,pacId:pac.id,tipo:'evolucao',
             titulo:(r.presenca==='Presente'||r.presenca==='P'?'✓':'')+'Sessão — '+r.dataStr,
             conteudo:{texto:r.evolucao||'',presenca:r.presenca||'',horaIni:r.horaIni||'',horaFim:r.horaFim||''},
             profId:r.prof?.id||appt?.profId||0,data:r.dataISO||r.dataStr,
             fonte:'Importação CSV',apptId:appt?.id||null};
           const dbId=await sbInsert('historico',{pac_id:pac.id,tipo:'evolucao',titulo:hObj.titulo,
-            conteudo:hObj.conteudo,prof_id:hObj.profId||null,data:hObj.data,fonte:'Importação CSV'});
+            conteudo:hObj.conteudo,prof_id:hObj.profId||null,data:hObj.data,fonte:'Importação CSV',
+            appt_id:hObj.apptId||null});
           if(dbId) hObj.id=dbId;
           HISTORICO.push(hObj);
           if(appt&&(r.presenca==='Presente'||r.presenca==='P'||r.presenca==='Sim')){
@@ -8945,6 +9042,13 @@ async function impConfirmar() {
   try{populateSelects();}catch(e){}
   try{renderDayView();}catch(e){}
   try{renderDashboard();}catch(e){}
+  // Se importou evoluções ou anamneses e há um paciente aberto no histórico, atualiza os painéis
+  if((type==='evolucoes'||type==='anamnese')&&typeof historicoAtualPacId!=='undefined'&&historicoAtualPacId){
+    try{renderEvolucoes();}catch(e){}
+    try{renderTimeline();}catch(e){}
+    try{renderAnamnese();}catch(e){}
+    try{abrirHistPaciente(historicoAtualPacId);}catch(e){}
+  }
 
   // Show result
   const schema=IMP_SCHEMAS[type];
@@ -9042,7 +9146,7 @@ function showToast(msg, type='success') {
     esperaToDb: e => ({ nome:e.nome, tel:e.tel, email:e.email||null, nasc:e.nasc||null, end:e.end||null, plano:e.plano||null, carteirinha:e.carteirinha||null, obs:e.obs||null, dias:e.dias||[], periodos:e.periodos||[], procedimentos:e.procedimentos||[], status:e.status||'Aguardando', data_entrada:e.dataEntrada||null }),
     dbToEspera: r => ({ id:r.id, nome:r.nome, tel:r.tel||'', email:r.email||'', nasc:r.nasc||'', end:r.end||'', plano:r.plano||'', carteirinha:r.carteirinha||'', obs:r.obs||'', dias:r.dias||[], periodos:r.periodos||[], procedimentos:r.procedimentos||[], status:r.status||'Aguardando', dataEntrada:r.data_entrada||'' }),
     histToDb: h => ({ pac_id:h.pacId, tipo:h.tipo, titulo:h.titulo||null, conteudo:h.conteudo||null, prof_id:h.profId||null, data:h.data||null, status:h.status||null, fonte:h.fonte||null }),
-    dbToHist: r => ({ id:r.id, pacId:r.pac_id, tipo:r.tipo, titulo:r.titulo||'', conteudo:r.conteudo||{}, profId:r.prof_id||null, data:r.data||'', status:r.status||'', fonte:r.fonte||'' }),
+    dbToHist: r => ({ id:r.id, pacId:r.pac_id, tipo:r.tipo, titulo:r.titulo||'', conteudo:r.conteudo||{}, profId:r.prof_id||null, data:r.data||'', status:r.status||'', fonte:r.fonte||'', apptId:r.appt_id||null }),
   };
 
   // ── Busca paginada — contorna o limite de 1000 registros do PostgREST ──────
