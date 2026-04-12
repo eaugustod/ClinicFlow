@@ -3817,6 +3817,10 @@ function renderAgenda() {
 }
 
 function renderDayView() {
+  // Calcula ISO da data atual selecionada (sem depender de toISOString que tem bug de fuso)
+  const cd = currentDate;
+  const currentISO = cd.getFullYear()+'-'+String(cd.getMonth()+1).padStart(2,'0')+'-'+String(cd.getDate()).padStart(2,'0');
+
   const profs = PROFISSIONAIS.filter(p => activeProfFilters.has(p.id));
   document.getElementById('agenda-header').innerHTML =
     `<div class="time-header-spacer"></div>` +
@@ -3829,7 +3833,8 @@ function renderDayView() {
     `<div class="time-slot">${h}</div>`).join('');
 
   document.getElementById('prof-cols').innerHTML = profs.map(p => {
-    const appts = APPOINTMENTS.filter(a => a.profId === p.id);
+    // FILTRO POR DATA: só agendamentos do dia selecionado
+    const appts = APPOINTMENTS.filter(a => a.profId === p.id && a.dataISO === currentISO);
     return `<div class="prof-col">${HOURS.map(h => {
       const appt = appts.find(a => a.hora === h);
       return `<div class="slot-row" onclick="slotClick(event,${p.id},'${h}')">${appt ? buildApptCard(appt, p.cor) : ''}</div>`;
@@ -8534,28 +8539,34 @@ const IMP_SCHEMAS = {
   agenda: {
     label:'Agenda', icon:'📅', modulo:'agenda',
     fields:[
-      {key:'paciente',  label:'Paciente/Nome',       required:true},
-      {key:'data',      label:'Data da sessão',      required:true},
-      {key:'terapeuta', label:'Terapeuta/Profissional',required:true},
-      {key:'horaIni',   label:'Horário início',      required:false},
-      {key:'horaFim',   label:'Horário fim',         required:false},
-      {key:'plano',     label:'Plano de saúde',      required:false},
+      {key:'terapeuta', label:'Terapeuta',           required:true},
+      {key:'data',      label:'Data',                required:true},
+      {key:'horaIni',   label:'Horario Inicio',      required:true},
+      {key:'horaFim',   label:'Horario Fim',         required:false},
       {key:'duracao',   label:'Duração (min)',        required:false},
-      {key:'status',    label:'Status',              required:false},
-      {key:'obs',       label:'Observações',         required:false},
+      {key:'paciente',  label:'Paciente',             required:true},
+      {key:'plano',     label:'Convênio',             required:false},
+      {key:'tipo',      label:'Tipo',                 required:false},
+      {key:'processo',  label:'Processo',             required:false},
+      {key:'semana',    label:'Semana/Ref',           required:false},
+      {key:'statusDist',label:'Status Distribuição',  required:false},
+      {key:'statusGoogle',label:'Status Agenda Google',required:false},
     ],
     autoMatch:{
-      paciente:['paciente','nome','beneficiario','patient'],
-      data:['data','date','dia','data da sessão'],
-      terapeuta:['terapeuta','profissional','therapist','dr','dra'],
-      horaIni:['horainicio','hora inicio','inicio','start','horário início','hora ini'],
-      horaFim:['horafim','hora fim','fim','end','horário fim','hora fin'],
-      plano:['plano','convenio','convênio'],
-      duracao:['duracao','duração','duration','tempo','min'],
-      status:['status','situacao','situação'],
-      obs:['obs','observações','notas'],
+      terapeuta:  ['terapeuta','profissional','therapist','dr','dra'],
+      data:       ['data','date','dia'],
+      horaIni:    ['horario inicio','horário início','hora ini','inicio','start','horainicio'],
+      horaFim:    ['horario fim','horário fim','hora fim','fim','end','horafim'],
+      duracao:    ['duracao','duração','duration','duração (min)','duracao (min)'],
+      paciente:   ['paciente','nome','beneficiario','patient'],
+      plano:      ['convenio','convênio','plano'],
+      tipo:       ['tipo','type'],
+      processo:   ['processo','process'],
+      semana:     ['semana','semana/ref','week','ref'],
+      statusDist: ['status distribuicao','status distribuição','distribuicao'],
+      statusGoogle:['status agenda google','agenda google','status google'],
     },
-    demo:"Paciente,Data,HoraInicio,HoraFim,Terapeuta,Plano,Duracao\nAna Maria Silva,30/03/2026,08:00,09:00,Dra. Maria Cecília,SulAmérica,60\nRoberto Carvalho,30/03/2026,09:00,10:00,Dr. João Santos,Unimed,60",
+    demo:"Terapeuta,Data,Horario Inicio,Horario Fim,Duracao (min),Paciente,Convenio,Tipo,Processo,Semana/Ref,Status Distribuicao,Status Agenda Google\nMaria Cecilia,30/03/2026,08:00,09:00,60,Ana Maria Silva,SulAmérica,,,Março Semana 5,Distribuído,Criado",
   },
 
   anamnese: {
@@ -8903,28 +8914,72 @@ function processRowsByType() {
         break;
       }
       case 'agenda':{
-        item.paciente=impGetCell(row,'paciente');
-        item.dataStr=impGetCell(row,'data');
-        item.terapNome=impGetCell(row,'terapeuta');
-        item.horaIni=impGetCell(row,'horaIni');
-        item.horaFim=impGetCell(row,'horaFim');
-        item.planoNome=impGetCell(row,'plano');
-        item.duracaoStr=impGetCell(row,'duracao');
-        item.statusStr=impGetCell(row,'status');
-        item.obs=impGetCell(row,'obs');
-        if(!item.paciente) issues.push('Paciente obrigatório');
-        if(!item.dataStr)  issues.push('Data obrigatória');
-        if(!item.terapNome)issues.push('Terapeuta obrigatório');
-        item.dataISO=parseISODate(item.dataStr);
-        if(item.dataStr&&!item.dataISO) issues.push('Data inválida: '+item.dataStr);
-        const prof=PROFISSIONAIS.find(p=>p.nome.toLowerCase().includes((item.terapNome||'').toLowerCase().split(' ')[0])||(item.terapNome||'').toLowerCase().includes(p.nome.toLowerCase().split(' ')[0]));
-        if(item.terapNome&&!prof) warnings.push('Terapeuta novo (será criado)');
-        item.prof=prof;
-        const pac=PACIENTES.find(p=>p.nome.toLowerCase()===item.paciente.toLowerCase());
-        if(!pac) warnings.push('Paciente novo (será criado)');
-        item.pac=pac;
-        item.durMin=parseInt(item.duracaoStr)||30;
-        item.detail=item.paciente; item.extra=item.dataStr+' '+item.horaIni;
+        item.terapNome  = impGetCell(row,'terapeuta');
+        item.dataStr    = impGetCell(row,'data');
+        item.horaIni    = impGetCell(row,'horaIni');
+        item.horaFim    = impGetCell(row,'horaFim');
+        item.duracaoStr = impGetCell(row,'duracao');
+        item.paciente   = impGetCell(row,'paciente');
+        item.planoNome  = impGetCell(row,'plano');
+        item.tipo       = impGetCell(row,'tipo');
+        item.processo   = impGetCell(row,'processo');
+        item.semana     = impGetCell(row,'semana');
+        item.statusDist = impGetCell(row,'statusDist');
+        item.statusGoogle = impGetCell(row,'statusGoogle');
+
+        if (!item.terapNome) issues.push('Terapeuta obrigatório');
+        if (!item.paciente)  issues.push('Paciente obrigatório');
+        if (!item.dataStr)   issues.push('Data obrigatória');
+        if (!item.horaIni)   issues.push('Horário início obrigatório');
+
+        // Normaliza data dd/mm/yyyy → yyyy-mm-dd
+        item.dataISO = '';
+        if (item.dataStr) {
+          let dm = item.dataStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (dm) { item.dataISO = dm[1]+'-'+dm[2]+'-'+dm[3]; }
+          else {
+            dm = item.dataStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+            if (dm) item.dataISO = (dm[3].length===2?'20'+dm[3]:dm[3])+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0');
+          }
+        }
+        if (item.dataStr && !item.dataISO) issues.push('Data inválida: '+item.dataStr);
+
+        // Detecta modalidade pelo campo Tipo (Online)
+        item.modalidade = (item.tipo||'').toLowerCase().includes('online') ? 'online' : 'presencial';
+
+        // Match terapeuta — nome parcial (ex: "Maria Cecilia" bate "Maria Cecília Santos")
+        const tTokens = (item.terapNome||'').trim().toLowerCase().split(/\s+/).filter(t=>t.length>1);
+        const prof = PROFISSIONAIS.find(p =>
+          tTokens.every(t => p.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(
+            t.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          ))
+        ) || PROFISSIONAIS.find(p =>
+          p.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(
+            (tTokens[0]||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          )
+        );
+        if (item.terapNome && !prof) warnings.push('Terapeuta "'+item.terapNome+'" novo — será criado');
+        item.prof = prof;
+
+        // Match paciente — nome completo com tolerância a acentos
+        const pac = encontrarPacientePorNome(item.paciente);
+        if (!pac) warnings.push('Paciente "'+item.paciente+'" novo — será criado');
+        item.pac = pac;
+
+        item.durMin = parseInt(item.duracaoStr) || 30;
+
+        // Deduplicação
+        const dupAppt = prof && item.dataISO ? APPOINTMENTS.find(a =>
+          a.profId === prof.id &&
+          a.paciente.toLowerCase() === item.paciente.toLowerCase() &&
+          a.hora === item.horaIni &&
+          a.dataISO === item.dataISO
+        ) : null;
+        if (dupAppt) warnings.push('Agendamento já existe — será ignorado');
+        item.dup = dupAppt;
+
+        item.detail = item.paciente;
+        item.extra  = item.dataStr + ' ' + item.horaIni + (item.terapNome ? ' · '+item.terapNome : '');
         break;
       }
       case 'anamnese':{
@@ -9200,40 +9255,90 @@ async function impConfirmar() {
           break;
         }
         case 'agenda':{
-          let pac=r.pac;
-          if(!pac){
-            const planoObj=r.planoNome?PLANOS.find(p=>p.nome.toLowerCase().includes(r.planoNome.toLowerCase())):null;
-            pac={id:nextPacId++,nome:r.paciente,nasc:'',cpf:'',tel:'',email:'',
-              planoId:planoObj?.id||5,plano:planoObj?.nome||'Particular',carteirinha:'—',status:'Ativo',ultima:''};
-            const dbId=await sbInsert('pacientes',{nome:pac.nome,plano_id:pac.planoId,plano:pac.plano,status:'Ativo'});
-            if(dbId) pac.id=dbId;
+          if (r.dup) { skipped++; continue; } // duplicata — ignora
+
+          // ── Paciente: usa existente ou cria novo ───────────────────────────
+          let pac = r.pac;
+          if (!pac) {
+            const planoObj = r.planoNome
+              ? PLANOS.find(p => p.nome.toLowerCase().includes(r.planoNome.toLowerCase())) : null;
+            pac = {
+              id: nextPacId++, nome: r.paciente, nasc:'', cpf:'', tel:'', email:'',
+              planoId: planoObj?.id||5, plano: planoObj?.nome||r.planoNome||'Particular',
+              carteirinha:'—', status:'Ativo', ultima:'',
+            };
+            const dbId = await sbInsert('pacientes', {
+              nome: pac.nome, plano_id: pac.planoId !== 5 ? pac.planoId : null,
+              plano: pac.plano, status:'Ativo',
+            });
+            if (dbId) pac.id = dbId;
             PACIENTES.push(pac);
           }
-          let prof=r.prof;
-          if(!prof&&r.terapNome){
-            prof={id:nextPrfId++,nome:r.terapNome,nomeAgenda:r.terapNome.split(' ')[0],
-              esp:'',conselho:'',num:'',uf:'SP',cbo:'',cor:cores[PROFISSIONAIS.length%cores.length],status:'Ativo'};
-            const dbId=await sbInsert('profissionais',{nome:prof.nome,nome_agenda:prof.nomeAgenda,cor:prof.cor,status:'Ativo'});
-            if(dbId) prof.id=dbId;
-            PROFISSIONAIS.push(prof); activeProfFilters.add(prof.id);
+
+          // ── Profissional: usa existente ou cria novo ───────────────────────
+          let prof = r.prof;
+          if (!prof && r.terapNome) {
+            const primeiroNome = r.terapNome.split(/\s+/)[0];
+            prof = {
+              id: nextPrfId++, nome: r.terapNome,
+              nomeAgenda: primeiroNome,
+              esp:'', conselho:'', num:'', uf:'SP', cbo:'',
+              cor: cores[PROFISSIONAIS.length % cores.length], status:'Ativo',
+            };
+            const dbId = await sbInsert('profissionais', {
+              nome: prof.nome, nome_agenda: prof.nomeAgenda, cor: prof.cor, status:'Ativo',
+            });
+            if (dbId) prof.id = dbId;
+            PROFISSIONAIS.push(prof);
+            activeProfFilters.add(prof.id);
           }
-          if(!prof){skipped++;continue;}
-          const dup=APPOINTMENTS.find(a=>a.profId===prof.id&&a.paciente===r.paciente&&a.hora===r.horaIni&&a.dataISO===r.dataISO);
-          if(dup){skipped++;continue;}
-          const planoObj=r.planoNome?PLANOS.find(p=>p.nome.toLowerCase().includes(r.planoNome.toLowerCase())):null;
-          const apptObj={id:nextPacId++,profId:prof.id,paciente:r.paciente,
-            plano:planoObj?.nome||r.planoNome||'Particular',planoId:planoObj?.id||5,
-            hora:r.horaIni||'08:00',horaFim:r.horaFim||'',durMin:r.durMin,
-            dataISO:r.dataISO||'',status:(r.statusStr||'agendado').toLowerCase(),
-            obs:r.obs||'',modalidade:'presencial',meetLink:'',guia:null,waSent:false,carteirinha:''};
-          const dbId=await sbInsert('agendamentos',{prof_id:apptObj.profId,paciente:apptObj.paciente,
-            plano:apptObj.plano,plano_id:apptObj.planoId,hora:apptObj.hora,hora_fim:apptObj.horaFim||null,
-            dur_min:apptObj.durMin,data_iso:apptObj.dataISO,status:apptObj.status,obs:apptObj.obs||null,
-            modalidade:'presencial',wa_sent:false});
-          if(dbId) apptObj.id=dbId;
+          if (!prof) { skipped++; continue; }
+
+          // ── Plano ──────────────────────────────────────────────────────────
+          const planoObj = r.planoNome
+            ? PLANOS.find(p => p.nome.toLowerCase().includes(r.planoNome.toLowerCase())) : null;
+
+          // ── Objeto do agendamento ──────────────────────────────────────────
+          const apptObj = {
+            id:        nextPacId++,
+            profId:    prof.id,
+            paciente:  r.paciente,
+            plano:     planoObj?.nome || r.planoNome || 'Particular',
+            planoId:   planoObj?.id   || 5,
+            hora:      r.horaIni || '08:00',
+            horaFim:   r.horaFim || '',
+            durMin:    r.durMin  || 30,
+            dataISO:   r.dataISO || '',
+            status:    'agendado',
+            obs:       [r.tipo, r.processo, r.semana].filter(Boolean).join(' · ') || '',
+            modalidade: r.modalidade || 'presencial',
+            meetLink:  '',
+            guia:      null,
+            waSent:    false,
+            carteirinha: '',
+          };
+
+          const dbId = await sbInsert('agendamentos', {
+            prof_id:    apptObj.profId,
+            paciente:   apptObj.paciente,
+            plano:      apptObj.plano,
+            plano_id:   apptObj.planoId !== 5 ? apptObj.planoId : null,
+            hora:       apptObj.hora,
+            hora_fim:   apptObj.horaFim || null,
+            dur_min:    apptObj.durMin,
+            data_iso:   apptObj.dataISO,
+            status:     apptObj.status,
+            obs:        apptObj.obs || null,
+            modalidade: apptObj.modalidade,
+            wa_sent:    false,
+          });
+          if (dbId) apptObj.id = dbId;
           APPOINTMENTS.push(apptObj);
-          if(pac) pac.ultima=r.dataStr||'';
-          // Atualiza qtdUsada se há agendamento com plano
+
+          // Atualiza última consulta do paciente
+          if (pac) pac.ultima = r.dataStr || '';
+
+          // Atualiza qtdUsada da senha se houver plano ativo
           if (apptObj.planoId && apptObj.planoId !== 5) {
             const senhaImp = SENHAS_PLANO.find(s =>
               s.ativa && s.planoId === apptObj.planoId &&
@@ -9241,7 +9346,7 @@ async function impConfirmar() {
               s.qtdUsada < s.qtdAutorizada
             );
             if (senhaImp) {
-              senhaImp.qtdUsada = (senhaImp.qtdUsada || 0) + 1;
+              senhaImp.qtdUsada = (senhaImp.qtdUsada||0) + 1;
               if (senhaImp.qtdUsada >= senhaImp.qtdAutorizada) {
                 senhaImp.status = 'Usada'; senhaImp.ativa = false;
               }
