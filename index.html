@@ -1718,18 +1718,19 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     <!-- CONFIG -->
     <!-- HISTÓRICO DO PACIENTE -->
     <div class="page" id="page-historico">
-      <div style="display:flex;height:calc(100vh - 110px);gap:16px;overflow:hidden">
+      <div style="display:flex;height:calc(100vh - 110px);gap:16px;overflow:hidden;flex-direction:column">
 
-        <!-- Coluna esquerda: lista de pacientes -->
-        <div style="width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:10px">
-          <div class="search-input-wrap">
+        <!-- Barra de busca de pacientes (topo) -->
+        <div style="flex-shrink:0;display:flex;align-items:center;gap:12px">
+          <div class="search-input-wrap" style="max-width:400px;width:100%">
             <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input class="search-input" placeholder="Buscar paciente..." oninput="filterPacientesHist(this.value)">
+            <input class="search-input" id="hist-busca-input" placeholder="Buscar paciente pelo nome..." oninput="filterPacientesHist(this.value)" style="width:100%">
           </div>
-          <div id="hist-pacientes-list" style="flex:1;overflow-y:auto;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-surface)"></div>
+          <!-- Dropdown de resultados de busca -->
+          <div id="hist-busca-dropdown" style="display:none;position:absolute;top:auto;z-index:200;background:var(--bg-surface);border:1px solid var(--border-mid);border-radius:var(--radius-md);box-shadow:var(--shadow-md);min-width:380px;max-height:280px;overflow-y:auto;margin-top:4px"></div>
         </div>
 
-        <!-- Coluna direita: histórico do paciente selecionado -->
+        <!-- Conteúdo do histórico do paciente selecionado -->
         <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
 
           <!-- Cabeçalho do paciente -->
@@ -1793,8 +1794,8 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             </div>
           </div>
 
-        </div>
-      </div>
+        </div><!-- fim hist right col -->
+      </div><!-- fim page-historico inner -->
     </div>
 
     <!-- LISTA DE ESPERA -->
@@ -7102,35 +7103,61 @@ function waEnviarConfirmacoesDoDia() {
 // ═══════════════════════════════════════
 
 function renderHistPacList(filter='') {
-  const el = document.getElementById('hist-pacientes-list');
-  if (!el) return;
-  let list = PACIENTES.filter(p=>p.status!=='Inativo');
-  if (filter) list = list.filter(p=>p.nome.toLowerCase().includes(filter.toLowerCase()));
-  el.innerHTML = '';
-  list.forEach(p => {
-    const div = document.createElement('div');
-    div.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)';
-    const apptCount = APPOINTMENTS.filter(a=>a.paciente===p.nome).length;
-    const evolCount = HISTORICO.filter(h=>h.pacId===p.id&&h.tipo==='evolucao').length;
-    div.innerHTML =
-      '<div style="font-size:13px;font-weight:500">'+p.nome+'</div>' +
-      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">'+
-        apptCount+' consultas · '+evolCount+' evoluções</div>';
-    div.addEventListener('click', () => abrirHistPaciente(p.id));
-    div.addEventListener('mouseover', ()=>div.style.background='var(--bg-raised)');
-    div.addEventListener('mouseout',  ()=>div.style.background=(historicoAtualPacId===p.id?'var(--bg-overlay)':''));
-    if (historicoAtualPacId===p.id) div.style.background='var(--bg-overlay)';
-    el.appendChild(div);
-  });
+  // Legacy: mantém compatibilidade mas não renderiza mais lista lateral
+  // A busca agora é via dropdown (filterPacientesHist)
 }
 
-function filterPacientesHist(v) { renderHistPacList(v); }
+function filterPacientesHist(v) {
+  const dropdown = document.getElementById('hist-busca-dropdown');
+  if (!dropdown) return;
+  if (!v || v.trim().length < 1) { dropdown.style.display='none'; return; }
+  const q = v.toLowerCase();
+  let list = PACIENTES.filter(p=>p.status!=='Inativo' && p.nome.toLowerCase().includes(q));
+  if (!list.length) {
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:13px;text-align:center">Nenhum paciente encontrado</div>';
+    return;
+  }
+  dropdown.style.display = 'block';
+  // Position dropdown below the search bar
+  const searchWrap = document.getElementById('hist-busca-input')?.closest('.search-input-wrap');
+  if (searchWrap) {
+    const rect = searchWrap.getBoundingClientRect();
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = (rect.bottom + 4) + 'px';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.width = rect.width + 'px';
+  }
+  dropdown.innerHTML = list.slice(0, 20).map(p => {
+    const apptCount = APPOINTMENTS.filter(a=>a.paciente===p.nome).length;
+    const evolCount = HISTORICO.filter(h=>h.pacId===p.id&&h.tipo==='evolucao').length;
+    return '<div class="hist-dropdown-item" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)" ' +
+      'onmouseover="this.style.background=\'var(--bg-raised)\'" onmouseout="this.style.background=\'\'" ' +
+      'onclick="selecionarPacienteHist('+p.id+',\''+p.nome.replace(/'/g,"\\'")+'\')">' +
+      '<div style="font-size:13px;font-weight:500">'+p.nome+'</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">'+apptCount+' consultas · '+evolCount+' evoluções</div>' +
+    '</div>';
+  }).join('');
+  // Close on click outside
+  setTimeout(() => {
+    document.addEventListener('click', function closeDropdown(e) {
+      if (!dropdown.contains(e.target)) { dropdown.style.display='none'; document.removeEventListener('click', closeDropdown); }
+    });
+  }, 50);
+}
+
+function selecionarPacienteHist(pacId, nome) {
+  const dropdown = document.getElementById('hist-busca-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  const input = document.getElementById('hist-busca-input');
+  if (input) input.value = nome;
+  abrirHistPaciente(pacId);
+}
 
 function abrirHistPaciente(pacId) {
   historicoAtualPacId = pacId;
   const p = PACIENTES.find(x=>x.id===pacId);
   if (!p) return;
-  renderHistPacList();
 
   // Header
   const header = document.getElementById('hist-pac-header');
@@ -7194,44 +7221,131 @@ function renderTimeline() {
   if (!el) return;
 
   // Merge appointments and historico events, sort by date desc
-  const events = [];
-  APPOINTMENTS.filter(a=>a.paciente===p.nome).forEach(a => {
-    events.push({ date:a.dataISO||'2026-03-30', tipo:'agendamento', label:a.hora+' — '+a.plano, status:a.status, data:a });
-  });
-  HISTORICO.filter(h=>h.pacId===pacId).forEach(h => {
-    events.push({ date:h.data||'', tipo:h.tipo, label:h.titulo||h.tipo, status:'', data:h });
-  });
-  events.sort((a,b)=>b.date.localeCompare(a.date));
+  const appts = APPOINTMENTS.filter(a=>a.paciente===p.nome);
+  const hists = HISTORICO.filter(h=>h.pacId===pacId);
 
-  if (!events.length) {
+  // Build a date-keyed map for quick grouping
+  const apptByDate = {};
+  appts.forEach(a => {
+    const d = a.dataISO||'';
+    if (!apptByDate[d]) apptByDate[d] = [];
+    apptByDate[d].push(a);
+  });
+
+  const evolByDate = {};
+  hists.filter(h=>h.tipo==='evolucao').forEach(h => {
+    const d = h.data||'';
+    if (!evolByDate[d]) evolByDate[d] = [];
+    evolByDate[d].push(h);
+  });
+
+  // Non-evolucao historico items (anamnese, etc.)
+  const otherHists = hists.filter(h=>h.tipo!=='evolucao');
+
+  // Collect all dates
+  const allDates = new Set([
+    ...Object.keys(apptByDate),
+    ...Object.keys(evolByDate),
+    ...otherHists.map(h=>h.data||''),
+  ]);
+
+  if (!allDates.size) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted)">Nenhum evento registrado para este paciente.</div>';
     return;
   }
 
-  const icons = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
-  const colors = { agendado:'var(--accent)', confirmado:'var(--success)', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
-  const evtColors = { evolucao:'#34d399', anamnese:'#f59e0b', avaliacao:'#60a5fa' };
+  const sortedDates = [...allDates].filter(Boolean).sort((a,b)=>b.localeCompare(a));
 
-  el.innerHTML = events.map(ev => {
-    const dotColor = ev.tipo==='agendamento' ? (colors[ev.status]||'var(--accent)') : (evtColors[ev.tipo]||'var(--accent)');
-    const dateFmt  = ev.date ? ev.date.split('-').reverse().join('/') : '—';
-    const chipStr  = ev.status ? '<span class="chip '+(ev.status==='atendido'?'gray':ev.status==='cancelado'?'red':'blue')+'" style="font-size:10px">'+ev.status+'</span>' : '';
-    return '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
-      '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
-        '<div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
-        '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
-      '</div>' +
-      '<div style="flex:1;padding-bottom:4px">' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
-          '<span style="font-size:14px">'+icons[ev.tipo]+'</span>' +
-          '<span style="font-size:13px;font-weight:500">'+ev.label+'</span>' +
-          chipStr +
-          '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
+  const icons = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
+  const statusColors = { agendado:'var(--accent)', confirmado:'var(--success)', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
+
+  el.innerHTML = sortedDates.map(date => {
+    const dateFmt = date ? date.split('-').reverse().join('/') : '—';
+    let html = '';
+
+    // Appointments for this date
+    (apptByDate[date]||[]).forEach(a => {
+      const dotColor = statusColors[a.status] || 'var(--accent)';
+      const chipStr = '<span class="chip '+(a.status==='atendido'?'gray':a.status==='cancelado'?'red':'blue')+'" style="font-size:10px">'+a.status+'</span>';
+      // Evoluções do mesmo dia — embute dentro do box do agendamento
+      const evolsNoDia = (evolByDate[date]||[]);
+      const evolsHTML = evolsNoDia.length ? evolsNoDia.map(ev => {
+        const prof = PROFISSIONAIS.find(x=>x.id===ev.profId);
+        return '<div style="background:var(--bg-overlay);border-left:3px solid var(--success);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:8px 12px;margin-top:8px">' +
+          '<div style="font-size:11px;font-weight:600;color:var(--success);margin-bottom:4px">📝 '+(ev.titulo||'Evolução')+(prof?' · <span style="color:var(--text-muted)">'+prof.nome+'</span>':'')+'</div>' +
+          '<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5">'+(ev.conteudo?.texto||'')+'</div>' +
+          '<div style="margin-top:6px;display:flex;gap:4px">' +
+            '<button class="action-btn" style="font-size:11px" onclick="editarHistorico('+ev.id+')">✏️</button>' +
+            '<button class="action-btn" style="font-size:11px;color:var(--danger)" onclick="excluirHistorico('+ev.id+')">🗑</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') : '';
+      html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
+          '<div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
+          '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
         '</div>' +
-        (ev.data.obs?'<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+ev.data.obs+'</div>':'') +
-        (ev.data.conteudo?.resumo?'<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+ev.data.conteudo.resumo+'</div>':'') +
-      '</div>' +
-    '</div>';
+        '<div style="flex:1;padding-bottom:4px">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+            '<span style="font-size:14px">📅</span>' +
+            '<span style="font-size:13px;font-weight:500">'+a.hora+' — '+a.plano+'</span>' +
+            chipStr +
+            '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
+          '</div>' +
+          (a.obs?'<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+a.obs+'</div>':'') +
+          evolsHTML +
+        '</div>' +
+      '</div>';
+    });
+
+    // Evoluções sem agendamento no mesmo dia (ou dias sem agendamento)
+    if (!apptByDate[date] || !apptByDate[date].length) {
+      (evolByDate[date]||[]).forEach(ev => {
+        const prof = PROFISSIONAIS.find(x=>x.id===ev.profId);
+        html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
+            '<div style="width:12px;height:12px;border-radius:50%;background:#34d399;border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
+            '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
+          '</div>' +
+          '<div style="flex:1;padding-bottom:4px">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+              '<span style="font-size:14px">📝</span>' +
+              '<span style="font-size:13px;font-weight:500">'+(ev.titulo||'Evolução')+'</span>' +
+              (prof?'<span style="font-size:11px;color:var(--text-muted)">'+prof.nome+'</span>':'') +
+              '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
+            '</div>' +
+            (ev.conteudo?.texto?'<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5;background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+ev.conteudo.texto+'</div>':'') +
+            '<div style="margin-top:4px;display:flex;gap:4px">' +
+              '<button class="action-btn" onclick="editarHistorico('+ev.id+')">'+EDIT_ICON+'</button>' +
+              '<button class="action-btn" style="color:var(--danger)" onclick="excluirHistorico('+ev.id+')">'+DEL_ICON+'</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+
+    // Other historico items (anamnese etc.) for this date
+    otherHists.filter(h=>(h.data||'')===date).forEach(h => {
+      const evtColors = { anamnese:'#f59e0b', avaliacao:'#60a5fa' };
+      const dotColor = evtColors[h.tipo]||'var(--accent)';
+      html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
+          '<div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
+          '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
+        '</div>' +
+        '<div style="flex:1;padding-bottom:4px">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+            '<span style="font-size:14px">'+(icons[h.tipo]||'📄')+'</span>' +
+            '<span style="font-size:13px;font-weight:500">'+(h.titulo||h.tipo)+'</span>' +
+            (h.fonte?'<span class="chip gray" style="font-size:10px">'+h.fonte+'</span>':'') +
+            '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
+          '</div>' +
+          (h.conteudo?.resumo?'<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+h.conteudo.resumo+'</div>':'') +
+        '</div>' +
+      '</div>';
+    });
+
+    return html;
   }).join('');
 }
 
@@ -8945,6 +9059,12 @@ async function impConfirmar() {
   try{populateSelects();}catch(e){}
   try{renderDayView();}catch(e){}
   try{renderDashboard();}catch(e){}
+  // Se importou evoluções ou anamnese, atualiza o histórico do paciente aberto
+  if ((type === 'evolucoes' || type === 'anamnese') && historicoAtualPacId) {
+    try { abrirHistPaciente(historicoAtualPacId); } catch(e) {}
+    try { renderTimeline(); } catch(e) {}
+    try { renderEvolucoes(); } catch(e) {}
+  }
 
   // Show result
   const schema=IMP_SCHEMAS[type];
@@ -9594,7 +9714,11 @@ function showToast(msg, type='success') {
       }
       showToast('Evolução registrada!', 'success');
     }
-    closeModal('modal-evolucao'); histTab('evolucoes', document.getElementById('htab-evolucoes'));
+    closeModal('modal-evolucao');
+    // Atualiza stats e abas de histórico
+    try { abrirHistPaciente(historicoAtualPacId); } catch(e) {}
+    histTab('evolucoes', document.getElementById('htab-evolucoes'));
+    renderTimeline();
   };
 
   // ── Override salvarConfigClinica (com gravação no Supabase) ───────────────
@@ -9688,7 +9812,13 @@ function showToast(msg, type='success') {
     if (!confirm('Excluir este registro?')) return;
     const sb = getDb(); if (sb) await sb.from('historico').delete().eq('id', id);
     const i = HISTORICO.findIndex(h => h.id === id); if (i > -1) HISTORICO.splice(i, 1);
-    try { histTab(document.querySelector('.imp-tab.active')?.id?.replace('htab-', '') || 'linha', document.querySelector('.imp-tab.active')); } catch (e) {}
+    try {
+      const activeTab = document.querySelector('.imp-tab.active');
+      const tabName = activeTab?.id?.replace('htab-', '') || 'linha';
+      histTab(tabName, activeTab);
+      renderTimeline();
+      if (historicoAtualPacId) abrirHistPaciente(historicoAtualPacId);
+    } catch (e) {}
     showToast('Registro excluído.', 'error');
   };
   window.excluirAgendamento = async function (id) {
