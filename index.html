@@ -7426,10 +7426,15 @@ function importarEvolucoes() {
 
     rows.slice(1).forEach(cells=>{
       const nomeCells=iPac>=0?(cells[iPac]||'').trim():'';
-      // Filter to current patient if name col exists
-      if(iPac>=0 && nomeCells && pac &&
-        !nomeCells.toLowerCase().includes(pac.nome.toLowerCase().split(' ')[0].toLowerCase()) &&
-        !pac.nome.toLowerCase().includes(nomeCells.toLowerCase().split(' ')[0].toLowerCase())) return;
+      // Filtra pelo paciente atual usando correspondência por todos os tokens do nome
+      if(iPac>=0 && nomeCells && pac) {
+        const tokensCSV = nomeCells.toLowerCase().split(/\s+/).filter(t=>t.length>1);
+        const tokensPac = pac.nome.toLowerCase().split(/\s+/).filter(t=>t.length>1);
+        // Aceita se todos os tokens do CSV estão no nome do paciente OU vice-versa
+        const csvMatchesPac = tokensCSV.every(t => pac.nome.toLowerCase().includes(t));
+        const pacMatchesCSV = tokensPac.every(t => nomeCells.toLowerCase().includes(t));
+        if (!csvMatchesPac && !pacMatchesCSV) return;
+      }
 
       const dataStr=iData>=0?cells[iData]:'';
       const horaIni=iHini>=0?cells[iHini]:'';
@@ -7649,12 +7654,11 @@ function processarCSVAnamnese(csvText) {
       const conteudo={};
       headers.forEach((h,j)=>{ if(cells[j]&&cells[j].trim()) conteudo[h]=cells[j].trim(); });
 
-      // Try to match to patient
+      // Try to match to patient using full name tokens
       const nomePac = nomeIdx>=0 ? (cells[nomeIdx]||'').trim() : '';
       let pac = null;
       if(nomePac){
-        pac = PACIENTES.find(p=>p.nome.toLowerCase().includes(nomePac.toLowerCase().split(' ')[0].toLowerCase())||
-          nomePac.toLowerCase().includes(p.nome.toLowerCase().split(' ')[0].toLowerCase()));
+        pac = encontrarPacientePorNome(nomePac);
       }
       // If specific patient selected and no match, still import to selected patient
       if(!pac && historicoAtualPacId) pac=PACIENTES.find(x=>x.id===historicoAtualPacId);
@@ -8540,6 +8544,27 @@ function impRunMapping() {
 // ── Row processing per type ───────────────────────────────────────────────────
 function impGetCell(row,field){ const i=impMapping[field]; return (i==null||i<0)?'':(row[i]||'').trim(); }
 
+// Busca paciente por nome com prioridade: exato → nome completo contém → nome completo invertido
+// Evita pegar "Thiago Silva" quando o nome é "Thiago Rocha"
+function encontrarPacientePorNome(nomeBusca) {
+  if (!nomeBusca) return null;
+  const q = nomeBusca.trim().toLowerCase();
+  // 1. Correspondência exata (case-insensitive)
+  let p = PACIENTES.find(x => x.nome.toLowerCase() === q);
+  if (p) return p;
+  // 2. Nome do cadastro contém o nome buscado por completo
+  p = PACIENTES.find(x => x.nome.toLowerCase().includes(q));
+  if (p) return p;
+  // 3. Nome buscado contém o nome do cadastro por completo
+  p = PACIENTES.find(x => q.includes(x.nome.toLowerCase()));
+  if (p) return p;
+  // 4. Todos os tokens do nome buscado estão no nome do cadastro (ex: "Thiago Rocha" → tokens ["thiago","rocha"])
+  const tokens = q.split(/\s+/).filter(t => t.length > 1);
+  p = PACIENTES.find(x => tokens.every(t => x.nome.toLowerCase().includes(t)));
+  if (p) return p;
+  return null;
+}
+
 function parseISODate(str) {
   if(!str) return null;
   let m=str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
@@ -8622,7 +8647,7 @@ function processRowsByType() {
         item.conteudo={};
         impHeaders.forEach((h,i)=>{ if(row[i]&&row[i].trim()) item.conteudo[h]=row[i].trim(); });
         if(!item.nomePac) issues.push('Nome do paciente não encontrado');
-        const pac=item.nomePac?PACIENTES.find(p=>p.nome.toLowerCase().includes(item.nomePac.toLowerCase().split(' ')[0])):null;
+        const pac=item.nomePac?encontrarPacientePorNome(item.nomePac):null;
         if(!pac&&item.nomePac) warnings.push('Paciente não encontrado no cadastro');
         item.pac=pac;
         item.detail=item.nomePac; item.extra=Object.keys(item.conteudo).length+' campos';
@@ -8640,10 +8665,12 @@ function processRowsByType() {
         if(!item.paciente) issues.push('Paciente obrigatório');
         if(!item.dataStr)  issues.push('Data obrigatória');
         item.dataISO=parseISODate(item.dataStr);
-        const pac=PACIENTES.find(p=>p.nome.toLowerCase().includes((item.paciente||'').toLowerCase().split(' ')[0]));
+        const pac=encontrarPacientePorNome(item.paciente);
         if(!pac) warnings.push('Paciente não encontrado — vinculação não será feita');
         item.pac=pac;
-        const prof=PROFISSIONAIS.find(p=>p.nome.toLowerCase().includes((item.terapNome||'').toLowerCase().split(' ')[0]));
+        const profTokens=(item.terapNome||'').trim().toLowerCase().split(/\s+/);
+        const prof=PROFISSIONAIS.find(p=>profTokens.every(t=>p.nome.toLowerCase().includes(t)))||
+                   PROFISSIONAIS.find(p=>p.nome.toLowerCase().includes(profTokens[0]||''));
         item.prof=prof;
         item.detail=item.paciente; item.extra=item.dataStr;
         break;
@@ -8926,7 +8953,7 @@ async function impConfirmar() {
           break;
         }
         case 'anamnese':{
-          const pac=r.pac||(r.nomePac?PACIENTES.find(p=>p.nome.toLowerCase().includes(r.nomePac.toLowerCase().split(' ')[0])):null);
+          const pac=r.pac||(r.nomePac?encontrarPacientePorNome(r.nomePac):null);
           if(!pac){skipped++;continue;}
           const hObj={id:nextHistId++,pacId:pac.id,tipo:'anamnese',
             titulo:'Anamnese importada — '+r.nomePac,conteudo:r.conteudo,
