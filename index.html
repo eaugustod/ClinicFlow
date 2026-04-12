@@ -1720,17 +1720,15 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     <div class="page" id="page-historico">
       <div style="display:flex;height:calc(100vh - 110px);gap:16px;overflow:hidden">
 
-        <!-- Coluna esquerda: lista de pacientes -->
-        <div style="width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:10px">
-          <div class="search-input-wrap">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input class="search-input" placeholder="Buscar paciente..." oninput="filterPacientesHist(this.value)">
-          </div>
-          <div id="hist-pacientes-list" style="flex:1;overflow-y:auto;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-surface)"></div>
-        </div>
-
-        <!-- Coluna direita: histórico do paciente selecionado -->
+        <!-- Coluna única: busca + histórico -->
         <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+
+          <!-- Busca de paciente -->
+          <div style="position:relative;margin-bottom:12px;flex-shrink:0">
+            <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-muted);pointer-events:none" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input id="hist-search-input" class="search-input" style="width:100%;padding-left:38px;font-size:13px;height:40px" placeholder="Buscar paciente pelo nome..." oninput="filterPacientesHist(this.value)" autocomplete="off">
+            <div id="hist-search-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg-surface);border:1px solid var(--border-mid);border-radius:var(--radius-md);box-shadow:var(--shadow-md);z-index:200;max-height:280px;overflow-y:auto"></div>
+          </div>
 
           <!-- Cabeçalho do paciente -->
           <div id="hist-pac-header" style="display:none;padding:16px 20px;background:var(--bg-surface);border-radius:var(--radius-md);border:1px solid var(--border);margin-bottom:12px;flex-shrink:0">
@@ -7101,37 +7099,67 @@ function waEnviarConfirmacoesDoDia() {
 //  HISTÓRICO DO PACIENTE — MÓDULO
 // ═══════════════════════════════════════
 
-function renderHistPacList(filter='') {
-  const el = document.getElementById('hist-pacientes-list');
-  if (!el) return;
-  let list = PACIENTES.filter(p=>p.status!=='Inativo');
-  if (filter) list = list.filter(p=>p.nome.toLowerCase().includes(filter.toLowerCase()));
-  el.innerHTML = '';
-  list.forEach(p => {
-    const div = document.createElement('div');
-    div.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)';
-    const apptCount = APPOINTMENTS.filter(a=>a.paciente===p.nome).length;
-    const evolCount = HISTORICO.filter(h=>h.pacId===p.id&&h.tipo==='evolucao').length;
-    div.innerHTML =
-      '<div style="font-size:13px;font-weight:500">'+p.nome+'</div>' +
-      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">'+
-        apptCount+' consultas · '+evolCount+' evoluções</div>';
-    div.addEventListener('click', () => abrirHistPaciente(p.id));
-    div.addEventListener('mouseover', ()=>div.style.background='var(--bg-raised)');
-    div.addEventListener('mouseout',  ()=>div.style.background=(historicoAtualPacId===p.id?'var(--bg-overlay)':''));
-    if (historicoAtualPacId===p.id) div.style.background='var(--bg-overlay)';
-    el.appendChild(div);
-  });
+function renderHistPacList(filter) {
+  // Mantido para compatibilidade com chamadas internas — agora é no-op
+  // A lista lateral foi substituída por busca com dropdown
 }
 
-function filterPacientesHist(v) { renderHistPacList(v); }
+function filterPacientesHist(v) {
+  var dropdown = document.getElementById('hist-search-dropdown');
+  if (!dropdown) return;
+  var q = (v||'').trim().toLowerCase();
+  if (!q) { dropdown.style.display = 'none'; return; }
+
+  var matches = PACIENTES.filter(function(p){
+    return p.status !== 'Inativo' && p.nome.toLowerCase().includes(q);
+  }).slice(0, 12);
+
+  if (!matches.length) {
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-muted)">Nenhum paciente encontrado.</div>';
+    return;
+  }
+
+  dropdown.style.display = 'block';
+  dropdown.innerHTML = matches.map(function(p) {
+    var apptCount = APPOINTMENTS.filter(function(a){ return a.paciente===p.nome; }).length;
+    var evolCount = HISTORICO.filter(function(h){ return h.pacId===p.id&&h.tipo==='evolucao'; }).length;
+    var initials  = p.nome.split(' ').map(function(n){ return n[0]; }).slice(0,2).join('');
+    return (
+      '<div onclick="selecionarPacienteHist('+p.id+')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)" onmouseover="this.style.background=&quot;var(--bg-raised)&quot;" onmouseout="this.style.background=&quot;&quot;">' +
+        '<div style="width:34px;height:34px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--accent);flex-shrink:0">'+initials+'</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.nome+'</div>' +
+          '<div style="font-size:11px;color:var(--text-muted)">'+apptCount+' consultas &middot; '+evolCount+' evolu&ccedil;&otilde;es &middot; '+p.plano+'</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function selecionarPacienteHist(pacId) {
+  var dropdown = document.getElementById('hist-search-dropdown');
+  var input    = document.getElementById('hist-search-input');
+  var pac = PACIENTES.find(function(x){ return x.id===pacId; });
+  if (dropdown) dropdown.style.display = 'none';
+  if (input && pac) input.value = pac.nome;
+  abrirHistPaciente(pacId);
+}
+
+function _histDropdownClickOutside(e) {
+  var inp = document.getElementById('hist-search-input');
+  var dd  = document.getElementById('hist-search-dropdown');
+  if (dd && inp && !inp.contains(e.target) && !dd.contains(e.target)) {
+    dd.style.display = 'none';
+  }
+}
+document.removeEventListener('click', _histDropdownClickOutside);
+document.addEventListener('click', _histDropdownClickOutside);
 
 function abrirHistPaciente(pacId) {
   historicoAtualPacId = pacId;
   const p = PACIENTES.find(x=>x.id===pacId);
   if (!p) return;
-  renderHistPacList();
-
   // Header
   const header = document.getElementById('hist-pac-header');
   const empty  = document.getElementById('hist-empty');
@@ -9796,28 +9824,41 @@ function showToast(msg, type='success') {
     } catch(e) { console.error('[ClinicFlow Supabase] salvarConfig:', e); }
   }
 
-  // ── Hook no doLogin: carrega Supabase APÓS initApp rodar normalmente ────────
-  // Não sobrescrevemos initApp pois o patch carrega antes de ele ser definido no mesmo <script>.
-  // Em vez disso, interceptamos doLogin via window.load, quando todas as funções já existem.
-  window.addEventListener('load', function () {
-    const _origDoLogin = window.doLogin;
-    if (!_origDoLogin) { console.warn('[ClinicFlow Supabase] doLogin não encontrado'); return; }
+  // ── Hook no doLogin: carrega Supabase APÓS login ────────────────────────────
+  function _hookDoLogin() {
+    var orig = window.doLogin;
+    if (typeof orig !== 'function') return false;
     window.doLogin = function () {
-      _origDoLogin(); // executa login + initApp originais (síncronos) — UI já fica pronta
-      if (getDb()) {
-        loadFromSupabase(); // carrega dados do banco em background sem bloquear
-      }
+      orig();
+      if (getDb()) loadFromSupabase();
     };
-    // Também intercepta quickLogin
-    const _origQuickLogin = window.quickLogin;
-    if (_origQuickLogin) {
+    var origQ = window.quickLogin;
+    if (typeof origQ === 'function') {
       window.quickLogin = function (role) {
         document.getElementById('login-role').value = role;
         window.doLogin();
       };
     }
     console.log('[ClinicFlow Supabase] doLogin interceptado ✓');
-  });
+    return true;
+  }
+
+  // Tenta no DOMContentLoaded; se já passou, tenta imediatamente; fallback com retry
+  function _tryHook() {
+    if (_hookDoLogin()) return;
+    // Ainda não disponível — aguarda mais um tick
+    var attempts = 0;
+    var iv = setInterval(function () {
+      attempts++;
+      if (_hookDoLogin() || attempts > 20) clearInterval(iv);
+    }, 50);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _tryHook);
+  } else {
+    _tryHook();
+  }
 
   // ── Override salvarPaciente ───────────────────────────────────────────────
   window.salvarPaciente = async function () {
