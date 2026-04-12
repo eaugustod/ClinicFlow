@@ -3050,35 +3050,75 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
 <!-- Modal Importar Evoluções -->
 <div class="modal-overlay" id="modal-importar-evolucoes">
-  <div class="modal" style="max-width:600px">
+  <div class="modal" style="max-width:680px">
     <div class="modal-header">
       <div>
-        <div class="modal-title">Importar Evoluções — Google Sheets</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Colunas: Data, Horário Início, Horário Fim, Paciente, Presença, Evolução</div>
+        <div class="modal-title">📝 Importar Evoluções — Google Sheets</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="evo-imp-subtitle">Selecione ou cole o CSV exportado da planilha de registros</div>
       </div>
       <button class="modal-close" onclick="closeModal('modal-importar-evolucoes')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
     </div>
-    <div class="modal-body">
-      <div style="background:var(--bg-raised);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-muted)">
-        Exporte a planilha de evoluções como CSV. O sistema cruza pelo nome do paciente e data/horário para vincular ao agendamento. Campos esperados: <strong>ID, Data, Horário Início, Horário Fim, Duração (min), Paciente, Convênio, Semana, Presença, Evolução</strong>
+    <div class="modal-body" style="padding-top:16px">
+
+      <!-- Instruções -->
+      <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-muted)">
+        Colunas esperadas (exportação direta do Google Sheets):
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--accent);margin-top:4px;line-height:1.8">
+          ID · <strong>Data</strong> · <strong>Horário Início</strong> · Horário Fim · Duração (min) · <strong>Paciente</strong> · Convênio · Semana · <strong>Presença</strong> · <strong>Evolução</strong> · Mês · Ano · Registrado em
+        </div>
       </div>
-      <div style="border:2px dashed var(--border-mid);border-radius:var(--radius-md);padding:12px;text-align:center;margin-bottom:10px;cursor:pointer"
-        onclick="document.getElementById('evo-imp-file').click()">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;color:var(--text-muted)"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-        <div style="font-size:13px;margin-top:4px">Selecionar arquivo CSV</div>
-        <input type="file" id="evo-imp-file" accept=".csv,.txt" style="display:none" onchange="handleEvoFileSelect(this)">
+
+      <!-- Upload / Paste -->
+      <div id="evo-imp-step-1">
+        <div style="border:2px dashed var(--border-mid);border-radius:var(--radius-md);padding:16px;text-align:center;margin-bottom:12px;cursor:pointer;transition:border-color var(--transition)"
+          onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-mid)'"
+          onclick="document.getElementById('evo-imp-file').click()">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:var(--text-muted)"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          <div style="font-size:13px;font-weight:500;margin-top:6px">Clique para selecionar o arquivo CSV</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">ou arraste aqui</div>
+          <input type="file" id="evo-imp-file" accept=".csv,.txt" style="display:none" onchange="handleEvoFileSelect(this)">
+        </div>
+        <div class="form-group">
+          <label>Ou cole o conteúdo CSV diretamente</label>
+          <textarea class="form-input" id="evo-imp-paste" rows="5"
+            style="font-family:var(--font-mono);font-size:11px;resize:vertical"
+            placeholder="ID,Data,Horário Início,Horário Fim,Duração (min),Paciente,Convênio,Semana,Presença,Evolução,Mês,Ano,Registrado em&#10;,2026-04-08,09:00,09:30,30,Ana Maria Silva,SulAmérica,Abril Semana 2,Presente,Texto da evolução...,4,2026,..."></textarea>
+        </div>
+        <div id="evo-imp-parse-result" style="display:none;margin-top:10px"></div>
       </div>
-      <div class="form-row"><div class="form-group">
-        <label>Ou cole o CSV aqui</label>
-        <textarea class="form-input" id="evo-imp-paste" rows="6" style="font-family:var(--font-mono);font-size:11px" placeholder="ID,Data,Horário Início,Horário Fim,Duração (min),Paciente,Convênio,Semana,Presença,Evolução&#10;1,30/03/2026,09:00,09:30,30,Ana Maria Silva,SulAmérica,13,Presente,Paciente apresentou..."></textarea>
-      </div></div>
-      <div id="evo-imp-result"></div>
+
+      <!-- Preview table (passo 2) -->
+      <div id="evo-imp-step-2" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div id="evo-imp-preview-summary" style="font-size:13px;font-weight:600"></div>
+          <button class="btn-sm btn-secondary" style="font-size:12px" onclick="evoImpVoltarStep1()">← Voltar</button>
+        </div>
+        <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md)">
+          <table class="data-table" style="margin:0">
+            <thead><tr>
+              <th style="width:28px"></th>
+              <th>Data</th><th>Paciente</th><th>Horário</th><th>Presença</th><th>Evolução (prévia)</th>
+            </tr></thead>
+            <tbody id="evo-imp-preview-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-muted)">
+          <span id="evo-imp-cnt-ok"   style="color:var(--success)"></span>
+          <span id="evo-imp-cnt-skip" style="color:var(--warning)"></span>
+          <span id="evo-imp-cnt-dup"  style="color:var(--text-muted)"></span>
+        </div>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn-sm btn-secondary" onclick="closeModal('modal-importar-evolucoes')">Cancelar</button>
-      <button class="btn-sm btn-accent" onclick="importarEvolucoes()">
+      <button class="btn-sm btn-secondary" id="evo-imp-btn-preview" onclick="evoImpPreview()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        Pré-visualizar
+      </button>
+      <button class="btn-sm btn-accent" id="evo-imp-btn-confirmar" style="display:none" onclick="evoImpConfirmar()">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-        Importar
+        Importar <span id="evo-imp-btn-cnt"></span>
       </button>
     </div>
   </div>
@@ -7353,7 +7393,6 @@ function renderEvolucoes() {
   const el = document.getElementById('hist-evolucoes-list');
   if (!el) return;
 
-  // Header with import button
   let headerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
     '<div style="font-size:13px;font-weight:600;color:var(--text-secondary)">Evoluções do paciente</div>' +
     '<div style="display:flex;gap:6px">' +
@@ -7368,112 +7407,357 @@ function renderEvolucoes() {
     el.innerHTML = headerHTML + '<div style="text-align:center;padding:32px;color:var(--text-muted)">Nenhuma evolução registrada.<br><button class="btn-sm btn-accent" style="margin-top:12px" onclick="novaEvolucao()">Registrar primeira evolução</button></div>';
     return;
   }
-  el.innerHTML = '';
+  el.innerHTML = headerHTML;
   evs.forEach(ev => {
     const prof = PROFISSIONAIS.find(p=>p.id===ev.profId);
+    const pi   = evoPresencaInfo ? evoPresencaInfo(ev.conteudo?.presenca) : null;
     const card = document.createElement('div');
     card.style.cssText = 'background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px';
+
+    // Linha de metadados: data, horário, convênio, presença
+    const dateFmt = ev.data ? ev.data.split('-').reverse().join('/') : '';
+    const horaStr = ev.conteudo?.horaIni
+      ? ev.conteudo.horaIni + (ev.conteudo.horaFim ? ' – '+ev.conteudo.horaFim : '')
+      : '';
+    const metaParts = [
+      dateFmt,
+      horaStr,
+      ev.conteudo?.duracao ? ev.conteudo.duracao+' min' : '',
+      ev.conteudo?.convenio || '',
+      prof ? prof.nome : '',
+    ].filter(Boolean);
+
+    const presChip = pi && ev.conteudo?.presenca
+      ? '<span class="chip '+pi.chip+'" style="font-size:10px;margin-left:6px">'+ev.conteudo.presenca+'</span>' : '';
+    const semanaTag = ev.conteudo?.semana
+      ? '<span style="font-size:10px;color:var(--text-muted);margin-left:6px">· '+ev.conteudo.semana+'</span>' : '';
+    const fonteTag = ev.fonte && ev.fonte!=='Manual'
+      ? '<span class="chip gray" style="font-size:10px;margin-left:6px">'+ev.fonte+'</span>' : '';
+
     card.innerHTML =
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
-        '<span style="font-size:20px">📝</span>' +
-        '<div><div style="font-size:13px;font-weight:600">'+(ev.titulo||'Evolução')+'</div>' +
-          '<div style="font-size:11px;color:var(--text-muted)">'+(ev.data?ev.data.split('-').reverse().join('/'):'')+
-            (prof?' · '+prof.nome:'')+'</div></div>' +
-        '<div style="margin-left:auto;display:flex;gap:4px">' +
+      '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">' +
+        '<span style="font-size:18px;line-height:1.4">'+(pi?pi.icon:'📝')+'</span>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:13px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:2px">' +
+            (ev.titulo||'Evolução') + presChip + semanaTag + fonteTag +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">'+metaParts.join(' · ')+'</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0">' +
           '<button class="action-btn" onclick="editarHistorico('+ev.id+')">'+EDIT_ICON+'</button>' +
           '<button class="action-btn" style="color:var(--danger)" onclick="excluirHistorico('+ev.id+')">'+DEL_ICON+'</button>' +
         '</div>' +
       '</div>' +
-      '<div style="font-size:13px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.6">'+(ev.conteudo?.texto||'')+'</div>';
+      (ev.conteudo?.texto
+        ? '<div style="font-size:13px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.6;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">'+ev.conteudo.texto+'</div>'
+        : '<div style="font-size:12px;color:var(--text-muted);font-style:italic;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">Sem texto de evolução registrado.</div>');
     el.appendChild(card);
   });
 }
 
-// ── Importar Evoluções do Google Sheets ──────────────────────────────────────
-// Colunas: ID,Data,Horário Início,Horário Fim,Duração (min),Paciente,Convênio,Semana,Presença,Evolução
+// ═══════════════════════════════════════════════════════════════════
+//  IMPORTAR EVOLUÇÕES — Google Sheets
+//  Layout: ID · Data · Horário Início · Horário Fim · Duração (min)
+//          Paciente · Convênio · Semana · Presença · Evolução
+//          Mês · Ano · Registrado em
+// ═══════════════════════════════════════════════════════════════════
+
+const PRESENCA_PRESENTE   = ['presente','p','sim','yes'];
+const PRESENCA_JUSTIFICOU = ['justificou','justificada','j','justificou ausência'];
+const PRESENCA_FALTA      = ['falta','ausente','não compareceu','nao compareceu','f'];
+
+function evoPresencaInfo(pres) {
+  const p = (pres||'').toLowerCase().trim();
+  if (PRESENCA_PRESENTE.includes(p))   return { icon:'✓', color:'var(--success)', chip:'green',  status:'atendido' };
+  if (PRESENCA_JUSTIFICOU.includes(p)) return { icon:'⚡', color:'var(--warning)', chip:'yellow', status:'desmarcado' };
+  if (PRESENCA_FALTA.includes(p))      return { icon:'✗', color:'var(--danger)',  chip:'red',    status:'falta' };
+  return { icon:'·', color:'var(--text-muted)', chip:'gray', status:'' };
+}
+
+// Parseia CSV com o layout exato do Google Sheets de evoluções
+function parseEvolucaoCSV(txt) {
+  const rows = parseCSVLines(txt);
+  if (rows.length < 2) throw new Error('Arquivo sem dados');
+
+  const headers = rows[0].map(h => (h||'').trim());
+  const fi = (...terms) => {
+    for (const t of terms) {
+      const i = headers.findIndex(h => h.toLowerCase().includes(t.toLowerCase()));
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
+
+  const iData     = fi('data','date');
+  const iHini     = fi('horário início','horario inicio','hora início','hora ini','inicio','start');
+  const iHfim     = fi('horário fim','horario fim','hora fim','fim','end');
+  const iDur      = fi('duração','duracao','duration');
+  const iPac      = fi('paciente','nome','patient');
+  const iConv     = fi('convênio','convenio','plano');
+  const iSemana   = fi('semana','week');
+  const iPresenca = fi('presença','presenca','presence');
+  const iEvo      = fi('evolução','evolucao','evolution','texto','notas','observ');
+  const iReg      = fi('registrado','registered','timestamp','created');
+
+  if (iData < 0) throw new Error('Coluna "Data" não encontrada no CSV');
+  if (iPac  < 0) throw new Error('Coluna "Paciente" não encontrada no CSV');
+
+  const result = [];
+  rows.slice(1).forEach((cells, rowIdx) => {
+    const g = i => (i >= 0 ? (cells[i]||'') : '').trim();
+    const pacNome  = g(iPac);
+    const dataStr  = g(iData);
+    const horaIni  = g(iHini);
+    const horaFim  = g(iHfim);
+    const durStr   = g(iDur);
+    const convNome = g(iConv);
+    const semana   = g(iSemana);
+    const presenca = g(iPresenca);
+    const evoTxt   = g(iEvo);
+    const regStr   = g(iReg);
+
+    if (!pacNome && !dataStr) return; // linha vazia
+
+    // Normaliza data: yyyy-mm-dd (padrão Google) e dd/mm/yyyy
+    let dataISO = '';
+    if (dataStr) {
+      let m = dataStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) { dataISO = m[1]+'-'+m[2]+'-'+m[3]; }
+      else {
+        m = dataStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+        if (m) dataISO = (m[3].length===2?'20'+m[3]:m[3])+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+      }
+    }
+
+    const pac  = encontrarPacientePorNome(pacNome);
+    const appt = pac ? APPOINTMENTS.find(a =>
+      a.paciente === pac.nome &&
+      (dataISO ? a.dataISO === dataISO : false) ||
+      (pac && horaIni ? (a.paciente===pac.nome && a.hora===horaIni) : false)
+    ) : null;
+
+    // Deduplicação por paciente + data + hora de início
+    const dup = pac ? HISTORICO.find(h =>
+      h.pacId === pac.id && h.tipo === 'evolucao' &&
+      h.data === (dataISO||dataStr) &&
+      (h.conteudo?.horaIni||'') === horaIni
+    ) : null;
+
+    const status = (!pacNome||!dataStr) ? 'err'
+                 : !pac                  ? 'warn_pac'
+                 : dup                   ? 'dup'
+                 : 'ok';
+
+    result.push({ rowIdx, pacNome, dataStr, dataISO, horaIni, horaFim,
+      durStr, convNome, semana, presenca, evoTxt, regStr,
+      pac, appt, dup, status });
+  });
+
+  return result;
+}
+
 function abrirImportarEvolucoes() {
   if (!historicoAtualPacId) { showToast('Selecione um paciente primeiro','error'); return; }
   openModal('modal-importar-evolucoes');
-  document.getElementById('evo-imp-paste').value='';
-  document.getElementById('evo-imp-result').innerHTML='';
+  const pac = PACIENTES.find(x=>x.id===historicoAtualPacId);
+  const sub = document.getElementById('evo-imp-subtitle');
+  if (sub) sub.textContent = pac ? 'Paciente selecionado: ' + pac.nome : 'Selecione o arquivo CSV';
+  const paste = document.getElementById('evo-imp-paste');
+  if (paste) paste.value = '';
+  const pr = document.getElementById('evo-imp-parse-result');
+  if (pr) pr.style.display = 'none';
+  const s1 = document.getElementById('evo-imp-step-1');
+  const s2 = document.getElementById('evo-imp-step-2');
+  const bp = document.getElementById('evo-imp-btn-preview');
+  const bc = document.getElementById('evo-imp-btn-confirmar');
+  if (s1) s1.style.display = 'block';
+  if (s2) s2.style.display = 'none';
+  if (bp) bp.style.display = 'inline-flex';
+  if (bc) bc.style.display = 'none';
+  window._evoParsed = null;
 }
 
 function handleEvoFileSelect(input) {
-  const file=input.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{ document.getElementById('evo-imp-paste').value=e.target.result; };
-  reader.readAsText(file,'UTF-8');
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const paste = document.getElementById('evo-imp-paste');
+    if (paste) paste.value = e.target.result;
+    const pr = document.getElementById('evo-imp-parse-result');
+    if (pr) { pr.style.display='block'; pr.innerHTML='<span style="color:var(--success);font-size:12px">✓ Arquivo: <strong>'+file.name+'</strong></span>'; }
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
-function importarEvolucoes() {
-  const txt=(document.getElementById('evo-imp-paste')?.value||'').trim();
-  if(!txt){ showToast('Cole o CSV ou selecione um arquivo','error'); return; }
-  try {
-    const rows=parseCSVLines(txt);
-    if(rows.length<2){ showToast('Arquivo sem dados','error'); return; }
-    const headers=rows[0];
-    const fi=(name)=>headers.findIndex(h=>h.toLowerCase().includes(name.toLowerCase()));
-    const iData  =fi('data'); const iHini=fi('horário início')||fi('hora ini')||fi('inicio');
-    const iHfim  =fi('horário fim')||fi('hora fim')||fi('fim');
-    const iDur   =fi('duração')||fi('duracao')||fi('duration');
-    const iPac   =fi('paciente')||fi('nome');
-    const iConv  =fi('convênio')||fi('convenio')||fi('plano');
-    const iPresenca=fi('presença')||fi('presenca')||fi('presença');
-    const iEvo   =fi('evolução')||fi('evolucao')||fi('evolution')||fi('notas');
+function evoImpVoltarStep1() {
+  const s1=document.getElementById('evo-imp-step-1');
+  const s2=document.getElementById('evo-imp-step-2');
+  const bp=document.getElementById('evo-imp-btn-preview');
+  const bc=document.getElementById('evo-imp-btn-confirmar');
+  if(s1)s1.style.display='block'; if(s2)s2.style.display='none';
+  if(bp)bp.style.display='inline-flex'; if(bc)bc.style.display='none';
+  window._evoParsed=null;
+}
 
-    const pac=PACIENTES.find(x=>x.id===historicoAtualPacId);
-    let imported=0; const lines=[];
+function evoImpPreview() {
+  const txt = (document.getElementById('evo-imp-paste')?.value||'').trim();
+  if (!txt) { showToast('Cole o CSV ou selecione um arquivo','error'); return; }
 
-    rows.slice(1).forEach(cells=>{
-      const nomeCells=iPac>=0?(cells[iPac]||'').trim():'';
-      // Filtra pelo paciente atual usando correspondência por todos os tokens do nome
-      if(iPac>=0 && nomeCells && pac) {
-        const tokensCSV = nomeCells.toLowerCase().split(/\s+/).filter(t=>t.length>1);
-        const tokensPac = pac.nome.toLowerCase().split(/\s+/).filter(t=>t.length>1);
-        // Aceita se todos os tokens do CSV estão no nome do paciente OU vice-versa
-        const csvMatchesPac = tokensCSV.every(t => pac.nome.toLowerCase().includes(t));
-        const pacMatchesCSV = tokensPac.every(t => nomeCells.toLowerCase().includes(t));
-        if (!csvMatchesPac && !pacMatchesCSV) return;
-      }
+  let parsed;
+  try { parsed = parseEvolucaoCSV(txt); }
+  catch(e) { showToast('Erro ao ler CSV: '+e.message,'error'); return; }
 
-      const dataStr=iData>=0?cells[iData]:'';
-      const horaIni=iHini>=0?cells[iHini]:'';
-      const horaFim=iHfim>=0?cells[iHfim]:'';
-      const evoTxt =iEvo>=0?cells[iEvo]:'';
-      const presenca=iPresenca>=0?cells[iPresenca]:'';
-      if(!evoTxt && !presenca) return; // skip empty rows
+  if (!parsed.length) { showToast('Nenhuma linha válida encontrada','error'); return; }
 
-      // Parse date
-      let dataISO='';
-      if(dataStr){
-        const m=dataStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-        if(m) dataISO=(m[3].length===2?'20'+m[3]:m[3])+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
-      }
-
-      // Try to link to existing appointment
-      const appt=APPOINTMENTS.find(a=>a.paciente===pac?.nome&&(a.dataISO===dataISO||(horaIni&&a.hora===horaIni)));
-
-      HISTORICO.push({
-        id:nextHistId++, pacId:historicoAtualPacId, tipo:'evolucao',
-        titulo:(presenca==='Presente'||presenca==='P'||presenca==='Sim'?'✓':'✗')+' Sessão — '+dataStr,
-        conteudo:{ texto:evoTxt, presenca, horaIni, horaFim, convênio:iConv>=0?cells[iConv]:'' },
-        profId:appt?.profId||0, data:dataISO||dataStr, fonte:'Google Sheets',
-        apptId:appt?.id||null,
+  // No contexto do histórico filtra apenas o paciente selecionado
+  if (historicoAtualPacId) {
+    const pacAtual = PACIENTES.find(x=>x.id===historicoAtualPacId);
+    if (pacAtual) {
+      parsed = parsed.filter(r => {
+        if (!r.pacNome) return false;
+        const tCSV = r.pacNome.toLowerCase().split(/\s+/).filter(t=>t.length>1);
+        const tPac = pacAtual.nome.toLowerCase().split(/\s+/).filter(t=>t.length>1);
+        return tCSV.every(t=>pacAtual.nome.toLowerCase().includes(t)) ||
+               tPac.every(t=>r.pacNome.toLowerCase().includes(t));
       });
-      if(appt&&appt.status!=='atendido'&&(presenca==='Presente'||presenca==='P'||presenca==='Sim')){
-        appt.status='atendido';
-      }
-      imported++;
-      lines.push('<div style="font-size:11px;color:var(--success)">✓ '+dataStr+' '+horaIni+'</div>');
-    });
+    }
+  }
 
-    const resEl=document.getElementById('evo-imp-result');
-    if(resEl) resEl.innerHTML='<div style="max-height:120px;overflow-y:auto">'+lines.join('')+'</div>'+
-      '<div style="font-weight:600;margin-top:6px;font-size:13px">'+imported+' evolução(ões) importada(s)!</div>';
-    showToast(imported+' evoluções importadas!','success');
-    if(imported>0) setTimeout(()=>{ closeModal('modal-importar-evolucoes'); renderEvolucoes(); renderTimeline(); renderDayView(); },800);
-  } catch(e){ showToast('Erro: '+e.message,'error'); }
+  if (!parsed.length) { showToast('Nenhuma linha corresponde ao paciente selecionado','error'); return; }
+  window._evoParsed = parsed;
+
+  const ok   = parsed.filter(r=>r.status==='ok').length;
+  const dup  = parsed.filter(r=>r.status==='dup').length;
+  const warn = parsed.filter(r=>r.status==='warn_pac').length;
+
+  const sumEl = document.getElementById('evo-imp-preview-summary');
+  if (sumEl) sumEl.textContent = parsed.length+' linha(s) analisada(s)';
+  const okEl=document.getElementById('evo-imp-cnt-ok');
+  const skEl=document.getElementById('evo-imp-cnt-skip');
+  const dpEl=document.getElementById('evo-imp-cnt-dup');
+  if(okEl) okEl.textContent = ok   ? '✓ '+ok+' para importar'             : '';
+  if(skEl) skEl.textContent = warn ? '⚠ '+warn+' paciente não localizado'  : '';
+  if(dpEl) dpEl.textContent = dup  ? '⊘ '+dup+' já existente(s) — serão ignoradas' : '';
+
+  const tbody = document.getElementById('evo-imp-preview-tbody');
+  if (tbody) tbody.innerHTML = parsed.map(r => {
+    const pi = evoPresencaInfo(r.presenca);
+    const ico = r.status==='ok'       ? '<span style="color:var(--success)">✓</span>'
+              : r.status==='dup'      ? '<span style="color:var(--text-muted)" title="Já importado">⊘</span>'
+              : r.status==='warn_pac' ? '<span style="color:var(--warning)" title="Paciente não localizado">⚠</span>'
+              : '<span style="color:var(--danger)">✗</span>';
+    const dateFmt = r.dataISO ? r.dataISO.split('-').reverse().join('/') : r.dataStr;
+    const prev = (r.evoTxt||'').substring(0,55)+(r.evoTxt?.length>55?'…':'') || '<em style="color:var(--text-muted)">sem texto</em>';
+    const rowStyle = r.status==='dup' ? 'opacity:0.4' : r.status!=='ok' ? 'background:rgba(251,191,36,0.06)' : '';
+    return '<tr style="'+rowStyle+'">' +
+      '<td style="text-align:center;width:28px">'+ico+'</td>' +
+      '<td style="font-size:12px;white-space:nowrap">'+dateFmt+'</td>' +
+      '<td style="font-size:12px">'+(r.pac ? r.pac.nome : '<span style="color:var(--warning)">'+r.pacNome+'</span>')+'</td>' +
+      '<td style="font-size:12px;white-space:nowrap">'+(r.horaIni||'—')+(r.horaFim?' – '+r.horaFim:'')+'</td>' +
+      '<td style="font-size:11px"><span class="chip '+pi.chip+'" style="font-size:10px">'+(r.presenca||'—')+'</span></td>' +
+      '<td style="font-size:11px;color:var(--text-secondary)">'+prev+'</td>' +
+    '</tr>';
+  }).join('');
+
+  const s1=document.getElementById('evo-imp-step-1');
+  const s2=document.getElementById('evo-imp-step-2');
+  const bp=document.getElementById('evo-imp-btn-preview');
+  const bc=document.getElementById('evo-imp-btn-confirmar');
+  if(s1)s1.style.display='none'; if(s2)s2.style.display='block';
+  if(bp)bp.style.display='none';
+  if(bc){ bc.style.display = ok>0?'inline-flex':'none'; }
+  const cntEl=document.getElementById('evo-imp-btn-cnt');
+  if(cntEl) cntEl.textContent = ok>0?'('+ok+')':'';
 }
+
+async function evoImpConfirmar() {
+  const parsed = window._evoParsed;
+  if (!parsed) { showToast('Execute a pré-visualização primeiro','error'); return; }
+  const toImport = parsed.filter(r=>r.status==='ok');
+  if (!toImport.length) { showToast('Nenhuma evolução nova para importar','error'); return; }
+
+  const btn = document.getElementById('evo-imp-btn-confirmar');
+  if (btn) { btn.disabled=true; btn.textContent='Importando...'; }
+
+  const sb = (window._cfGetDb ? window._cfGetDb() : null) || (() => {
+    const u=localStorage.getItem('cf_supa_url'), k=localStorage.getItem('cf_supa_key');
+    return (u&&k&&window.supabase) ? window.supabase.createClient(u,k) : null;
+  })();
+
+  let importados=0, dbErrors=0;
+
+  for (const r of toImport) {
+    const pac = r.pac;
+    if (!pac) continue;
+
+    const pi = evoPresencaInfo(r.presenca);
+    const dateFmt = r.dataISO ? r.dataISO.split('-').reverse().join('/') : r.dataStr;
+    const titulo = pi.icon + ' Sessão — ' + dateFmt +
+      (r.horaIni ? ' · ' + r.horaIni : '') +
+      (r.semana  ? ' · ' + r.semana  : '');
+
+    const hObj = {
+      id: nextHistId++, pacId: pac.id, tipo: 'evolucao', titulo,
+      conteudo: {
+        texto:    r.evoTxt   || '',
+        presenca: r.presenca || '',
+        horaIni:  r.horaIni  || '',
+        horaFim:  r.horaFim  || '',
+        duracao:  r.durStr   || '',
+        convenio: r.convNome || '',
+        semana:   r.semana   || '',
+      },
+      profId: r.appt?.profId || 0,
+      data:   r.dataISO || r.dataStr,
+      fonte:  'Google Sheets',
+      apptId: r.appt?.id || null,
+    };
+
+    if (sb) {
+      try {
+        const { data: row, error } = await sb.from('historico').insert([{
+          pac_id: hObj.pacId, tipo:'evolucao', titulo: hObj.titulo,
+          conteudo: hObj.conteudo, prof_id: hObj.profId||null,
+          data: hObj.data, fonte:'Google Sheets',
+        }]).select('id').single();
+        if (error) { console.error('[evoImpConfirmar]', error.message); dbErrors++; }
+        else if (row) hObj.id = row.id;
+      } catch(e) { console.error('[evoImpConfirmar]', e); dbErrors++; }
+    }
+
+    HISTORICO.push(hObj);
+
+    // Atualiza status do agendamento vinculado
+    if (r.appt && pi.status && r.appt.status !== pi.status) {
+      r.appt.status = pi.status;
+      if (sb) sb.from('agendamentos').update({ status: pi.status }).eq('id', r.appt.id);
+    }
+    importados++;
+  }
+
+  if (btn) { btn.disabled=false; btn.textContent='Importar'; }
+
+  const msg = importados+' evolução(ões) importada(s)' +
+    (sb && !dbErrors ? ' · ✓ gravado no banco' :
+     sb && dbErrors  ? ' · ⚠ '+dbErrors+' erro(s) no banco' :
+     ' · ⚠ apenas memória');
+  showToast(msg, importados>0?'success':'error');
+
+  if (importados>0) {
+    setTimeout(()=>{
+      closeModal('modal-importar-evolucoes');
+      try { abrirHistPaciente(historicoAtualPacId); } catch(e) {}
+      try { histTab('evolucoes', document.getElementById('htab-evolucoes')); } catch(e) {}
+      try { renderTimeline(); } catch(e) {}
+      try { renderDayView(); } catch(e) {}
+    }, 500);
+  }
+}
+
+// ─── Alias para compatibilidade com o módulo central ─────────────────────────
+function importarEvolucoes() { evoImpPreview(); }
+
+
 
 // Kosmos anamnese sections definition
 const ANAM_SECTIONS = {
@@ -8287,26 +8571,28 @@ const IMP_SCHEMAS = {
   evolucoes: {
     label:'Evoluções', icon:'📝', modulo:'historico',
     fields:[
-      {key:'paciente', label:'Paciente/Nome',  required:true},
-      {key:'data',     label:'Data',           required:true},
-      {key:'evolucao', label:'Texto da evolução',required:false},
-      {key:'horaIni',  label:'Horário início',  required:false},
-      {key:'horaFim',  label:'Horário fim',     required:false},
-      {key:'presenca', label:'Presença',        required:false},
-      {key:'terapeuta',label:'Terapeuta',       required:false},
-      {key:'plano',    label:'Convênio/Plano',  required:false},
+      {key:'paciente', label:'Paciente',         required:true},
+      {key:'data',     label:'Data',              required:true},
+      {key:'horaIni',  label:'Horário Início',    required:false},
+      {key:'horaFim',  label:'Horário Fim',       required:false},
+      {key:'duracao',  label:'Duração (min)',      required:false},
+      {key:'plano',    label:'Convênio',           required:false},
+      {key:'semana',   label:'Semana',             required:false},
+      {key:'presenca', label:'Presença',           required:false},
+      {key:'evolucao', label:'Evolução',           required:false},
     ],
     autoMatch:{
-      paciente:['paciente','nome','beneficiario'],
-      data:['data','date','dia'],
-      evolucao:['evolução','evolucao','evolution','texto','notas','observ'],
-      horaIni:['horário início','hora inicio','inicio','start'],
-      horaFim:['horário fim','hora fim','fim','end'],
-      presenca:['presença','presenca','presence','presença'],
-      terapeuta:['terapeuta','profissional','therapist'],
-      plano:['convênio','convenio','plano'],
+      paciente:['paciente','nome'],
+      data:    ['data','date'],
+      horaIni: ['horário início','horario inicio','hora início','inicio','start'],
+      horaFim: ['horário fim','horario fim','hora fim','fim','end'],
+      duracao: ['duração','duracao','duration'],
+      plano:   ['convênio','convenio','plano'],
+      semana:  ['semana','week'],
+      presenca:['presença','presenca'],
+      evolucao:['evolução','evolucao','evolution','texto','notas'],
     },
-    demo:"Data,Paciente,HorárioInício,HorárioFim,Terapeuta,Convênio,Presença,Evolução\n30/03/2026,Ana Maria Silva,08:00,09:00,Dra. Maria Cecília,SulAmérica,Presente,Paciente apresentou boa evolução na sessão.",
+    demo:"ID,Data,Horário Início,Horário Fim,Duração (min),Paciente,Convênio,Semana,Presença,Evolução,Mês,Ano,Registrado em\n,2026-04-08,09:00,09:30,30,Ana Maria Silva,SulAmérica,Abril Semana 2,Presente,Paciente apresentou boa evolução.,4,2026,2026-04-08 12:00:00",
   },
 
   planos: {
@@ -8654,25 +8940,39 @@ function processRowsByType() {
         break;
       }
       case 'evolucoes':{
-        item.paciente=impGetCell(row,'paciente');
-        item.dataStr=impGetCell(row,'data');
-        item.evolucao=impGetCell(row,'evolucao');
-        item.horaIni=impGetCell(row,'horaIni');
-        item.horaFim=impGetCell(row,'horaFim');
-        item.presenca=impGetCell(row,'presenca');
-        item.terapNome=impGetCell(row,'terapeuta');
-        item.planoNome=impGetCell(row,'plano');
+        item.paciente  = impGetCell(row,'paciente');
+        item.dataStr   = impGetCell(row,'data');
+        item.evolucao  = impGetCell(row,'evolucao');
+        item.horaIni   = impGetCell(row,'horaIni');
+        item.horaFim   = impGetCell(row,'horaFim');
+        item.durStr    = impGetCell(row,'duracao');
+        item.presenca  = impGetCell(row,'presenca');
+        item.convNome  = impGetCell(row,'plano');
+        item.semana    = impGetCell(row,'semana');
         if(!item.paciente) issues.push('Paciente obrigatório');
         if(!item.dataStr)  issues.push('Data obrigatória');
-        item.dataISO=parseISODate(item.dataStr);
-        const pac=encontrarPacientePorNome(item.paciente);
-        if(!pac) warnings.push('Paciente não encontrado — vinculação não será feita');
-        item.pac=pac;
-        const profTokens=(item.terapNome||'').trim().toLowerCase().split(/\s+/);
-        const prof=PROFISSIONAIS.find(p=>profTokens.every(t=>p.nome.toLowerCase().includes(t)))||
-                   PROFISSIONAIS.find(p=>p.nome.toLowerCase().includes(profTokens[0]||''));
-        item.prof=prof;
-        item.detail=item.paciente; item.extra=item.dataStr;
+        // Normaliza data: yyyy-mm-dd ou dd/mm/yyyy
+        item.dataISO = '';
+        if (item.dataStr) {
+          let dm = item.dataStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (dm) { item.dataISO = dm[1]+'-'+dm[2]+'-'+dm[3]; }
+          else {
+            dm = item.dataStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+            if (dm) item.dataISO = (dm[3].length===2?'20'+dm[3]:dm[3])+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0');
+          }
+        }
+        const pac = encontrarPacientePorNome(item.paciente);
+        if (!pac) warnings.push('Paciente não encontrado — será ignorado');
+        item.pac = pac;
+        // Deduplicação por paciente + data + hora
+        const dupEvo = pac ? HISTORICO.find(h =>
+          h.pacId===pac.id && h.tipo==='evolucao' &&
+          h.data===(item.dataISO||item.dataStr) &&
+          (h.conteudo?.horaIni||'')===item.horaIni
+        ) : null;
+        if (dupEvo) warnings.push('Evolução já existe para esta data/horário');
+        item.dup = dupEvo;
+        item.detail = item.paciente; item.extra = item.dataStr + (item.horaIni?' '+item.horaIni:'');
         break;
       }
       case 'planos':{
@@ -8965,22 +9265,44 @@ async function impConfirmar() {
           break;
         }
         case 'evolucoes':{
-          const pac=r.pac;
-          if(!pac){skipped++;continue;}
-          const appt=APPOINTMENTS.find(a=>a.paciente===pac.nome&&(
-            (r.dataISO&&a.dataISO===r.dataISO)||(r.horaIni&&a.hora===r.horaIni)));
-          const hObj={id:nextHistId++,pacId:pac.id,tipo:'evolucao',
-            titulo:(r.presenca==='Presente'||r.presenca==='P'?'✓':'')+'Sessão — '+r.dataStr,
-            conteudo:{texto:r.evolucao||'',presenca:r.presenca||'',horaIni:r.horaIni||'',horaFim:r.horaFim||''},
-            profId:r.prof?.id||appt?.profId||0,data:r.dataISO||r.dataStr,
-            fonte:'Importação CSV',apptId:appt?.id||null};
-          const dbId=await sbInsert('historico',{pac_id:pac.id,tipo:'evolucao',titulo:hObj.titulo,
-            conteudo:hObj.conteudo,prof_id:hObj.profId||null,data:hObj.data,fonte:'Importação CSV'});
-          if(dbId) hObj.id=dbId;
+          const pac = r.pac;
+          if (!pac) { skipped++; continue; }
+          if (r.dup)  { skipped++; continue; } // ignora duplicatas
+          const pi = evoPresencaInfo(r.presenca);
+          const dateFmt = r.dataISO ? r.dataISO.split('-').reverse().join('/') : r.dataStr;
+          const titulo = pi.icon + ' Sessão — ' + dateFmt +
+            (r.horaIni ? ' · '+r.horaIni : '') +
+            (r.semana  ? ' · '+r.semana  : '');
+          const appt = APPOINTMENTS.find(a =>
+            a.paciente===pac.nome &&
+            ((r.dataISO && a.dataISO===r.dataISO) || (r.horaIni && a.hora===r.horaIni && a.paciente===pac.nome))
+          );
+          const hObj = {
+            id: nextHistId++, pacId: pac.id, tipo: 'evolucao', titulo,
+            conteudo: {
+              texto:    r.evolucao  || '',
+              presenca: r.presenca  || '',
+              horaIni:  r.horaIni   || '',
+              horaFim:  r.horaFim   || '',
+              duracao:  r.durStr    || '',
+              convenio: r.convNome  || '',
+              semana:   r.semana    || '',
+            },
+            profId: appt?.profId || 0,
+            data:   r.dataISO || r.dataStr,
+            fonte:  'Google Sheets',
+            apptId: appt?.id || null,
+          };
+          const dbId = await sbInsert('historico', {
+            pac_id: pac.id, tipo:'evolucao', titulo: hObj.titulo,
+            conteudo: hObj.conteudo, prof_id: hObj.profId||null,
+            data: hObj.data, fonte:'Google Sheets',
+          });
+          if (dbId) hObj.id = dbId;
           HISTORICO.push(hObj);
-          if(appt&&(r.presenca==='Presente'||r.presenca==='P'||r.presenca==='Sim')){
-            appt.status='atendido';
-            await sbUpdate('agendamentos',{status:'atendido'},appt.id);
+          if (appt && pi.status && appt.status !== pi.status) {
+            appt.status = pi.status;
+            await sbUpdate('agendamentos', { status: pi.status }, appt.id);
           }
           break;
         }
