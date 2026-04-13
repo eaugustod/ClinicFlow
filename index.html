@@ -452,8 +452,92 @@ a { text-decoration: none; color: inherit; }
 .btn-desmarcar  { background: rgba(248,113,113,0.18);color: #f87171; }
 
 /* ═══════════════════════════════════════
-   MONTH VIEW
+   WEEK VIEW — estrutura independente
 ═══════════════════════════════════════ */
+#agenda-week-view .week-grid-wrap {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 180px);
+}
+.week-time-col {
+  width: 58px;
+  min-width: 58px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 8;
+  background: var(--bg-surface);
+}
+.week-time-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-align: right;
+  padding-right: 8px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 3px;
+}
+.week-days-wrap {
+  flex: 1;
+  display: grid;
+  min-width: 0;
+}
+.week-day-header-row {
+  display: contents;
+}
+.week-day-hdr {
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  background: var(--bg-surface);
+  border-bottom: 2px solid var(--border);
+  border-left: 1px solid var(--border);
+  padding: 8px 4px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.week-day-hdr:hover { background: var(--bg-raised); }
+.week-day-hdr.is-today {
+  background: var(--accent-soft);
+  border-bottom-color: var(--accent);
+}
+.week-hour-row {
+  display: contents;
+}
+.week-cell {
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  min-height: 56px;
+  padding: 2px;
+  cursor: pointer;
+  transition: background var(--transition);
+  vertical-align: top;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.week-cell:hover { background: rgba(255,255,255,0.02); }
+.week-cell.is-today-col { background: rgba(79,142,247,0.025); }
+.week-cell.has-appts    { min-height: auto; }
+.week-card {
+  border-radius: 4px;
+  padding: 3px 5px 4px;
+  cursor: pointer;
+  border-left: 3px solid;
+  overflow: hidden;
+  transition: opacity var(--transition), transform var(--transition);
+  flex-shrink: 0;
+}
+.week-card:hover { opacity: 0.85; transform: translateY(-1px); }
+.week-card-hora  { font-size: 10px; font-weight: 700; white-space: nowrap; }
+.week-card-pac   { font-size: 11px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.week-card-plano { font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.week-card-prof  { font-size: 10px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1274,12 +1358,8 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
       <!-- Week view -->
       <div id="agenda-week-view" style="display:none">
-        <div class="agenda-day-wrap" style="overflow-x:auto">
-          <div class="agenda-grid-header" id="week-header"></div>
-          <div class="agenda-body">
-            <div class="time-column" id="week-time-col"></div>
-            <div class="prof-columns" id="week-cols" style="display:grid"></div>
-          </div>
+        <div class="week-grid-wrap" id="week-grid-wrap" style="overflow:auto;max-height:calc(100vh - 175px);border:1px solid var(--border);border-radius:var(--radius-md)">
+          <!-- Renderizado por renderWeekView() -->
         </div>
       </div>
 
@@ -3808,7 +3888,7 @@ function initApp() {
 // ═══════════════════════════════════════
 //  AGENDA — DAY VIEW
 // ═══════════════════════════════════════
-const HOURS = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
+const HOURS = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00'];
 
 function renderAgenda() {
   if (currentView==='mes')     renderMonthView();
@@ -4153,10 +4233,14 @@ function renderMonthView() {
   const today = new Date();
   for (let d = 1; d <= daysInMonth; d++) {
     const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===d;
-    const appts = APPOINTMENTS.slice(0, Math.floor(Math.random()*4));
-    html += `<div class="month-cell${isToday?' today':''}" onclick="dayClick(${d})">
+    const dISO = year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const dayAppts = APPOINTMENTS.filter(a =>
+      a.dataISO === dISO && activeProfFilters.has(a.profId)
+    ).slice(0, 3);
+    html += `<div class="month-cell${isToday?' today':''}" onclick="gotoWeekDay('${dISO}')">
       <div class="day-num">${d}</div>
-      ${appts.map(a => { const p=PROFISSIONAIS.find(pr=>pr.id===a.profId); return `<div class="month-appt" style="background:${p.cor}22;color:${p.cor}"><span class="dot" style="background:${p.cor}"></span>${a.paciente.split(' ')[0]}</div>`; }).join('')}
+      ${dayAppts.map(a => { const p=PROFISSIONAIS.find(pr=>pr.id===a.profId); return `<div class="month-appt" style="background:${p?.cor||'#4f8ef7'}22;color:${p?.cor||'#4f8ef7'}"><span class="dot" style="background:${p?.cor||'#4f8ef7'}"></span>${a.paciente.split(' ')[0]}</div>`; }).join('')}
+      ${APPOINTMENTS.filter(a=>a.dataISO===dISO&&activeProfFilters.has(a.profId)).length > 3 ? `<div style="font-size:10px;color:var(--text-muted);padding:1px 4px">+${APPOINTMENTS.filter(a=>a.dataISO===dISO&&activeProfFilters.has(a.profId)).length-3} mais</div>` : ''}
     </div>`;
   }
   const remaining = 42 - firstDay - daysInMonth;
@@ -4202,67 +4286,155 @@ function updateDateLabel() {
   }
 }
 function renderWeekView() {
-  // Get Monday of current week
-  const startOfWeek = new Date(currentDate);
-  const dow = startOfWeek.getDay(); // 0=Sun
-  startOfWeek.setDate(startOfWeek.getDate() - (dow===0?6:dow-1));
+  const wrap = document.getElementById('week-grid-wrap');
+  if (!wrap) return;
 
-  const dayNames = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  const weekDays = Array.from({length:7}, (_,i) => {
-    const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate()+i);
+  // Semana: Dom → Sáb
+  const startOfWeek = new Date(currentDate);
+  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+
+  const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const weekDays = Array.from({length: 7}, (_, i) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
     return d;
   });
 
   const activeProfs = PROFISSIONAIS.filter(p => activeProfFilters.has(p.id));
+  const todayStr    = new Date().toDateString();
 
-  // Build header: time spacer + 7 days × prof count columns
-  const hdrEl = document.getElementById('week-header');
-  const timeEl = document.getElementById('week-time-col');
-  const colsEl = document.getElementById('week-cols');
-  if (!hdrEl||!timeEl||!colsEl) return;
+  // Função auxiliar: hex ou named color → rgba string com alpha
+  function colorAlpha(cor, alpha) {
+    if (!cor) return 'rgba(79,142,247,'+alpha+')';
+    // Se começa com #
+    if (cor.startsWith('#')) {
+      const r = parseInt(cor.slice(1,3)||'00',16);
+      const g = parseInt(cor.slice(3,5)||'00',16);
+      const b = parseInt(cor.slice(5,7)||'00',16);
+      return 'rgba('+r+','+g+','+b+','+alpha+')';
+    }
+    return cor;
+  }
 
-  // For week view we show each day as a column with all profs layered
-  // Header: days of week
-  hdrEl.innerHTML = '<div class="time-header-spacer"></div>' +
-    weekDays.map((d,i) => {
-      const isToday = d.toDateString()===currentDate.toDateString();
-      return '<div class="prof-header" style="min-width:'+(Math.max(120, 140*activeProfs.length/5))+'px;'+(isToday?'border-bottom:2px solid var(--accent);background:var(--accent-soft)':'')+'">'+
-        '<div style="font-weight:600;font-size:12px;color:'+(isToday?'var(--accent)':'var(--text-primary)')+'">'+dayNames[i]+'</div>'+
-        '<div style="font-size:11px;color:var(--text-muted)">'+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'</div>'+
-      '</div>';
-    }).join('');
+  // Monta o HTML como tabela — garante alinhamento perfeito e altura automática por linha
+  let html = '<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
 
-  // Time column
-  timeEl.innerHTML = HOURS.map(h=>'<div class="time-slot">'+h+'</div>').join('');
+  // ── Cabeçalho ──────────────────────────────────────────────────────────────
+  html += '<thead><tr>';
+  html += '<th style="width:58px;min-width:58px;background:var(--bg-surface);border-bottom:2px solid var(--border);position:sticky;top:0;z-index:9;"></th>';
+  weekDays.forEach(d => {
+    const dISO    = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const isToday = d.toDateString() === todayStr;
+    const cnt     = APPOINTMENTS.filter(a => a.dataISO===dISO && activeProfs.some(p=>p.id===a.profId)).length;
+    html += '<th onclick="gotoWeekDay(\''+dISO+'\')" style="'+
+      'background:'+(isToday?'var(--accent-soft)':'var(--bg-surface)')+';'+
+      'border-left:1px solid var(--border);'+
+      'border-bottom:2px solid '+(isToday?'var(--accent)':'var(--border)')+';'+
+      'padding:8px 4px 6px;text-align:center;cursor:pointer;'+
+      'position:sticky;top:0;z-index:8;">';
+    html += '<div style="font-size:11px;font-weight:600;color:'+(isToday?'var(--accent)':'var(--text-muted)')+'">'+dayNames[d.getDay()]+'</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:'+(isToday?'var(--accent)':'var(--text-primary)')+'">'+d.getDate()+'</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted)">'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()+'</div>';
+    if (cnt) html += '<div style="font-size:10px;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:1px 6px;display:inline-block;margin-top:2px">'+cnt+'</div>';
+    html += '</th>';
+  });
+  html += '</tr></thead>';
 
-  // Columns: one per day
-  const totalCols = 7;
-  colsEl.style.gridTemplateColumns = 'repeat('+totalCols+', 1fr)';
+  // ── Corpo: uma linha por hora ───────────────────────────────────────────────
+  html += '<tbody>';
+  HOURS.forEach(h => {
+    // Verifica se há algum agendamento nessa hora em qualquer dia da semana
+    const hasAnyAppt = weekDays.some(d => {
+      const dISO = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      return APPOINTMENTS.some(a => a.dataISO===dISO && a.hora===h && activeProfs.some(p=>p.id===a.profId));
+    });
 
-  colsEl.innerHTML = weekDays.map((d,di) => {
-    const dISO = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    return '<div class="prof-col" style="min-width:140px">' +
-      HOURS.map(h => {
-        // Find appts on this day at this hour for any active prof
-        const appts = APPOINTMENTS.filter(a => {
-          const profOk = activeProfFilters.has(a.profId);
-          const dateOk = a.dataISO === dISO || (!a.dataISO && di===0);
-          return profOk && dateOk && a.hora === h;
+    html += '<tr>';
+
+    // Célula da hora
+    html += '<td style="'+
+      'width:58px;min-width:58px;'+
+      'font-size:10px;color:var(--text-muted);'+
+      'font-family:var(--font-mono);'+
+      'text-align:right;padding:3px 8px 0 0;'+
+      'vertical-align:top;'+
+      'border-right:1px solid var(--border);'+
+      'border-bottom:1px solid var(--border);'+
+      'background:var(--bg-surface);'+
+      'position:sticky;left:0;z-index:6;">'+h+'</td>';
+
+    // Uma célula por dia
+    weekDays.forEach(d => {
+      const dISO    = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const isToday = d.toDateString() === todayStr;
+      const appts   = APPOINTMENTS.filter(a =>
+        a.dataISO === dISO && a.hora === h && activeProfs.some(p => p.id === a.profId)
+      );
+
+      html += '<td onclick="slotClickWeek(event,\''+dISO+'\',\''+h+'\')" style="'+
+        'border-left:1px solid var(--border);'+
+        'border-bottom:1px solid var(--border);'+
+        'vertical-align:top;'+
+        'min-height:56px;'+
+        'padding:'+(appts.length ? '2px' : '0')+';'+
+        (isToday ? 'background:rgba(79,142,247,0.025);' : '')+
+        '">';
+
+      if (appts.length) {
+        appts.forEach(appt => {
+          const prof      = PROFISSIONAIS.find(p => p.id === appt.profId);
+          const cor       = prof?.cor || '#4f8ef7';
+          const bgColor   = colorAlpha(cor, 0.12);
+          const profLabel = prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : '';
+          const isOnline  = appt.modalidade === 'online';
+          const horaLabel = appt.hora + (appt.horaFim ? '–'+appt.horaFim : '');
+
+          // Dimmed se cancelado/desmarcado
+          const dimmed = (appt.status==='cancelado'||appt.status==='desmarcado') ? 'opacity:0.5;' : '';
+
+          html +=
+            '<div onclick="event.stopPropagation();openAppt('+appt.id+')" style="'+
+              'border-left:3px solid '+cor+';'+
+              'background:'+bgColor+';'+
+              'border-radius:4px;'+
+              'padding:3px 5px 4px;'+
+              'margin-bottom:2px;'+
+              'cursor:pointer;'+
+              dimmed+
+              'overflow:hidden;'+
+            '">' +
+              '<div style="font-size:10px;font-weight:700;color:'+cor+';white-space:nowrap">'+
+                horaLabel + (isOnline ? ' 🌐' : '') +
+              '</div>'+
+              '<div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary)">'+appt.paciente+'</div>'+
+              '<div style="font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)">'+appt.plano+'</div>'+
+              '<div style="font-size:10px;font-weight:500;color:'+cor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+profLabel+'</div>'+
+            '</div>';
         });
-        const prof = appts.length ? PROFISSIONAIS.find(p=>p.id===appts[0].profId) : null;
-        return '<div class="slot-row" onclick="slotClickWeek(event,\'' + dISO + '\',\'' + h + '\')">'+
-          (appts.length ? buildApptCard(appts[0], prof?.cor||'#4f8ef7') : '') +
-        '</div>';
-      }).join('') +
-    '</div>';
-  }).join('');
+      }
+
+      html += '</td>';
+    });
+
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function gotoWeekDay(dateISO) {
+  currentDate = new Date(dateISO + 'T12:00:00');
+  setAgendaView('dia', document.querySelector('.view-btn[onclick*="dia"]'));
+  updateDateLabel();
+  renderDayView();
 }
 
 function slotClickWeek(e, dateISO, hora) {
-  if (e.target.closest('.appt-card')) return;
-  // Pre-set the date for new appointment
-  const d = new Date(dateISO+'T12:00:00');
+  if (e.target.closest('.week-appt-card') || e.target.closest('.appt-card')) return;
+  const d = new Date(dateISO + 'T12:00:00');
   currentDate = d;
+  updateDateLabel();
   openNovoAgendamento(null, hora);
 }
 
@@ -4274,7 +4446,7 @@ function buildProfFilters() {
 }
 function toggleProfFilter(id, el) {
   activeProfFilters.has(id) ? (activeProfFilters.delete(id), el.style.opacity='0.4') : (activeProfFilters.add(id), el.style.opacity='1');
-  renderDayView();
+  renderAgenda();
 }
 
 // ═══════════════════════════════════════
