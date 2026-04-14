@@ -301,6 +301,50 @@ a { text-decoration: none; color: inherit; }
 /* Page content */
 .page { display: none; flex: 1; overflow-y: auto; padding: 24px; animation: fadeIn 0.2s ease; }
 .page.active { display: block; }
+
+/* Agenda page overrides — ocupa altura total, sem scroll na página inteira */
+#page-agenda {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+#page-agenda.active {
+  display: flex;
+}
+#page-agenda .agenda-toolbar {
+  flex-shrink: 0;
+  padding: 16px 24px 12px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-base);
+}
+#agenda-day-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  min-height: 0;
+}
+#agenda-week-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 0 8px;
+  min-height: 0;
+}
+#agenda-week-view .week-grid-wrap {
+  flex: 1;
+  min-height: 0;
+}
+#agenda-month-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0 8px;
+  min-height: 0;
+}
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ═══════════════════════════════════════
@@ -359,21 +403,34 @@ a { text-decoration: none; color: inherit; }
 .filter-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 /* Agenda Day View */
-.agenda-day-wrap { overflow-x: auto; }
+.agenda-day-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
 .agenda-day-grid {
   display: grid;
   min-width: 900px;
 }
 .agenda-time-col { width: 68px; min-width: 68px; }
-.agenda-grid-header {
-  display: flex; position: sticky; top: 0; z-index: 10;
+
+/* Header dos profissionais — fixo, sem scroll vertical, scroll horizontal sincronizado */
+.agenda-header-scroll {
+  flex-shrink: 0;
+  overflow: hidden;          /* esconde scrollbar — scroll feito via JS */
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0;
+  border-bottom: 2px solid var(--border);
+}
+.agenda-grid-header {
+  display: flex;
+  white-space: nowrap;
+  background: var(--bg-surface);
 }
 .time-header-spacer { width: 68px; min-width: 68px; flex-shrink: 0; }
 .prof-header {
-  flex: 1; padding: 10px 8px;
+  flex: 1; min-width: 160px; padding: 10px 8px;
   display: flex; align-items: center; gap: 8px;
   border-left: 1px solid var(--border);
   overflow: hidden;
@@ -382,9 +439,18 @@ a { text-decoration: none; color: inherit; }
 .prof-header-name { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prof-header-spec { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
-.agenda-body { display: flex; }
+/* Área de slots — ÚNICA com scroll vertical e horizontal */
+.agenda-body {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  min-height: 0;
+}
 .time-column {
   width: 68px; min-width: 68px; flex-shrink: 0;
+  position: sticky; left: 0; z-index: 4;
+  background: var(--bg-base);
 }
 .time-slot {
   height: 64px; display: flex; align-items: flex-start;
@@ -1347,9 +1413,13 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
       <!-- Day view -->
       <div id="agenda-day-view">
-        <div class="agenda-day-wrap">
-          <div class="agenda-grid-header" id="agenda-header"></div>
-          <div class="agenda-body">
+        <div class="agenda-day-wrap" id="agenda-day-wrap">
+          <!-- Cabeçalho fixo dos profissionais -->
+          <div class="agenda-header-scroll" id="agenda-header-scroll">
+            <div class="agenda-grid-header" id="agenda-header"></div>
+          </div>
+          <!-- Slots — rolagem vertical e horizontal sincronizada com header -->
+          <div class="agenda-body" id="agenda-body-scroll">
             <div class="time-column" id="time-col"></div>
             <div class="prof-columns" id="prof-cols"></div>
           </div>
@@ -3920,6 +3990,16 @@ function renderDayView() {
       return `<div class="slot-row" onclick="slotClick(event,${p.id},'${h}')">${appt ? buildApptCard(appt, p.cor) : ''}</div>`;
     }).join('')}</div>`;
   }).join('');
+
+  // ── Sincroniza scroll horizontal entre body e cabeçalho ───────────────────
+  const bodyEl   = document.getElementById('agenda-body-scroll');
+  const hdrScroll= document.getElementById('agenda-header-scroll');
+  if (bodyEl && hdrScroll) {
+    // Remove listener antigo para não acumular
+    if (bodyEl._scrollSyncHandler) bodyEl.removeEventListener('scroll', bodyEl._scrollSyncHandler);
+    bodyEl._scrollSyncHandler = () => { hdrScroll.scrollLeft = bodyEl.scrollLeft; };
+    bodyEl.addEventListener('scroll', bodyEl._scrollSyncHandler);
+  }
 }
 
 function buildApptCard(appt, cor) {
@@ -4257,9 +4337,10 @@ function setAgendaView(view, btn) {
   currentView = view;
   document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  document.getElementById('agenda-day-view').style.display   = view==='dia'     ? 'block' : 'none';
-  document.getElementById('agenda-week-view').style.display  = view==='semana'  ? 'block' : 'none';
-  document.getElementById('agenda-month-view').style.display = view==='mes'     ? 'block' : 'none';
+  // day view usa flex para que o header fique fixo e os slots rolem
+  document.getElementById('agenda-day-view').style.display   = view==='dia'    ? 'flex' : 'none';
+  document.getElementById('agenda-week-view').style.display  = view==='semana' ? 'flex' : 'none';
+  document.getElementById('agenda-month-view').style.display = view==='mes'    ? 'block' : 'none';
   updateDateLabel(); renderAgenda();
 }
 function changeDate(dir) {
