@@ -409,26 +409,37 @@ a { text-decoration: none; color: inherit; }
   flex: 1;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
 }
-.agenda-day-grid {
-  display: grid;
-  min-width: 900px;
-}
-.agenda-time-col { width: 68px; min-width: 68px; }
 
-/* Header dos profissionais — fixo, sem scroll vertical, scroll horizontal sincronizado */
-.agenda-header-scroll {
-  flex-shrink: 0;
-  overflow: hidden;          /* esconde scrollbar — scroll feito via JS */
+/* Área única de scroll — header fica sticky dentro dela */
+.agenda-scroll-area {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  position: relative;
+}
+
+/* Container interno com largura mínima — evita compressão abaixo do mínimo */
+.agenda-inner {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content; /* cresce conforme os profissionais — nunca comprime */
+}
+
+/* Cabeçalho dos profissionais — sticky no topo do scroll */
+.agenda-grid-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: var(--bg-surface);
   border-bottom: 2px solid var(--border);
 }
-.agenda-grid-header {
-  display: flex;
-  white-space: nowrap;
+.time-header-spacer {
+  width: 68px; min-width: 68px; flex-shrink: 0;
   background: var(--bg-surface);
 }
-.time-header-spacer { width: 68px; min-width: 68px; flex-shrink: 0; }
 .prof-header {
   flex: 1; min-width: 160px; padding: 10px 8px;
   display: flex; align-items: center; gap: 8px;
@@ -439,13 +450,10 @@ a { text-decoration: none; color: inherit; }
 .prof-header-name { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prof-header-spec { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
-/* Área de slots — ÚNICA com scroll vertical e horizontal */
+/* Linha com coluna de horas + colunas de profissionais */
 .agenda-body {
   display: flex;
   flex: 1;
-  overflow-y: auto;
-  overflow-x: auto;
-  min-height: 0;
 }
 .time-column {
   width: 68px; min-width: 68px; flex-shrink: 0;
@@ -460,6 +468,7 @@ a { text-decoration: none; color: inherit; }
   font-family: var(--font-mono);
   border-right: 1px solid var(--border);
   position: relative;
+  background: var(--bg-base);
 }
 .time-slot::after {
   content: ''; position: absolute;
@@ -469,7 +478,7 @@ a { text-decoration: none; color: inherit; }
 }
 .prof-columns { flex: 1; display: flex; min-width: 0; }
 .prof-col {
-  flex: 1; min-width: 0;
+  flex: 1; min-width: 160px; /* mesmo min-width do .prof-header */
   border-left: 1px solid var(--border);
   position: relative;
 }
@@ -1413,15 +1422,16 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
       <!-- Day view -->
       <div id="agenda-day-view">
-        <div class="agenda-day-wrap" id="agenda-day-wrap">
-          <!-- Cabeçalho fixo dos profissionais -->
-          <div class="agenda-header-scroll" id="agenda-header-scroll">
-            <div class="agenda-grid-header" id="agenda-header"></div>
-          </div>
-          <!-- Slots — rolagem vertical e horizontal sincronizada com header -->
-          <div class="agenda-body" id="agenda-body-scroll">
-            <div class="time-column" id="time-col"></div>
-            <div class="prof-columns" id="prof-cols"></div>
+        <div class="agenda-day-wrap">
+          <!-- Único container com scroll — header sticky dentro dele -->
+          <div class="agenda-scroll-area" id="agenda-scroll-area">
+            <div class="agenda-inner">
+              <div class="agenda-grid-header" id="agenda-header"></div>
+              <div class="agenda-body">
+                <div class="time-column" id="time-col"></div>
+                <div class="prof-columns" id="prof-cols"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3967,14 +3977,13 @@ function renderAgenda() {
 }
 
 function renderDayView() {
-  // Calcula ISO da data atual selecionada (sem depender de toISOString que tem bug de fuso)
   const cd = currentDate;
   const currentISO = cd.getFullYear()+'-'+String(cd.getMonth()+1).padStart(2,'0')+'-'+String(cd.getDate()).padStart(2,'0');
 
   const profs = PROFISSIONAIS.filter(p => activeProfFilters.has(p.id));
   document.getElementById('agenda-header').innerHTML =
     `<div class="time-header-spacer"></div>` +
-    profs.map(p => `<div class="prof-header" style="min-width:160px">
+    profs.map(p => `<div class="prof-header">
       <div class="prof-color-dot" style="background:${p.cor}"></div>
       <div><div class="prof-header-name">${p.nomeAgenda || p.nome.split(' ')[0]}</div><div class="prof-header-spec">${p.esp}</div></div>
     </div>`).join('');
@@ -3983,23 +3992,12 @@ function renderDayView() {
     `<div class="time-slot">${h}</div>`).join('');
 
   document.getElementById('prof-cols').innerHTML = profs.map(p => {
-    // FILTRO POR DATA: só agendamentos do dia selecionado
     const appts = APPOINTMENTS.filter(a => a.profId === p.id && a.dataISO === currentISO);
     return `<div class="prof-col">${HOURS.map(h => {
       const appt = appts.find(a => a.hora === h);
       return `<div class="slot-row" onclick="slotClick(event,${p.id},'${h}')">${appt ? buildApptCard(appt, p.cor) : ''}</div>`;
     }).join('')}</div>`;
   }).join('');
-
-  // ── Sincroniza scroll horizontal entre body e cabeçalho ───────────────────
-  const bodyEl   = document.getElementById('agenda-body-scroll');
-  const hdrScroll= document.getElementById('agenda-header-scroll');
-  if (bodyEl && hdrScroll) {
-    // Remove listener antigo para não acumular
-    if (bodyEl._scrollSyncHandler) bodyEl.removeEventListener('scroll', bodyEl._scrollSyncHandler);
-    bodyEl._scrollSyncHandler = () => { hdrScroll.scrollLeft = bodyEl.scrollLeft; };
-    bodyEl.addEventListener('scroll', bodyEl._scrollSyncHandler);
-  }
 }
 
 function buildApptCard(appt, cor) {
