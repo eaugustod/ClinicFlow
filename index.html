@@ -277,6 +277,18 @@ a { text-decoration: none; color: inherit; }
 }
 .btn-icon:hover { background: var(--bg-overlay); color: var(--text-primary); border-color: var(--border-mid); }
 .btn-icon svg { width: 16px; height: 16px; }
+.btn-icon:hover { background: var(--bg-overlay); color: var(--text-primary); border-color: var(--border-mid); }
+
+/* Botão de sincronização */
+#btn-sync-dados { color: var(--text-secondary); transition: color var(--transition); }
+#btn-sync-dados:hover { color: var(--accent); }
+#btn-sync-dados.syncing { color: var(--accent); pointer-events: none; }
+#btn-sync-dados.syncing svg { animation: spin-sync 0.8s linear infinite; }
+#btn-sync-dados.success { color: var(--success); }
+@keyframes spin-sync {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 .btn-sm {
   padding: 7px 14px;
   border-radius: var(--radius-md);
@@ -1329,6 +1341,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     <div class="topbar">
       <div class="topbar-title" id="topbar-title">Dashboard</div>
       <div class="topbar-actions" id="topbar-actions">
+        <!-- Botão sincronizar dados do banco -->
+        <button class="btn-icon" id="btn-sync-dados" onclick="sincronizarDados()" title="Sincronizar dados do banco de dados">
+          <svg id="sync-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        </button>
         <button class="btn-icon" title="Notificações">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
         </button>
@@ -3724,6 +3740,109 @@ function refreshUI(opts = {}) {
       const tabName = activeTab?.id?.replace('htab-', '') || 'linha';
       histTab(tabName, activeTab);
     } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════
+//  SINCRONIZAR DADOS — botão do topbar
+//  Relê todos os dados do Supabase sem
+//  logout, mantendo a tela atual aberta
+// ═══════════════════════════════════════
+async function sincronizarDados() {
+  const btn  = document.getElementById('btn-sync-dados');
+  const icon = document.getElementById('sync-icon');
+  if (!btn) return;
+
+  // Verifica se Supabase está conectado
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (!sb) {
+    showToast('Supabase não conectado — configure as credenciais em Configurações', 'error');
+    return;
+  }
+
+  // Inicia animação
+  btn.classList.add('syncing');
+  btn.title = 'Sincronizando...';
+
+  try {
+    // ── Função de busca paginada (mesma do loadFromSupabase) ──────────────
+    const fetchAll = async (query, orderCol, asc = true) => {
+      const PAGE = 1000; let all = [], from = 0, hasMore = true;
+      while (hasMore) {
+        const q = asc
+          ? query.order(orderCol).range(from, from + PAGE - 1)
+          : query.order(orderCol, { ascending: false }).range(from, from + PAGE - 1);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (data && data.length > 0) { all = all.concat(data); from += PAGE; hasMore = data.length === PAGE; }
+        else hasMore = false;
+      }
+      return all;
+    };
+
+    // ── Mapas de conversão (referencia os do Supabase patch) ──────────────
+    const m = window._cfMap || {};
+    const rep = (arr, data, fn) => { arr.length = 0; (data || []).forEach(r => arr.push(fn(r))); };
+
+    // ── Busca paralela de todas as tabelas ────────────────────────────────
+    const [prof, pl, proc, lo, se, esp, cfg] = await Promise.all([
+      sb.from('profissionais').select('*').order('nome').limit(5000),
+      sb.from('planos_saude').select('*').order('nome').limit(500),
+      sb.from('procedimentos').select('*').order('descricao').limit(5000),
+      sb.from('lotes_tiss').select('*').order('created_at', { ascending: false }).limit(2000),
+      sb.from('senhas_plano').select('*').order('created_at', { ascending: false }).limit(5000),
+      sb.from('lista_espera').select('*').order('created_at', { ascending: false }).limit(2000),
+      sb.from('config_clinica').select('*').limit(1),
+    ]);
+    const pac  = await fetchAll(sb.from('pacientes').select('*'),  'nome');
+    const ag   = await fetchAll(sb.from('agendamentos').select('*'), 'data_iso');
+    const gu   = await fetchAll(sb.from('guias_sadt').select('*'),  'created_at', false);
+    const hist = await fetchAll(sb.from('historico').select('*'),   'data', false);
+
+    // ── Atualiza arrays em memória ────────────────────────────────────────
+    if (m.dbToPac)   rep(PACIENTES,    pac,       m.dbToPac);
+    if (m.dbToProf)  rep(PROFISSIONAIS,prof.data, m.dbToProf);
+    if (m.dbToPlano) rep(PLANOS,       pl.data,   m.dbToPlano);
+    if (m.dbToProc)  rep(PROCEDIMENTOS,proc.data, m.dbToProc);
+    if (m.dbToAppt)  rep(APPOINTMENTS, ag,        m.dbToAppt);
+    if (m.dbToGuia)  rep(GUIAS,        gu,        m.dbToGuia);
+    if (m.dbToLote)  rep(LOTES,        lo.data,   m.dbToLote);
+    if (m.dbToSenha) rep(SENHAS_PLANO, se.data,   m.dbToSenha);
+    if (m.dbToEspera)rep(LISTA_ESPERA, esp.data,  m.dbToEspera);
+    if (m.dbToHist)  rep(HISTORICO,    hist,      m.dbToHist);
+    if (cfg.data && cfg.data.length > 0) Object.assign(CLINICA, cfg.data[0].dados || {});
+
+    // Recalcula próximos IDs
+    const maxId = arr => arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
+    nextPacId    = maxId(PACIENTES);
+    nextPrfId    = maxId(PROFISSIONAIS);
+    nextPlId     = maxId(PLANOS);
+    nextProcId   = maxId(PROCEDIMENTOS);
+    nextGuiaId   = maxId(GUIAS);
+    nextLoteId   = maxId(LOTES);
+    nextSenhaId  = maxId(SENHAS_PLANO);
+    nextEsperaId = maxId(LISTA_ESPERA);
+    nextHistId   = maxId(HISTORICO);
+    activeProfFilters = new Set(PROFISSIONAIS.map(p => p.id));
+
+    // ── Atualiza toda a UI ────────────────────────────────────────────────
+    refreshUI();
+
+    // Feedback visual de sucesso
+    btn.classList.remove('syncing');
+    btn.classList.add('success');
+    btn.title = 'Dados sincronizados ✓';
+    showToast('✓ Dados sincronizados — ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos', 'success');
+    setTimeout(() => {
+      btn.classList.remove('success');
+      btn.title = 'Sincronizar dados do banco de dados';
+    }, 3000);
+
+  } catch (e) {
+    btn.classList.remove('syncing');
+    btn.title = 'Sincronizar dados do banco de dados';
+    showToast('Erro ao sincronizar: ' + e.message, 'error');
+    console.error('[Sync]', e);
   }
 }
 
@@ -10637,6 +10756,7 @@ function showToast(msg, type='success') {
 
   window.loadFromSupabase = loadFromSupabase;
   window._cfGetDb = getDb; // expõe getDb para impConfirmar e outros módulos
+  window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 })();
 </script>
