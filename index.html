@@ -3692,6 +3692,42 @@ function gotoPage(page, el) {
 // ═══════════════════════════════════════
 
 // ═══════════════════════════════════════
+//  REFRESH CENTRAL — atualiza toda a UI
+//  Chamada após qualquer operação de
+//  escrita (salvar, excluir, importar)
+// ═══════════════════════════════════════
+function refreshUI(opts = {}) {
+  // opts.skipHistorico = true → não re-abre o histórico (evita piscar quando não necessário)
+  const safe = fn => { try { window[fn] && window[fn](); } catch(e) {} };
+
+  safe('renderDashboard');
+  safe('updateNavBadges');
+  safe('renderPacientesTable');
+  safe('renderProfissionaisTable');
+  safe('renderPlanosGrid');
+  safe('renderProcedimentosTable');
+  safe('renderGuiasList');
+  safe('renderLotesTable');
+  safe('renderSenhas');
+  safe('renderEsperaTable');
+  safe('buildProfFilters');
+  safe('populateSelects');
+  safe('renderAgenda');
+  safe('renderRelatorios');
+  safe('renderSidebarLogo');
+
+  // Histórico do paciente: re-abre o que estava aberto
+  if (!opts.skipHistorico && historicoAtualPacId) {
+    try {
+      abrirHistPaciente(historicoAtualPacId);
+      const activeTab = document.querySelector('#hist-tabs-area .imp-tab.active');
+      const tabName = activeTab?.id?.replace('htab-', '') || 'linha';
+      histTab(tabName, activeTab);
+    } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════
 //  DASHBOARD — dados dinâmicos
 // ═══════════════════════════════════════
 function renderDashboard() {
@@ -8041,10 +8077,7 @@ async function evoImpConfirmar() {
   if (importados>0) {
     setTimeout(()=>{
       closeModal('modal-importar-evolucoes');
-      try { abrirHistPaciente(historicoAtualPacId); } catch(e) {}
-      try { histTab('evolucoes', document.getElementById('htab-evolucoes')); } catch(e) {}
-      try { renderTimeline(); } catch(e) {}
-      try { renderDayView(); } catch(e) {}
+      refreshUI();
     }, 500);
   }
 }
@@ -9790,25 +9823,8 @@ async function impConfirmar() {
 
   if(btn){btn.disabled=false;btn.textContent='Confirmar importação';}
 
-  // Refresh affected modules
-  try{renderPacientesTable();}catch(e){}
-  try{renderProfissionaisTable();}catch(e){}
-  try{renderPlanosGrid();}catch(e){}
-  try{renderProcedimentosTable();}catch(e){}
-  try{renderGuiasList();}catch(e){}
-  try{renderLotesTable();}catch(e){}
-  try{renderSenhas();}catch(e){}
-  try{renderHistPacList();}catch(e){}
-  try{buildProfFilters();}catch(e){}
-  try{populateSelects();}catch(e){}
-  try{renderDayView();}catch(e){}
-  try{renderDashboard();}catch(e){}
-  // Se importou evoluções ou anamnese, atualiza o histórico do paciente aberto
-  if ((type === 'evolucoes' || type === 'anamnese') && historicoAtualPacId) {
-    try { abrirHistPaciente(historicoAtualPacId); } catch(e) {}
-    try { renderTimeline(); } catch(e) {}
-    try { renderEvolucoes(); } catch(e) {}
-  }
+  // Refresh central — atualiza todos os módulos afetados
+  refreshUI();
 
   // Show result
   const schema=IMP_SCHEMAS[type];
@@ -9978,11 +9994,14 @@ function showToast(msg, type='success') {
       nextHistId   = maxId(HISTORICO);
       activeProfFilters = new Set(PROFISSIONAIS.map(p => p.id));
 
-      // Re-render all modules
-      ['renderPacientesTable','renderProfissionaisTable','renderPlanosGrid','renderProcedimentosTable',
-       'renderGuiasList','renderLotesTable','renderSenhas','renderHistPacList','buildProfFilters',
-       'populateSelects','renderDayView','renderSidebarLogo','renderDashboard','renderRelatorios',
-       'updateNavBadges'].forEach(fn => { try { window[fn](); } catch(e) {} });
+      // Re-render all modules via refreshUI central
+      try { refreshUI(); } catch(e) {
+        // Fallback caso refreshUI ainda não esteja definida no momento do load inicial
+        ['renderPacientesTable','renderProfissionaisTable','renderPlanosGrid','renderProcedimentosTable',
+         'renderGuiasList','renderLotesTable','renderSenhas','buildProfFilters',
+         'populateSelects','renderDayView','renderSidebarLogo','renderDashboard','renderRelatorios',
+         'updateNavBadges'].forEach(fn => { try { window[fn](); } catch(e2) {} });
+      }
 
       showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
     } catch (e) {
@@ -10054,7 +10073,7 @@ function showToast(msg, type='success') {
       PACIENTES.push(dados);
       showToast('Paciente cadastrado!', 'success');
     }
-    closeModal('modal-paciente'); renderPacientesTable(); populateSelects();
+    closeModal('modal-paciente'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarProfissional ───────────────────────────────────────────
@@ -10086,7 +10105,7 @@ function showToast(msg, type='success') {
       activeProfFilters.add(dados.id);
       showToast('Profissional cadastrado!', 'success');
     }
-    closeModal('modal-profissional'); renderProfissionaisTable(); renderProfToday(); buildProfFilters(); populateSelects(); renderDayView();
+    closeModal('modal-profissional'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarPlano ──────────────────────────────────────────────────
@@ -10119,7 +10138,7 @@ function showToast(msg, type='success') {
       PLANOS.push(dados);
       showToast('Plano cadastrado!', 'success');
     }
-    closeModal('modal-plano'); renderPlanosGrid(); populateSelects(); renderProcedimentosTable();
+    closeModal('modal-plano'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarProcedimento ───────────────────────────────────────────
@@ -10151,7 +10170,7 @@ function showToast(msg, type='success') {
       if (codigo) TUSS_TABLE[codigo] = { desc, valor: dados.valPlano };
       showToast('Procedimento cadastrado!', 'success');
     }
-    closeModal('modal-procedimento'); renderProcedimentosTable(); renderPlanosGrid();
+    closeModal('modal-procedimento'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarAgendamento ────────────────────────────────────────────
@@ -10262,7 +10281,7 @@ function showToast(msg, type='success') {
       try { updateNavBadges(); } catch(e) {}
       showToast('Agendamento criado!', 'success');
     }
-    closeModal('modal-agendamento'); renderDayView();
+    closeModal('modal-agendamento'); refreshUI();
   };
 
   // ── Override updateStatus ─────────────────────────────────────────────────
@@ -10275,7 +10294,7 @@ function showToast(msg, type='success') {
     if (status === 'atendido') try { registrarAtendimento(id); } catch (e) {}
     const msgs = { confirmado:'Consulta confirmada!', atendido:'Marcado como atendido!', desmarcado:'Consulta desmarcada.', cancelado:'Agendamento cancelado.' };
     showToast(msgs[status] || 'Status atualizado.', ['desmarcado','cancelado'].includes(status) ? 'error' : 'success');
-    renderDayView();
+    refreshUI();
   };
 
   // ── Override cancelarAgendamento ──────────────────────────────────────────
@@ -10286,7 +10305,7 @@ function showToast(msg, type='success') {
     appt.status = 'cancelado';
     const sb = getDb();
     if (sb) await sb.from('agendamentos').update({ status: 'cancelado' }).eq('id', currentApptId);
-    closeModal('modal-agendamento'); renderDayView();
+    closeModal('modal-agendamento'); refreshUI();
     showToast('Agendamento cancelado.', 'error');
   };
 
@@ -10332,7 +10351,7 @@ function showToast(msg, type='success') {
       GUIAS.push(dados);
       showToast('Guia SADT criada!', 'success');
     }
-    closeModal('modal-guia'); renderGuiasList();
+    closeModal('modal-guia'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarLote ───────────────────────────────────────────────────
@@ -10368,7 +10387,7 @@ function showToast(msg, type='success') {
       });
       showToast('Lote ' + num + ' criado com ' + selectedIds.length + ' guias!', 'success');
     }
-    closeModal('modal-lote'); renderLotesTable(); renderGuiasList();
+    closeModal('modal-lote'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarSenha ──────────────────────────────────────────────────
@@ -10402,7 +10421,7 @@ function showToast(msg, type='success') {
       SENHAS_PLANO.push(dados);
       showToast('Autorização cadastrada!', 'success');
     }
-    closeModal('modal-senha'); renderSenhas();
+    closeModal('modal-senha'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarEspera ─────────────────────────────────────────────────
@@ -10426,7 +10445,7 @@ function showToast(msg, type='success') {
       LISTA_ESPERA.push(dados);
       showToast('Adicionado à lista de espera!', 'success');
     }
-    closeModal('modal-espera'); renderEsperaTable();
+    closeModal('modal-espera'); refreshUI({ skipHistorico: true });
   };
 
   // ── Override salvarEvolucao ───────────────────────────────────────────────
@@ -10459,10 +10478,7 @@ function showToast(msg, type='success') {
       showToast('Evolução registrada!', 'success');
     }
     closeModal('modal-evolucao');
-    // Atualiza stats e abas de histórico
-    try { abrirHistPaciente(historicoAtualPacId); } catch(e) {}
-    histTab('evolucoes', document.getElementById('htab-evolucoes'));
-    renderTimeline();
+    refreshUI(); // atualiza histórico, timeline, dashboard e agenda
   };
 
   // ── Override salvarConfigClinica (com gravação no Supabase) ───────────────
@@ -10486,25 +10502,25 @@ function showToast(msg, type='success') {
     if (!confirm('Excluir este paciente? Esta ação não pode ser desfeita.')) return;
     const sb = getDb(); if (sb) await sb.from('pacientes').delete().eq('id', id);
     const i = PACIENTES.findIndex(p => p.id === id); if (i > -1) PACIENTES.splice(i, 1);
-    renderPacientesTable(); populateSelects(); showToast('Paciente excluído.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Paciente excluído.', 'error');
   };
   window.excluirProfissional = async function (id) {
     if (!confirm('Excluir este profissional?')) return;
     const sb = getDb(); if (sb) await sb.from('profissionais').delete().eq('id', id);
     const i = PROFISSIONAIS.findIndex(p => p.id === id); if (i > -1) PROFISSIONAIS.splice(i, 1);
-    renderProfissionaisTable(); buildProfFilters(); populateSelects(); renderDayView(); showToast('Excluído.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Excluído.', 'error');
   };
   window.excluirPlano = async function (id) {
     if (!confirm('Excluir este plano?')) return;
     const sb = getDb(); if (sb) await sb.from('planos_saude').delete().eq('id', id);
     const i = PLANOS.findIndex(p => p.id === id); if (i > -1) PLANOS.splice(i, 1);
-    renderPlanosGrid(); populateSelects(); showToast('Excluído.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Excluído.', 'error');
   };
   window.excluirProcedimento = async function (id) {
     if (!confirm('Excluir este procedimento?')) return;
     const sb = getDb(); if (sb) await sb.from('procedimentos').delete().eq('id', id);
     const i = PROCEDIMENTOS.findIndex(p => p.id === id); if (i > -1) PROCEDIMENTOS.splice(i, 1);
-    renderProcedimentosTable(); showToast('Excluído.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Excluído.', 'error');
   };
   window.excluirGuia = async function (id) {
     if (!confirm('Excluir esta guia?')) return;
@@ -10523,12 +10539,11 @@ function showToast(msg, type='success') {
         if (sb) sb.from('senhas_plano').update({
           qtd_usada: senhaRev.qtdUsada, status: senhaRev.status, ativa: senhaRev.ativa
         }).eq('id', senhaRev.id);
-        renderSenhas();
       }
     }
     if (sb) await sb.from('guias_sadt').delete().eq('id', id);
     const i = GUIAS.findIndex(g => g.id === id); if (i > -1) GUIAS.splice(i, 1);
-    renderGuiasList(); showToast('Guia excluída.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Guia excluída.', 'error');
   };
   window.excluirLote = async function (id) {
     if (!confirm('Excluir este lote? As guias voltarão para pendente.')) return;
@@ -10536,13 +10551,13 @@ function showToast(msg, type='success') {
     if (l && l.guiaIds) l.guiaIds.forEach(gid => { const g = GUIAS.find(x => x.id === gid); if (g) { g.loteId = null; g.loteNum = null; g.status = 'Pendente'; const sb = getDb(); if (sb) sb.from('guias_sadt').update({ lote_id: null, lote_num: null, status: 'Pendente' }).eq('id', gid); } });
     const sb = getDb(); if (sb) await sb.from('lotes_tiss').delete().eq('id', id);
     const i = LOTES.findIndex(x => x.id === id); if (i > -1) LOTES.splice(i, 1);
-    renderLotesTable(); renderGuiasList(); showToast('Lote excluído.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Lote excluído.', 'error');
   };
   window.excluirSenha = async function (id) {
     if (!confirm('Excluir esta autorização?')) return;
     const sb = getDb(); if (sb) await sb.from('senhas_plano').delete().eq('id', id);
     const i = SENHAS_PLANO.findIndex(s => s.id === id); if (i > -1) SENHAS_PLANO.splice(i, 1);
-    renderSenhas(); showToast('Autorização excluída.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Autorização excluída.', 'error');
   };
   window.excluirEspera = async function (id) {
     const e = LISTA_ESPERA.find(x => x.id === id);
@@ -10550,26 +10565,20 @@ function showToast(msg, type='success') {
     if (!confirm('Remover da lista de espera?')) return;
     const sb = getDb(); if (sb) await sb.from('lista_espera').delete().eq('id', id);
     const i = LISTA_ESPERA.findIndex(x => x.id === id); if (i > -1) LISTA_ESPERA.splice(i, 1);
-    renderEsperaTable(); showToast('Removido da lista.', 'error');
+    refreshUI({ skipHistorico: true }); showToast('Removido da lista.', 'error');
   };
   window.excluirHistorico = async function (id) {
     if (!confirm('Excluir este registro?')) return;
     const sb = getDb(); if (sb) await sb.from('historico').delete().eq('id', id);
     const i = HISTORICO.findIndex(h => h.id === id); if (i > -1) HISTORICO.splice(i, 1);
-    try {
-      const activeTab = document.querySelector('.imp-tab.active');
-      const tabName = activeTab?.id?.replace('htab-', '') || 'linha';
-      histTab(tabName, activeTab);
-      renderTimeline();
-      if (historicoAtualPacId) abrirHistPaciente(historicoAtualPacId);
-    } catch (e) {}
+    refreshUI(); // inclui re-abertura do histórico do paciente atual
     showToast('Registro excluído.', 'error');
   };
   window.excluirAgendamento = async function (id) {
     if (!confirm('Excluir este agendamento permanentemente?')) return;
     const sb = getDb(); if (sb) await sb.from('agendamentos').delete().eq('id', id);
     const i = APPOINTMENTS.findIndex(a => a.id === id); if (i > -1) APPOINTMENTS.splice(i, 1);
-    closeModal('modal-agendamento'); renderDayView(); showToast('Agendamento excluído.', 'error');
+    closeModal('modal-agendamento'); refreshUI(); showToast('Agendamento excluído.', 'error');
   };
 
   // ── Função testarConexaoSupabase ──────────────────────────────────────────
