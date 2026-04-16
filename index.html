@@ -2677,6 +2677,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         Cancelar agendamento
       </button>
+      <button class="btn-sm" id="btn-cancelou-terapia" style="display:none;color:#f59e0b;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3)" onclick="cancelouTerapia()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+        Cancelou terapia
+      </button>
       <button class="btn-sm" id="btn-excluir-agendamento" style="display:none;color:var(--danger);background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25)" onclick="excluirAgendamentoComGuia()">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
         Excluir agendamento
@@ -3903,15 +3907,20 @@ function renderDashboard() {
         const initials = a.paciente.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
         const s = statusMap[a.status] || {cls:'gray', lbl: a.status};
         const cor = prof ? prof.cor : '#8b92a8';
+        const canAct = !['cancelado','desmarcado'].includes(a.status);
         return '<tr>' +
           '<td><span style="font-family:var(--font-mono);color:var(--text-secondary)">' + (a.hora||'—') + '</span></td>' +
           '<td><div style="display:flex;align-items:center;gap:8px"><div class="avatar-sm" style="background:rgba(79,142,247,0.12);color:var(--accent);flex-shrink:0">' + initials + '</div><span>' + a.paciente + '</span></div></td>' +
           '<td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + cor + ';display:inline-block;flex-shrink:0"></span>' + (prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : '—') + '</span></td>' +
           '<td>' + (a.plano || '—') + '</td>' +
           '<td><span class="chip ' + s.cls + '">' + s.lbl + '</span></td>' +
-          '<td><div class="table-actions">' +
-            (a.status === 'agendado' ? '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="confirmado" title="Confirmar"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>' : '') +
-            (a.status !== 'atendido' && a.status !== 'cancelado' && a.status !== 'desmarcado' ? '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="atendido" title="Atendido"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></button>' : '') +
+          '<td><div class="table-actions" style="gap:4px">' +
+            (a.status === 'agendado' ?
+              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="confirmado" title="Confirmar consulta" style="color:var(--success)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>' : '') +
+            (a.status !== 'atendido' && canAct ?
+              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="atendido" title="Marcar como atendido" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></button>' : '') +
+            (canAct ?
+              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="desmarcado" title="Desmarcar consulta" style="color:var(--danger)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>' : '') +
           '</div></td>' +
         '</tr>';
       }).join('');
@@ -4298,6 +4307,9 @@ function openAppt(id) {
   // Cancel button — show only for editable statuses
   const cancelBtn = document.getElementById('btn-cancelar-agendamento');
   if (cancelBtn) cancelBtn.style.display = ['agendado','confirmado'].includes(appt.status) ? 'inline-flex' : 'none';
+  // Cancelou terapia — mostra quando o agendamento está ativo (cancela todos os futuros do paciente)
+  const cancelTerapiaBtn = document.getElementById('btn-cancelou-terapia');
+  if (cancelTerapiaBtn) cancelTerapiaBtn.style.display = ['agendado','confirmado','atendido'].includes(appt.status) ? 'inline-flex' : 'none';
   const delAgBtn = document.getElementById('btn-excluir-agendamento');
   if (delAgBtn) delAgBtn.style.display = 'inline-flex';
 
@@ -6583,6 +6595,8 @@ function openNovoAgendamento(profId, hora, paciente) {
   document.getElementById('btn-imprimir-guia').style.display = 'none';
   const cancelBtn = document.getElementById('btn-cancelar-agendamento');
   if (cancelBtn) cancelBtn.style.display = 'none';
+  const cancelTerapiaBtn = document.getElementById('btn-cancelou-terapia');
+  if (cancelTerapiaBtn) cancelTerapiaBtn.style.display = 'none';
   const delAgBtn = document.getElementById('btn-excluir-agendamento');
   if (delAgBtn) delAgBtn.style.display = 'none';
   // Reset modalidade to presencial
@@ -6680,6 +6694,76 @@ function cancelarAgendamento() {
   closeModal('modal-agendamento');
   renderDayView();
   showToast('Agendamento cancelado.','error');
+}
+
+// ═══════════════════════════════════════
+//  CANCELOU TERAPIA
+//  Cancela todos os agendamentos futuros
+//  do paciente a partir do dia atual e
+//  exclui guias futuras associadas
+// ═══════════════════════════════════════
+async function cancelouTerapia() {
+  if (!currentApptId) return;
+  const appt = APPOINTMENTS.find(a => a.id === currentApptId);
+  if (!appt) return;
+
+  const nomePac = appt.paciente;
+  const hoje = new Date();
+  const hojeISO = hoje.getFullYear() + '-' +
+    String(hoje.getMonth()+1).padStart(2,'0') + '-' +
+    String(hoje.getDate()).padStart(2,'0');
+
+  // Conta quantos agendamentos futuros existem
+  const futuros = APPOINTMENTS.filter(a =>
+    a.paciente === nomePac &&
+    a.dataISO >= hojeISO &&
+    !['cancelado','desmarcado'].includes(a.status)
+  );
+  const guiasFuturas = GUIAS.filter(g =>
+    g.pac === nomePac &&
+    (g.data || '') >= hojeISO &&
+    g.status !== 'Enviado' &&
+    g.status !== 'Pago'
+  );
+
+  const msg = `Cancelar terapia de "${nomePac}"?\n\n` +
+    `• ${futuros.length} agendamento(s) a partir de hoje serão cancelados\n` +
+    `• ${guiasFuturas.length} guia(s) futura(s) pendente(s) serão excluídas\n\n` +
+    `Esta ação não pode ser desfeita.`;
+
+  if (!confirm(msg)) return;
+
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  let agCancelados = 0, guiasExcluidas = 0;
+
+  // ── Cancela agendamentos futuros ──────────────────────────────────────────
+  for (const a of futuros) {
+    a.status = 'cancelado';
+    agCancelados++;
+    if (sb) {
+      try { await sb.from('agendamentos').update({ status: 'cancelado' }).eq('id', a.id); }
+      catch(e) { console.error('[cancelouTerapia] ag', e); }
+    }
+  }
+
+  // ── Exclui guias futuras pendentes ────────────────────────────────────────
+  for (const g of guiasFuturas) {
+    const idx = GUIAS.findIndex(x => x.id === g.id);
+    if (idx > -1) GUIAS.splice(idx, 1);
+    guiasExcluidas++;
+    if (sb) {
+      try { await sb.from('guias_sadt').delete().eq('id', g.id); }
+      catch(e) { console.error('[cancelouTerapia] guia', e); }
+    }
+  }
+
+  closeModal('modal-agendamento');
+  refreshUI();
+  showToast(
+    `Terapia cancelada — ${agCancelados} agendamento(s) cancelado(s)` +
+    (guiasExcluidas > 0 ? ` · ${guiasExcluidas} guia(s) excluída(s)` : ''),
+    'error'
+  );
 }
 
 // ─── PLANOS ──────────────────────────────────────────────────────────────────
