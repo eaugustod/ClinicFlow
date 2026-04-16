@@ -289,6 +289,9 @@ a { text-decoration: none; color: inherit; }
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* Cards de tema na configuração */
+.theme-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .btn-sm {
   padding: 7px 14px;
   border-radius: var(--radius-md);
@@ -2088,6 +2091,117 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div style="max-width:700px">
         <h2 style="font-size:18px;font-weight:600;margin-bottom:20px;letter-spacing:-0.3px">Configurações do sistema</h2>
 
+        <!-- Aparência / Temas -->
+        <div class="table-card" style="padding:24px;margin-bottom:16px">
+          <div class="section-divider" style="margin-top:0">Aparência</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">Escolha o tema visual do sistema</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="theme-grid">
+
+            <!-- Dark Azul (padrão) -->
+            <div class="theme-card" id="theme-dark" onclick="aplicarTema('dark')"
+              style="border-radius:var(--radius-md);overflow:hidden;cursor:pointer;border:2px solid var(--accent);transition:all var(--transition)">
+              <div style="height:56px;background:#0f1117;display:flex;gap:3px;padding:6px">
+                <div style="width:28px;background:#161b27;border-radius:3px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="height:10px;background:#1e2535;border-radius:2px"></div>
+                  <div style="height:6px;background:#4f8ef7;border-radius:2px;width:60%"></div>
+                  <div style="height:6px;background:#1e2535;border-radius:2px;width:80%"></div>
+                </div>
+              </div>
+              <div style="background:#161b27;padding:6px 8px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:600;color:#eef0f6">Dark Azul</span>
+                <span id="theme-dark-check" style="color:#4f8ef7;font-size:13px">✓</span>
+              </div>
+            </div>
+
+            <!-- Dark Roxo -->
+            <div class="theme-card" id="theme-dark-purple" onclick="aplicarTema('dark-purple')"
+              style="border-radius:var(--radius-md);overflow:hidden;cursor:pointer;border:2px solid var(--border-mid);transition:all var(--transition)">
+              <div style="height:56px;background:#0e0f1a;display:flex;gap:3px;padding:6px">
+                <div style="width:28px;background:#14162b;border-radius:3px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="height:10px;background:#1c1f36;border-radius:2px"></div>
+                  <div style="height:6px;background:#8b5cf6;border-radius:2px;width:60%"></div>
+                  <div style="height:6px;background:#1c1f36;border-radius:2px;width:80%"></div>
+                </div>
+              </div>
+              <div style="background:#14162b;padding:6px 8px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:600;color:#e2e4f0">Dark Roxo</span>
+                <span id="theme-dark-purple-check" style="color:#8b5cf6;font-size:13px;display:none">✓</span>
+              </div>
+            </div>
+
+            <!-- Dark Verde -->
+            <div class="theme-card" id="theme-dark-green" onclick="aplicarTema('dark-green')"
+              style="border-radius:var(--radius-md);overflow:hidden;cursor:pointer;border:2px solid var(--border-mid);transition:all var(--transition)">
+              <div style="height:56px;background:#0a1210;display:flex;gap:3px;padding:6px">
+                <div style="width:28px;background:#0f1f1c;border-radius:3px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="height:10px;background:#162924;border-radius:2px"></div>
+                  <div style="height:6px;background:#10b981;border-radius:2px;width:60%"></div>
+                  <div style="height:6px;background:#162924;border-radius:2px;width:80%"></div>
+                </div>
+              </div>
+              <div style="background:#0f1f1c;padding:6px 8px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:600;color:#d1fae5">Dark Verde</span>
+                <span id="theme-dark-green-check" style="color:#10b981;font-size:13px;display:none">✓</span>
+              </div>
+            </div>
+
+            <!-- Dark Cobre -->
+            <div class="theme-card" id="theme-dark-amber" onclick="aplicarTema('dark-amber')"
+              style="border-radius:var(--radius-md);overflow:hidden;cursor:pointer;border:2px solid var(--border-mid);transition:all var(--transition)">
+              <div style="height:56px;background:#110e08;display:flex;gap:3px;padding:6px">
+                <div style="width:28px;background:#1c170e;border-radius:3px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="height:10px;background:#26200f;border-radius:2px"></div>
+                  <div style="height:6px;background:#f59e0b;border-radius:2px;width:60%"></div>
+                  <div style="height:6px;background:#26200f;border-radius:2px;width:80%"></div>
+                </div>
+              </div>
+              <div style="background:#1c170e;padding:6px 8px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:600;color:#fef3c7">Dark Cobre</span>
+                <span id="theme-dark-amber-check" style="color:#f59e0b;font-size:13px;display:none">✓</span>
+              </div>
+            </div>
+
+            <!-- Light Azul -->
+            <div class="theme-card" id="theme-light" onclick="aplicarTema('light')"
+              style="border-radius:var(--radius-md);overflow:hidden;cursor:pointer;border:2px solid var(--border-mid);transition:all var(--transition)">
+              <div style="height:56px;background:#f0f4fb;display:flex;gap:3px;padding:6px">
+                <div style="width:28px;background:#e2e8f4;border-radius:3px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="height:10px;background:#ffffff;border-radius:2px;border:1px solid #e2e8f0"></div>
+                  <div style="height:6px;background:#3b82f6;border-radius:2px;width:60%"></div>
+                  <div style="height:6px;background:#e2e8f4;border-radius:2px;width:80%"></div>
+                </div>
+              </div>
+              <div style="background:#e2e8f4;padding:6px 8px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:600;color:#1e293b">Light Azul</span>
+                <span id="theme-light-check" style="color:#3b82f6;font-size:13px;display:none">✓</span>
+              </div>
+            </div>
+
+            <!-- Light Neutro -->
+            <div class="theme-card" id="theme-light-neutral" onclick="aplicarTema('light-neutral')"
+              style="border-radius:var(--radius-md);overflow:hidden;cursor:pointer;border:2px solid var(--border-mid);transition:all var(--transition)">
+              <div style="height:56px;background:#f8f9fa;display:flex;gap:3px;padding:6px">
+                <div style="width:28px;background:#f1f3f5;border-radius:3px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="height:10px;background:#ffffff;border-radius:2px;border:1px solid #dee2e6"></div>
+                  <div style="height:6px;background:#6366f1;border-radius:2px;width:60%"></div>
+                  <div style="height:6px;background:#f1f3f5;border-radius:2px;width:80%"></div>
+                </div>
+              </div>
+              <div style="background:#f1f3f5;padding:6px 8px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:600;color:#212529">Light Neutro</span>
+                <span id="theme-light-neutral-check" style="color:#6366f1;font-size:13px;display:none">✓</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
         <!-- Dados da clínica -->
         <div class="table-card" style="padding:24px;margin-bottom:16px">
           <div class="section-divider" style="margin-top:0">Dados da clínica</div>
@@ -3748,6 +3862,167 @@ function refreshUI(opts = {}) {
 }
 
 // ═══════════════════════════════════════
+//  TEMAS — definições e aplicação
+// ═══════════════════════════════════════
+const TEMAS = {
+  'dark': {
+    '--bg-base':       '#0f1117',
+    '--bg-surface':    '#161b27',
+    '--bg-raised':     '#1e2535',
+    '--bg-overlay':    '#242c3d',
+    '--border':        'rgba(255,255,255,0.07)',
+    '--border-mid':    'rgba(255,255,255,0.12)',
+    '--text-primary':  '#eef0f6',
+    '--text-secondary':'#8b92a8',
+    '--text-muted':    '#555d74',
+    '--accent':        '#4f8ef7',
+    '--accent-glow':   'rgba(79,142,247,0.18)',
+    '--accent-soft':   'rgba(79,142,247,0.12)',
+    '--success':       '#34d399',
+    '--warning':       '#fbbf24',
+    '--danger':        '#f87171',
+    '--info':          '#60a5fa',
+    '--shadow-sm':     '0 1px 3px rgba(0,0,0,0.4)',
+    '--shadow-md':     '0 4px 16px rgba(0,0,0,0.35)',
+    '--shadow-lg':     '0 8px 32px rgba(0,0,0,0.5)',
+  },
+  'dark-purple': {
+    '--bg-base':       '#0e0f1a',
+    '--bg-surface':    '#14162b',
+    '--bg-raised':     '#1c1f36',
+    '--bg-overlay':    '#232645',
+    '--border':        'rgba(255,255,255,0.07)',
+    '--border-mid':    'rgba(255,255,255,0.12)',
+    '--text-primary':  '#e2e4f0',
+    '--text-secondary':'#8b8fad',
+    '--text-muted':    '#555872',
+    '--accent':        '#8b5cf6',
+    '--accent-glow':   'rgba(139,92,246,0.18)',
+    '--accent-soft':   'rgba(139,92,246,0.12)',
+    '--success':       '#34d399',
+    '--warning':       '#fbbf24',
+    '--danger':        '#f87171',
+    '--info':          '#a78bfa',
+    '--shadow-sm':     '0 1px 3px rgba(0,0,0,0.4)',
+    '--shadow-md':     '0 4px 16px rgba(0,0,0,0.35)',
+    '--shadow-lg':     '0 8px 32px rgba(0,0,0,0.5)',
+  },
+  'dark-green': {
+    '--bg-base':       '#0a1210',
+    '--bg-surface':    '#0f1f1c',
+    '--bg-raised':     '#162924',
+    '--bg-overlay':    '#1c342e',
+    '--border':        'rgba(255,255,255,0.07)',
+    '--border-mid':    'rgba(255,255,255,0.12)',
+    '--text-primary':  '#d1fae5',
+    '--text-secondary':'#7aad99',
+    '--text-muted':    '#3d6b5a',
+    '--accent':        '#10b981',
+    '--accent-glow':   'rgba(16,185,129,0.18)',
+    '--accent-soft':   'rgba(16,185,129,0.12)',
+    '--success':       '#34d399',
+    '--warning':       '#fbbf24',
+    '--danger':        '#f87171',
+    '--info':          '#6ee7b7',
+    '--shadow-sm':     '0 1px 3px rgba(0,0,0,0.4)',
+    '--shadow-md':     '0 4px 16px rgba(0,0,0,0.35)',
+    '--shadow-lg':     '0 8px 32px rgba(0,0,0,0.5)',
+  },
+  'dark-amber': {
+    '--bg-base':       '#110e08',
+    '--bg-surface':    '#1c170e',
+    '--bg-raised':     '#26200f',
+    '--bg-overlay':    '#312816',
+    '--border':        'rgba(255,255,255,0.07)',
+    '--border-mid':    'rgba(255,255,255,0.12)',
+    '--text-primary':  '#fef3c7',
+    '--text-secondary':'#b8a070',
+    '--text-muted':    '#6b5a30',
+    '--accent':        '#f59e0b',
+    '--accent-glow':   'rgba(245,158,11,0.18)',
+    '--accent-soft':   'rgba(245,158,11,0.12)',
+    '--success':       '#34d399',
+    '--warning':       '#fb923c',
+    '--danger':        '#f87171',
+    '--info':          '#fcd34d',
+    '--shadow-sm':     '0 1px 3px rgba(0,0,0,0.4)',
+    '--shadow-md':     '0 4px 16px rgba(0,0,0,0.35)',
+    '--shadow-lg':     '0 8px 32px rgba(0,0,0,0.5)',
+  },
+  'light': {
+    '--bg-base':       '#f0f4fb',
+    '--bg-surface':    '#ffffff',
+    '--bg-raised':     '#f5f7fc',
+    '--bg-overlay':    '#eaeff8',
+    '--border':        'rgba(0,0,0,0.08)',
+    '--border-mid':    'rgba(0,0,0,0.14)',
+    '--text-primary':  '#1e293b',
+    '--text-secondary':'#475569',
+    '--text-muted':    '#94a3b8',
+    '--accent':        '#3b82f6',
+    '--accent-glow':   'rgba(59,130,246,0.15)',
+    '--accent-soft':   'rgba(59,130,246,0.1)',
+    '--success':       '#059669',
+    '--warning':       '#d97706',
+    '--danger':        '#dc2626',
+    '--info':          '#2563eb',
+    '--shadow-sm':     '0 1px 3px rgba(0,0,0,0.1)',
+    '--shadow-md':     '0 4px 16px rgba(0,0,0,0.1)',
+    '--shadow-lg':     '0 8px 32px rgba(0,0,0,0.15)',
+  },
+  'light-neutral': {
+    '--bg-base':       '#f8f9fa',
+    '--bg-surface':    '#ffffff',
+    '--bg-raised':     '#f1f3f5',
+    '--bg-overlay':    '#e9ecef',
+    '--border':        'rgba(0,0,0,0.08)',
+    '--border-mid':    'rgba(0,0,0,0.14)',
+    '--text-primary':  '#212529',
+    '--text-secondary':'#495057',
+    '--text-muted':    '#adb5bd',
+    '--accent':        '#6366f1',
+    '--accent-glow':   'rgba(99,102,241,0.15)',
+    '--accent-soft':   'rgba(99,102,241,0.1)',
+    '--success':       '#059669',
+    '--warning':       '#d97706',
+    '--danger':        '#dc2626',
+    '--info':          '#4f46e5',
+    '--shadow-sm':     '0 1px 3px rgba(0,0,0,0.08)',
+    '--shadow-md':     '0 4px 16px rgba(0,0,0,0.1)',
+    '--shadow-lg':     '0 8px 32px rgba(0,0,0,0.12)',
+  },
+};
+
+function aplicarTema(id) {
+  const tema = TEMAS[id];
+  if (!tema) return;
+  const root = document.documentElement;
+  Object.entries(tema).forEach(([k, v]) => root.style.setProperty(k, v));
+  // Salva no localStorage
+  localStorage.setItem('cf_tema', id);
+  // Atualiza bordas dos cards de tema e checkmarks
+  Object.keys(TEMAS).forEach(t => {
+    const card  = document.getElementById('theme-' + t);
+    const check = document.getElementById('theme-' + t + '-check');
+    const accentColor = TEMAS[t]['--accent'];
+    if (card)  card.style.border  = t === id ? '2px solid ' + accentColor : '2px solid rgba(128,128,128,0.2)';
+    if (check) check.style.display = t === id ? 'inline' : 'none';
+  });
+  // Reaplica gradientes do login com nova cor de accent
+  const acc = tema['--accent'];
+  const accR = parseInt(acc.replace('#','').slice(0,2)||'4f',16);
+  const accG = parseInt(acc.replace('#','').slice(2,4)||'8e',16);
+  const accB = parseInt(acc.replace('#','').slice(4,6)||'f7',16);
+  root.style.setProperty('--accent-glow', `rgba(${accR},${accG},${accB},0.18)`);
+  root.style.setProperty('--accent-soft', `rgba(${accR},${accG},${accB},0.12)`);
+}
+
+function carregarTemaSalvo() {
+  const id = localStorage.getItem('cf_tema') || 'dark';
+  aplicarTema(id);
+}
+
+// ═══════════════════════════════════════
 //  SINCRONIZAR DADOS — botão do topbar
 //  Relê todos os dados do Supabase sem
 //  logout, mantendo a tela atual aberta
@@ -4153,6 +4428,7 @@ function renderRelatorios() {
 }
 
 function initApp() {
+  carregarTemaSalvo(); // aplica o tema salvo antes de qualquer render
   renderPacientesTable();
   renderProfissionaisTable();
   renderProfToday();
@@ -10082,6 +10358,11 @@ function showToast(msg, type='success') {
   c.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(-8px)'; setTimeout(() => t.remove(), 300); }, 3500);
 }
+
+// Aplica tema salvo imediatamente — antes do login aparecer
+document.addEventListener('DOMContentLoaded', function() {
+  try { if (typeof carregarTemaSalvo === 'function') carregarTemaSalvo(); } catch(e) {}
+});
 
 </script>
 
