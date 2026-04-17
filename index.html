@@ -5671,11 +5671,15 @@ function proximoDiaUtil(d, pularFimSemana = false) {
 }
 
 // Dado o dia de semana do agendamento (0=Dom..6=Sáb), retorna o offset em dias para a 2ª guia
-// Regra: +2 dias, exceto Qui→+5(Ter) e Sex→+5(Qua) para não cair no fim de semana
+// Regra:
+//   Qui (4) → Ter da mesma semana: recua -3 dias
+//   Sex (5) → Qua da mesma semana: recua -2 dias (só se ainda no mês, senão avança +5)
+//   Demais  → avança +2 dias
+// Nota: o offset pode ser NEGATIVO (recua na semana)
 function offsetSegundaGuia(dowAgendamento) {
-  if (dowAgendamento === 4) return 5;  // Qui → Ter (+5)
-  if (dowAgendamento === 5) return 5;  // Sex → Qua (+5)
-  return 2;                            // demais → +2 dias
+  if (dowAgendamento === 4) return -3;  // Qui → Ter (mesmo semana, recua 3)
+  if (dowAgendamento === 5) return -2;  // Sex → Qua (mesmo semana, recua 2)
+  return 2;                             // demais → +2 dias
 }
 
 // Calcula quantas sessões cabem no mês a partir da data de início
@@ -5772,16 +5776,18 @@ function previewGuiasAutomaticas() {
     const plano = PLANOS.find(p => p.id === senha.planoId);
     if (!plano) return;
 
-    // ── Match flexível de nome: busca agendamentos do paciente ───────────
+    // ── Match flexível de nome: busca TODOS os agendamentos do mês ───────
+    // Independente da data de autorização — considera todo o período do mês
     const nomeSenha = senha.paciente.toLowerCase();
     const apptsMes = APPOINTMENTS.filter(a => {
       if (!a.dataISO || a.dataISO < primISO || a.dataISO > ultISO) return false;
       if (['cancelado','desmarcado'].includes(a.status)) return false;
-      // Match por nome: aceita subconjunto de tokens
+      // Match flexível por tokens do nome
       const nomeAppt = a.paciente.toLowerCase();
-      const tokens = nomeSenha.split(/\s+/).filter(t => t.length > 1);
-      return tokens.every(t => nomeAppt.includes(t)) ||
-             nomeAppt.split(/\s+/).filter(t=>t.length>1).every(t => nomeSenha.includes(t));
+      const tokensS  = nomeSenha.split(/\s+/).filter(t => t.length > 1);
+      const tokensA  = nomeAppt.split(/\s+/).filter(t => t.length > 1);
+      return tokensS.every(t => nomeAppt.includes(t)) ||
+             tokensA.every(t => nomeSenha.includes(t));
     }).sort((a,b) => a.dataISO.localeCompare(b.dataISO));
 
     if (!apptsMes.length) return;
@@ -5790,11 +5796,12 @@ function previewGuiasAutomaticas() {
     const restantes = senha.qtdAutorizada - senha.qtdUsada;
     if (restantes <= 0) return;
 
-    // ── Data de início = máx(dataAut, 1º do mês) ───────────────────────
-    const dataInicio = senha.dataAut && senha.dataAut > primISO
+    // ── Data de início para contagem: usa dataAut se disponível, senão 1º do mês
+    // Mas para a GERAÇÃO das guias considera TODOS os agendamentos do mês
+    // A dataInicio é usada apenas para limitar o MAX de sessões no mês
+    const dataInicio = senha.dataAut && senha.dataAut >= primISO && senha.dataAut <= ultISO
       ? new Date(senha.dataAut + 'T12:00:00')
       : primeiroDiaMes;
-    const dataIniISO = dateToISO(dataInicio);
 
     // ── Calcula sessões permitidas no mês a partir da data de início ────
     // Conta quantas semanas (ou dias de semana) cabem entre dataInicio e fim do mês
@@ -5817,8 +5824,6 @@ function previewGuiasAutomaticas() {
       if (guiasContadas >= restantes) return;
 
       const dataAppt = new Date(appt.dataISO + 'T12:00:00');
-      if (dataAppt < dataInicio) return;
-
       const durMin = appt.durMin || 30;
       const is60   = durMin >= 60; // 60+ min → 2 guias; 30 min → 1 guia
 
@@ -5827,12 +5832,25 @@ function previewGuiasAutomaticas() {
       while (isFeriado(dateToISO(data1))) data1 = addDays(data1, 1);
       const data1ISO = dateToISO(data1);
 
-      // ── Guia 2: só para 60 min (+2 dias, exceto Qui→+5, Sex→+5) ──────
+      // ── Guia 2: só para 60 min ────────────────────────────────────────
+      // Qui → Ter da mesma semana (offset -3)
+      // Sex → Qua da mesma semana (offset -2)
+      // Demais → +2 dias na semana
       let data2ISO = null;
       if (is60 && guiasContadas + 1 < restantes) {
-        let data2 = addDays(dataAppt, offsetSegundaGuia(dataAppt.getDay()));
-        while (isFeriado(dateToISO(data2))) data2 = addDays(data2, 1);
-        if (data2 <= ultimoDiaMes) data2ISO = dateToISO(data2);
+        const offset = offsetSegundaGuia(dataAppt.getDay());
+        let data2 = addDays(dataAppt, offset);
+        // Pula feriados: se offset negativo, recua mais; se positivo, avança
+        if (offset < 0) {
+          while (isFeriado(dateToISO(data2))) data2 = addDays(data2, -1);
+        } else {
+          while (isFeriado(dateToISO(data2))) data2 = addDays(data2, 1);
+        }
+        // Aceita data2 mesmo que seja antes da data1 (recuo na semana para Qui/Sex)
+        // Desde que esteja dentro do mês
+        if (data2 >= primeiroDiaMes && data2 <= ultimoDiaMes) {
+          data2ISO = dateToISO(data2);
+        }
       }
 
       // ── Checa duplicatas ──────────────────────────────────────────────
@@ -5888,9 +5906,19 @@ function renderPreviewGG() {
   }
 
   tbody.innerHTML = _ggParsed.map((r, idx) => {
-    const d1Fmt = r.data1ISO ? r.data1ISO.split('-').reverse().join('/') : '—';
+    const dowAppt = new Date(r.appt.dataISO + 'T12:00:00').getDay();
+    const recuo   = r.is60 && (dowAppt === 4 || dowAppt === 5); // Qui ou Sex → data2 recua na semana
+    const dows    = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    const fmtData = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso+'T12:00:00');
+      return iso.split('-').reverse().join('/') + ' <span style="font-size:10px;color:var(--text-muted)">'+dows[d.getDay()]+'</span>';
+    };
+
+    const d1Fmt = r.data1ISO ? fmtData(r.data1ISO) : '—';
     const d2Fmt = r.data2ISO
-      ? r.data2ISO.split('-').reverse().join('/')
+      ? fmtData(r.data2ISO) + (recuo ? ' <span style="font-size:9px;color:var(--info);margin-left:2px">◀ mesma semana</span>' : '')
       : r.is60
         ? '<span style="color:var(--text-muted);font-size:10px">fora do mês</span>'
         : '<span style="color:var(--text-muted);font-size:10px">—</span>';
