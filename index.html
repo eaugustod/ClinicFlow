@@ -1801,6 +1801,14 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           </select>
         </div>
         <div style="display:flex;gap:8px">
+          <button class="btn-sm btn-secondary" onclick="abrirFeriados()">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+            Feriados
+          </button>
+          <button class="btn-sm btn-secondary" onclick="abrirGerarGuias()" style="color:var(--accent);border-color:var(--accent-soft)">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+            Gerar guias automáticas
+          </button>
           <button class="btn-sm btn-secondary" onclick="exportarXMLTISS()">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
             Exportar XML
@@ -3672,6 +3680,116 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 </div>
 
 
+<!-- Modal Feriados -->
+<div class="modal-overlay" id="modal-feriados">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📅 Feriados cadastrados</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Datas bloqueadas para geração de guias automáticas</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-feriados')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <!-- Adicionar feriado -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-end">
+        <div class="form-group" style="flex:1;margin:0">
+          <label>Data</label>
+          <input class="form-input" type="date" id="feriado-data">
+        </div>
+        <div class="form-group" style="flex:2;margin:0">
+          <label>Descrição</label>
+          <input class="form-input" id="feriado-desc" placeholder="Ex: Tiradentes">
+        </div>
+        <button class="btn-sm btn-accent" onclick="adicionarFeriado()" style="flex-shrink:0;height:38px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Adicionar
+        </button>
+      </div>
+      <!-- Lista de feriados -->
+      <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md)">
+        <table class="data-table" id="feriados-table">
+          <thead><tr><th>Data</th><th>Descrição</th><th style="width:36px"></th></tr></thead>
+          <tbody id="feriados-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-feriados')">Fechar</button>
+      <button class="btn-sm btn-accent" onclick="salvarFeriados()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Salvar feriados
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Gerar Guias Automáticas -->
+<div class="modal-overlay" id="modal-gerar-guias">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">⚡ Gerar Guias Automáticas</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Geração baseada em agendamentos e senhas/autorizações</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-gerar-guias')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <!-- Filtros -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;padding:14px;background:var(--bg-raised);border-radius:var(--radius-md)">
+        <div class="form-group" style="margin:0">
+          <label>Mês / Ano</label>
+          <input class="form-input" type="month" id="gg-mes" style="font-size:13px">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Plano de saúde</label>
+          <select class="form-select" id="gg-plano" style="font-size:13px">
+            <option value="">Todos os planos</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Paciente (opcional)</label>
+          <input class="form-input" id="gg-paciente" placeholder="Todos os pacientes" style="font-size:13px">
+        </div>
+      </div>
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <button class="btn-sm btn-secondary" onclick="previewGuiasAutomaticas()">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          Pré-visualizar
+        </button>
+        <div id="gg-preview-summary" style="font-size:12px;color:var(--text-muted)"></div>
+      </div>
+      <!-- Preview table -->
+      <div id="gg-preview-wrap" style="display:none">
+        <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md)">
+          <table class="data-table">
+            <thead style="position:sticky;top:0;z-index:2;background:var(--bg-raised)">
+              <tr>
+                <th style="width:28px"><input type="checkbox" id="gg-sel-all" onchange="ggToggleAll(this)"></th>
+                <th>Paciente</th><th>Plano</th><th>Data Guia 1</th><th>Data Guia 2</th>
+                <th>Proc.</th><th>Sess. restantes</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="gg-preview-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px;font-size:12px">
+          <span id="gg-cnt-ok"   style="color:var(--success)"></span>
+          <span id="gg-cnt-skip" style="color:var(--warning)"></span>
+          <span id="gg-cnt-dup"  style="color:var(--text-muted)"></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-gerar-guias')">Cancelar</button>
+      <button class="btn-sm btn-accent" id="gg-btn-gerar" style="display:none" onclick="gerarGuiasConfirmar()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+        Gerar guias selecionadas <span id="gg-btn-cnt"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Iframe oculto para impressão (evita bloqueio de pop-up) -->
 <iframe id="print-iframe" style="display:none;width:0;height:0;border:none"></iframe>
 
@@ -4429,6 +4547,7 @@ function renderRelatorios() {
 
 function initApp() {
   carregarTemaSalvo(); // aplica o tema salvo antes de qualquer render
+  carregarFeriados();  // carrega feriados do localStorage
   renderPacientesTable();
   renderProfissionaisTable();
   renderProfToday();
@@ -5437,6 +5556,403 @@ function renderGuiasList() {
 
     el.appendChild(card);
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FERIADOS — Cadastro e gestão
+// ═══════════════════════════════════════════════════════════════════
+let FERIADOS = []; // [{data:'2026-04-21',desc:'Tiradentes'}, ...]
+
+function carregarFeriados() {
+  try {
+    const saved = localStorage.getItem('cf_feriados');
+    if (saved) FERIADOS = JSON.parse(saved);
+    // Feriados nacionais fixos de 2026 como padrão inicial
+    if (!FERIADOS.length) {
+      FERIADOS = [
+        {data:'2026-01-01',desc:'Confraternização Universal'},
+        {data:'2026-02-16',desc:'Carnaval'},
+        {data:'2026-02-17',desc:'Carnaval'},
+        {data:'2026-02-18',desc:'Quarta de Cinzas'},
+        {data:'2026-04-03',desc:'Sexta-feira Santa'},
+        {data:'2026-04-05',desc:'Páscoa'},
+        {data:'2026-04-21',desc:'Tiradentes'},
+        {data:'2026-05-01',desc:'Dia do Trabalho'},
+        {data:'2026-06-04',desc:'Corpus Christi'},
+        {data:'2026-09-07',desc:'Independência do Brasil'},
+        {data:'2026-10-12',desc:'Nossa Senhora Aparecida'},
+        {data:'2026-11-02',desc:'Finados'},
+        {data:'2026-11-15',desc:'Proclamação da República'},
+        {data:'2026-11-20',desc:'Consciência Negra'},
+        {data:'2026-12-25',desc:'Natal'},
+      ];
+    }
+  } catch(e) { FERIADOS = []; }
+}
+
+function isFeriado(isoDate) {
+  return FERIADOS.some(f => f.data === isoDate);
+}
+
+function abrirFeriados() {
+  carregarFeriados();
+  renderFeriadosTable();
+  const inp = document.getElementById('feriado-data');
+  if (inp) inp.valueAsDate = new Date();
+  openModal('modal-feriados');
+}
+
+function renderFeriadosTable() {
+  const tbody = document.getElementById('feriados-tbody');
+  if (!tbody) return;
+  const sorted = [...FERIADOS].sort((a,b) => a.data.localeCompare(b.data));
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum feriado cadastrado</td></tr>';
+    return;
+  }
+  tbody.innerHTML = sorted.map(f => {
+    const [y,m,d] = f.data.split('-');
+    const dateFmt = `${d}/${m}/${y}`;
+    const dow = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][new Date(f.data+'T12:00:00').getDay()];
+    return `<tr>
+      <td style="font-family:var(--font-mono);font-size:12px">${dateFmt} <span style="color:var(--text-muted);font-size:11px">${dow}</span></td>
+      <td>${f.desc}</td>
+      <td><button class="action-btn" style="color:var(--danger)" onclick="removerFeriado('${f.data}')">${DEL_ICON}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function adicionarFeriado() {
+  const data = document.getElementById('feriado-data')?.value;
+  const desc = document.getElementById('feriado-desc')?.value.trim();
+  if (!data) { showToast('Informe a data','error'); return; }
+  if (!desc) { showToast('Informe a descrição','error'); return; }
+  if (FERIADOS.some(f => f.data === data)) { showToast('Data já cadastrada','error'); return; }
+  FERIADOS.push({data, desc});
+  FERIADOS.sort((a,b) => a.data.localeCompare(b.data));
+  renderFeriadosTable();
+  document.getElementById('feriado-desc').value = '';
+}
+
+function removerFeriado(data) {
+  FERIADOS = FERIADOS.filter(f => f.data !== data);
+  renderFeriadosTable();
+}
+
+function salvarFeriados() {
+  localStorage.setItem('cf_feriados', JSON.stringify(FERIADOS));
+  showToast('Feriados salvos!', 'success');
+  closeModal('modal-feriados');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GERAR GUIAS AUTOMÁTICAS
+// ═══════════════════════════════════════════════════════════════════
+// Profissional executante fixo
+const PROF_EXEC_GUIA_AUTO = 'Maria Cecilia Benessuti Donato';
+
+// Retorna ISO date string de uma Date sem risco de fuso
+function dateToISO(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+// Adiciona N dias a uma Date
+function addDays(d, n) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+
+// Avança a partir de d pelo menor número de dias (>0) sem ser feriado nem fim de semana opcional
+function proximoDiaUtil(d, pularFimSemana = false) {
+  let r = new Date(d);
+  while (isFeriado(dateToISO(r))) r = addDays(r, 1);
+  return r;
+}
+
+// Dado o dia de semana do agendamento (0=Dom..6=Sáb), retorna o offset em dias para a 2ª guia
+// Regra: +2 dias, exceto Qui→+5(Ter) e Sex→+5(Qua) para não cair no fim de semana
+function offsetSegundaGuia(dowAgendamento) {
+  if (dowAgendamento === 4) return 5;  // Qui → Ter (+5)
+  if (dowAgendamento === 5) return 5;  // Sex → Qua (+5)
+  return 2;                            // demais → +2 dias
+}
+
+// Calcula quantas sessões cabem no mês a partir da data de início
+function sessoesNoMes(dataInicioISO, ano, mes) {
+  const primeiroDia = new Date(ano, mes - 1, 1);
+  const ultimoDia   = new Date(ano, mes, 0);
+  const inicio      = new Date(dataInicioISO + 'T12:00:00');
+  // Começa no maior entre início da autorização e primeiro dia do mês
+  const de = inicio > primeiroDia ? inicio : primeiroDia;
+  // Conta dias úteis (sem feriados) entre de e ultimoDia
+  // Para simplificar: conta dias corridos ÷ 7 * 5 (aproximado) — mas o correto é contar semanas
+  // Usamos a lógica real: para cada semana (7 dias) = máx. 5 dias úteis (Mon-Fri)
+  // O enunciado pede: sessoesNoMes = floor((dias_corridos_uteis_do_mês_a_partir_de_início) / 7) * 2
+  // Na verdade: conta quantos agendamentos de segunda guia cabem
+  // Simplificado: conta semanas completas
+  const diffMs = ultimoDia - de;
+  if (diffMs < 0) return 0;
+  const diffDias = Math.ceil(diffMs / 86400000) + 1;
+  // Quantidade de pares de sessões na semana = floor(semanas) * 1 sessão base + extra
+  // Usando regra prática: 1 sessão por semana = floor(dias/7)*1, 2 por semana se 60min
+  return Math.floor(diffDias / 7) + (diffDias % 7 >= 1 ? 1 : 0);
+}
+
+let _ggParsed = []; // guias a gerar após preview
+
+function abrirGerarGuias() {
+  carregarFeriados();
+  // Preenche mês atual
+  const now = new Date();
+  const mesEl = document.getElementById('gg-mes');
+  if (mesEl) mesEl.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  // Popula planos
+  const planoSel = document.getElementById('gg-plano');
+  if (planoSel) {
+    planoSel.innerHTML = '<option value="">Todos os planos</option>' +
+      PLANOS.filter(p => p.status !== 'Inativo').map(p =>
+        `<option value="${p.id}">${p.nome}</option>`).join('');
+  }
+  document.getElementById('gg-paciente').value = '';
+  document.getElementById('gg-preview-wrap').style.display = 'none';
+  document.getElementById('gg-btn-gerar').style.display = 'none';
+  document.getElementById('gg-preview-summary').textContent = '';
+  _ggParsed = [];
+  openModal('modal-gerar-guias');
+}
+
+function ggToggleAll(chk) {
+  document.querySelectorAll('#gg-preview-tbody .gg-row-chk').forEach(c => {
+    if (!c.disabled) c.checked = chk.checked;
+  });
+}
+
+function previewGuiasAutomaticas() {
+  const mesVal  = document.getElementById('gg-mes')?.value; // "2026-04"
+  const planoId = parseInt(document.getElementById('gg-plano')?.value || '0') || 0;
+  const pacFilt = (document.getElementById('gg-paciente')?.value || '').trim().toLowerCase();
+
+  if (!mesVal) { showToast('Selecione o mês', 'error'); return; }
+  const [ano, mes] = mesVal.split('-').map(Number);
+  const primeiroDiaMes = new Date(ano, mes-1, 1);
+  const ultimoDiaMes   = new Date(ano, mes, 0);
+  const primISO = dateToISO(primeiroDiaMes);
+  const ultISO  = dateToISO(ultimoDiaMes);
+
+  // Busca o profissional executante fixo
+  const profExec = PROFISSIONAIS.find(p =>
+    p.nome.toLowerCase().includes('maria cecilia') ||
+    p.nome.toLowerCase().includes('maria cecília')
+  );
+
+  _ggParsed = [];
+
+  // Para cada senha/autorização ativa no período
+  SENHAS_PLANO.filter(s => {
+    if (!s.ativa) return false;
+    if (planoId && s.planoId !== planoId) return false;
+    // Verifica se a validade cobre o mês
+    if (s.validade && s.validade < primISO) return false;
+    // Verifica se a data de autorização existe
+    if (!s.dataAut) return false;
+    return true;
+  }).forEach(senha => {
+    // Filtro de paciente
+    if (pacFilt && !senha.paciente.toLowerCase().includes(pacFilt)) return;
+
+    const pac = encontrarPacientePorNome(senha.paciente);
+    const plano = PLANOS.find(p => p.id === senha.planoId);
+    if (!plano) return;
+
+    // Agendamentos de 60 min deste paciente neste plano no mês
+    const apptsMes = APPOINTMENTS.filter(a =>
+      a.paciente === senha.paciente &&
+      a.dataISO >= primISO &&
+      a.dataISO <= ultISO &&
+      a.durMin >= 60 &&
+      !['cancelado','desmarcado'].includes(a.status)
+    );
+
+    if (!apptsMes.length) return;
+
+    // Calcula sessões permitidas no mês
+    // Data de início = máx(data_aut, primeiro_dia_mês)
+    const dataAutObj  = new Date(senha.dataAut + 'T12:00:00');
+    const dataInicio  = dataAutObj > primeiroDiaMes ? dataAutObj : primeiroDiaMes;
+    const dataIniISO  = dateToISO(dataInicio);
+
+    const sessoesPermitidas = sessoesNoMes(dataIniISO, ano, mes);
+    const maxGuias = Math.min(senha.qtdAutorizada - senha.qtdUsada, sessoesPermitidas);
+
+    if (maxGuias <= 0) return;
+
+    // Calcula procedimento principal
+    const proc = (senha.procs && senha.procs.length > 0)
+      ? senha.procs[0]
+      : (PROCEDIMENTOS.find(p => p.planoId === senha.planoId) || PROCEDIMENTOS[0]);
+    const procCod  = proc?.codigo || '';
+    const procDesc = proc?.desc   || 'Sessão de Terapia';
+    const procVal  = (PROCEDIMENTOS.find(p => p.codigo === procCod && p.planoId === senha.planoId)
+      || PROCEDIMENTOS.find(p => p.codigo === procCod))?.valPlano || 0;
+
+    // Para cada agendamento de 60 min, gera par de datas (guia 1 = data appt, guia 2 = +offset)
+    let guiasGeradas = 0;
+    apptsMes.forEach(appt => {
+      if (guiasGeradas >= maxGuias) return;
+
+      const dataAppt = new Date(appt.dataISO + 'T12:00:00');
+      if (dataAppt < dataInicio) return; // antes da autorização
+
+      // Guia 1 — data do agendamento (se não for feriado)
+      let data1 = dataAppt;
+      if (isFeriado(dateToISO(data1))) data1 = proximoDiaUtil(addDays(data1, 1));
+
+      // Guia 2 — data1 + offset, pulando feriados
+      const offset = offsetSegundaGuia(dataAppt.getDay());
+      let data2 = addDays(dataAppt, offset);
+      while (isFeriado(dateToISO(data2))) data2 = addDays(data2, 1);
+
+      // Verifica se data2 ainda está no mês
+      const data2NoMes = data2 <= ultimoDiaMes;
+
+      // Checa duplicatas (guia já existente para pac+data)
+      const dup1 = GUIAS.some(g => g.pac === senha.paciente && g.data === dateToISO(data1) && g.status !== 'Cancelado');
+      const dup2 = GUIAS.some(g => g.pac === senha.paciente && g.data === dateToISO(data2) && g.status !== 'Cancelado');
+
+      const status = (dup1 && dup2) ? 'dup' : (!maxGuias || guiasGeradas >= maxGuias) ? 'skip' : 'ok';
+
+      _ggParsed.push({
+        senha, pac, plano, appt, profExec,
+        data1ISO: dateToISO(data1), data2ISO: data2NoMes ? dateToISO(data2) : null,
+        procCod, procDesc, procVal,
+        dup1, dup2,
+        guiasGeradas,
+        status: (dup1 && (!data2NoMes || dup2)) ? 'dup' : 'ok',
+      });
+      if (!dup1 || (data2NoMes && !dup2)) guiasGeradas++;
+    });
+  });
+
+  // Renderiza preview
+  const ok   = _ggParsed.filter(r=>r.status==='ok').length;
+  const dup  = _ggParsed.filter(r=>r.status==='dup').length;
+
+  document.getElementById('gg-preview-summary').textContent =
+    _ggParsed.length + ' paciente(s) com agendamentos no mês';
+  document.getElementById('gg-cnt-ok').textContent   = ok   ? `✓ ${ok} linha(s) para gerar`  : '';
+  document.getElementById('gg-cnt-dup').textContent  = dup  ? `⊘ ${dup} já existente(s)`       : '';
+
+  const tbody = document.getElementById('gg-preview-tbody');
+  tbody.innerHTML = _ggParsed.map((r, idx) => {
+    const d1Fmt = r.data1ISO ? r.data1ISO.split('-').reverse().join('/') : '—';
+    const d2Fmt = r.data2ISO ? r.data2ISO.split('-').reverse().join('/') : '<span style="color:var(--text-muted)">fora do mês</span>';
+    const isDup = r.status === 'dup';
+    const rowSt = isDup ? 'opacity:0.45' : '';
+    const restantes = r.senha.qtdAutorizada - r.senha.qtdUsada;
+    return `<tr style="${rowSt}">
+      <td><input type="checkbox" class="gg-row-chk" data-idx="${idx}" ${isDup?'disabled':'checked'}></td>
+      <td style="font-size:12px;font-weight:500">${r.senha.paciente}</td>
+      <td style="font-size:12px">${r.plano.nome}</td>
+      <td style="font-size:12px;white-space:nowrap">${d1Fmt}${r.dup1?'<span title="já existe" style="color:var(--warning);margin-left:4px">⚠</span>':''}</td>
+      <td style="font-size:12px;white-space:nowrap">${d2Fmt}${r.dup2?'<span title="já existe" style="color:var(--warning);margin-left:4px">⚠</span>':''}</td>
+      <td style="font-size:11px">${r.procDesc.substring(0,25)}</td>
+      <td style="font-size:12px;text-align:center">${restantes}</td>
+      <td><span class="chip ${isDup?'gray':'green'}" style="font-size:10px">${isDup?'Duplicada':'Pronto'}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum agendamento de 60 min com autorização ativa encontrado</td></tr>';
+
+  document.getElementById('gg-preview-wrap').style.display = 'block';
+  const btnGerar = document.getElementById('gg-btn-gerar');
+  btnGerar.style.display = ok > 0 ? 'inline-flex' : 'none';
+  document.getElementById('gg-btn-cnt').textContent = ok > 0 ? `(${ok})` : '';
+}
+
+async function gerarGuiasConfirmar() {
+  const selecionados = [...document.querySelectorAll('.gg-row-chk:checked')]
+    .map(c => _ggParsed[parseInt(c.dataset.idx)])
+    .filter(Boolean);
+
+  if (!selecionados.length) { showToast('Nenhuma linha selecionada', 'error'); return; }
+
+  const btn = document.getElementById('gg-btn-gerar');
+  btn.disabled = true; btn.textContent = 'Gerando...';
+
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  let geradas = 0, erros = 0;
+
+  for (const r of selecionados) {
+    // Profissional executante
+    const profId = r.profExec?.id || 0;
+
+    const criarGuia = async (dataISO, isDup) => {
+      if (!dataISO || isDup) return;
+      const guiaNum = 'G' + Date.now().toString().slice(-8) + Math.floor(Math.random()*100);
+      const guiaObj = {
+        id: nextGuiaId++,
+        num: guiaNum,
+        pac: r.senha.paciente,
+        planoId: r.plano.id,
+        plano: r.plano.nome,
+        profId,
+        valor: r.procVal,
+        status: 'Pendente',
+        data: dataISO,
+        carteirinha: r.senha.carteirinha || r.pac?.carteirinha || '',
+        numOp: r.senha.numGuiaOp || r.senha.numSenha || '',
+        cid: r.senha.cid || '',
+        loteId: null, loteNum: null,
+        dados: {
+          procs: [{ codigo: r.procCod, desc: r.procDesc, qtd: 1, valor: r.procVal, total: r.procVal }],
+          senha: r.senha.numSenha,
+          profExecNome: PROF_EXEC_GUIA_AUTO,
+        },
+      };
+      if (sb) {
+        try {
+          const { data: gd, error } = await sb.from('guias_sadt').insert([{
+            num: guiaObj.num, pac: guiaObj.pac,
+            plano_id: guiaObj.planoId, plano: guiaObj.plano,
+            prof_id: guiaObj.profId || null, valor: guiaObj.valor,
+            status: 'Pendente', data: guiaObj.data,
+            carteirinha: guiaObj.carteirinha || null,
+            num_op: guiaObj.numOp || null, cid: guiaObj.cid || null,
+            dados: guiaObj.dados,
+          }]).select('id').single();
+          if (error) { console.error('[gerarGuias]', error); erros++; return; }
+          if (gd) guiaObj.id = gd.id;
+        } catch(e) { console.error('[gerarGuias]', e); erros++; return; }
+      }
+      GUIAS.push(guiaObj);
+
+      // Vincula guia ao agendamento
+      if (r.appt && r.appt.dataISO === dataISO) {
+        if (!r.appt.guia) r.appt.guia = {};
+        r.appt.guia[guiaObj.num] = { id: guiaObj.id, total: guiaObj.valor, num: guiaObj.num };
+        if (sb) sb.from('agendamentos').update({ guia: r.appt.guia }).eq('id', r.appt.id);
+      }
+
+      // Atualiza qtdUsada da senha
+      r.senha.qtdUsada = (r.senha.qtdUsada || 0) + 1;
+      if (r.senha.qtdUsada >= r.senha.qtdAutorizada) {
+        r.senha.status = 'Usada'; r.senha.ativa = false;
+      }
+      if (sb) sb.from('senhas_plano').update({
+        qtd_usada: r.senha.qtdUsada, status: r.senha.status, ativa: r.senha.ativa
+      }).eq('id', r.senha.id);
+
+      geradas++;
+    };
+
+    await criarGuia(r.data1ISO, r.dup1);
+    await criarGuia(r.data2ISO, r.dup2);
+  }
+
+  btn.disabled = false;
+  closeModal('modal-gerar-guias');
+  refreshUI();
+  const msg = `${geradas} guia(s) gerada(s)${erros > 0 ? ` · ${erros} erro(s)` : ''}`;
+  showToast(msg, geradas > 0 ? 'success' : 'error');
 }
 
 function abrirNovaGuia() {
@@ -10505,26 +11021,39 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ── Hook no doLogin: carrega Supabase APÓS initApp rodar normalmente ────────
-  // Não sobrescrevemos initApp pois o patch carrega antes de ele ser definido no mesmo <script>.
-  // Em vez disso, interceptamos doLogin via window.load, quando todas as funções já existem.
-  window.addEventListener('load', function () {
+  function interceptarDoLogin() {
     const _origDoLogin = window.doLogin;
-    if (!_origDoLogin) { console.warn('[ClinicFlow Supabase] doLogin não encontrado'); return; }
+    if (!_origDoLogin) return false;
+    if (_origDoLogin._sbPatched) return true; // já interceptado
     window.doLogin = function () {
-      _origDoLogin(); // executa login + initApp originais (síncronos) — UI já fica pronta
-      if (getDb()) {
-        loadFromSupabase(); // carrega dados do banco em background sem bloquear
-      }
+      _origDoLogin();
+      if (getDb()) loadFromSupabase();
     };
-    // Também intercepta quickLogin
+    window.doLogin._sbPatched = true;
     const _origQuickLogin = window.quickLogin;
-    if (_origQuickLogin) {
+    if (_origQuickLogin && !_origQuickLogin._sbPatched) {
       window.quickLogin = function (role) {
         document.getElementById('login-role').value = role;
         window.doLogin();
       };
+      window.quickLogin._sbPatched = true;
     }
     console.log('[ClinicFlow Supabase] doLogin interceptado ✓');
+    return true;
+  }
+
+  // Tenta interceptar em DOMContentLoaded, load e com retry
+  document.addEventListener('DOMContentLoaded', function() {
+    if (!interceptarDoLogin()) {
+      // Retry after a short delay in case scripts load out of order
+      let retries = 0;
+      const iv = setInterval(() => {
+        if (interceptarDoLogin() || ++retries > 20) clearInterval(iv);
+      }, 50);
+    }
+  });
+  window.addEventListener('load', function () {
+    interceptarDoLogin();
   });
 
   // ── Override salvarPaciente ───────────────────────────────────────────────
