@@ -6122,6 +6122,10 @@ async function gerarGuiasConfirmar() {
   const sb = window._cfGetDb ? window._cfGetDb() : null;
   let geradas = 0, erros = 0;
 
+  // Mapa de incrementos por senha (id → quantidade a incrementar)
+  // Evita race conditions quando múltiplas linhas compartilham a mesma senha
+  const senhaIncrMap = new Map(); // senhaId → { senha, delta }
+
   for (const r of selecionados) {
     const profId   = r.profExec?.id || 0;
     const pacNome  = r.pacNomeReal;
@@ -6129,7 +6133,6 @@ async function gerarGuiasConfirmar() {
 
     const criarGuia = async (dataISO, isDup) => {
       if (!dataISO || isDup) return;
-      // Gera número único
       const guiaNum = 'G' + Date.now().toString().slice(-8) +
         String(Math.floor(Math.random()*100)).padStart(2,'0');
       const guiaObj = {
@@ -6175,20 +6178,33 @@ async function gerarGuiasConfirmar() {
         if (sb) sb.from('agendamentos').update({ guia: apptLink.guia }).eq('id', apptLink.id);
       }
 
-      // Incrementa qtdUsada na senha
+      // Acumula incremento — NÃO grava no banco aqui, faz em lote depois
       r.senha.qtdUsada = (r.senha.qtdUsada || 0) + 1;
-      if (r.senha.qtdUsada >= r.senha.qtdAutorizada) {
-        r.senha.status = 'Usada'; r.senha.ativa = false;
-      }
-      if (sb) sb.from('senhas_plano').update({
-        qtd_usada: r.senha.qtdUsada, status: r.senha.status, ativa: r.senha.ativa
-      }).eq('id', r.senha.id);
+      const entry = senhaIncrMap.get(r.senha.id);
+      if (entry) entry.delta++;
+      else senhaIncrMap.set(r.senha.id, { senha: r.senha, delta: 1 });
 
       geradas++;
     };
 
     await criarGuia(r.data1ISO, r.dup1);
     if (r.is60) await criarGuia(r.data2ISO, r.dup2);
+  }
+
+  // Grava qtdUsada consolidado no Supabase — um UPDATE por senha com o total correto
+  if (sb) {
+    for (const [senhaId, { senha }] of senhaIncrMap) {
+      if (senha.qtdUsada >= senha.qtdAutorizada) {
+        senha.status = 'Usada'; senha.ativa = false;
+      }
+      try {
+        await sb.from('senhas_plano').update({
+          qtd_usada: senha.qtdUsada,
+          status:    senha.status,
+          ativa:     senha.ativa,
+        }).eq('id', senhaId);
+      } catch(e) { console.error('[gerarGuias] update senha', e); }
+    }
   }
 
   btn.disabled = false;
