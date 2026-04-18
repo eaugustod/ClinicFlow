@@ -3246,11 +3246,15 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <div class="form-group"><label>Plano de saúde *</label>
           <select class="form-select" id="g-plano" onchange="guiaPlanoChange(); guiaSenhaAutoFill()"></select>
         </div>
-        <div class="form-group"><label>Nº guia operadora (senha)</label><input class="form-input" id="g-num-op" placeholder="Nº atribuído pelo plano / senha"></div>
+        <div class="form-group"><label>Nº guia operadora</label><input class="form-input" id="g-num-op" placeholder="Nº atribuído pelo plano"></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Senha / Autorização *</label><input class="form-input" id="g-senha" placeholder="Número da senha autorizada"></div>
+        <div class="form-group"><label>Validade da senha</label><input class="form-input" type="date" id="g-val-senha"></div>
       </div>
       <div class="form-row cols-2">
         <div class="form-group"><label>Dt. autorização</label><input class="form-input" type="date" id="g-dt-aut"></div>
-        <div class="form-group"><label>Validade da senha</label><input class="form-input" type="date" id="g-val-senha"></div>
+        <div class="form-group"><label>Qtd. sessões restantes</label><input class="form-input" id="g-sessoes-rest" readonly style="background:var(--bg-overlay);color:var(--text-muted)" placeholder="—"></div>
       </div>
       <div class="form-row cols-2">
         <div class="form-group"><label>Profissional executante *</label>
@@ -3266,7 +3270,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       </div>
       <div class="form-row cols-2">
         <div class="form-group"><label>Indicação clínica / CID</label><input class="form-input" id="g-indicacao" placeholder="Ex: F80.0 — Transtorno da articulação"></div>
-        <div class="form-group"><label>Qtd. sessões restantes</label><input class="form-input" id="g-sessoes-rest" readonly style="background:var(--bg-overlay);color:var(--text-muted)" placeholder="—"></div>
+        <div class="form-group"></div>
       </div>
 
       <div class="sadt-section-label">Procedimentos</div>
@@ -3693,6 +3697,37 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
   </div>
 </div>
 
+
+<!-- Modal Correção de Paciente (Importação) -->
+<div class="modal-overlay" id="modal-corr-pac">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">👤 Paciente não encontrado</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="corr-pac-sub">Selecione o paciente correto ou ignore esta linha</div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg-raised);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Nome na planilha:</div>
+        <div id="corr-pac-nome-orig" style="font-size:14px;font-weight:600;color:var(--warning)"></div>
+      </div>
+      <!-- Sugestões fuzzy -->
+      <div id="corr-pac-sugestoes" style="margin-bottom:12px"></div>
+      <!-- Busca manual -->
+      <div class="form-group">
+        <label>Ou busque manualmente:</label>
+        <input class="form-input" id="corr-pac-busca" placeholder="Digite o nome para buscar..."
+          oninput="corrPacBusca(this.value)" autocomplete="off">
+        <div id="corr-pac-resultados" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md);margin-top:4px;display:none"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="corrPacIgnorar()">Ignorar esta linha</button>
+      <button class="btn-sm btn-secondary" onclick="corrPacIgnorarTodos()">Ignorar todos não encontrados</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Feriados -->
 <div class="modal-overlay" id="modal-feriados">
@@ -5545,6 +5580,22 @@ function renderProfToday() {
 // ─── GUIAS SADT CRUD ──────────────────────────────────────────────────────────
 let guiaProcCount = 1;
 
+// ── Gera o próximo número de guia para um plano e incrementa numGuiaInicial em memória+DB ──
+function proxGuiaNum(planoId) {
+  const plano = PLANOS.find(p => p.id === planoId);
+  if (!plano) return 'G' + Date.now().toString().slice(-8);
+  const num = plano.numGuiaInicial || 1;
+  // Incrementa em memória
+  plano.numGuiaInicial = num + 1;
+  // Persiste no Supabase de forma assíncrona (não bloqueia)
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (sb) {
+    sb.from('planos_saude').update({ num_guia_inicial: plano.numGuiaInicial }).eq('id', planoId)
+      .then(({ error }) => { if (error) console.error('[proxGuiaNum]', error.message); });
+  }
+  return String(num).padStart(8, '0');
+}
+
 function renderGuiasList() {
   // Update stats
   const statsEl = document.getElementById('tiss-stats-row');
@@ -6133,8 +6184,7 @@ async function gerarGuiasConfirmar() {
 
     const criarGuia = async (dataISO, isDup) => {
       if (!dataISO || isDup) return;
-      const guiaNum = 'G' + Date.now().toString().slice(-8) +
-        String(Math.floor(Math.random()*100)).padStart(2,'0');
+      const guiaNum = proxGuiaNum(r.plano.id);
       const guiaObj = {
         id: nextGuiaId++, num: guiaNum,
         pac: pacNome, planoId: r.plano.id, plano: r.plano.nome,
@@ -6145,7 +6195,7 @@ async function gerarGuiasConfirmar() {
         loteId: null, loteNum: null,
         dados: {
           procs: [{ codigo: r.procCod, desc: r.procDesc, qtd: 1, valor: r.procVal, total: r.procVal }],
-          senha: r.senha.numSenha,
+          senha: r.senha.numSenha || '',
           profExecNome: PROF_EXEC_GUIA_AUTO,
           durMin: r.appt?.durMin || (r.is60 ? 60 : 30),
         },
@@ -6221,10 +6271,10 @@ function abrirNovaGuia() {
   document.getElementById('guia-modal-title').textContent = 'Nova Guia SADT';
   document.getElementById('guia-modal-sub').textContent   = 'Preencha os dados da guia';
   document.getElementById('g-id-display').textContent     = '';
-  const guiaNum = 'G' + Date.now().toString().slice(-8);
-  document.getElementById('g-num').value = guiaNum;
+  // Número da guia: será gerado ao selecionar o plano via guiaPlanoChange()
+  document.getElementById('g-num').value = '';
   document.getElementById('g-data').valueAsDate = new Date();
-  ['g-pac','g-carteirinha','g-num-op','g-cid'].forEach(id => {
+  ['g-pac','g-carteirinha','g-num-op','g-senha','g-cid'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('g-status').value = 'Pendente';
@@ -6235,19 +6285,29 @@ function abrirNovaGuia() {
   guiaProcCount = 0;
   guiaAddProc();
 
-  // Populate selects
+  // Populate selects — apenas planos e profissionais ativos
   const gPlano = document.getElementById('g-plano');
-  if (gPlano) gPlano.innerHTML = PLANOS.map(p=>'<option value="'+p.id+'">'+p.nome+(p.ans&&p.ans!=='—'?' (ANS '+p.ans+')':'')+'</option>').join('');
+  if (gPlano) gPlano.innerHTML = PLANOS.filter(p=>p.status!=='Inativo').map(p=>'<option value="'+p.id+'">'+p.nome+(p.ans&&p.ans!=='—'?' (ANS '+p.ans+')':'')+'</option>').join('');
   const gProf  = document.getElementById('g-prof');
   if (gProf)  gProf.innerHTML  = PROFISSIONAIS.filter(p=>p.status!=='Inativo').map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join('');
   const gPacList = document.getElementById('g-pac-list');
-  if (gPacList) gPacList.innerHTML = PACIENTES.map(p=>'<option value="'+p.nome+'">').join('');
+  if (gPacList) gPacList.innerHTML = PACIENTES.filter(p=>p.status==='Ativo'||!p.status).map(p=>'<option value="'+p.nome+'">').join('');
 
   document.getElementById('g-total').textContent = 'R$ 0,00';
-  // Limpa campos extras
   ['g-dt-aut','g-val-senha','g-indicacao','g-sessoes-rest'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+
+  // Profissional executante fixo
+  const profFixo = PROFISSIONAIS.find(p =>
+    p.nome.toLowerCase().replace(/[^a-z]/g,'').includes('mariacecilia')
+  );
+  if (profFixo && gProf) gProf.value = profFixo.id;
+
+  // Gera número baseado no primeiro plano selecionado
+  if (gPlano && gPlano.value) {
+    document.getElementById('g-num').value = proxGuiaNum(parseInt(gPlano.value));
+  }
   openModal('modal-guia');
 }
 
@@ -6283,6 +6343,7 @@ function editarGuia(id) {
   );
   if (senhaEditG) {
     sv_g('g-num-op',    g.numOp || senhaEditG.numGuiaOp || senhaEditG.numSenha);
+    sv_g('g-senha',     g.dados?.senha || senhaEditG.numSenha || '');
     sv_g('g-dt-aut',    g.dados?.dataAut  || senhaEditG.dataAut  || '');
     sv_g('g-val-senha', g.dados?.validade || senhaEditG.validade || '');
     sv_g('g-indicacao', g.cid || senhaEditG.cid || '');
@@ -6295,6 +6356,7 @@ function editarGuia(id) {
   } else {
     sv_g('g-dt-aut',    g.dados?.dataAut  || '');
     sv_g('g-val-senha', g.dados?.validade || '');
+    sv_g('g-senha',     g.dados?.senha    || g.numOp || '');
     sv_g('g-indicacao', g.cid || '');
   }
 
@@ -6365,10 +6427,11 @@ function guiaSenhaAutoFill() {
   if (!senhaG) return;
   // Preenche campos da senha
   const sv = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
-  sv('g-num-op',      senhaG.numGuiaOp || senhaG.numSenha);
-  sv('g-dt-aut',      senhaG.dataAut   || '');
-  sv('g-val-senha',   senhaG.validade  || '');
-  sv('g-indicacao',   senhaG.cid       || '');
+  sv('g-num-op',    senhaG.numGuiaOp || senhaG.numSenha);
+  sv('g-senha',     senhaG.numSenha  || '');
+  sv('g-dt-aut',    senhaG.dataAut   || '');
+  sv('g-val-senha', senhaG.validade  || '');
+  sv('g-indicacao', senhaG.cid       || '');
   // Sessões restantes
   const restEl = document.getElementById('g-sessoes-rest');
   if (restEl) {
@@ -6401,8 +6464,9 @@ function guiaSenhaAutoFill() {
 function guiaPlanoChange() {
   const planoId = parseInt(document.getElementById('g-plano')?.value||'0');
   const plano   = PLANOS.find(p=>p.id===planoId);
-  if (plano && plano.numGuiaInicial) {
-    document.getElementById('g-num').value = String(plano.numGuiaInicial);
+  // Gera número sequencial apenas para guias novas (editingGuiaId === null)
+  if (!editingGuiaId && plano) {
+    document.getElementById('g-num').value = proxGuiaNum(planoId);
   }
   // Recalcula valores dos procedimentos já preenchidos pelo novo plano
   document.querySelectorAll('.sadt-proc-row').forEach(row => {
@@ -6520,7 +6584,7 @@ function salvarGuia() {
       procs,
       dataAut:  document.getElementById('g-dt-aut')?.value  || '',
       validade: document.getElementById('g-val-senha')?.value || '',
-      senha:    document.getElementById('g-num-op')?.value   || '',
+      senha:    document.getElementById('g-senha')?.value   || document.getElementById('g-num-op')?.value || '',
     },
     loteId:      null,
   };
@@ -10423,23 +10487,164 @@ function impGetCell(row,field){ const i=impMapping[field]; return (i==null||i<0)
 
 // Busca paciente por nome com prioridade: exato → nome completo contém → nome completo invertido
 // Evita pegar "Thiago Silva" quando o nome é "Thiago Rocha"
+// ── Normaliza string para comparação fuzzy (remove acentos, lowercase, espaços extras) ──
+function normStr(s) {
+  if (!s) return '';
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+// ── Score de similaridade entre dois nomes (0-100) ──────────────────────────
+function nomeScore(a, b) {
+  const na = normStr(a), nb = normStr(b);
+  if (na === nb) return 100;
+  if (na.includes(nb) || nb.includes(na)) return 90;
+  const ta = na.split(' ').filter(t => t.length > 1);
+  const tb = nb.split(' ').filter(t => t.length > 1);
+  const common = ta.filter(t => tb.some(u => u === t || u.startsWith(t) || t.startsWith(u)));
+  const score = Math.round((common.length / Math.max(ta.length, tb.length)) * 80);
+  // Boost se primeiro ou último token bate
+  if (ta[0] && tb[0] && normStr(ta[0]) === normStr(tb[0])) return Math.max(score, 55);
+  if (ta[ta.length-1] && tb[tb.length-1] &&
+      normStr(ta[ta.length-1]) === normStr(tb[tb.length-1])) return Math.max(score, 50);
+  return score;
+}
+
 function encontrarPacientePorNome(nomeBusca) {
   if (!nomeBusca) return null;
   const q = nomeBusca.trim().toLowerCase();
-  // 1. Correspondência exata (case-insensitive)
+  const qn = normStr(nomeBusca);
+
+  // 1. Exata
   let p = PACIENTES.find(x => x.nome.toLowerCase() === q);
   if (p) return p;
-  // 2. Nome do cadastro contém o nome buscado por completo
-  p = PACIENTES.find(x => x.nome.toLowerCase().includes(q));
+
+  // 2. Normalizada exata (sem acentos, case)
+  p = PACIENTES.find(x => normStr(x.nome) === qn);
   if (p) return p;
-  // 3. Nome buscado contém o nome do cadastro por completo
-  p = PACIENTES.find(x => q.includes(x.nome.toLowerCase()));
+
+  // 3. Contém completo
+  p = PACIENTES.find(x => normStr(x.nome).includes(qn) || qn.includes(normStr(x.nome)));
   if (p) return p;
-  // 4. Todos os tokens do nome buscado estão no nome do cadastro (ex: "Thiago Rocha" → tokens ["thiago","rocha"])
-  const tokens = q.split(/\s+/).filter(t => t.length > 1);
-  p = PACIENTES.find(x => tokens.every(t => x.nome.toLowerCase().includes(t)));
+
+  // 4. Todos os tokens batem
+  const tokens = qn.split(/\s+/).filter(t => t.length > 1);
+  p = PACIENTES.find(x => tokens.every(t => normStr(x.nome).includes(t)));
   if (p) return p;
+
+  // 5. Maioria dos tokens bate (tolerante a abreviações)
+  if (tokens.length >= 2) {
+    p = PACIENTES.find(x => {
+      const matched = tokens.filter(t => normStr(x.nome).includes(t));
+      return matched.length >= Math.ceil(tokens.length * 0.6);
+    });
+    if (p) return p;
+  }
+
   return null;
+}
+
+// ── Busca sugestões fuzzy (top 5) para pacientes não encontrados ──────────────
+function sugestoesFuzzy(nomeBusca, limite = 5) {
+  if (!nomeBusca) return [];
+  return PACIENTES
+    .map(p => ({ p, score: nomeScore(nomeBusca, p.nome) }))
+    .filter(x => x.score >= 30)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limite)
+    .map(x => x.p);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MODAL CORREÇÃO DE PACIENTE (Importação)
+// ═══════════════════════════════════════════════════════════════════
+let _corrQueue    = [];   // fila de linhas com paciente não encontrado
+let _corrIdx      = 0;    // índice atual na fila
+let _corrCallback = null; // chamado quando a fila é resolvida
+
+function corrPacAbrir(queue, callback) {
+  _corrQueue    = queue;
+  _corrIdx      = 0;
+  _corrCallback = callback;
+  _corrMostrar();
+}
+
+function _corrMostrar() {
+  if (_corrIdx >= _corrQueue.length) {
+    closeModal('modal-corr-pac');
+    if (_corrCallback) _corrCallback();
+    return;
+  }
+  const item = _corrQueue[_corrIdx];
+  document.getElementById('corr-pac-sub').textContent =
+    `Linha ${item._rowIdx + 1} de ${_corrQueue.length} não encontrada — selecione o paciente correto`;
+  document.getElementById('corr-pac-nome-orig').textContent = item._nomeOrig || '—';
+  document.getElementById('corr-pac-busca').value = '';
+  document.getElementById('corr-pac-resultados').style.display = 'none';
+
+  // Sugestões fuzzy
+  const sugs = sugestoesFuzzy(item._nomeOrig, 5);
+  const sugEl = document.getElementById('corr-pac-sugestoes');
+  if (sugs.length) {
+    sugEl.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Sugestões do sistema:</div>' +
+      sugs.map(p =>
+        `<button class="btn-sm btn-secondary" style="margin-bottom:4px;width:100%;justify-content:flex-start;text-align:left;gap:8px"
+          onclick="corrPacSelecionar(${p.id})">
+          <span style="font-size:12px;font-weight:600">${p.nome}</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${p.plano||''}</span>
+        </button>`
+      ).join('');
+  } else {
+    sugEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Nenhuma sugestão automática — use a busca abaixo.</div>';
+  }
+  openModal('modal-corr-pac');
+}
+
+function corrPacBusca(val) {
+  const resEl = document.getElementById('corr-pac-resultados');
+  if (!val || val.length < 2) { resEl.style.display = 'none'; return; }
+  const res = PACIENTES.filter(p =>
+    normStr(p.nome).includes(normStr(val))
+  ).slice(0, 10);
+  if (!res.length) { resEl.style.display = 'none'; return; }
+  resEl.style.display = 'block';
+  resEl.innerHTML = res.map(p =>
+    `<div onclick="corrPacSelecionar(${p.id})"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px"
+      onmouseover="this.style.background='var(--bg-overlay)'"
+      onmouseout="this.style.background=''">
+      <strong>${p.nome}</strong> <span style="color:var(--text-muted);font-size:11px">· ${p.plano||'Particular'}</span>
+    </div>`
+  ).join('');
+}
+
+function corrPacSelecionar(pacId) {
+  const pac = PACIENTES.find(p => p.id === pacId);
+  if (!pac) return;
+  // Aplica a correção na linha atual da fila
+  const item = _corrQueue[_corrIdx];
+  item.pac       = pac;
+  item.paciente  = pac.nome;
+  item._corrigido = true;
+  _corrIdx++;
+  _corrMostrar();
+}
+
+function corrPacIgnorar() {
+  const item = _corrQueue[_corrIdx];
+  item._ignorar = true;
+  _corrIdx++;
+  _corrMostrar();
+}
+
+function corrPacIgnorarTodos() {
+  for (let i = _corrIdx; i < _corrQueue.length; i++) {
+    _corrQueue[i]._ignorar = true;
+  }
+  closeModal('modal-corr-pac');
+  if (_corrCallback) _corrCallback();
 }
 
 function parseISODate(str) {
@@ -10541,9 +10746,13 @@ function processRowsByType() {
         if (item.terapNome && !prof) warnings.push('Terapeuta "'+item.terapNome+'" novo — será criado');
         item.prof = prof;
 
-        // Match paciente — nome completo com tolerância a acentos
+        // Match paciente — fuzzy com tolerância a acentos/abreviações
         const pac = encontrarPacientePorNome(item.paciente);
-        if (!pac) warnings.push('Paciente "'+item.paciente+'" novo — será criado');
+        if (!pac) {
+          warnings.push('Paciente "'+item.paciente+'" não encontrado — aguardando correção');
+          item._nomeOrig = item.paciente;
+          item._precisaCorrecao = true;
+        }
         item.pac = pac;
 
         item.durMin = parseInt(item.duracaoStr) || 30;
@@ -10727,6 +10936,22 @@ function impFilterPreview(filter, btnEl) {
 
 // ── Confirm import ────────────────────────────────────────────────────────────
 async function impConfirmar() {
+  // Para agenda: verifica se há pacientes não encontrados e abre modal de correção primeiro
+  if (IMP_TIPO === 'agenda') {
+    const naoEncontrados = impParsed.filter(r =>
+      r.status !== 'err' && r._precisaCorrecao && !r._corrigido && !r._ignorar
+    );
+    if (naoEncontrados.length > 0) {
+      // Adiciona índice de linha para exibição
+      naoEncontrados.forEach((r, i) => { r._rowIdx = i; });
+      corrPacAbrir(naoEncontrados, () => _impConfirmarExecutar());
+      return;
+    }
+  }
+  await _impConfirmarExecutar();
+}
+
+async function _impConfirmarExecutar() {
   const skipErr=document.getElementById('imp-skip-errors').checked;
   const toImport=skipErr?impParsed.filter(r=>r.status!=='err'):impParsed;
   let imported=0, skipped=0, dbErrors=0;
@@ -10836,23 +11061,14 @@ async function impConfirmar() {
         }
         case 'agenda':{
           if (r.dup) { skipped++; continue; } // duplicata — ignora
+          if (r._ignorar) { skipped++; continue; } // ignorado pelo usuário na correção
 
-          // ── Paciente: usa existente ou cria novo ───────────────────────────
+          // ── Paciente: usa o encontrado/corrigido; pula se não encontrado ──────
           let pac = r.pac;
           if (!pac) {
-            const planoObj = r.planoNome
-              ? PLANOS.find(p => p.nome.toLowerCase().includes(r.planoNome.toLowerCase())) : null;
-            pac = {
-              id: nextPacId++, nome: r.paciente, nasc:'', cpf:'', tel:'', email:'',
-              planoId: planoObj?.id||5, plano: planoObj?.nome||r.planoNome||'Particular',
-              carteirinha:'—', status:'Ativo', ultima:'',
-            };
-            const dbId = await sbInsert('pacientes', {
-              nome: pac.nome, plano_id: pac.planoId !== 5 ? pac.planoId : null,
-              plano: pac.plano, status:'Ativo',
-            });
-            if (dbId) pac.id = dbId;
-            PACIENTES.push(pac);
+            // Se chegou até aqui sem pac e sem correção, ignora a linha
+            detalhes.push('<span style="color:var(--warning)">⚠ Pulado — paciente "'+r.paciente+'" não encontrado</span>');
+            skipped++; continue;
           }
 
           // ── Profissional: usa existente ou cria novo ───────────────────────
@@ -10882,7 +11098,7 @@ async function impConfirmar() {
           const apptObj = {
             id:        nextPacId++,
             profId:    prof.id,
-            paciente:  r.paciente,
+            paciente:  pac.nome,  // usa nome real do paciente cadastrado
             plano:     planoObj?.nome || r.planoNome || 'Particular',
             planoId:   planoObj?.id   || 5,
             hora:      r.horaIni || '08:00',
