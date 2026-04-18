@@ -792,7 +792,8 @@ a { text-decoration: none; color: inherit; }
 .chip.green { background: rgba(52,211,153,0.12); color: var(--success); }
 .chip.blue  { background: rgba(79,142,247,0.12); color: var(--accent); }
 .chip.yellow{ background: rgba(251,191,36,0.12); color: var(--warning); }
-.chip.red   { background: rgba(248,113,113,0.12); color: var(--danger); }
+.chip.red    { background: rgba(248,113,113,0.12); color: var(--danger); }
+.chip.orange { background: rgba(251,146,60,0.12);  color: #fb923c; }
 .chip.gray  { background: rgba(139,146,168,0.12); color: var(--text-secondary); }
 
 .table-actions { display: flex; gap: 6px; }
@@ -1361,6 +1362,19 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
+
+      <!-- Navegação de data -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-shrink:0">
+        <button class="date-nav-btn" onclick="dashChangeDate(-1)" title="Dia anterior">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <div id="dash-date-label" style="font-size:15px;font-weight:600;min-width:260px;text-align:center;letter-spacing:-0.2px"></div>
+        <button class="date-nav-btn" onclick="dashChangeDate(1)" title="Próximo dia">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
+        <button class="btn-sm btn-secondary" onclick="dashGotoToday()" style="font-size:11px;padding:4px 10px">Hoje</button>
+        <div id="dash-today-badge" style="display:none;font-size:11px;color:var(--text-muted);margin-left:4px"></div>
+      </div>
 
       <!-- Linha 1: KPIs -->
       <div class="stats-row" id="dash-stats-row" style="margin-bottom:14px">
@@ -3883,6 +3897,7 @@ const APPOINTMENTS = [];
 let currentUser  = null;
 let currentView  = 'dia';
 let currentDate  = new Date();
+let dashDate     = new Date(); // data selecionada no dashboard (independente da agenda)
 let activeProfFilters = new Set();
 let selectedColor = '#4f8ef7';
 let currentApptId = null; // agendamento aberto no modal
@@ -4246,59 +4261,113 @@ async function sincronizarDados() {
 // ═══════════════════════════════════════
 //  DASHBOARD — dados dinâmicos
 // ═══════════════════════════════════════
+function dashChangeDate(delta) {
+  dashDate = new Date(dashDate);
+  dashDate.setDate(dashDate.getDate() + delta);
+  renderDashboard();
+}
+
+function dashGotoToday() {
+  dashDate = new Date();
+  renderDashboard();
+}
+
 function renderDashboard() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
-  const ontemISO = ontem.toISOString().slice(0, 10);
+  const selISO  = dashDate.getFullYear() + '-' +
+    String(dashDate.getMonth()+1).padStart(2,'0') + '-' +
+    String(dashDate.getDate()).padStart(2,'0');
+  const hojeISO = new Date().getFullYear() + '-' +
+    String(new Date().getMonth()+1).padStart(2,'0') + '-' +
+    String(new Date().getDate()).padStart(2,'0');
+  const isHoje  = selISO === hojeISO;
 
-  const apptHoje   = APPOINTMENTS.filter(a => a.dataISO === hoje);
-  const apptOntem  = APPOINTMENTS.filter(a => a.dataISO === ontemISO);
+  // Dia anterior para comparação
+  const antObj = new Date(dashDate); antObj.setDate(antObj.getDate() - 1);
+  const antISO = antObj.getFullYear() + '-' +
+    String(antObj.getMonth()+1).padStart(2,'0') + '-' +
+    String(antObj.getDate()).padStart(2,'0');
 
-  const totalHoje       = apptHoje.length;
-  const totalOntem      = apptOntem.length;
-  const confirmados     = apptHoje.filter(a => a.status === 'confirmado' || a.status === 'atendido').length;
-  const cancelados      = apptHoje.filter(a => a.status === 'cancelado' || a.status === 'desmarcado').length;
-  const cancelOntem     = apptOntem.filter(a => a.status === 'cancelado' || a.status === 'desmarcado').length;
-  const profsAtivos     = PROFISSIONAIS.filter(p => p.status !== 'Inativo').length;
+  // Label da data
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const diasSem = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const labelEl = document.getElementById('dash-date-label');
+  if (labelEl) {
+    labelEl.textContent = diasSem[dashDate.getDay()] + ', ' +
+      dashDate.getDate() + ' de ' + meses[dashDate.getMonth()] + ' de ' + dashDate.getFullYear();
+    labelEl.style.color = isHoje ? 'var(--accent)' : 'var(--text-primary)';
+  }
+  const badgeEl = document.getElementById('dash-today-badge');
+  if (badgeEl) {
+    if (!isHoje) {
+      badgeEl.style.display = 'inline';
+      badgeEl.textContent = '(hoje é ' + new Date().getDate() + '/' + (new Date().getMonth()+1) + ')';
+    } else {
+      badgeEl.style.display = 'none';
+    }
+  }
 
-  // KPI cards
+  // Atualiza labels dos KPIs dinamicamente
+  const lblHoje     = document.querySelector('#dash-stats-row .stat-card:nth-child(1) .stat-label');
+  const lblConfirm  = document.querySelector('#dash-stats-row .stat-card:nth-child(2) .stat-label');
+  const lblCancel   = document.querySelector('#dash-stats-row .stat-card:nth-child(4) .stat-label');
+  const dLabel = isHoje ? 'Hoje' : dashDate.getDate() + '/' + (dashDate.getMonth()+1);
+  if (lblHoje)   lblHoje.textContent   = 'Consultas ' + dLabel;
+  if (lblConfirm) lblConfirm.textContent = 'Confirmados ' + dLabel;
+  if (lblCancel)  lblCancel.textContent  = 'Cancelados/Desm. ' + dLabel;
+
+  const apptSel = APPOINTMENTS.filter(a => a.dataISO === selISO);
+  const apptAnt = APPOINTMENTS.filter(a => a.dataISO === antISO);
+
+  const totalSel   = apptSel.length;
+  const totalAnt   = apptAnt.length;
+  const confirmados = apptSel.filter(a => a.status === 'confirmado' || a.status === 'atendido').length;
+  const cancelados  = apptSel.filter(a => a.status === 'cancelado' || a.status === 'desmarcado').length;
+  const cancelAnt   = apptAnt.filter(a => a.status === 'cancelado' || a.status === 'desmarcado').length;
+  const profsAtivos = PROFISSIONAIS.filter(p => p.status !== 'Inativo').length;
+
   const sv = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  sv('dash-hoje-total', totalHoje);
-  sv('dash-confirmados', confirmados);
-  sv('dash-profs-ativos', profsAtivos);
-  sv('dash-cancelados', cancelados);
+  sv('dash-hoje-total',    totalSel);
+  sv('dash-confirmados',   confirmados);
+  sv('dash-profs-ativos',  profsAtivos);
+  sv('dash-cancelados',    cancelados);
 
-  const diffHoje = totalHoje - totalOntem;
-  sv('dash-hoje-delta', diffHoje === 0 ? '= igual a ontem' : (diffHoje > 0 ? '↑ ' : '↓ ') + Math.abs(diffHoje) + ' ' + (diffHoje > 0 ? 'a mais' : 'a menos') + ' que ontem');
-  const el = document.getElementById('dash-hoje-delta');
-  if (el) el.className = 'stat-delta ' + (diffHoje > 0 ? 'up' : diffHoje < 0 ? 'down' : '');
+  const diffTotal  = totalSel - totalAnt;
+  const diffCancel = cancelados - cancelAnt;
+  const dRef = isHoje ? 'ontem' : 'dia anterior';
+  sv('dash-hoje-delta', diffTotal === 0 ? `= igual a ${dRef}` :
+    (diffTotal > 0 ? '↑ ' : '↓ ') + Math.abs(diffTotal) + (diffTotal > 0 ? ' a mais' : ' a menos') + ` que ${dRef}`);
+  const elDelta = document.getElementById('dash-hoje-delta');
+  if (elDelta) elDelta.className = 'stat-delta ' + (diffTotal > 0 ? 'up' : diffTotal < 0 ? 'down' : '');
 
-  sv('dash-confirmados-pct', totalHoje > 0 ? Math.round(confirmados / totalHoje * 100) + '% do total de hoje' : '—');
+  sv('dash-confirmados-pct', totalSel > 0 ? Math.round(confirmados/totalSel*100) + '% do total' : '—');
   sv('dash-profs-total', 'de ' + PROFISSIONAIS.length + ' cadastrados');
-
-  const diffCancel = cancelados - cancelOntem;
-  sv('dash-cancelados-delta', diffCancel === 0 ? '= igual a ontem' : (diffCancel > 0 ? '↑ ' : '↓ ') + Math.abs(diffCancel) + ' que ontem');
+  sv('dash-cancelados-delta', diffCancel === 0 ? `= igual a ${dRef}` :
+    (diffCancel > 0 ? '↑ ' : '↓ ') + Math.abs(diffCancel) + ` que ${dRef}`);
   const elC = document.getElementById('dash-cancelados-delta');
   if (elC) elC.className = 'stat-delta ' + (diffCancel > 0 ? 'down' : diffCancel < 0 ? 'up' : '');
 
-  // Tabela de consultas de hoje
+  // Título da tabela de consultas
+  const tblTitle = document.querySelector('#page-dashboard .table-title');
+  if (tblTitle) tblTitle.textContent = isHoje ? 'Consultas de hoje' : 'Consultas de ' + dLabel;
+
+  // Tabela de consultas
   const tbody = document.getElementById('dash-consultas-tbody');
   if (tbody) {
-    const sorted = [...apptHoje].sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+    const sorted = [...apptSel].sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
     if (sorted.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma consulta agendada para hoje</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma consulta para ${dLabel}</td></tr>`;
     } else {
       const statusMap = {
-        agendado:   {cls:'blue',  lbl:'Agendado'},
-        confirmado: {cls:'green', lbl:'Confirmado'},
-        atendido:   {cls:'green', lbl:'Atendido'},
-        desmarcado: {cls:'red',   lbl:'Desmarcado'},
-        cancelado:  {cls:'red',   lbl:'Cancelado'},
+        agendado:   {cls:'blue',   lbl:'Agendado'},
+        confirmado: {cls:'green',  lbl:'Confirmado'},
+        atendido:   {cls:'green',  lbl:'Atendido'},
+        desmarcado: {cls:'red',    lbl:'Desmarcado'},
+        cancelado:  {cls:'orange', lbl:'Cancelado'},  // cor diferente de desmarcado
       };
       tbody.innerHTML = sorted.map(a => {
         const prof = PROFISSIONAIS.find(p => p.id === a.profId);
         const initials = a.paciente.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
-        const s = statusMap[a.status] || {cls:'gray', lbl: a.status};
+        const s   = statusMap[a.status] || {cls:'gray', lbl: a.status};
         const cor = prof ? prof.cor : '#8b92a8';
         const canAct = !['cancelado','desmarcado'].includes(a.status);
         return '<tr>' +
@@ -4309,16 +4378,14 @@ function renderDashboard() {
           '<td><span class="chip ' + s.cls + '">' + s.lbl + '</span></td>' +
           '<td><div class="table-actions" style="gap:4px">' +
             (a.status === 'agendado' ?
-              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="confirmado" title="Confirmar consulta" style="color:var(--success)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>' : '') +
+              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="confirmado" title="Confirmar" style="color:var(--success)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>' : '') +
             (a.status !== 'atendido' && canAct ?
-              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="atendido" title="Marcar como atendido" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></button>' : '') +
+              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="atendido" title="Atendido" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></button>' : '') +
             (canAct ?
-              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="desmarcado" title="Desmarcar consulta" style="color:var(--danger)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>' : '') +
-          '</div></td>' +
-        '</tr>';
+              '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="desmarcado" title="Desmarcar" style="color:var(--danger)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>' : '') +
+          '</div></td></tr>';
       }).join('');
-      // Bind action buttons (data-attributes avoid inline quote issues)
-      tbody.querySelectorAll('.dash-btn').forEach(function(btn) {
+      tbody.querySelectorAll('.dash-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           updateStatus(parseInt(this.dataset.id), this.dataset.st);
           setTimeout(renderDashboard, 400);
@@ -4668,7 +4735,7 @@ function openAppt(id) {
   document.getElementById('ag-modal-title').textContent = 'Agendamento — ' + appt.paciente;
   document.getElementById('ag-modal-sub').textContent   = appt.hora + (appt.horaFim?' – '+appt.horaFim:'') + ' · ' + (prof ? prof.nomeAgenda||prof.nome : '') + ' · ' + appt.plano;
   document.getElementById('ag-profissional').value      = appt.profId;
-  document.getElementById('ag-data').valueAsDate        = currentDate;
+  document.getElementById('ag-data').value = appt.dataISO || '';
   document.getElementById('ag-hora-ini').value          = appt.hora;
   document.getElementById('ag-hora-fim').value          = appt.horaFim || '';
   document.getElementById('ag-paciente').value          = appt.paciente;
@@ -7135,8 +7202,8 @@ function populateSelects() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = PROFISSIONAIS.filter(p=>p.status!=='Inativo').map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
   });
-  // Plano options — show ANS to distinguish same-name plans
-  const planoOpts = PLANOS.map(p => `<option value="${p.id}">${p.nome}${p.ans&&p.ans!=='—'?' (ANS '+p.ans+')':''}</option>`).join('');
+  // Plano options — apenas planos ativos
+  const planoOpts = PLANOS.filter(p => p.status !== 'Inativo').map(p => `<option value="${p.id}">${p.nome}${p.ans&&p.ans!=='—'?' (ANS '+p.ans+')':''}</option>`).join('');
   ['ag-plano','pac-plano','guia-plano'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = planoOpts;
@@ -7145,17 +7212,18 @@ function populateSelects() {
   const pff = document.getElementById('proc-filtro-plano');
   if (pff) {
     pff.innerHTML = '<option value="0">Todos os planos</option>' +
-      PLANOS.filter(p=>p.nome!=='Particular').map(p =>
+      PLANOS.filter(p=>p.nome!=='Particular'&&p.status!=='Inativo').map(p =>
         `<option value="${p.id}">${p.nome} · ANS ${p.ans}</option>`
       ).join('');
   }
+  // Datalists — apenas pacientes ativos
+  const pacAtivos = PACIENTES.filter(p => p.status === 'Ativo' || !p.status);
   const dl = document.getElementById('pacientes-list');
-  if (dl) dl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
-  // Atualiza também os outros datalists de pacientes
+  if (dl) dl.innerHTML = pacAtivos.map(p => `<option value="${p.nome}">`).join('');
   const gPacDl = document.getElementById('g-pac-list');
-  if (gPacDl) gPacDl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
+  if (gPacDl) gPacDl.innerHTML = pacAtivos.map(p => `<option value="${p.nome}">`).join('');
   const senPacDl = document.getElementById('sen-pac-list');
-  if (senPacDl) senPacDl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
+  if (senPacDl) senPacDl.innerHTML = pacAtivos.map(p => `<option value="${p.nome}">`).join('');
 }
 
 // ═══════════════════════════════════════
@@ -7175,7 +7243,7 @@ function switchAgTab(tab, btn) {
 function onPacienteChange(val) {
   // Atualiza datalist dinamicamente a cada digitação (garante dados atuais do Supabase)
   const dl = document.getElementById('pacientes-list');
-  if (dl) dl.innerHTML = PACIENTES.map(p => `<option value="${p.nome}">`).join('');
+  if (dl) dl.innerHTML = PACIENTES.filter(p => p.status === 'Ativo' || !p.status).map(p => `<option value="${p.nome}">`).join('');
   // Busca exata primeiro, depois parcial
   const pac = PACIENTES.find(p => p.nome.toLowerCase() === val.toLowerCase())
            || (val.length >= 3 ? PACIENTES.find(p => p.nome.toLowerCase().startsWith(val.toLowerCase())) : null);
@@ -8810,7 +8878,7 @@ function renderTimeline() {
     // Appointments for this date
     (apptByDate[date]||[]).forEach(a => {
       const dotColor = statusColors[a.status] || 'var(--accent)';
-      const chipStr = '<span class="chip '+(a.status==='atendido'?'gray':a.status==='cancelado'?'red':'blue')+'" style="font-size:10px">'+a.status+'</span>';
+      const chipStr = '<span class="chip '+(a.status==='atendido'?'gray':a.status==='cancelado'?'orange':'blue')+'" style="font-size:10px">'+a.status+'</span>';
       // Evoluções do mesmo dia — embute dentro do box do agendamento
       const evolsNoDia = (evolByDate[date]||[]);
       const evolsHTML = evolsNoDia.length ? evolsNoDia.map(ev => {
@@ -9332,7 +9400,7 @@ function renderProntuarioCompleto() {
       return '<tr><td>'+(a.dataISO?a.dataISO.split('-').reverse().join('/'):'—')+'</td>' +
         '<td>'+a.hora+'</td><td>'+(prof?prof.nome:'—')+'</td>' +
         '<td>'+a.plano+'</td>' +
-        '<td><span class="chip '+(a.status==='atendido'?'green':a.status==='cancelado'?'red':'blue')+'" style="font-size:10px">'+a.status+'</span></td></tr>';
+        '<td><span class="chip '+(a.status==='atendido'?'green':a.status==='cancelado'?'orange':'blue')+'" style="font-size:10px">'+a.status+'</span></td></tr>';
     }).join('') +
     '</tbody></table>';
 }
