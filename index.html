@@ -6809,9 +6809,9 @@ function gerarXMLLote(loteId) {
         '            <ans:cpfContratado>'+profCPF+'</ans:cpfContratado>\n' +
         '          </ans:codProfissional>\n' +
         '          <ans:nomeProf>'+esc(profNome)+'</ans:nomeProf>\n' +
-        '          <ans:conselho>'+profConselho+'</ans:conselho>\n' +
+        '          <ans:conselho>09</ans:conselho>\n' +
         '          <ans:numeroConselhoProfissional>'+profNumConselho+'</ans:numeroConselhoProfissional>\n' +
-        '          <ans:UF>'+profUF+'</ans:UF>\n' +
+        '          <ans:UF>35</ans:UF>\n' +
         '          <ans:CBOS>'+profCBO+'</ans:CBOS>\n' +
         '        </ans:equipeSadt>\n' +
         '      </ans:procedimentoExecutado>';
@@ -6880,7 +6880,7 @@ function gerarXMLLote(loteId) {
   }).join('\n');
 
   const xml =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<?xml version="1.0" encoding="ISO-8859-1"?>\n' +
     '<ans:mensagemTISS xmlns:ans="http://www.ans.gov.br/padroes/tiss/schemas">\n' +
     '  <ans:cabecalho>\n' +
     '    <ans:identificacaoTransacao>\n' +
