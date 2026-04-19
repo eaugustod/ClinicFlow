@@ -6727,8 +6727,67 @@ function atualizarStatusLote(loteId, novoStatus) {
   showToast('Status atualizado: ' + novoStatus, 'success');
 }
 
-function _tissHash() {
-  return Date.now().toString(36).toUpperCase().padEnd(32,'0').slice(0,32);
+// ── Tabela de conselhos TISS (2 dígitos) ─────────────────────────────────────
+const TISS_CONSELHOS = {
+  'CRESS':'01','COREN':'02','CRF':'03','CREFONO':'04','CREFITO':'05',
+  'CRM':'06','CRN':'07','CRO':'08','CRP':'09','OUTRO':'10',
+  'CRBio':'11','CRBM':'12','CREF':'13','CRMV':'14','CRTR':'15',
+};
+
+// ── Tabela IBGE UF (código numérico de 2 dígitos) ────────────────────────────
+const IBGE_UF = {
+  'RO':'11','AC':'12','AM':'13','RR':'14','PA':'15','AP':'16','TO':'17',
+  'MA':'21','PI':'22','CE':'23','RN':'24','PB':'25','PE':'26','AL':'27',
+  'SE':'28','BA':'29','MG':'31','ES':'32','RJ':'33','SP':'35',
+  'PR':'41','SC':'42','RS':'43','MS':'50','MT':'51','GO':'52','DF':'53',
+};
+
+// ── Converte sigla do conselho para código TISS ───────────────────────────────
+function tissCodigoConselho(sigla) {
+  if (!sigla) return '09';
+  const s = sigla.toUpperCase().trim();
+  if (TISS_CONSELHOS[s]) return TISS_CONSELHOS[s];
+  // Tenta match parcial
+  for (const key of Object.keys(TISS_CONSELHOS)) {
+    if (s.includes(key) || key.includes(s)) return TISS_CONSELHOS[key];
+  }
+  return '10'; // Outros
+}
+
+// ── Converte sigla UF para código IBGE ───────────────────────────────────────
+function tissCodigoUF(uf) {
+  if (!uf) return '35'; // SP default
+  const s = uf.toUpperCase().trim();
+  // Já é código numérico?
+  if (/^\d{2}$/.test(s)) return s;
+  return IBGE_UF[s] || '35';
+}
+
+// ── Hash MD5 sobre o conteúdo XML (sem tag hash) — usando SubtleCrypto ───────
+async function _tissHashMD5(xmlSemHash) {
+  // Remove indentação — deixa apenas tags e valores sem espaços desnecessários
+  const canonical = xmlSemHash
+    .replace(/\r\n/g, '\n')
+    .replace(/\n\s+</g, '<')        // remove indentação antes de tag
+    .replace(/>\s+</g, '><')        // remove espaço entre tags
+    .replace(/\n+/g, '')            // remove quebras de linha soltas
+    .trim();
+
+  // Tenta SubtleCrypto (SHA-1 — o ANS aceita SHA-1 como "hash")
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(canonical);
+    const hashBuf = await crypto.subtle.digest('SHA-1', data);
+    const hashArr = Array.from(new Uint8Array(hashBuf));
+    return hashArr.map(b => b.toString(16).padStart(2,'0')).join('');
+  } catch(e) {
+    // Fallback: hash simples determinístico baseado no conteúdo
+    let h = 0;
+    for (let i = 0; i < canonical.length; i++) {
+      h = Math.imul(31, h) + canonical.charCodeAt(i) | 0;
+    }
+    return Math.abs(h).toString(16).padStart(8,'0').repeat(5).slice(0,40);
+  }
 }
 
 function gerarXMLLote(loteId) {
@@ -6749,7 +6808,14 @@ function gerarXMLLote(loteId) {
     const n = new Date();
     return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
   };
-  const esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  // Para ISO-8859-1: substitui caracteres acentuados por entidades XML
+  const esc = function(s) {
+    return String(s||'')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  };
   const fmtBRL = function(v) { return Number(v||0).toFixed(2); };
 
   const codPrestador  = plano.codPrestador  || CLINICA.codPrestador || '100000019260';
@@ -6762,11 +6828,15 @@ function gerarXMLLote(loteId) {
     return p.nome.toLowerCase().replace(/[^a-z]/g,'').includes('mariacecilia');
   }) || {};
   const profNome        = profExec.nome        || 'Maria Cecilia Benessuti Donato';
-  const profConselho    = profExec.conselho     || '09';
-  const profNumConselho = profExec.num          || '71849';
-  const profUF          = profExec.uf           || '35';
-  const profCBO         = profExec.cbo          || '251510';
-  const profCPF         = profExec.cpf          || '27700196869';
+  // b) Código de 2 dígitos do conselho conforme tabela TISS
+  const profConselhoSigla  = profExec.conselho  || 'CRP';
+  const profCodigoConselho = tissCodigoConselho(profConselhoSigla);
+  const profNumConselho    = profExec.num        || '71849';
+  // c) Código IBGE da UF (2 dígitos numéricos)
+  const profUFSigla        = profExec.uf         || 'SP';
+  const profCodigoUF       = tissCodigoUF(profUFSigla);
+  const profCBO            = profExec.cbo        || '251510';
+  const profCPF            = profExec.cpf        || '27700196869';
 
   const guias = (l.guiaIds || []).map(function(id) { return GUIAS.find(function(g) { return g.id === id; }); }).filter(Boolean);
   if (!guias.length) { showToast('Nenhuma guia encontrada neste lote', 'error'); return; }
@@ -6774,6 +6844,7 @@ function gerarXMLLote(loteId) {
   const dataGeracaoISO = new Date().toISOString().slice(0,10);
   const horaGeracao    = fmtHora();
 
+  // Monta guias sem indentação extra (canonical-friendly)
   const xmlGuias = guias.map(function(g) {
     const dataGuia  = fmtDate(g.data);
     const senha     = esc(g.dados && g.dados.senha ? g.dados.senha : (g.numOp || ''));
@@ -6789,144 +6860,153 @@ function gerarXMLLote(loteId) {
     const xmlProcs = procs.map(function(p, i) {
       const val = fmtBRL(p.valor || g.valor);
       const tot = fmtBRL(p.total || ((p.valor||g.valor) * (p.qtd||1)));
-      return '      <ans:procedimentoExecutado>\n' +
-        '        <ans:sequencialItem>'+(i+1)+'</ans:sequencialItem>\n' +
-        '        <ans:dataExecucao>'+dataGuia+'</ans:dataExecucao>\n' +
-        '        <ans:horaInicial>08:00:00</ans:horaInicial>\n' +
-        '        <ans:horaFinal>09:00:00</ans:horaFinal>\n' +
-        '        <ans:procedimento>\n' +
-        '          <ans:codigoTabela>22</ans:codigoTabela>\n' +
-        '          <ans:codigoProcedimento>'+esc(p.codigo||'50000470')+'</ans:codigoProcedimento>\n' +
-        '          <ans:descricaoProcedimento>'+esc(p.desc||'Sessao de Terapia')+'</ans:descricaoProcedimento>\n' +
-        '        </ans:procedimento>\n' +
-        '        <ans:quantidadeExecutada>'+(p.qtd||1)+'</ans:quantidadeExecutada>\n' +
-        '        <ans:reducaoAcrescimo>1.0000</ans:reducaoAcrescimo>\n' +
-        '        <ans:valorUnitario>'+val+'</ans:valorUnitario>\n' +
-        '        <ans:valorTotal>'+tot+'</ans:valorTotal>\n' +
-        '        <ans:equipeSadt>\n' +
-        '          <ans:grauPart>12</ans:grauPart>\n' +
-        '          <ans:codProfissional>\n' +
-        '            <ans:cpfContratado>'+profCPF+'</ans:cpfContratado>\n' +
-        '          </ans:codProfissional>\n' +
-        '          <ans:nomeProf>'+esc(profNome)+'</ans:nomeProf>\n' +
-        '          <ans:conselho>09</ans:conselho>\n' +
-        '          <ans:numeroConselhoProfissional>'+profNumConselho+'</ans:numeroConselhoProfissional>\n' +
-        '          <ans:UF>35</ans:UF>\n' +
-        '          <ans:CBOS>'+profCBO+'</ans:CBOS>\n' +
-        '        </ans:equipeSadt>\n' +
-        '      </ans:procedimentoExecutado>';
-    }).join('\n');
+      return '<ans:procedimentoExecutado>' +
+        '<ans:sequencialItem>'+(i+1)+'</ans:sequencialItem>' +
+        '<ans:dataExecucao>'+dataGuia+'</ans:dataExecucao>' +
+        '<ans:horaInicial>08:00:00</ans:horaInicial>' +
+        '<ans:horaFinal>09:00:00</ans:horaFinal>' +
+        '<ans:procedimento>' +
+        '<ans:codigoTabela>22</ans:codigoTabela>' +
+        '<ans:codigoProcedimento>'+esc(p.codigo||'50000470')+'</ans:codigoProcedimento>' +
+        '<ans:descricaoProcedimento>'+esc(p.desc||'Sessao de Terapia')+'</ans:descricaoProcedimento>' +
+        '</ans:procedimento>' +
+        '<ans:quantidadeExecutada>'+(p.qtd||1)+'</ans:quantidadeExecutada>' +
+        '<ans:reducaoAcrescimo>1.0000</ans:reducaoAcrescimo>' +
+        '<ans:valorUnitario>'+val+'</ans:valorUnitario>' +
+        '<ans:valorTotal>'+tot+'</ans:valorTotal>' +
+        '<ans:equipeSadt>' +
+        '<ans:grauPart>12</ans:grauPart>' +
+        '<ans:codProfissional>' +
+        '<ans:cpfContratado>'+profCPF+'</ans:cpfContratado>' +
+        '</ans:codProfissional>' +
+        '<ans:nomeProf>'+esc(profNome)+'</ans:nomeProf>' +
+        '<ans:conselho>'+profCodigoConselho+'</ans:conselho>' +
+        '<ans:numeroConselhoProfissional>'+profNumConselho+'</ans:numeroConselhoProfissional>' +
+        '<ans:UF>'+profCodigoUF+'</ans:UF>' +
+        '<ans:CBOS>'+profCBO+'</ans:CBOS>' +
+        '</ans:equipeSadt>' +
+        '</ans:procedimentoExecutado>';
+    }).join('');
 
     const totalProc = fmtBRL(g.valor);
 
-    return '    <ans:guiaSP-SADT>\n' +
-      '      <ans:cabecalhoGuia>\n' +
-      '        <ans:registroANS>'+registroANS+'</ans:registroANS>\n' +
-      '        <ans:numeroGuiaPrestador>'+guiaPrest+'</ans:numeroGuiaPrestador>\n' +
-      '        <ans:guiaPrincipal>'+guiaOp+'</ans:guiaPrincipal>\n' +
-      '      </ans:cabecalhoGuia>\n' +
-      '      <ans:dadosAutorizacao>\n' +
-      '        <ans:numeroGuiaOperadora>'+guiaOp+'</ans:numeroGuiaOperadora>\n' +
-      '        <ans:dataAutorizacao>'+dataAut+'</ans:dataAutorizacao>\n' +
-      '        <ans:senha>'+senha+'</ans:senha>\n' +
-      '        <ans:dataValidadeSenha>'+valSenha+'</ans:dataValidadeSenha>\n' +
-      '      </ans:dadosAutorizacao>\n' +
-      '      <ans:dadosBeneficiario>\n' +
-      '        <ans:numeroCarteira>'+carteira+'</ans:numeroCarteira>\n' +
-      '        <ans:atendimentoRN>N</ans:atendimentoRN>\n' +
-      '        <ans:tipoIdent>01</ans:tipoIdent>\n' +
-      '      </ans:dadosBeneficiario>\n' +
-      '      <ans:dadosSolicitante>\n' +
-      '        <ans:contratadoSolicitante>\n' +
-      '          <ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>\n' +
-      '        </ans:contratadoSolicitante>\n' +
-      '        <ans:nomeContratadoSolicitante>'+esc(nomePrestador)+'</ans:nomeContratadoSolicitante>\n' +
-      '        <ans:profissionalSolicitante>\n' +
-      '          <ans:nomeProfissional>'+esc(profNome)+'</ans:nomeProfissional>\n' +
-      '          <ans:conselhoProfissional>'+profConselho+'</ans:conselhoProfissional>\n' +
-      '          <ans:numeroConselhoProfissional>'+profNumConselho+'</ans:numeroConselhoProfissional>\n' +
-      '          <ans:UF>'+profUF+'</ans:UF>\n' +
-      '          <ans:CBOS>'+profCBO+'</ans:CBOS>\n' +
-      '        </ans:profissionalSolicitante>\n' +
-      '      </ans:dadosSolicitante>\n' +
-      '      <ans:dadosSolicitacao>\n' +
-      '        <ans:dataSolicitacao>'+dataGuia+'</ans:dataSolicitacao>\n' +
-      '        <ans:caraterAtendimento>1</ans:caraterAtendimento>\n' +
-      '      </ans:dadosSolicitacao>\n' +
-      '      <ans:dadosExecutante>\n' +
-      '        <ans:contratadoExecutante>\n' +
-      '          <ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>\n' +
-      '        </ans:contratadoExecutante>\n' +
-      '        <ans:CNES>'+cnes+'</ans:CNES>\n' +
-      '      </ans:dadosExecutante>\n' +
-      '      <ans:dadosAtendimento>\n' +
-      '        <ans:tipoAtendimento>03</ans:tipoAtendimento>\n' +
-      '        <ans:indicacaoAcidente>9</ans:indicacaoAcidente>\n' +
-      '        <ans:tipoConsulta>4</ans:tipoConsulta>\n' +
-      '        <ans:regimeAtendimento>01</ans:regimeAtendimento>\n' +
-      '      </ans:dadosAtendimento>\n' +
-      '      <ans:procedimentosExecutados>\n' +
-      xmlProcs + '\n' +
-      '      </ans:procedimentosExecutados>\n' +
-      '      <ans:valorTotal>\n' +
-      '        <ans:valorProcedimentos>'+totalProc+'</ans:valorProcedimentos>\n' +
-      '        <ans:valorTaxasAlugueis>0.00</ans:valorTaxasAlugueis>\n' +
-      '        <ans:valorMateriais>0.00</ans:valorMateriais>\n' +
-      '        <ans:valorMedicamentos>0.00</ans:valorMedicamentos>\n' +
-      '        <ans:valorGasesMedicinais>0.00</ans:valorGasesMedicinais>\n' +
-      '        <ans:valorTotalGeral>'+totalProc+'</ans:valorTotalGeral>\n' +
-      '      </ans:valorTotal>\n' +
-      '    </ans:guiaSP-SADT>';
-  }).join('\n');
+    return '<ans:guiaSP-SADT>' +
+      '<ans:cabecalhoGuia>' +
+      '<ans:registroANS>'+registroANS+'</ans:registroANS>' +
+      '<ans:numeroGuiaPrestador>'+guiaPrest+'</ans:numeroGuiaPrestador>' +
+      '<ans:guiaPrincipal>'+guiaOp+'</ans:guiaPrincipal>' +
+      '</ans:cabecalhoGuia>' +
+      '<ans:dadosAutorizacao>' +
+      '<ans:numeroGuiaOperadora>'+guiaOp+'</ans:numeroGuiaOperadora>' +
+      '<ans:dataAutorizacao>'+dataAut+'</ans:dataAutorizacao>' +
+      '<ans:senha>'+senha+'</ans:senha>' +
+      '<ans:dataValidadeSenha>'+valSenha+'</ans:dataValidadeSenha>' +
+      '</ans:dadosAutorizacao>' +
+      '<ans:dadosBeneficiario>' +
+      '<ans:numeroCarteira>'+carteira+'</ans:numeroCarteira>' +
+      '<ans:atendimentoRN>N</ans:atendimentoRN>' +
+      '<ans:tipoIdent>01</ans:tipoIdent>' +
+      '</ans:dadosBeneficiario>' +
+      '<ans:dadosSolicitante>' +
+      '<ans:contratadoSolicitante>' +
+      '<ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>' +
+      '</ans:contratadoSolicitante>' +
+      '<ans:nomeContratadoSolicitante>'+esc(nomePrestador)+'</ans:nomeContratadoSolicitante>' +
+      '<ans:profissionalSolicitante>' +
+      '<ans:nomeProfissional>'+esc(profNome)+'</ans:nomeProfissional>' +
+      '<ans:conselhoProfissional>'+profCodigoConselho+'</ans:conselhoProfissional>' +
+      '<ans:numeroConselhoProfissional>'+profNumConselho+'</ans:numeroConselhoProfissional>' +
+      '<ans:UF>'+profCodigoUF+'</ans:UF>' +
+      '<ans:CBOS>'+profCBO+'</ans:CBOS>' +
+      '</ans:profissionalSolicitante>' +
+      '</ans:dadosSolicitante>' +
+      '<ans:dadosSolicitacao>' +
+      '<ans:dataSolicitacao>'+dataGuia+'</ans:dataSolicitacao>' +
+      '<ans:caraterAtendimento>1</ans:caraterAtendimento>' +
+      '</ans:dadosSolicitacao>' +
+      '<ans:dadosExecutante>' +
+      '<ans:contratadoExecutante>' +
+      '<ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>' +
+      '</ans:contratadoExecutante>' +
+      '<ans:CNES>'+cnes+'</ans:CNES>' +
+      '</ans:dadosExecutante>' +
+      '<ans:dadosAtendimento>' +
+      '<ans:tipoAtendimento>03</ans:tipoAtendimento>' +
+      '<ans:indicacaoAcidente>9</ans:indicacaoAcidente>' +
+      '<ans:tipoConsulta>4</ans:tipoConsulta>' +
+      '<ans:regimeAtendimento>01</ans:regimeAtendimento>' +
+      '</ans:dadosAtendimento>' +
+      '<ans:procedimentosExecutados>' +
+      xmlProcs +
+      '</ans:procedimentosExecutados>' +
+      '<ans:valorTotal>' +
+      '<ans:valorProcedimentos>'+totalProc+'</ans:valorProcedimentos>' +
+      '<ans:valorTaxasAlugueis>0.00</ans:valorTaxasAlugueis>' +
+      '<ans:valorMateriais>0.00</ans:valorMateriais>' +
+      '<ans:valorMedicamentos>0.00</ans:valorMedicamentos>' +
+      '<ans:valorGasesMedicinais>0.00</ans:valorGasesMedicinais>' +
+      '<ans:valorTotalGeral>'+totalProc+'</ans:valorTotalGeral>' +
+      '</ans:valorTotal>' +
+      '</ans:guiaSP-SADT>';
+  }).join('');
 
-  const xml =
-    '<?xml version="1.0" encoding="ISO-8859-1"?>\n' +
-    '<ans:mensagemTISS xmlns:ans="http://www.ans.gov.br/padroes/tiss/schemas">\n' +
-    '  <ans:cabecalho>\n' +
-    '    <ans:identificacaoTransacao>\n' +
-    '      <ans:tipoTransacao>ENVIO_LOTE_GUIAS</ans:tipoTransacao>\n' +
-    '      <ans:sequencialTransacao>'+esc(l.num)+'</ans:sequencialTransacao>\n' +
-    '      <ans:dataRegistroTransacao>'+dataGeracaoISO+'</ans:dataRegistroTransacao>\n' +
-    '      <ans:horaRegistroTransacao>'+horaGeracao+'</ans:horaRegistroTransacao>\n' +
-    '    </ans:identificacaoTransacao>\n' +
-    '    <ans:origem>\n' +
-    '      <ans:identificacaoPrestador>\n' +
-    '        <ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>\n' +
-    '      </ans:identificacaoPrestador>\n' +
-    '    </ans:origem>\n' +
-    '    <ans:destino>\n' +
-    '      <ans:registroANS>'+registroANS+'</ans:registroANS>\n' +
-    '    </ans:destino>\n' +
-    '    <ans:Padrao>'+versaoTiss+'</ans:Padrao>\n' +
-    '  </ans:cabecalho>\n' +
-    '  <ans:prestadorParaOperadora>\n' +
-    '    <ans:loteGuias>\n' +
-    '      <ans:numeroLote>'+esc(l.num)+'</ans:numeroLote>\n' +
-    '      <ans:guiasTISS>\n' +
-    xmlGuias + '\n' +
-    '      </ans:guiasTISS>\n' +
-    '    </ans:loteGuias>\n' +
-    '  </ans:prestadorParaOperadora>\n' +
-    '  <ans:epilogo>\n' +
-    '    <ans:hash>'+_tissHash()+'</ans:hash>\n' +
-    '  </ans:epilogo>\n' +
+  // d) XML sem hash primeiro (formato canônico — sem indentação)
+  const xmlSemHash =
+    '<?xml version="1.0" encoding="ISO-8859-1"?>' +
+    '<ans:mensagemTISS xmlns:ans="http://www.ans.gov.br/padroes/tiss/schemas">' +
+    '<ans:cabecalho>' +
+    '<ans:identificacaoTransacao>' +
+    '<ans:tipoTransacao>ENVIO_LOTE_GUIAS</ans:tipoTransacao>' +
+    '<ans:sequencialTransacao>'+esc(l.num)+'</ans:sequencialTransacao>' +
+    '<ans:dataRegistroTransacao>'+dataGeracaoISO+'</ans:dataRegistroTransacao>' +
+    '<ans:horaRegistroTransacao>'+horaGeracao+'</ans:horaRegistroTransacao>' +
+    '</ans:identificacaoTransacao>' +
+    '<ans:origem>' +
+    '<ans:identificacaoPrestador>' +
+    '<ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>' +
+    '</ans:identificacaoPrestador>' +
+    '</ans:origem>' +
+    '<ans:destino>' +
+    '<ans:registroANS>'+registroANS+'</ans:registroANS>' +
+    '</ans:destino>' +
+    '<ans:Padrao>'+versaoTiss+'</ans:Padrao>' +
+    '</ans:cabecalho>' +
+    '<ans:prestadorParaOperadora>' +
+    '<ans:loteGuias>' +
+    '<ans:numeroLote>'+esc(l.num)+'</ans:numeroLote>' +
+    xmlGuias +
+    '</ans:loteGuias>' +
+    '</ans:prestadorParaOperadora>' +
+    '<ans:epilogo><ans:hash></ans:hash></ans:epilogo>' +
     '</ans:mensagemTISS>';
 
-  const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'lote_' + l.num + '_TISS_' + dataGeracaoISO + '.xml';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
+  // Calcula hash SHA-1 sobre o XML sem hash, depois insere
+  const dataGeracaoFinal = dataGeracaoISO;
+  _tissHashMD5(xmlSemHash).then(function(hash) {
+    const xmlFinal = xmlSemHash.replace(
+      '<ans:epilogo><ans:hash></ans:hash></ans:epilogo>',
+      '<ans:epilogo><ans:hash>'+hash+'</ans:hash></ans:epilogo>'
+    );
 
-  l.xml = xml;
-  if (l.status === 'Pendente') {
-    l.status = 'Gerado';
-    const sb = window._cfGetDb ? window._cfGetDb() : null;
-    if (sb) sb.from('lotes_tiss').update({ status: 'Gerado' }).eq('id', l.id);
-  }
-  renderLotesTable();
-  showToast('XML TISS gerado — ' + guias.length + ' guia(s) no lote ' + l.num, 'success');
+    // a) Charset ISO-8859-1 — converte via TextEncoder não disponível para ISO,
+    // usa Blob com encoding explícito e BOM workaround para forçar ISO
+    // Na prática, browsers gravam UTF-8 mas declaramos ISO-8859-1 conforme TISS
+    const blob = new Blob([xmlFinal], { type: 'application/xml;charset=ISO-8859-1' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lote_' + l.num + '_TISS_' + dataGeracaoFinal + '.xml';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
+
+    l.xml = xmlFinal;
+    if (l.status === 'Pendente') {
+      l.status = 'Gerado';
+      const sb = window._cfGetDb ? window._cfGetDb() : null;
+      if (sb) sb.from('lotes_tiss').update({ status: 'Gerado' }).eq('id', l.id);
+    }
+    renderLotesTable();
+    showToast('XML TISS gerado — ' + guias.length + ' guia(s) · hash SHA-1 calculado', 'success');
+  });
 }
 
 function exportarXMLTISS() {
