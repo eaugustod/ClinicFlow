@@ -3141,6 +3141,26 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <div class="form-group"><label>Nome do plano na guia TISS</label><input class="form-input" id="pl-nome-plano-guia" placeholder="Deixe em branco p/ usar nome da op."></div>
       </div>
 
+      <!-- Logo do plano -->
+      <div class="sadt-section-label">Logotipo do plano (para impressão de guias)</div>
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:8px">
+        <div id="pl-logo-preview"
+          style="width:160px;height:52px;border:2px dashed var(--border-mid);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg-raised);cursor:pointer;flex-shrink:0"
+          onclick="document.getElementById('pl-logo-input').click()"
+          onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-mid)'">
+          <span id="pl-logo-placeholder" style="font-size:11px;color:var(--text-muted);text-align:center;padding:4px">
+            Clique para<br>anexar logo
+          </span>
+        </div>
+        <input type="file" id="pl-logo-input" accept="image/*" style="display:none" onchange="plLogoChange(this)">
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6">
+          Formatos aceitos: PNG, JPG, SVG<br>
+          Tamanho recomendado: 160 × 52 px<br>
+          O logo aparecerá na impressão das guias SADT
+          <br><button class="btn-sm btn-secondary" style="margin-top:6px;font-size:11px" onclick="plLogoRemover()">Remover logo</button>
+        </div>
+      </div>
+
       <!-- Contato -->
       <div class="form-row"><div class="form-group"><label>Observações</label><textarea class="form-input" rows="2" id="pl-obs" placeholder="Informações adicionais..."></textarea></div></div>
     </div>
@@ -6987,18 +7007,37 @@ function imprimirGuiaById(id) {
   const pac    = PACIENTES.find(p=>p.nome===g.pac);
   const procs  = g.dados?.procs||[{codigo:'',desc:'Sessão',qtd:1,valor:g.valor,total:g.valor}];
   const d = {
-    guiaNum:g.num, ans:plano?.ans||'—', guiaPrincipal:g.numOp||'—', guiaPrestador:g.num,
-    operadora:plano?.nomeGuia||plano?.nome||'—', dtAutorizacao:'', senha:'', valSenha:'',
-    autorizacao:g.numOp||'—', tipoId:'Cartão magnético', idBeneficiario:g.carteirinha||'—',
-    carteira:g.carteirinha||'—', valCarteira:'', beneficiario:g.pac,
-    cns:'—', rn:'N', nasc:pac?.nasc||'',
-    codPrestador:plano?.codPrestador||CLINICA.codPrestador, prestador:plano?.nomeContratado||CLINICA.nome,
-    profNome:prof?.nome||'—', conselho:prof?.conselho||'—', numConselho:prof?.num||'—',
-    ufConselho:prof?.uf||'SP', cbo:prof?.cbo||'—', dataSolic:g.data||'',
-    carater:'1', indicacao:g.cid||'—', procs, execProcs:procs,
-    totProc:g.valor, totTaxas:0,totMat:0,totOpme:0,totMed:0,totGas:0, total:g.valor,
-    dataImpressao:new Date().toLocaleDateString('pt-BR'),
-    horaImpressao:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+    guiaNum:       g.num,
+    ans:           plano?.ans||'—',
+    guiaPrincipal: g.numOp||'—',
+    guiaPrestador: g.num,
+    operadora:     plano?.nomeGuia||plano?.nome||'—',
+    planoLogo:     plano?.logo || null,           // logo do plano em base64
+    dtAutorizacao: g.dados?.dataAut   || '',      // ← DATA AUTORIZAÇÃO
+    senha:         g.dados?.senha     || g.numOp || '', // ← SENHA
+    valSenha:      g.dados?.validade  || '',      // ← VALIDADE SENHA
+    autorizacao:   g.numOp||'—',
+    tipoId:        'Cartão magnético',
+    idBeneficiario:g.carteirinha||'—',
+    carteira:      g.carteirinha||'—',
+    valCarteira:   '',
+    beneficiario:  g.pac,
+    cns:           '—', rn:'N', nasc:pac?.nasc||'',
+    codPrestador:  plano?.codPrestador||CLINICA.codPrestador,
+    prestador:     plano?.nomeContratado||CLINICA.nome,
+    profNome:      prof?.nome||PROF_EXEC_GUIA_AUTO,
+    conselho:      prof?.conselho||'—',
+    numConselho:   prof?.num||'—',
+    ufConselho:    prof?.uf||'SP',
+    cbo:           prof?.cbo||'—',
+    dataSolic:     g.data||'',
+    carater:       '1',
+    indicacao:     g.cid||'—',
+    procs,
+    execProcs:     procs,
+    totProc:g.valor, totTaxas:0, totMat:0, totOpme:0, totMed:0, totGas:0, total:g.valor,
+    dataImpressao: new Date().toLocaleDateString('pt-BR'),
+    horaImpressao: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
   };
   const html = buildGuiaPrintHTML(d);
   printViaIframe(html);
@@ -7021,7 +7060,13 @@ function buildGuiaPrintHTML(d) {
   };
   const formatBRL = n => (n==null||isNaN(n)) ? '0,00' : Number(n).toFixed(2).replace('.',',');
 
-  const logoSvg = PLANO_LOGOS[d.operadora] || PLANO_LOGOS['default'];
+  // Logo: prioridade → base64 do plano cadastrado → SVG por nome → SVG default
+  let logoHtml;
+  if (d.planoLogo) {
+    logoHtml = `<img src="${d.planoLogo}" style="max-width:130px;max-height:36px;object-fit:contain;display:block">`;
+  } else {
+    logoHtml = PLANO_LOGOS[d.operadora] || PLANO_LOGOS['default'];
+  }
   const totalGeral = (d.totProc||0)+(d.totTaxas||0)+(d.totMat||0)+(d.totOpme||0)+(d.totMed||0)+(d.totGas||0);
 
   // Procedure rows — solicitados
@@ -7097,7 +7142,7 @@ function buildGuiaPrintHTML(d) {
 
 // CABEÇALHO
 '<div class="g-header">' +
-'<div class="g-logo">'+logoSvg+'</div>' +
+'<div class="g-logo">'+logoHtml+'</div>' +
 '<div class="g-titles"><div class="g-title1">GUIA DE SERVIÇO PROFISSIONAL / SERVIÇO AUXILIAR<br>DE DIAGNÓSTICO E TERAPIA SP/SADT</div></div>' +
 '<div class="g-num-box"><div class="g-num-label">2 — Nº Guia no Prestador</div><div class="g-num-val">'+fv(d.guiaPrestador)+'</div></div>' +
 '</div>\n\n' +
@@ -7673,6 +7718,12 @@ function coletarDadosGuia() {
     execUf:        document.getElementById('sadt-exec-uf')?.value        || 'SP',
     execCbo:       document.getElementById('sadt-exec-cbo')?.value       || '—',
     obs:           document.getElementById('sadt-obs')?.value            || '',
+    // Logo do plano (busca pelo nome da operadora preenchida no modal)
+    planoLogo:     (() => {
+      const opNome = document.getElementById('sadt-operadora')?.value || '';
+      const planoObj = PLANOS.find(p => p.nome === opNome || p.nomeGuia === opNome);
+      return planoObj?.logo || null;
+    })(),
     // Meta
     dataImpressao: new Date().toLocaleDateString('pt-BR'),
     horaImpressao: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
@@ -7888,6 +7939,9 @@ async function cancelouTerapia() {
 function renderPlanosGrid() {
   document.getElementById('planos-grid').innerHTML = PLANOS.map(p => {
     const procCount = PROCEDIMENTOS.filter(pr => pr.planoId === p.id).length;
+    const logoEl = p.logo
+      ? `<img src="${p.logo}" style="max-width:80px;max-height:28px;object-fit:contain;margin-bottom:4px;border-radius:3px" title="Logo cadastrado">`
+      : `<span style="font-size:10px;color:var(--text-muted)">sem logo</span>`;
     return `<div class="plan-card" style="${p.status==='Inativo'?'opacity:.55':''}">
       <div class="plan-card-header">
         <div>
@@ -7896,6 +7950,7 @@ function renderPlanosGrid() {
           ${p.nomeContratado?`<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${p.nomeContratado}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div style="margin-bottom:2px">${logoEl}</div>
           ${statusChip(p.status||'Ativo')}
           <div style="display:flex;gap:4px">
             <button class="action-btn" title="Editar" onclick="editarPlano(${p.id})" style="width:24px;height:24px">${EDIT_ICON}</button>
@@ -7916,6 +7971,34 @@ function renderPlanosGrid() {
 function _setPlField(id, val) { const el=document.getElementById(id); if(el) el.value = val||''; }
 function _getPlField(id) { const el=document.getElementById(id); return el?el.value:''; }
 
+// ── Logo do plano ─────────────────────────────────────────────────────────────
+let _plLogoData = null; // base64 string temporária durante edição do modal
+
+function plLogoSetPreview(base64) {
+  _plLogoData = base64 || null;
+  const preview = document.getElementById('pl-logo-preview');
+  const ph      = document.getElementById('pl-logo-placeholder');
+  if (!preview) return;
+  if (base64) {
+    preview.innerHTML = `<img src="${base64}" style="max-width:156px;max-height:48px;object-fit:contain;border-radius:4px">`;
+  } else {
+    preview.innerHTML = `<span id="pl-logo-placeholder" style="font-size:11px;color:var(--text-muted);text-align:center;padding:4px">Clique para<br>anexar logo</span>`;
+  }
+}
+
+function plLogoChange(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => plLogoSetPreview(e.target.result);
+  reader.readAsDataURL(file);
+  input.value = ''; // reset so same file can be re-selected
+}
+
+function plLogoRemover() {
+  plLogoSetPreview(null);
+}
+
 function openNovoPlano() {
   editingPlId = null;
   document.getElementById('plano-modal-title').textContent = 'Novo Plano de Saúde';
@@ -7931,6 +8014,7 @@ function openNovoPlano() {
   _setPlField('pl-usa-tiss','true');
   _setPlField('pl-aplica-todos','true');
   _setPlField('pl-juntar-guia','true');
+  plLogoSetPreview(null); // limpa logo
   openModal('modal-plano');
 }
 
@@ -7960,6 +8044,7 @@ function editarPlano(id) {
   _setPlField('pl-usa-tiss',        p.usaTiss!==false?'true':'false');
   _setPlField('pl-aplica-todos',    p.aplicaTodos!==false?'true':'false');
   _setPlField('pl-juntar-guia',     p.juntarGuia!==false?'true':'false');
+  plLogoSetPreview(p.logo || null); // mostra logo se existir
   openModal('modal-plano');
 }
 
@@ -8146,10 +8231,11 @@ function salvarPlano() {
     aplicaTodos:    _getPlField('pl-aplica-todos') === 'true',
     juntarGuia:     _getPlField('pl-juntar-guia') === 'true',
     pacientes:      0,
+    logo:           _plLogoData || null, // base64 da imagem do plano
   };
   if (editingPlId !== null) {
     const pl = PLANOS.find(p=>p.id===editingPlId);
-    if (pl) { dados.pacientes = pl.pacientes; Object.assign(pl, dados); }
+    if (pl) { dados.pacientes = pl.pacientes; if (!_plLogoData && pl.logo) dados.logo = pl.logo; Object.assign(pl, dados); }
     showToast('Plano atualizado!','success');
   } else {
     dados.id = nextPlId++;
@@ -11385,8 +11471,8 @@ document.addEventListener('DOMContentLoaded', function() {
     dbToPac: r => ({ id:r.id, nome:r.nome, nasc:r.nasc||'', cpf:r.cpf||'', tel:r.tel||'', email:r.email||'', end:r.end||'', planoId:r.plano_id||5, plano:r.plano||'Particular', carteirinha:r.carteirinha||'—', sexo:r.sexo||'', status:r.status||'Ativo', obs:r.obs||'', ultima:r.ultima||'', estCivil:r.est_civil||'', profissao:r.profissao||'', titular:r.titular||'' }),
     profToDb: p => ({ nome:p.nome, nome_agenda:p.nomeAgenda||null, esp:p.esp||null, conselho:p.conselho||null, num:p.num||null, uf:p.uf||'SP', cbo:p.cbo||null, tel:p.tel||null, email:p.email||null, cor:p.cor||'#4f8ef7', status:p.status||'Ativo', instagram:p.instagram||null, linkedin:p.linkedin||null, google_cal_id:p.googleCalendarId||null }),
     dbToProf: r => ({ id:r.id, nome:r.nome, nomeAgenda:r.nome_agenda||r.nome?.split(' ')[0]||'', esp:r.esp||'', conselho:r.conselho||'', num:r.num||'', uf:r.uf||'SP', cbo:r.cbo||'', tel:r.tel||'', email:r.email||'', cor:r.cor||'#4f8ef7', status:r.status||'Ativo', instagram:r.instagram||'', linkedin:r.linkedin||'', googleCalendarId:r.google_cal_id||'' }),
-    planoToDb: p => ({ nome:p.nome, nome_guia:p.nomeGuia||null, cnpj:p.cnpj||null, ans:p.ans||null, tabela:p.tabela||'CBHPM', cod_prestador:p.codPrestador||null, nome_contratado:p.nomeContratado||null, cnes:p.cnes||null, num_guia_inicial:p.numGuiaInicial||1, usa_tiss:p.usaTiss!==false, aplica_todos:p.aplicaTodos!==false, tipo_id:p.tipoId||'Código', versao_tiss:p.versaoTiss||'4.02.00', tel:p.tel||null, email:p.email||null, obs:p.obs||null, status:p.status||'Ativo', pacientes:p.pacientes||0, juntar_guia:p.juntarGuia!==false, nome_plano_guia:p.nomePlanoGuia||null }),
-    dbToPlano: r => ({ id:r.id, nome:r.nome, nomeGuia:r.nome_guia||'', cnpj:r.cnpj||'', ans:r.ans||'', tabela:r.tabela||'CBHPM', codPrestador:r.cod_prestador||'', nomeContratado:r.nome_contratado||'', cnes:r.cnes||'', numGuiaInicial:r.num_guia_inicial||1, usaTiss:r.usa_tiss!==false, aplicaTodos:r.aplica_todos!==false, tipoId:r.tipo_id||'Código', versaoTiss:r.versao_tiss||'4.02.00', tel:r.tel||'', email:r.email||'', obs:r.obs||'', status:r.status||'Ativo', pacientes:r.pacientes||0, juntarGuia:r.juntar_guia!==false, nomePlanoGuia:r.nome_plano_guia||'' }),
+    planoToDb: p => ({ nome:p.nome, nome_guia:p.nomeGuia||null, cnpj:p.cnpj||null, ans:p.ans||null, tabela:p.tabela||'CBHPM', cod_prestador:p.codPrestador||null, nome_contratado:p.nomeContratado||null, cnes:p.cnes||null, num_guia_inicial:p.numGuiaInicial||1, usa_tiss:p.usaTiss!==false, aplica_todos:p.aplicaTodos!==false, tipo_id:p.tipoId||'Código', versao_tiss:p.versaoTiss||'4.02.00', tel:p.tel||null, email:p.email||null, obs:p.obs||null, status:p.status||'Ativo', pacientes:p.pacientes||0, juntar_guia:p.juntarGuia!==false, nome_plano_guia:p.nomePlanoGuia||null, logo:p.logo||null }),
+    dbToPlano: r => ({ id:r.id, nome:r.nome, nomeGuia:r.nome_guia||'', cnpj:r.cnpj||'', ans:r.ans||'', tabela:r.tabela||'CBHPM', codPrestador:r.cod_prestador||'', nomeContratado:r.nome_contratado||'', cnes:r.cnes||'', numGuiaInicial:r.num_guia_inicial||1, usaTiss:r.usa_tiss!==false, aplicaTodos:r.aplica_todos!==false, tipoId:r.tipo_id||'Código', versaoTiss:r.versao_tiss||'4.02.00', tel:r.tel||'', email:r.email||'', obs:r.obs||'', status:r.status||'Ativo', pacientes:r.pacientes||0, juntarGuia:r.juntar_guia!==false, nomePlanoGuia:r.nome_plano_guia||'', logo:r.logo||null }),
     procToDb: p => ({ codigo:p.codigo||null, descricao:p.desc, desc_curta:p.descCurta||null, tipo:p.tipo||'Sessão', val_part:p.valPart||0, val_plano:p.valPlano||0, tabela:p.tabela||'TUSS', plano_id:p.planoId||0, status:p.status||'Ativo', obs:p.obs||null }),
     dbToProc: r => ({ id:r.id, codigo:r.codigo||'', desc:r.descricao||r.desc||'', descCurta:r.desc_curta||'', tipo:r.tipo||'Sessão', valPart:r.val_part||0, valPlano:r.val_plano||0, tabela:r.tabela||'TUSS', planoId:r.plano_id||0, status:r.status||'Ativo', obs:r.obs||'' }),
     apptToDb: a => ({ prof_id:a.profId, paciente:a.paciente, plano:a.plano||'Particular', plano_id:a.planoId||5, hora:a.hora, hora_fim:a.horaFim||null, dur_min:a.durMin||30, data_iso:a.dataISO||null, status:a.status||'agendado', obs:a.obs||null, modalidade:a.modalidade||'presencial', meet_link:a.meetLink||null, wa_sent:a.waSent||false, carteirinha:a.carteirinha||null, guia:a.guia||null }),
@@ -11613,11 +11699,17 @@ document.addEventListener('DOMContentLoaded', function() {
       versaoTiss: _gf('pl-versao-tiss') || '4.02.00', tipoId: _gf('pl-tipo-id') || 'Código',
       usaTiss: _gf('pl-usa-tiss') === 'true', aplicaTodos: _gf('pl-aplica-todos') === 'true',
       juntarGuia: _gf('pl-juntar-guia') === 'true', pacientes: 0,
+      logo: _plLogoData || null,  // base64 do logo
     };
     const sb = getDb();
     if (editingPlId !== null) {
       const pl = PLANOS.find(p => p.id === editingPlId);
-      if (pl) { dados.pacientes = pl.pacientes; Object.assign(pl, dados); }
+      if (pl) {
+        dados.pacientes = pl.pacientes;
+        // Preserva logo existente se não foi alterada
+        if (!_plLogoData && pl.logo) dados.logo = pl.logo;
+        Object.assign(pl, dados);
+      }
       if (sb) await sb.from('planos_saude').update(map.planoToDb(dados)).eq('id', editingPlId);
       showToast('Plano atualizado!', 'success');
     } else {
