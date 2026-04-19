@@ -6712,6 +6712,185 @@ function renderLotesTable() {
   });
 }
 
+function abrirNovoLote() {
+  editingLoteId = null;
+  document.getElementById('lote-modal-title').textContent = 'Novo Lote TISS';
+  document.getElementById('lote-modal-sub').textContent   = 'Selecione o plano e as guias';
+  document.getElementById('lote-id-display').textContent  = '';
+  document.getElementById('lote-btn-xml').style.display   = 'none';
+
+  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const now = new Date();
+  document.getElementById('lote-competencia').value = months[now.getMonth()]+'/'+now.getFullYear();
+  document.getElementById('lote-obs').value = '';
+  document.getElementById('lote-qtd-sel').textContent   = '0';
+  document.getElementById('lote-valor-total').textContent= 'R$ 0,00';
+
+  const lpEl = document.getElementById('lote-plano');
+  if (lpEl) lpEl.innerHTML = '<option value="">Selecione o plano...</option>' +
+    PLANOS.filter(p=>p.nome!=='Particular').map(p=>'<option value="'+p.id+'">'+p.nome+(p.ans&&p.ans!=='—'?' (ANS '+p.ans+')':'')+'</option>').join('');
+
+  document.getElementById('lote-guias-disponiveis').innerHTML =
+    '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Selecione um plano para ver as guias pendentes</div>';
+
+  openModal('modal-lote');
+}
+
+function abrirFecharLote() {
+  // Shortcut: open novo lote modal pre-filtered for pending guias
+  abrirNovoLote();
+  showToast('Selecione o plano e as guias para fechar o lote','success');
+}
+
+function editarLote(id) {
+  const l = LOTES.find(x=>x.id===id);
+  if (!l) return;
+  editingLoteId = id;
+  document.getElementById('lote-modal-title').textContent = 'Editar Lote #'+l.num;
+  document.getElementById('lote-modal-sub').textContent   = l.competencia+' — '+l.plano;
+  document.getElementById('lote-id-display').textContent  = 'Lote: '+l.num;
+  document.getElementById('lote-btn-xml').style.display   = 'inline-flex';
+  document.getElementById('lote-competencia').value = l.competencia;
+  document.getElementById('lote-obs').value         = l.obs||'';
+
+  const lpEl = document.getElementById('lote-plano');
+  if (lpEl) { lpEl.innerHTML = '<option value="">—</option>' + PLANOS.filter(p=>p.nome!=='Particular').map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join(''); lpEl.value = l.planoId; }
+
+  loteAtualizarGuias();
+  document.getElementById('lote-qtd-sel').textContent    = l.qtd;
+  document.getElementById('lote-valor-total').textContent = brl(l.valor);
+  openModal('modal-lote');
+}
+
+function loteAtualizarGuias() {
+  const planoId = parseInt(document.getElementById('lote-plano')?.value||'0');
+  const el = document.getElementById('lote-guias-disponiveis');
+  if (!el) return;
+  if (!planoId) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Selecione um plano para ver as guias disponíveis</div>';
+    loteRecalc();
+    return;
+  }
+  // Show ALL guias for this plano that are not yet in a lote (any status except already lotted)
+  const guias = GUIAS.filter(g => g.planoId===planoId && !g.loteId);
+  if (!guias.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Todas as guias deste plano já estão em lotes.</div>';
+    loteRecalc();
+    return;
+  }
+  el.innerHTML = '';
+
+  // Header row
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:grid;grid-template-columns:28px 1fr 80px 90px 70px;gap:6px;padding:6px 12px;background:var(--bg-overlay);font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;border-bottom:1px solid var(--border)';
+  hdr.innerHTML = '<span></span><span>Paciente / Guia</span><span>Data</span><span style="text-align:right">Valor</span><span style="text-align:center">Status</span>';
+  el.appendChild(hdr);
+
+  let total = 0; let qtd = 0;
+  guias.forEach(g => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:28px 1fr 80px 90px 70px;gap:6px;padding:7px 12px;border-bottom:1px solid var(--border);align-items:center';
+    const chk = document.createElement('input');
+    chk.type = 'checkbox'; chk.checked = true;
+    chk.dataset.guiaId = g.id; chk.dataset.valor = g.valor;
+    chk.addEventListener('change', loteRecalcAndWarn);
+
+    const chipCls = g.status==='Pago'?'green':g.status==='Enviado'?'blue':'yellow';
+    row.appendChild(chk);
+    const info = document.createElement('div');
+    info.innerHTML = '<div style="font-size:13px;font-weight:500">'+g.pac+'</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">#'+g.num+'</div>';
+    row.appendChild(info);
+    const dt = document.createElement('div');
+    dt.style.cssText = 'font-size:11px;color:var(--text-muted)';
+    dt.textContent = g.data ? g.data.split('-').slice(1).reverse().join('/') : '—';
+    row.appendChild(dt);
+    const val = document.createElement('div');
+    val.style.cssText = 'font-family:var(--font-mono);font-size:12px;text-align:right';
+    val.textContent = brl(g.valor);
+    row.appendChild(val);
+    const chip = document.createElement('div');
+    chip.style.cssText = 'text-align:center';
+    chip.innerHTML = '<span class="chip '+chipCls+'" style="font-size:9px;padding:2px 6px">'+g.status+'</span>';
+    row.appendChild(chip);
+    el.appendChild(row);
+    total += g.valor; qtd++;
+  });
+
+  // Warning if > 90
+  if (qtd > 90) {
+    const warn = document.createElement('div');
+    warn.style.cssText = 'padding:8px 12px;background:rgba(251,191,36,0.1);border-top:1px solid rgba(251,191,36,0.3);font-size:12px;color:var(--warning)';
+    warn.textContent = '⚠ Este plano tem '+qtd+' guias disponíveis. O máximo por lote é 90. As excedentes serão ignoradas — desmarque as que não devem entrar.';
+    el.appendChild(warn);
+  }
+
+  document.getElementById('lote-qtd-sel').textContent     = qtd;
+  document.getElementById('lote-valor-total').textContent  = brl(total);
+  atualizarBarraLote(qtd, total);
+}
+
+function loteRecalcAndWarn() {
+  loteRecalc();
+  const qtd = parseInt(document.getElementById('lote-qtd-sel').textContent || '0');
+  if (qtd > 90) showToast('Máximo de 90 guias por lote. Desmarque '+(qtd-90)+' guias.','error');
+}
+
+function loteRecalc() {
+  const checkboxes = document.querySelectorAll('#lote-guias-disponiveis input[type=checkbox]');
+  let total=0, qtd=0;
+  checkboxes.forEach(c => { if(c.checked){ total+=parseFloat(c.dataset.valor||0); qtd++; } });
+  document.getElementById('lote-qtd-sel').textContent     = qtd;
+  document.getElementById('lote-valor-total').textContent  = brl(total);
+  atualizarBarraLote(qtd, total);
+}
+
+function atualizarBarraLote(qtd, total) {
+  const barEl  = document.getElementById('lote-progress-bar');
+  const cntEl  = document.getElementById('lote-count-label');
+  if (!barEl) return;
+  const pct    = Math.min(100, Math.round(qtd/90*100));
+  barEl.style.width = pct+'%';
+  barEl.style.background = qtd > 90 ? 'var(--danger)' : qtd > 70 ? 'var(--warning)' : 'var(--success)';
+  if (cntEl) cntEl.textContent = qtd+' / 90 guias selecionadas · '+brl(total);
+}
+
+function salvarLote() {
+  const planoId = parseInt(document.getElementById('lote-plano')?.value||'0');
+  const comp    = document.getElementById('lote-competencia')?.value.trim();
+  if (!planoId) { showToast('Selecione o plano','error'); return; }
+  const plano   = PLANOS.find(p=>p.id===planoId);
+  const checkboxes = document.querySelectorAll('#lote-guias-disponiveis input[type=checkbox]:checked');
+  const selectedIds= [...checkboxes].map(c=>parseInt(c.dataset.guiaId));
+  if (!selectedIds.length) { showToast('Selecione ao menos uma guia','error'); return; }
+  const total = [...checkboxes].reduce((s,c)=>s+parseFloat(c.dataset.valor||0),0);
+
+  if (selectedIds.length > 90) { showToast('Máximo de 90 guias por lote. Desmarque '+(selectedIds.length-90)+' guias.','error'); return; }
+
+  if (editingLoteId !== null) {
+    const l = LOTES.find(x=>x.id===editingLoteId);
+    if (l) { l.competencia=comp; l.planoId=planoId; l.plano=plano?.nome||'—'; l.qtd=selectedIds.length; l.valor=total; l.obs=document.getElementById('lote-obs')?.value||''; }
+    showToast('Lote atualizado!','success');
+  } else {
+    const ano  = new Date().getFullYear();
+    const num  = String(ano)+String(nextLoteId).padStart(4,'0');
+    const newLote = { id:nextLoteId++, num, competencia:comp, planoId, plano:plano?.nome||'—',
+      qtd:selectedIds.length, valor:total, status:'Pendente',
+      dataCriacao:new Date().toISOString().slice(0,10), dataEnvio:'',
+      obs:document.getElementById('lote-obs')?.value||'', guiaIds:selectedIds, xml:'' };
+    LOTES.push(newLote);
+    // Stamp loteId AND loteNum on each guia so it shows in the guias list
+    selectedIds.forEach(id => {
+      const g=GUIAS.find(x=>x.id===id);
+      if(g){ g.loteId=newLote.id; g.loteNum=newLote.num; g.status='Enviado'; }
+    });
+    showToast('Lote '+num+' criado com '+selectedIds.length+' guias!','success');
+  }
+  closeModal('modal-lote');
+  renderLotesTable();
+  renderGuiasList();
+}
+
 function atualizarStatusLote(loteId, novoStatus) {
   const l = LOTES.find(x => x.id === loteId);
   if (!l) return;
@@ -6974,9 +7153,7 @@ function gerarXMLLote(loteId) {
     '<ans:prestadorParaOperadora>' +
     '<ans:loteGuias>' +
     '<ans:numeroLote>'+esc(l.num)+'</ans:numeroLote>' +
-    '<ans:guiasTISS>' +
     xmlGuias +
-    '</ans:guiasTISS>' +
     '</ans:loteGuias>' +
     '</ans:prestadorParaOperadora>' +
     '<ans:epilogo><ans:hash></ans:hash></ans:epilogo>' +
