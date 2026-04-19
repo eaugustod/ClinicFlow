@@ -6669,34 +6669,41 @@ function renderLotesTable() {
   if (!tbody) return;
   tbody.innerHTML = '';
   LOTES.forEach(l => {
-    const chipClass = l.status==='Enviado'?'green':l.status==='Pendente'?'yellow':'blue';
     const tr = document.createElement('tr');
     tr.innerHTML =
-      '<td><span style="font-family:var(--font-mono)">'+l.num+'</span></td>' +
-      '<td>'+l.competencia+'</td>' +
-      '<td>'+l.plano+'</td>' +
-      '<td style="text-align:center">'+l.qtd+'</td>' +
-      '<td style="font-family:var(--font-mono);color:var(--success)">'+brl(l.valor)+'</td>' +
-      '<td>'+l.dataCriacao.split('-').reverse().join('/')+'</td>' +
-      '<td><span class="chip '+chipClass+'">'+l.status+'</span></td>' +
+      '<td><span style="font-family:var(--font-mono)">' + l.num + '</span></td>' +
+      '<td>' + (l.competencia||'—') + '</td>' +
+      '<td>' + l.plano + '</td>' +
+      '<td style="text-align:center">' + l.qtd + '</td>' +
+      '<td style="font-family:var(--font-mono);color:var(--success)">' + brl(l.valor) + '</td>' +
+      '<td>' + (l.dataCriacao||'').split('-').reverse().join('/') + '</td>' +
+      '<td>' +
+        '<select class="form-select" style="padding:3px 8px;font-size:11px;width:110px" ' +
+          'onchange="atualizarStatusLote(' + l.id + ',this.value)">' +
+          ['Pendente','Gerado','Enviado','Faturado','Glosado'].map(function(s) {
+            return '<option value="' + s + '"' + (l.status===s?' selected':'') + '>' + s + '</option>';
+          }).join('') +
+        '</select>' +
+      '</td>' +
       '<td><div class="table-actions"></div></td>';
 
     const actions = tr.querySelector('.table-actions');
 
     const editBtn = document.createElement('button');
-    editBtn.className = 'action-btn'; editBtn.title = 'Editar';
+    editBtn.className = 'action-btn'; editBtn.title = 'Editar lote';
     editBtn.innerHTML = EDIT_ICON;
     editBtn.addEventListener('click', () => editarLote(l.id));
     actions.appendChild(editBtn);
 
     const xmlBtn = document.createElement('button');
-    xmlBtn.className = 'action-btn'; xmlBtn.title = 'Gerar XML';
+    xmlBtn.className = 'action-btn'; xmlBtn.title = 'Exportar XML TISS';
+    xmlBtn.style.color = 'var(--accent)';
     xmlBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
     xmlBtn.addEventListener('click', () => gerarXMLLote(l.id));
     actions.appendChild(xmlBtn);
 
     const delLoteBtn = document.createElement('button');
-    delLoteBtn.className='action-btn'; delLoteBtn.title='Excluir'; delLoteBtn.style.color='var(--danger)';
+    delLoteBtn.className = 'action-btn'; delLoteBtn.title = 'Excluir'; delLoteBtn.style.color = 'var(--danger)';
     delLoteBtn.innerHTML = DEL_ICON;
     delLoteBtn.addEventListener('click', () => excluirLote(l.id));
     actions.appendChild(delLoteBtn);
@@ -6705,215 +6712,219 @@ function renderLotesTable() {
   });
 }
 
-function abrirNovoLote() {
-  editingLoteId = null;
-  document.getElementById('lote-modal-title').textContent = 'Novo Lote TISS';
-  document.getElementById('lote-modal-sub').textContent   = 'Selecione o plano e as guias';
-  document.getElementById('lote-id-display').textContent  = '';
-  document.getElementById('lote-btn-xml').style.display   = 'none';
-
-  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const now = new Date();
-  document.getElementById('lote-competencia').value = months[now.getMonth()]+'/'+now.getFullYear();
-  document.getElementById('lote-obs').value = '';
-  document.getElementById('lote-qtd-sel').textContent   = '0';
-  document.getElementById('lote-valor-total').textContent= 'R$ 0,00';
-
-  const lpEl = document.getElementById('lote-plano');
-  if (lpEl) lpEl.innerHTML = '<option value="">Selecione o plano...</option>' +
-    PLANOS.filter(p=>p.nome!=='Particular').map(p=>'<option value="'+p.id+'">'+p.nome+(p.ans&&p.ans!=='—'?' (ANS '+p.ans+')':'')+'</option>').join('');
-
-  document.getElementById('lote-guias-disponiveis').innerHTML =
-    '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Selecione um plano para ver as guias pendentes</div>';
-
-  openModal('modal-lote');
-}
-
-function abrirFecharLote() {
-  // Shortcut: open novo lote modal pre-filtered for pending guias
-  abrirNovoLote();
-  showToast('Selecione o plano e as guias para fechar o lote','success');
-}
-
-function editarLote(id) {
-  const l = LOTES.find(x=>x.id===id);
+function atualizarStatusLote(loteId, novoStatus) {
+  const l = LOTES.find(x => x.id === loteId);
   if (!l) return;
-  editingLoteId = id;
-  document.getElementById('lote-modal-title').textContent = 'Editar Lote #'+l.num;
-  document.getElementById('lote-modal-sub').textContent   = l.competencia+' — '+l.plano;
-  document.getElementById('lote-id-display').textContent  = 'Lote: '+l.num;
-  document.getElementById('lote-btn-xml').style.display   = 'inline-flex';
-  document.getElementById('lote-competencia').value = l.competencia;
-  document.getElementById('lote-obs').value         = l.obs||'';
-
-  const lpEl = document.getElementById('lote-plano');
-  if (lpEl) { lpEl.innerHTML = '<option value="">—</option>' + PLANOS.filter(p=>p.nome!=='Particular').map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join(''); lpEl.value = l.planoId; }
-
-  loteAtualizarGuias();
-  document.getElementById('lote-qtd-sel').textContent    = l.qtd;
-  document.getElementById('lote-valor-total').textContent = brl(l.valor);
-  openModal('modal-lote');
-}
-
-function loteAtualizarGuias() {
-  const planoId = parseInt(document.getElementById('lote-plano')?.value||'0');
-  const el = document.getElementById('lote-guias-disponiveis');
-  if (!el) return;
-  if (!planoId) {
-    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Selecione um plano para ver as guias disponíveis</div>';
-    loteRecalc();
-    return;
+  l.status = novoStatus;
+  if (novoStatus === 'Enviado' || novoStatus === 'Faturado') {
+    l.dataEnvio = l.dataEnvio || new Date().toISOString().slice(0, 10);
   }
-  // Show ALL guias for this plano that are not yet in a lote (any status except already lotted)
-  const guias = GUIAS.filter(g => g.planoId===planoId && !g.loteId);
-  if (!guias.length) {
-    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Todas as guias deste plano já estão em lotes.</div>';
-    loteRecalc();
-    return;
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (sb) {
+    sb.from('lotes_tiss').update({ status: novoStatus, data_envio: l.dataEnvio || null }).eq('id', loteId)
+      .then(function(r) { if (r.error) console.error('[Lote status]', r.error.message); });
   }
-  el.innerHTML = '';
-
-  // Header row
-  const hdr = document.createElement('div');
-  hdr.style.cssText = 'display:grid;grid-template-columns:28px 1fr 80px 90px 70px;gap:6px;padding:6px 12px;background:var(--bg-overlay);font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;border-bottom:1px solid var(--border)';
-  hdr.innerHTML = '<span></span><span>Paciente / Guia</span><span>Data</span><span style="text-align:right">Valor</span><span style="text-align:center">Status</span>';
-  el.appendChild(hdr);
-
-  let total = 0; let qtd = 0;
-  guias.forEach(g => {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:28px 1fr 80px 90px 70px;gap:6px;padding:7px 12px;border-bottom:1px solid var(--border);align-items:center';
-    const chk = document.createElement('input');
-    chk.type = 'checkbox'; chk.checked = true;
-    chk.dataset.guiaId = g.id; chk.dataset.valor = g.valor;
-    chk.addEventListener('change', loteRecalcAndWarn);
-
-    const chipCls = g.status==='Pago'?'green':g.status==='Enviado'?'blue':'yellow';
-    row.appendChild(chk);
-    const info = document.createElement('div');
-    info.innerHTML = '<div style="font-size:13px;font-weight:500">'+g.pac+'</div>' +
-      '<div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">#'+g.num+'</div>';
-    row.appendChild(info);
-    const dt = document.createElement('div');
-    dt.style.cssText = 'font-size:11px;color:var(--text-muted)';
-    dt.textContent = g.data ? g.data.split('-').slice(1).reverse().join('/') : '—';
-    row.appendChild(dt);
-    const val = document.createElement('div');
-    val.style.cssText = 'font-family:var(--font-mono);font-size:12px;text-align:right';
-    val.textContent = brl(g.valor);
-    row.appendChild(val);
-    const chip = document.createElement('div');
-    chip.style.cssText = 'text-align:center';
-    chip.innerHTML = '<span class="chip '+chipCls+'" style="font-size:9px;padding:2px 6px">'+g.status+'</span>';
-    row.appendChild(chip);
-    el.appendChild(row);
-    total += g.valor; qtd++;
-  });
-
-  // Warning if > 90
-  if (qtd > 90) {
-    const warn = document.createElement('div');
-    warn.style.cssText = 'padding:8px 12px;background:rgba(251,191,36,0.1);border-top:1px solid rgba(251,191,36,0.3);font-size:12px;color:var(--warning)';
-    warn.textContent = '⚠ Este plano tem '+qtd+' guias disponíveis. O máximo por lote é 90. As excedentes serão ignoradas — desmarque as que não devem entrar.';
-    el.appendChild(warn);
-  }
-
-  document.getElementById('lote-qtd-sel').textContent     = qtd;
-  document.getElementById('lote-valor-total').textContent  = brl(total);
-  atualizarBarraLote(qtd, total);
+  showToast('Status atualizado: ' + novoStatus, 'success');
 }
 
-function loteRecalcAndWarn() {
-  loteRecalc();
-  const qtd = parseInt(document.getElementById('lote-qtd-sel').textContent || '0');
-  if (qtd > 90) showToast('Máximo de 90 guias por lote. Desmarque '+(qtd-90)+' guias.','error');
-}
-
-function loteRecalc() {
-  const checkboxes = document.querySelectorAll('#lote-guias-disponiveis input[type=checkbox]');
-  let total=0, qtd=0;
-  checkboxes.forEach(c => { if(c.checked){ total+=parseFloat(c.dataset.valor||0); qtd++; } });
-  document.getElementById('lote-qtd-sel').textContent     = qtd;
-  document.getElementById('lote-valor-total').textContent  = brl(total);
-  atualizarBarraLote(qtd, total);
-}
-
-function atualizarBarraLote(qtd, total) {
-  const barEl  = document.getElementById('lote-progress-bar');
-  const cntEl  = document.getElementById('lote-count-label');
-  if (!barEl) return;
-  const pct    = Math.min(100, Math.round(qtd/90*100));
-  barEl.style.width = pct+'%';
-  barEl.style.background = qtd > 90 ? 'var(--danger)' : qtd > 70 ? 'var(--warning)' : 'var(--success)';
-  if (cntEl) cntEl.textContent = qtd+' / 90 guias selecionadas · '+brl(total);
-}
-
-function salvarLote() {
-  const planoId = parseInt(document.getElementById('lote-plano')?.value||'0');
-  const comp    = document.getElementById('lote-competencia')?.value.trim();
-  if (!planoId) { showToast('Selecione o plano','error'); return; }
-  const plano   = PLANOS.find(p=>p.id===planoId);
-  const checkboxes = document.querySelectorAll('#lote-guias-disponiveis input[type=checkbox]:checked');
-  const selectedIds= [...checkboxes].map(c=>parseInt(c.dataset.guiaId));
-  if (!selectedIds.length) { showToast('Selecione ao menos uma guia','error'); return; }
-  const total = [...checkboxes].reduce((s,c)=>s+parseFloat(c.dataset.valor||0),0);
-
-  if (selectedIds.length > 90) { showToast('Máximo de 90 guias por lote. Desmarque '+(selectedIds.length-90)+' guias.','error'); return; }
-
-  if (editingLoteId !== null) {
-    const l = LOTES.find(x=>x.id===editingLoteId);
-    if (l) { l.competencia=comp; l.planoId=planoId; l.plano=plano?.nome||'—'; l.qtd=selectedIds.length; l.valor=total; l.obs=document.getElementById('lote-obs')?.value||''; }
-    showToast('Lote atualizado!','success');
-  } else {
-    const ano  = new Date().getFullYear();
-    const num  = String(ano)+String(nextLoteId).padStart(4,'0');
-    const newLote = { id:nextLoteId++, num, competencia:comp, planoId, plano:plano?.nome||'—',
-      qtd:selectedIds.length, valor:total, status:'Pendente',
-      dataCriacao:new Date().toISOString().slice(0,10), dataEnvio:'',
-      obs:document.getElementById('lote-obs')?.value||'', guiaIds:selectedIds, xml:'' };
-    LOTES.push(newLote);
-    // Stamp loteId AND loteNum on each guia so it shows in the guias list
-    selectedIds.forEach(id => {
-      const g=GUIAS.find(x=>x.id===id);
-      if(g){ g.loteId=newLote.id; g.loteNum=newLote.num; g.status='Enviado'; }
-    });
-    showToast('Lote '+num+' criado com '+selectedIds.length+' guias!','success');
-  }
-  closeModal('modal-lote');
-  renderLotesTable();
-  renderGuiasList();
+function _tissHash() {
+  return Date.now().toString(36).toUpperCase().padEnd(32,'0').slice(0,32);
 }
 
 function gerarXMLLote(loteId) {
-  const l = typeof loteId==='number' ? LOTES.find(x=>x.id===loteId) : LOTES.find(x=>x.id===editingLoteId);
-  if (!l) { showToast('Selecione um lote','error'); return; }
-  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  const l = typeof loteId === 'number'
+    ? LOTES.find(x => x.id === loteId)
+    : LOTES.find(x => x.id === editingLoteId);
+  if (!l) { showToast('Selecione um lote', 'error'); return; }
+
+  const plano = PLANOS.find(p => p.id === l.planoId);
+  if (!plano) { showToast('Plano nao encontrado', 'error'); return; }
+
+  const fmtDate = function(iso) {
+    if (!iso) return new Date().toISOString().slice(0,10);
+    const m = String(iso).match(/(\d{4})-(\d{2})-(\d{2})/);
+    return m ? m[1]+'-'+m[2]+'-'+m[3] : iso;
+  };
+  const fmtHora = function() {
+    const n = new Date();
+    return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  };
+  const esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  const fmtBRL = function(v) { return Number(v||0).toFixed(2); };
+
+  const codPrestador  = plano.codPrestador  || CLINICA.codPrestador || '100000019260';
+  const nomePrestador = plano.nomeContratado || CLINICA.nome        || 'KOSMOS ESPACO TERAPEUTICO';
+  const cnes          = plano.cnes           || CLINICA.cnes        || '620904';
+  const registroANS   = plano.ans            || '';
+  const versaoTiss    = plano.versaoTiss      || '4.02.00';
+
+  const profExec = PROFISSIONAIS.find(function(p) {
+    return p.nome.toLowerCase().replace(/[^a-z]/g,'').includes('mariacecilia');
+  }) || {};
+  const profNome        = profExec.nome        || 'Maria Cecilia Benessuti Donato';
+  const profConselho    = profExec.conselho     || '09';
+  const profNumConselho = profExec.num          || '71849';
+  const profUF          = profExec.uf           || '35';
+  const profCBO         = profExec.cbo          || '251510';
+  const profCPF         = profExec.cpf          || '27700196869';
+
+  const guias = (l.guiaIds || []).map(function(id) { return GUIAS.find(function(g) { return g.id === id; }); }).filter(Boolean);
+  if (!guias.length) { showToast('Nenhuma guia encontrada neste lote', 'error'); return; }
+
+  const dataGeracaoISO = new Date().toISOString().slice(0,10);
+  const horaGeracao    = fmtHora();
+
+  const xmlGuias = guias.map(function(g) {
+    const dataGuia  = fmtDate(g.data);
+    const senha     = esc(g.dados && g.dados.senha ? g.dados.senha : (g.numOp || ''));
+    const dataAut   = fmtDate(g.dados && g.dados.dataAut ? g.dados.dataAut : g.data);
+    const valSenha  = fmtDate(g.dados && g.dados.validade ? g.dados.validade : '');
+    const carteira  = esc(g.carteirinha || '');
+    const guiaPrest = esc(g.num);
+    const guiaOp    = esc(g.numOp || g.num);
+    const procs     = (g.dados && g.dados.procs && g.dados.procs.length > 0)
+      ? g.dados.procs
+      : [{ codigo:'50000470', desc:'Sessao de Terapia', qtd:1, valor:g.valor, total:g.valor }];
+
+    const xmlProcs = procs.map(function(p, i) {
+      const val = fmtBRL(p.valor || g.valor);
+      const tot = fmtBRL(p.total || ((p.valor||g.valor) * (p.qtd||1)));
+      return '      <ans:procedimentoExecutado>\n' +
+        '        <ans:sequencialItem>'+(i+1)+'</ans:sequencialItem>\n' +
+        '        <ans:dataExecucao>'+dataGuia+'</ans:dataExecucao>\n' +
+        '        <ans:horaInicial>08:00:00</ans:horaInicial>\n' +
+        '        <ans:horaFinal>09:00:00</ans:horaFinal>\n' +
+        '        <ans:procedimento>\n' +
+        '          <ans:codigoTabela>22</ans:codigoTabela>\n' +
+        '          <ans:codigoProcedimento>'+esc(p.codigo||'50000470')+'</ans:codigoProcedimento>\n' +
+        '          <ans:descricaoProcedimento>'+esc(p.desc||'Sessao de Terapia')+'</ans:descricaoProcedimento>\n' +
+        '        </ans:procedimento>\n' +
+        '        <ans:quantidadeExecutada>'+(p.qtd||1)+'</ans:quantidadeExecutada>\n' +
+        '        <ans:reducaoAcrescimo>1.0000</ans:reducaoAcrescimo>\n' +
+        '        <ans:valorUnitario>'+val+'</ans:valorUnitario>\n' +
+        '        <ans:valorTotal>'+tot+'</ans:valorTotal>\n' +
+        '        <ans:equipeSadt>\n' +
+        '          <ans:grauPart>12</ans:grauPart>\n' +
+        '          <ans:codProfissional>\n' +
+        '            <ans:cpfContratado>'+profCPF+'</ans:cpfContratado>\n' +
+        '          </ans:codProfissional>\n' +
+        '          <ans:nomeProf>'+esc(profNome)+'</ans:nomeProf>\n' +
+        '          <ans:conselho>'+profConselho+'</ans:conselho>\n' +
+        '          <ans:numeroConselhoProfissional>'+profNumConselho+'</ans:numeroConselhoProfissional>\n' +
+        '          <ans:UF>'+profUF+'</ans:UF>\n' +
+        '          <ans:CBOS>'+profCBO+'</ans:CBOS>\n' +
+        '        </ans:equipeSadt>\n' +
+        '      </ans:procedimentoExecutado>';
+    }).join('\n');
+
+    const totalProc = fmtBRL(g.valor);
+
+    return '    <ans:guiaSP-SADT>\n' +
+      '      <ans:cabecalhoGuia>\n' +
+      '        <ans:registroANS>'+registroANS+'</ans:registroANS>\n' +
+      '        <ans:numeroGuiaPrestador>'+guiaPrest+'</ans:numeroGuiaPrestador>\n' +
+      '        <ans:guiaPrincipal>'+guiaOp+'</ans:guiaPrincipal>\n' +
+      '      </ans:cabecalhoGuia>\n' +
+      '      <ans:dadosAutorizacao>\n' +
+      '        <ans:numeroGuiaOperadora>'+guiaOp+'</ans:numeroGuiaOperadora>\n' +
+      '        <ans:dataAutorizacao>'+dataAut+'</ans:dataAutorizacao>\n' +
+      '        <ans:senha>'+senha+'</ans:senha>\n' +
+      '        <ans:dataValidadeSenha>'+valSenha+'</ans:dataValidadeSenha>\n' +
+      '      </ans:dadosAutorizacao>\n' +
+      '      <ans:dadosBeneficiario>\n' +
+      '        <ans:numeroCarteira>'+carteira+'</ans:numeroCarteira>\n' +
+      '        <ans:atendimentoRN>N</ans:atendimentoRN>\n' +
+      '        <ans:tipoIdent>01</ans:tipoIdent>\n' +
+      '      </ans:dadosBeneficiario>\n' +
+      '      <ans:dadosSolicitante>\n' +
+      '        <ans:contratadoSolicitante>\n' +
+      '          <ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>\n' +
+      '        </ans:contratadoSolicitante>\n' +
+      '        <ans:nomeContratadoSolicitante>'+esc(nomePrestador)+'</ans:nomeContratadoSolicitante>\n' +
+      '        <ans:profissionalSolicitante>\n' +
+      '          <ans:nomeProfissional>'+esc(profNome)+'</ans:nomeProfissional>\n' +
+      '          <ans:conselhoProfissional>'+profConselho+'</ans:conselhoProfissional>\n' +
+      '          <ans:numeroConselhoProfissional>'+profNumConselho+'</ans:numeroConselhoProfissional>\n' +
+      '          <ans:UF>'+profUF+'</ans:UF>\n' +
+      '          <ans:CBOS>'+profCBO+'</ans:CBOS>\n' +
+      '        </ans:profissionalSolicitante>\n' +
+      '      </ans:dadosSolicitante>\n' +
+      '      <ans:dadosSolicitacao>\n' +
+      '        <ans:dataSolicitacao>'+dataGuia+'</ans:dataSolicitacao>\n' +
+      '        <ans:caraterAtendimento>1</ans:caraterAtendimento>\n' +
+      '      </ans:dadosSolicitacao>\n' +
+      '      <ans:dadosExecutante>\n' +
+      '        <ans:contratadoExecutante>\n' +
+      '          <ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>\n' +
+      '        </ans:contratadoExecutante>\n' +
+      '        <ans:CNES>'+cnes+'</ans:CNES>\n' +
+      '      </ans:dadosExecutante>\n' +
+      '      <ans:dadosAtendimento>\n' +
+      '        <ans:tipoAtendimento>03</ans:tipoAtendimento>\n' +
+      '        <ans:indicacaoAcidente>9</ans:indicacaoAcidente>\n' +
+      '        <ans:tipoConsulta>4</ans:tipoConsulta>\n' +
+      '        <ans:regimeAtendimento>01</ans:regimeAtendimento>\n' +
+      '      </ans:dadosAtendimento>\n' +
+      '      <ans:procedimentosExecutados>\n' +
+      xmlProcs + '\n' +
+      '      </ans:procedimentosExecutados>\n' +
+      '      <ans:valorTotal>\n' +
+      '        <ans:valorProcedimentos>'+totalProc+'</ans:valorProcedimentos>\n' +
+      '        <ans:valorTaxasAlugueis>0.00</ans:valorTaxasAlugueis>\n' +
+      '        <ans:valorMateriais>0.00</ans:valorMateriais>\n' +
+      '        <ans:valorMedicamentos>0.00</ans:valorMedicamentos>\n' +
+      '        <ans:valorGasesMedicinais>0.00</ans:valorGasesMedicinais>\n' +
+      '        <ans:valorTotalGeral>'+totalProc+'</ans:valorTotalGeral>\n' +
+      '      </ans:valorTotal>\n' +
+      '    </ans:guiaSP-SADT>';
+  }).join('\n');
+
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<ans:mensagemTISS xmlns:ans="http://www.ans.gov.br/padroes/tiss/schemas">\n' +
     '  <ans:cabecalho>\n' +
     '    <ans:identificacaoTransacao>\n' +
     '      <ans:tipoTransacao>ENVIO_LOTE_GUIAS</ans:tipoTransacao>\n' +
-    '      <ans:sequencialTransacao>'+l.id+'</ans:sequencialTransacao>\n' +
-    '      <ans:dataRegistroTransacao>'+new Date().toISOString().slice(0,10)+'</ans:dataRegistroTransacao>\n' +
+    '      <ans:sequencialTransacao>'+esc(l.num)+'</ans:sequencialTransacao>\n' +
+    '      <ans:dataRegistroTransacao>'+dataGeracaoISO+'</ans:dataRegistroTransacao>\n' +
+    '      <ans:horaRegistroTransacao>'+horaGeracao+'</ans:horaRegistroTransacao>\n' +
     '    </ans:identificacaoTransacao>\n' +
     '    <ans:origem>\n' +
-    '      <ans:codigoPrestadorNaOperadora>'+CLINICA.codPrestador+'</ans:codigoPrestadorNaOperadora>\n' +
+    '      <ans:identificacaoPrestador>\n' +
+    '        <ans:codigoPrestadorNaOperadora>'+codPrestador+'</ans:codigoPrestadorNaOperadora>\n' +
+    '      </ans:identificacaoPrestador>\n' +
     '    </ans:origem>\n' +
-    '    <ans:versaoTISS>4.02.00</ans:versaoTISS>\n' +
+    '    <ans:destino>\n' +
+    '      <ans:registroANS>'+registroANS+'</ans:registroANS>\n' +
+    '    </ans:destino>\n' +
+    '    <ans:Padrao>'+versaoTiss+'</ans:Padrao>\n' +
     '  </ans:cabecalho>\n' +
     '  <ans:prestadorParaOperadora>\n' +
-    '    <ans:loteEventos>\n' +
-    '      <ans:numeroLote>'+l.num+'</ans:numeroLote>\n' +
-    '    </ans:loteEventos>\n' +
+    '    <ans:loteGuias>\n' +
+    '      <ans:numeroLote>'+esc(l.num)+'</ans:numeroLote>\n' +
+    xmlGuias + '\n' +
+    '    </ans:loteGuias>\n' +
     '  </ans:prestadorParaOperadora>\n' +
+    '  <ans:epilogo>\n' +
+    '    <ans:hash>'+_tissHash()+'</ans:hash>\n' +
+    '  </ans:epilogo>\n' +
     '</ans:mensagemTISS>';
-  const blob = new Blob([xml], {type:'application/xml'});
+
+  const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'lote_'+l.num+'_tiss.xml';
-  a.click();
-  l.xml = xml; l.status='Enviado'; l.dataEnvio=new Date().toISOString().slice(0,10);
+  a.download = 'lote_' + l.num + '_TISS_' + dataGeracaoISO + '.xml';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
+
+  l.xml = xml;
+  if (l.status === 'Pendente') {
+    l.status = 'Gerado';
+    const sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (sb) sb.from('lotes_tiss').update({ status: 'Gerado' }).eq('id', l.id);
+  }
   renderLotesTable();
-  showToast('XML TISS gerado e baixado!','success');
+  showToast('XML TISS gerado — ' + guias.length + ' guia(s) no lote ' + l.num, 'success');
 }
 
 function exportarXMLTISS() {
