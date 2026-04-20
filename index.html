@@ -1330,6 +1330,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
           Configurações
         </div>
+        <div class="nav-item" id="nav-usuarios-item" onclick="gotoPage('usuarios',this)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+          Usuários &amp; Acesso
+        </div>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -2420,6 +2424,87 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       </div>
     </div>
 
+    <!-- USUÁRIOS & CONTROLE DE ACESSO -->
+    <div class="page" id="page-usuarios">
+      <div style="max-width:900px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+          <div>
+            <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Usuários &amp; Controle de Acesso</h2>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Gerencie os usuários do sistema e seus perfis de acesso</p>
+          </div>
+          <button class="btn-sm btn-accent" onclick="abrirNovoUsuario()">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Novo usuário
+          </button>
+        </div>
+
+        <!-- Perfis de acesso resumo -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px" id="usuarios-perfis-stats">
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+            <div class="stat-label">Administradores</div>
+            <div class="stat-value" id="usr-count-admin">0</div>
+            <div class="stat-delta">Acesso total ao sistema</div>
+          </div>
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/></svg></div>
+            <div class="stat-label">Recepção</div>
+            <div class="stat-value" id="usr-count-recepcao">0</div>
+            <div class="stat-delta">Agenda, pacientes e caixa</div>
+          </div>
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+            <div class="stat-label">Profissionais</div>
+            <div class="stat-value" id="usr-count-prof">0</div>
+            <div class="stat-delta">Prontuário e evolução</div>
+          </div>
+        </div>
+
+        <!-- Tabela de usuários -->
+        <div class="table-card" style="padding:0;overflow:hidden">
+          <div class="table-header" style="padding:14px 16px">
+            <div class="table-title">Usuários cadastrados</div>
+            <div class="search-input-wrap">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <input class="search-input" placeholder="Buscar usuário..." oninput="filterUsuarios(this.value)" style="width:200px">
+            </div>
+          </div>
+          <table class="data-table">
+            <thead><tr>
+              <th style="width:48px"></th>
+              <th>Nome</th><th>E-mail</th><th>CPF</th><th>Telefone</th><th>Perfil</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="usuarios-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Legenda de permissões -->
+        <div class="table-card" style="padding:20px;margin-top:16px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text-secondary)">Permissões por perfil</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block"></span><strong style="color:var(--accent)">Administrador</strong></div>
+              <div style="color:var(--text-muted);line-height:1.8">
+                ✓ Dashboard completo<br>✓ Agenda e agendamentos<br>✓ Pacientes e prontuário<br>✓ Profissionais<br>✓ Planos e procedimentos<br>✓ Faturamento e TISS<br>✓ Relatórios<br>✓ Configurações<br>✓ Usuários e acesso
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block"></span><strong style="color:var(--success)">Recepção</strong></div>
+              <div style="color:var(--text-muted);line-height:1.8">
+                ✓ Dashboard básico<br>✓ Agenda e agendamentos<br>✓ Pacientes (cadastro)<br>✓ Lista de espera<br>✓ Planos de saúde<br>✓ Senhas / Autorizações<br>✗ Prontuário completo<br>✗ Relatórios financeiros<br>✗ Configurações
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--warning);display:inline-block"></span><strong style="color:var(--warning)">Profissional</strong></div>
+              <div style="color:var(--text-muted);line-height:1.8">
+                ✓ Sua agenda do dia<br>✓ Histórico de pacientes<br>✓ Registro de evoluções<br>✓ Guias SADT (próprias)<br>✗ Outros profissionais<br>✗ Faturamento<br>✗ Cadastros<br>✗ Relatórios<br>✗ Configurações
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- end main -->
 </div><!-- end app -->
 
@@ -2898,7 +2983,141 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
   </div>
 </div>
 
-<!-- Modal Paciente -->
+<!-- Modal Webcam (reutilizável para foto) -->
+<div class="modal-overlay" id="modal-webcam">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📷 Capturar foto pela webcam</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Posicione o rosto e clique em Capturar</div>
+      </div>
+      <button class="modal-close" onclick="fecharWebcam()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;align-items:center;gap:16px">
+      <div style="position:relative;width:100%;max-width:400px;border-radius:var(--radius-md);overflow:hidden;background:#000;aspect-ratio:4/3">
+        <video id="webcam-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:block"></video>
+        <canvas id="webcam-canvas" style="display:none"></canvas>
+        <!-- overlay guia de rosto -->
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+          <div style="width:160px;height:200px;border:2px dashed rgba(255,255,255,0.4);border-radius:50%;box-shadow:0 0 0 1000px rgba(0,0,0,0.25)"></div>
+        </div>
+      </div>
+      <!-- Preview da foto capturada -->
+      <div id="webcam-preview-wrap" style="display:none;flex-direction:column;align-items:center;gap:8px">
+        <img id="webcam-preview-img" style="width:160px;height:160px;object-fit:cover;border-radius:50%;border:3px solid var(--accent)">
+        <div style="font-size:12px;color:var(--success)">✓ Foto capturada — confirme ou tente novamente</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-secondary" id="webcam-btn-nova" onclick="webcamCapturar()" style="gap:6px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 15.2A3.2 3.2 0 018.8 12 3.2 3.2 0 0112 8.8a3.2 3.2 0 013.2 3.2 3.2 3.2 0 01-3.2 3.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z"/></svg>
+          Capturar
+        </button>
+        <button class="btn-sm btn-secondary" id="webcam-btn-repetir" onclick="webcamRepetir()" style="display:none">Repetir</button>
+        <button class="btn-sm btn-accent" id="webcam-btn-usar" onclick="webcamUsar()" style="display:none">Usar esta foto</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Usuário -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div><div class="modal-title" id="usr-modal-title">Novo Usuário</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="usr-modal-sub">Preencha os dados do usuário do sistema</div></div>
+      <button class="modal-close" onclick="closeModal('modal-usuario')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Foto -->
+      <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:4px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0">
+          <div id="usr-foto-wrap" style="width:90px;height:90px;border-radius:50%;border:2px dashed var(--border-mid);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:var(--bg-raised);transition:border-color var(--transition)" onclick="triggerPhotoModal('usuario')" title="Clique para selecionar ou capturar foto">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px;color:var(--text-muted)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:11px;gap:4px" onclick="document.getElementById('foto-usuario').click()" title="Selecionar arquivo">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Arquivo
+            </button>
+            <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:11px;gap:4px" onclick="abrirWebcam('usuario')" title="Capturar pela webcam">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M12 15.2A3.2 3.2 0 018.8 12 3.2 3.2 0 0112 8.8a3.2 3.2 0 013.2 3.2 3.2 3.2 0 01-3.2 3.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z"/></svg>
+              Webcam
+            </button>
+          </div>
+          <input type="file" id="foto-usuario" accept="image/*" style="display:none" onchange="previewPhotoTarget(this,'usr-foto-wrap','usr-foto-data')">
+          <input type="hidden" id="usr-foto-data">
+          <div style="font-size:10px;color:var(--text-muted);text-align:center">JPG/PNG<br>até 2MB</div>
+        </div>
+        <div style="flex:1">
+          <div class="form-row"><div class="form-group"><label>Nome completo *</label><input class="form-input" id="usr-nome" placeholder="Nome do usuário"></div></div>
+          <div class="form-row cols-2">
+            <div class="form-group"><label>E-mail *</label><input class="form-input" id="usr-email" type="email" placeholder="email@clinica.com.br"></div>
+            <div class="form-group"><label>Perfil de acesso *</label>
+              <select class="form-select" id="usr-perfil">
+                <option value="admin">👑 Administrador</option>
+                <option value="recepcao">📋 Recepção</option>
+                <option value="prof">🩺 Profissional</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider">Dados pessoais</div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="form-group"><label>CPF *</label><input class="form-input" id="usr-cpf" placeholder="000.000.000-00" oninput="maskCPF(this)"></div>
+        <div class="form-group"><label>RG</label><input class="form-input" id="usr-rg" placeholder="00.000.000-0"></div>
+        <div class="form-group"><label>Data de nascimento</label><input class="form-input" type="date" id="usr-nasc"></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Telefone / WhatsApp</label><input class="form-input" id="usr-tel" placeholder="(11) 99999-9999" oninput="maskTelefone(this)"></div>
+        <div class="form-group"><label>Status</label>
+          <select class="form-select" id="usr-status">
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-divider">Acesso ao sistema</div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Senha *</label>
+          <div style="position:relative">
+            <input class="form-input" type="password" id="usr-senha" placeholder="Mínimo 6 caracteres" style="padding-right:40px">
+            <button onclick="toggleSenhaVis('usr-senha','eye-usr-senha')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px">
+              <svg id="eye-usr-senha" viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirmar senha *</label>
+          <div style="position:relative">
+            <input class="form-input" type="password" id="usr-senha-conf" placeholder="Repita a senha" style="padding-right:40px">
+            <button onclick="toggleSenhaVis('usr-senha-conf','eye-usr-senha-conf')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px">
+              <svg id="eye-usr-senha-conf" viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:-8px;margin-bottom:4px">
+        ⚠️ As senhas são armazenadas localmente. Para produção, utilize autenticação via Supabase Auth.
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <div style="font-size:12px;color:var(--text-muted)" id="usr-id-display"></div>
+      <div style="flex:1"></div>
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn-sm btn-accent" onclick="salvarUsuario()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Salvar usuário
+      </button>
+    </div>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="modal-paciente">
   <div class="modal" style="max-width:660px">
     <div class="modal-header">
@@ -2907,12 +3126,23 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <div class="modal-body">
       <div style="display:flex;gap:20px;align-items:flex-start">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-          <div class="photo-upload" id="pac-foto-wrap" onclick="triggerPhoto('foto-paciente')">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0">
+          <div class="photo-upload" id="pac-foto-wrap" onclick="triggerPhoto('foto-paciente')" style="position:relative;overflow:hidden">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
             <span>Foto</span>
           </div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:11px;gap:4px" onclick="document.getElementById('foto-paciente').click()" title="Selecionar arquivo">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Arquivo
+            </button>
+            <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:11px;gap:4px" onclick="abrirWebcam('paciente')" title="Capturar webcam">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px"><path d="M12 15.2A3.2 3.2 0 018.8 12 3.2 3.2 0 0112 8.8a3.2 3.2 0 013.2 3.2 3.2 3.2 0 01-3.2 3.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z"/></svg>
+              Webcam
+            </button>
+          </div>
           <input type="file" id="foto-paciente" accept="image/*" style="display:none" onchange="previewPhoto(this)">
+          <input type="hidden" id="pac-foto-data">
           <div style="font-size:10px;color:var(--text-muted);text-align:center">JPG/PNG<br>até 2MB</div>
         </div>
         <div style="flex:1">
@@ -2981,6 +3211,27 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <button class="modal-close" onclick="closeModal('modal-profissional')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
     </div>
     <div class="modal-body">
+      <!-- Foto do profissional -->
+      <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:4px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0">
+          <div id="prf-foto-wrap" style="width:80px;height:80px;border-radius:50%;border:2px dashed var(--border-mid);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:var(--bg-raised);transition:border-color var(--transition)" onclick="document.getElementById('foto-profissional').click()" title="Clique para selecionar foto">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:var(--text-muted)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-sm btn-secondary" style="padding:4px 7px;font-size:11px;gap:3px" onclick="document.getElementById('foto-profissional').click()">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Arquivo
+            </button>
+            <button class="btn-sm btn-secondary" style="padding:4px 7px;font-size:11px;gap:3px" onclick="abrirWebcam('profissional')">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px"><path d="M12 15.2A3.2 3.2 0 018.8 12 3.2 3.2 0 0112 8.8a3.2 3.2 0 013.2 3.2 3.2 3.2 0 01-3.2 3.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z"/></svg>
+              Webcam
+            </button>
+          </div>
+          <input type="file" id="foto-profissional" accept="image/*" style="display:none" onchange="previewPhotoTarget(this,'prf-foto-wrap','prf-foto-data')">
+          <input type="hidden" id="prf-foto-data">
+          <div style="font-size:10px;color:var(--text-muted);text-align:center">Foto<br>JPG/PNG</div>
+        </div>
+        <div style="flex:1">
       <div class="form-row cols-2">
         <div class="form-group"><label>Nome completo *</label><input class="form-input" id="prf-nome" placeholder="Dr(a). Nome Completo"></div>
         <div class="form-group"><label>Nome na agenda</label>
@@ -3010,6 +3261,8 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <div class="form-group"><label>Telefone</label><input class="form-input" id="prf-tel" placeholder="(11) 99999-9999"></div>
         <div class="form-group"><label>E-mail</label><input class="form-input" id="prf-email" placeholder="email profissional"></div>
       </div>
+        </div><!-- end flex col for photo layout -->
+      </div><!-- end flex row -->
       <div class="section-divider">Integração Google Calendar</div>
       <div class="form-row">
         <div class="form-group">
@@ -12495,6 +12748,391 @@ document.addEventListener('DOMContentLoaded', function() {
   window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 })();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   MÓDULO: USUÁRIOS & CONTROLE DE ACESSO
+   + WEBCAM REUTILIZÁVEL PARA FOTO
+═══════════════════════════════════════════════════ */
+
+// ── Estado ──────────────────────────────────────────
+let USUARIOS = JSON.parse(localStorage.getItem('cf_usuarios') || '[]');
+if (!USUARIOS.length) {
+  // Usuário admin padrão
+  USUARIOS = [{
+    id: 'usr-1',
+    nome: 'Administrador',
+    email: 'admin',
+    cpf: '',
+    rg: '',
+    tel: '',
+    nasc: '',
+    perfil: 'admin',
+    status: 'Ativo',
+    foto: '',
+    senha: 'admin123',
+    criadoEm: new Date().toISOString()
+  }];
+  salvarUsuariosLocal();
+}
+
+let _editUsuarioId = null;
+let _webcamStream = null;
+let _webcamAlvo = null; // 'paciente' | 'profissional' | 'usuario'
+let _webcamCapturedData = null;
+
+function salvarUsuariosLocal() {
+  localStorage.setItem('cf_usuarios', JSON.stringify(USUARIOS));
+}
+
+// ── Renderização ─────────────────────────────────────
+function renderUsuarios() {
+  const tbody = document.getElementById('usuarios-tbody');
+  if (!tbody) return;
+
+  // contadores de perfil
+  const counts = { admin: 0, recepcao: 0, prof: 0 };
+  USUARIOS.forEach(u => { if (counts[u.perfil] !== undefined) counts[u.perfil]++; });
+  const cA = document.getElementById('usr-count-admin');
+  const cR = document.getElementById('usr-count-recepcao');
+  const cP = document.getElementById('usr-count-prof');
+  if (cA) cA.textContent = counts.admin;
+  if (cR) cR.textContent = counts.recepcao;
+  if (cP) cP.textContent = counts.prof;
+
+  tbody.innerHTML = USUARIOS.map(u => {
+    const perfilLabel = { admin: '👑 Admin', recepcao: '📋 Recepção', prof: '🩺 Profissional' }[u.perfil] || u.perfil;
+    const perfilColor = { admin: 'var(--accent)', recepcao: 'var(--success)', prof: 'var(--warning)' }[u.perfil] || 'var(--text-muted)';
+    const foto = u.foto
+      ? `<img src="${u.foto}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--border-mid)">`
+      : `<div style="width:34px;height:34px;border-radius:50%;background:var(--bg-raised);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--text-secondary);border:2px solid var(--border-mid)">${(u.nome||'?')[0].toUpperCase()}</div>`;
+    const statusChip = u.status === 'Ativo'
+      ? `<span class="chip green" style="font-size:11px">Ativo</span>`
+      : `<span class="chip gray" style="font-size:11px">Inativo</span>`;
+    return `<tr>
+      <td>${foto}</td>
+      <td style="font-weight:500">${u.nome}</td>
+      <td style="color:var(--text-muted)">${u.email}</td>
+      <td style="font-family:var(--font-mono);font-size:12px">${u.cpf || '—'}</td>
+      <td>${u.tel || '—'}</td>
+      <td><span style="font-size:12px;font-weight:500;color:${perfilColor}">${perfilLabel}</span></td>
+      <td>${statusChip}</td>
+      <td style="text-align:right">
+        <div style="display:flex;gap:4px;justify-content:flex-end">
+          <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:12px" onclick="editarUsuario('${u.id}')">Editar</button>
+          <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="excluirUsuario('${u.id}')">Excluir</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum usuário cadastrado</td></tr>`;
+}
+
+function filterUsuarios(q) {
+  const rows = document.querySelectorAll('#usuarios-tbody tr');
+  const lq = q.toLowerCase();
+  rows.forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(lq) ? '' : 'none';
+  });
+}
+
+// ── Abrir / Editar ───────────────────────────────────
+function abrirNovoUsuario() {
+  _editUsuarioId = null;
+  document.getElementById('usr-modal-title').textContent = 'Novo Usuário';
+  document.getElementById('usr-modal-sub').textContent = 'Preencha os dados do usuário do sistema';
+  document.getElementById('usr-id-display').textContent = '';
+  ['usr-nome','usr-email','usr-cpf','usr-rg','usr-tel','usr-senha','usr-senha-conf'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('usr-perfil').value = 'admin';
+  document.getElementById('usr-status').value = 'Ativo';
+  document.getElementById('usr-nasc').value = '';
+  document.getElementById('usr-foto-data').value = '';
+  const wrap = document.getElementById('usr-foto-wrap');
+  wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px;color:var(--text-muted)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+  document.getElementById('modal-usuario').classList.add('active');
+}
+
+function editarUsuario(id) {
+  const u = USUARIOS.find(x => x.id === id);
+  if (!u) return;
+  _editUsuarioId = id;
+  document.getElementById('usr-modal-title').textContent = 'Editar Usuário';
+  document.getElementById('usr-modal-sub').textContent = 'Atualize os dados do usuário';
+  document.getElementById('usr-id-display').textContent = 'ID: ' + id;
+  document.getElementById('usr-nome').value = u.nome || '';
+  document.getElementById('usr-email').value = u.email || '';
+  document.getElementById('usr-cpf').value = u.cpf || '';
+  document.getElementById('usr-rg').value = u.rg || '';
+  document.getElementById('usr-tel').value = u.tel || '';
+  document.getElementById('usr-nasc').value = u.nasc || '';
+  document.getElementById('usr-perfil').value = u.perfil || 'admin';
+  document.getElementById('usr-status').value = u.status || 'Ativo';
+  document.getElementById('usr-foto-data').value = u.foto || '';
+  document.getElementById('usr-senha').value = '';
+  document.getElementById('usr-senha-conf').value = '';
+  const wrap = document.getElementById('usr-foto-wrap');
+  if (u.foto) {
+    wrap.innerHTML = `<img src="${u.foto}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px;color:var(--text-muted)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+  }
+  document.getElementById('modal-usuario').classList.add('active');
+}
+
+// ── Salvar ───────────────────────────────────────────
+function salvarUsuario() {
+  const nome = document.getElementById('usr-nome').value.trim();
+  const email = document.getElementById('usr-email').value.trim();
+  const cpf = document.getElementById('usr-cpf').value.trim();
+  const rg = document.getElementById('usr-rg').value.trim();
+  const tel = document.getElementById('usr-tel').value.trim();
+  const nasc = document.getElementById('usr-nasc').value;
+  const perfil = document.getElementById('usr-perfil').value;
+  const status = document.getElementById('usr-status').value;
+  const foto = document.getElementById('usr-foto-data').value;
+  const senha = document.getElementById('usr-senha').value;
+  const senhaConf = document.getElementById('usr-senha-conf').value;
+
+  if (!nome) { showToast('Informe o nome do usuário', 'error'); return; }
+  if (!email) { showToast('Informe o e-mail', 'error'); return; }
+  if (!_editUsuarioId && !senha) { showToast('Informe a senha', 'error'); return; }
+  if (senha && senha !== senhaConf) { showToast('As senhas não coincidem', 'error'); return; }
+  if (senha && senha.length < 6) { showToast('A senha deve ter mínimo 6 caracteres', 'error'); return; }
+
+  // Verifica email duplicado
+  const duplicado = USUARIOS.find(u => u.email === email && u.id !== _editUsuarioId);
+  if (duplicado) { showToast('Já existe um usuário com este e-mail', 'error'); return; }
+
+  if (_editUsuarioId) {
+    const u = USUARIOS.find(x => x.id === _editUsuarioId);
+    if (u) {
+      u.nome = nome; u.email = email; u.cpf = cpf; u.rg = rg;
+      u.tel = tel; u.nasc = nasc; u.perfil = perfil; u.status = status;
+      u.foto = foto;
+      if (senha) u.senha = senha;
+    }
+    showToast('Usuário atualizado!', 'success');
+  } else {
+    USUARIOS.push({
+      id: 'usr-' + Date.now(),
+      nome, email, cpf, rg, tel, nasc, perfil, status, foto,
+      senha: senha,
+      criadoEm: new Date().toISOString()
+    });
+    showToast('Usuário cadastrado!', 'success');
+  }
+
+  salvarUsuariosLocal();
+  closeModal('modal-usuario');
+  renderUsuarios();
+
+  // sincroniza com Supabase se disponível
+  sincronizarUsuarioSupabase();
+}
+
+function excluirUsuario(id) {
+  if (USUARIOS.length <= 1) { showToast('Deve existir ao menos um usuário', 'error'); return; }
+  if (!confirm('Excluir este usuário?')) return;
+  const i = USUARIOS.findIndex(u => u.id === id);
+  if (i > -1) USUARIOS.splice(i, 1);
+  salvarUsuariosLocal();
+  renderUsuarios();
+  showToast('Usuário excluído.', 'error');
+}
+
+async function sincronizarUsuarioSupabase() {
+  try {
+    const sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (!sb) return;
+    // Tenta sincronizar tabela usuarios no Supabase
+    await sb.from('usuarios').upsert(USUARIOS.map(u => ({
+      id: u.id, nome: u.nome, email: u.email, cpf: u.cpf, rg: u.rg,
+      telefone: u.tel, data_nascimento: u.nasc || null,
+      perfil: u.perfil, status: u.status, foto: u.foto, created_at: u.criadoEm
+    })));
+  } catch(e) { /* tabela pode não existir ainda */ }
+}
+
+// ── Masks ────────────────────────────────────────────
+function maskCPF(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/,'$1.$2');
+  el.value = v;
+}
+function maskTelefone(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 10) v = v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+  else if (v.length > 6) v = v.replace(/(\d{2})(\d{4,5})(\d{0,4})/,'($1) $2-$3');
+  else if (v.length > 2) v = v.replace(/(\d{2})(\d+)/,'($1) $2');
+  el.value = v;
+}
+
+// ── Mostrar/ocultar senha ────────────────────────────
+function toggleSenhaVis(inputId, iconId) {
+  const inp = document.getElementById(inputId);
+  const ico = document.getElementById(iconId);
+  if (!inp) return;
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    ico.innerHTML = `<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>`;
+  } else {
+    inp.type = 'password';
+    ico.innerHTML = `<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>`;
+  }
+}
+
+// ── Foto genérica (arquivo) ──────────────────────────
+function previewPhotoTarget(input, wrapId, hiddenId) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = e.target.result;
+    const wrap = document.getElementById(wrapId);
+    if (wrap) wrap.innerHTML = `<img src="${data}" style="width:100%;height:100%;object-fit:cover">`;
+    const hid = document.getElementById(hiddenId);
+    if (hid) hid.value = data;
+  };
+  reader.readAsDataURL(file);
+}
+
+function triggerPhotoModal(alvo) {
+  document.getElementById('foto-' + alvo)?.click();
+}
+
+// ── Webcam ──────────────────────────────────────────
+function abrirWebcam(alvo) {
+  _webcamAlvo = alvo;
+  _webcamCapturedData = null;
+  const overlay = document.getElementById('modal-webcam');
+  overlay.classList.add('active');
+
+  const video = document.getElementById('webcam-video');
+  const preview = document.getElementById('webcam-preview-wrap');
+  const btnNova = document.getElementById('webcam-btn-nova');
+  const btnRepetir = document.getElementById('webcam-btn-repetir');
+  const btnUsar = document.getElementById('webcam-btn-usar');
+
+  preview.style.display = 'none';
+  btnRepetir.style.display = 'none';
+  btnUsar.style.display = 'none';
+  btnNova.textContent = '📷 Capturar';
+  btnNova.style.display = 'flex';
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+    .then(stream => {
+      _webcamStream = stream;
+      video.srcObject = stream;
+    })
+    .catch(err => {
+      fecharWebcam();
+      showToast('Webcam não encontrada ou permissão negada: ' + err.message, 'error');
+    });
+}
+
+function webcamCapturar() {
+  const video = document.getElementById('webcam-video');
+  const canvas = document.getElementById('webcam-canvas');
+  const w = video.videoWidth || 400;
+  const h = video.videoHeight || 300;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, w, h);
+  _webcamCapturedData = canvas.toDataURL('image/jpeg', 0.85);
+
+  const previewImg = document.getElementById('webcam-preview-img');
+  previewImg.src = _webcamCapturedData;
+  document.getElementById('webcam-preview-wrap').style.display = 'flex';
+  document.getElementById('webcam-btn-nova').style.display = 'none';
+  document.getElementById('webcam-btn-repetir').style.display = 'flex';
+  document.getElementById('webcam-btn-usar').style.display = 'flex';
+}
+
+function webcamRepetir() {
+  _webcamCapturedData = null;
+  document.getElementById('webcam-preview-wrap').style.display = 'none';
+  document.getElementById('webcam-btn-nova').style.display = 'flex';
+  document.getElementById('webcam-btn-repetir').style.display = 'none';
+  document.getElementById('webcam-btn-usar').style.display = 'none';
+}
+
+function webcamUsar() {
+  if (!_webcamCapturedData) return;
+  const alvo = _webcamAlvo;
+
+  if (alvo === 'paciente') {
+    const wrap = document.getElementById('pac-foto-wrap');
+    if (wrap) wrap.style.backgroundImage = `url(${_webcamCapturedData})`;
+    if (wrap) wrap.style.backgroundSize = 'cover';
+    if (wrap) wrap.innerHTML = `<img src="${_webcamCapturedData}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius-md)">`;
+    const hid = document.getElementById('pac-foto-data');
+    if (hid) hid.value = _webcamCapturedData;
+  } else if (alvo === 'profissional') {
+    const wrap = document.getElementById('prf-foto-wrap');
+    if (wrap) wrap.innerHTML = `<img src="${_webcamCapturedData}" style="width:100%;height:100%;object-fit:cover">`;
+    const hid = document.getElementById('prf-foto-data');
+    if (hid) hid.value = _webcamCapturedData;
+  } else if (alvo === 'usuario') {
+    const wrap = document.getElementById('usr-foto-wrap');
+    if (wrap) wrap.innerHTML = `<img src="${_webcamCapturedData}" style="width:100%;height:100%;object-fit:cover">`;
+    const hid = document.getElementById('usr-foto-data');
+    if (hid) hid.value = _webcamCapturedData;
+  }
+
+  fecharWebcam();
+  showToast('Foto capturada pela webcam!', 'success');
+}
+
+function fecharWebcam() {
+  if (_webcamStream) {
+    _webcamStream.getTracks().forEach(t => t.stop());
+    _webcamStream = null;
+  }
+  const video = document.getElementById('webcam-video');
+  if (video) video.srcObject = null;
+  document.getElementById('modal-webcam').classList.remove('active');
+}
+
+// ── Override gotoPage para inicializar módulo ────────
+const _origGotoPage = window.gotoPage;
+window.gotoPage = function(page, el) {
+  _origGotoPage && _origGotoPage(page, el);
+  if (page === 'usuarios') {
+    renderUsuarios();
+  }
+};
+
+// ── Override previewPhoto para paciente (manter compat.) ─
+const _origPreviewPhoto = window.previewPhoto;
+window.previewPhoto = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = e.target.result;
+    const wrap = document.getElementById('pac-foto-wrap');
+    if (wrap) wrap.innerHTML = `<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius-md)">`;
+    const hid = document.getElementById('pac-foto-data');
+    if (hid) hid.value = data;
+    // também executa o original se existir
+    if (_origPreviewPhoto && _origPreviewPhoto !== window.previewPhoto) _origPreviewPhoto(input);
+  };
+  reader.readAsDataURL(file);
+};
+
+// Inicializa contadores ao carregar
+document.addEventListener('DOMContentLoaded', function() {
+  // Esconde item de Usuários se não for admin (demo logic)
+  const navItem = document.getElementById('nav-usuarios-item');
+  // O controle de visibilidade real é feito pelo applyRoleRestrictions existente
+});
+
+console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
 </script>
 
 </body>
