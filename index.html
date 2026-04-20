@@ -820,6 +820,8 @@ a { text-decoration: none; color: inherit; }
   animation: fadeIn 0.15s ease;
 }
 .modal-overlay.active { display: flex; }
+/* Webcam sempre na frente de qualquer outro modal */
+#modal-webcam { z-index: 1100; }
 .modal {
   background: var(--bg-surface);
   border: 1px solid var(--border-mid);
