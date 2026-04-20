@@ -2405,6 +2405,13 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             3. Cole a URL e a chave anon acima e clique em <strong style="color:var(--text-secondary)">Testar e conectar</strong>
           </div>
 
+          <div style="background:rgba(79,142,247,0.07);border:1px solid rgba(79,142,247,0.2);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+            <strong style="color:var(--accent)">⚠ Coluna de fotos — SQL necessário:</strong><br>
+            Para salvar fotos de pacientes, profissionais e usuários, execute no SQL Editor do Supabase:<br>
+            <code style="display:block;margin-top:6px;padding:8px;background:var(--bg-overlay);border-radius:var(--radius-sm);font-size:11px;white-space:pre;overflow-x:auto">ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS foto TEXT;
+ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
+          </div>
+
           <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
             <button class="btn-sm btn-secondary" onclick="
               localStorage.removeItem('cf_supa_url');
@@ -4220,14 +4227,36 @@ function quickLogin(role) {
 }
 function doLogin() {
   const role = document.getElementById('login-role').value;
+  const emailInput = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
   const users = {
     admin:    { nome:'Administrador',      role:'admin',    initials:'AD' },
     recepcao: { nome:'Recepção',           role:'recepcao', initials:'RC' },
     prof:     { nome:'Dra. Maria Cecília', role:'prof',     initials:'MC' },
   };
   currentUser = users[role];
-  document.getElementById('sidebar-avatar').textContent   = currentUser.initials;
-  document.getElementById('sidebar-avatar').className     = `user-avatar ${role}`;
+  // Tenta encontrar usuário cadastrado pelo email para usar nome e foto reais
+  const usuarioCadastrado = USUARIOS.find(u => u.email && u.email.toLowerCase() === emailInput && u.perfil === role);
+  if (usuarioCadastrado) {
+    currentUser = Object.assign({}, currentUser, {
+      nome: usuarioCadastrado.nome,
+      initials: usuarioCadastrado.nome.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase(),
+      foto: usuarioCadastrado.foto || '',
+    });
+  }
+  const avatarEl = document.getElementById('sidebar-avatar');
+  if (currentUser.foto) {
+    avatarEl.innerHTML = `<img src="${currentUser.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    avatarEl.className = `user-avatar ${role}`;
+    avatarEl.style.padding = '0';
+    avatarEl.style.overflow = 'hidden';
+    avatarEl.style.background = 'transparent';
+  } else {
+    avatarEl.textContent   = currentUser.initials;
+    avatarEl.className     = `user-avatar ${role}`;
+    avatarEl.style.padding = '';
+    avatarEl.style.overflow = '';
+    avatarEl.style.background = '';
+  }
   document.getElementById('sidebar-username').textContent = currentUser.nome;
   document.getElementById('sidebar-badge').textContent    = role === 'recepcao' ? 'Recepção' : role.charAt(0).toUpperCase() + role.slice(1);
   document.getElementById('sidebar-badge').className      = `role-badge ${role}`;
@@ -4658,10 +4687,11 @@ function renderDashboard() {
   const tblTitle = document.querySelector('#page-dashboard .table-title');
   if (tblTitle) tblTitle.textContent = isHoje ? 'Consultas de hoje' : 'Consultas de ' + dLabel;
 
-  // Tabela de consultas
+  // Tabela de consultas — apenas agendados e confirmados
   const tbody = document.getElementById('dash-consultas-tbody');
   if (tbody) {
-    const sorted = [...apptSel].sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+    const apptConsultas = apptSel.filter(a => a.status === 'agendado' || a.status === 'confirmado');
+    const sorted = [...apptConsultas].sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
     if (sorted.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma consulta para ${dLabel}</td></tr>`;
     } else {
@@ -4674,13 +4704,17 @@ function renderDashboard() {
       };
       tbody.innerHTML = sorted.map(a => {
         const prof = PROFISSIONAIS.find(p => p.id === a.profId);
+        const pac  = PACIENTES.find(p => p.nome === a.paciente);
         const initials = a.paciente.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
         const s   = statusMap[a.status] || {cls:'gray', lbl: a.status};
         const cor = prof ? prof.cor : '#8b92a8';
         const canAct = !['cancelado','desmarcado'].includes(a.status);
+        const pacAvatar = pac && pac.foto
+          ? '<div class="avatar-sm" style="overflow:hidden;padding:0;flex-shrink:0"><img src="' + pac.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
+          : '<div class="avatar-sm" style="background:rgba(79,142,247,0.12);color:var(--accent);flex-shrink:0">' + initials + '</div>';
         return '<tr>' +
           '<td><span style="font-family:var(--font-mono);color:var(--text-secondary)">' + (a.hora||'—') + '</span></td>' +
-          '<td><div style="display:flex;align-items:center;gap:8px"><div class="avatar-sm" style="background:rgba(79,142,247,0.12);color:var(--accent);flex-shrink:0">' + initials + '</div><span>' + a.paciente + '</span></div></td>' +
+          '<td><div style="display:flex;align-items:center;gap:8px">' + pacAvatar + '<span>' + a.paciente + '</span></div></td>' +
           '<td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + cor + ';display:inline-block;flex-shrink:0"></span>' + (prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : '—') + '</span></td>' +
           '<td>' + (a.plano || '—') + '</td>' +
           '<td><span class="chip ' + s.cls + '">' + s.lbl + '</span></td>' +
@@ -5651,9 +5685,12 @@ function renderPacientesTable(filter='') {
     const initials = p.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
     const col = colors[p.id % colors.length];
     const nascFmt = p.nasc ? p.nasc.split('-').reverse().join('/') : '—';
+    const avatarHtml = p.foto
+      ? `<div class="avatar-sm" style="overflow:hidden;padding:0"><img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>`
+      : `<div class="avatar-sm" style="background:${col}22;color:${col}">${initials}</div>`;
     return `<tr style="${p.status==='Inativo'?'opacity:.55':''}" >
       <td><div style="display:flex;align-items:center;gap:8px">
-        <div class="avatar-sm" style="background:${col}22;color:${col}">${initials}</div>
+        ${avatarHtml}
         <div><div>${p.nome}</div>${p.status==='Inativo'?'<div style="font-size:10px;color:var(--danger)">Inativo</div>':''}</div>
       </div></td>
       <td>${nascFmt}</td>
@@ -5715,6 +5752,17 @@ function editarPaciente(id) {
   populateSelects();
   const plSel = document.getElementById('pac-plano');
   if(plSel) plSel.value = p.planoId || '';
+  // Carrega foto
+  const fotoWrapEd = document.getElementById('pac-foto-wrap');
+  const fotoDataEd = document.getElementById('pac-foto-data');
+  if (fotoDataEd) fotoDataEd.value = p.foto || '';
+  if (fotoWrapEd) {
+    if (p.foto) {
+      fotoWrapEd.innerHTML = `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius-md)">`;
+    } else {
+      fotoWrapEd.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>Foto</span>';
+    }
+  }
   openModal('modal-paciente');
 }
 
@@ -5731,10 +5779,14 @@ function toggleStatusPaciente() {
 
 // ─── PROFISSIONAIS ───────────────────────────────────────────────────────────
 function renderProfissionaisTable() {
-  document.getElementById('profissionais-tbody').innerHTML = PROFISSIONAIS.map(p =>
-    `<tr style="${p.status==='Inativo'?'opacity:.55':''}">
+  document.getElementById('profissionais-tbody').innerHTML = PROFISSIONAIS.map(p => {
+    const prfInitials = p.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
+    const prfAvatar = p.foto
+      ? `<div class="avatar-sm" style="overflow:hidden;padding:0"><img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>`
+      : `<div class="avatar-sm" style="background:${p.cor}22;color:${p.cor}">${prfInitials}</div>`;
+    return `<tr style="${p.status==='Inativo'?'opacity:.55':''}">
       <td><div style="display:flex;align-items:center;gap:10px">
-        <div class="avatar-sm" style="background:${p.cor}22;color:${p.cor}">${p.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+        ${prfAvatar}
         <div><div>${p.nome}</div>${p.status==='Inativo'?'<div style="font-size:10px;color:var(--danger)">Inativo</div>':''}</div>
       </div></td>
       <td>${p.esp}</td>
@@ -5749,7 +5801,8 @@ function renderProfissionaisTable() {
         <button class="action-btn" title="Editar" onclick="editarProfissional(${p.id})">${EDIT_ICON}</button>
         <button class="action-btn" title="Excluir" style="color:var(--danger)" onclick="excluirProfissional(${p.id})">${DEL_ICON}</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function openNovoProfissional() {
@@ -5794,6 +5847,17 @@ function editarProfissional(id) {
   document.querySelectorAll('.color-swatch').forEach(s => {
     s.classList.toggle('selected', s.dataset.color === p.cor);
   });
+  // Carrega foto
+  const prfFotoWrap = document.getElementById('prf-foto-wrap');
+  const prfFotoData = document.getElementById('prf-foto-data');
+  if (prfFotoData) prfFotoData.value = p.foto || '';
+  if (prfFotoWrap) {
+    if (p.foto) {
+      prfFotoWrap.innerHTML = `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">`;
+    } else {
+      prfFotoWrap.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px;color:var(--text-muted)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+    }
+  }
   openModal('modal-profissional');
 }
 function updateNavBadges() {
@@ -9472,8 +9536,17 @@ function abrirHistPaciente(pacId) {
 
   const av = document.getElementById('hist-pac-avatar');
   if (av) {
-    const initials = p.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
-    av.textContent = initials;
+    if (p.foto) {
+      av.innerHTML = `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      av.style.padding = '0';
+      av.style.overflow = 'hidden';
+    } else {
+      const initials = p.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
+      av.innerHTML = '';
+      av.textContent = initials;
+      av.style.padding = '';
+      av.style.overflow = '';
+    }
   }
   document.getElementById('hist-pac-nome').textContent = p.nome;
   const idadeAnos = p.nasc ? Math.floor((new Date()-new Date(p.nasc))/(365.25*24*3600*1000)) : null;
@@ -11992,10 +12065,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   const map = {
-    pacToDb: p => ({ nome:p.nome, nasc:p.nasc||null, cpf:p.cpf||null, tel:p.tel||null, email:p.email||null, end:p.end||null, plano_id:p.planoId||5, plano:p.plano||'Particular', carteirinha:p.carteirinha||null, sexo:p.sexo||null, status:p.status||'Ativo', obs:p.obs||null, ultima:p.ultima||null, est_civil:p.estCivil||null, profissao:p.profissao||null, titular:p.titular||null }),
-    dbToPac: r => ({ id:r.id, nome:r.nome, nasc:r.nasc||'', cpf:r.cpf||'', tel:r.tel||'', email:r.email||'', end:r.end||'', planoId:r.plano_id||5, plano:r.plano||'Particular', carteirinha:r.carteirinha||'—', sexo:r.sexo||'', status:r.status||'Ativo', obs:r.obs||'', ultima:r.ultima||'', estCivil:r.est_civil||'', profissao:r.profissao||'', titular:r.titular||'' }),
-    profToDb: p => ({ nome:p.nome, nome_agenda:p.nomeAgenda||null, esp:p.esp||null, conselho:p.conselho||null, num:p.num||null, uf:p.uf||'SP', cbo:p.cbo||null, tel:p.tel||null, email:p.email||null, cor:p.cor||'#4f8ef7', status:p.status||'Ativo', instagram:p.instagram||null, linkedin:p.linkedin||null, google_cal_id:p.googleCalendarId||null }),
-    dbToProf: r => ({ id:r.id, nome:r.nome, nomeAgenda:r.nome_agenda||r.nome?.split(' ')[0]||'', esp:r.esp||'', conselho:r.conselho||'', num:r.num||'', uf:r.uf||'SP', cbo:r.cbo||'', tel:r.tel||'', email:r.email||'', cor:r.cor||'#4f8ef7', status:r.status||'Ativo', instagram:r.instagram||'', linkedin:r.linkedin||'', googleCalendarId:r.google_cal_id||'' }),
+    pacToDb: p => ({ nome:p.nome, nasc:p.nasc||null, cpf:p.cpf||null, tel:p.tel||null, email:p.email||null, end:p.end||null, plano_id:p.planoId||5, plano:p.plano||'Particular', carteirinha:p.carteirinha||null, sexo:p.sexo||null, status:p.status||'Ativo', obs:p.obs||null, ultima:p.ultima||null, est_civil:p.estCivil||null, profissao:p.profissao||null, titular:p.titular||null, foto:p.foto||null }),
+    dbToPac: r => ({ id:r.id, nome:r.nome, nasc:r.nasc||'', cpf:r.cpf||'', tel:r.tel||'', email:r.email||'', end:r.end||'', planoId:r.plano_id||5, plano:r.plano||'Particular', carteirinha:r.carteirinha||'—', sexo:r.sexo||'', status:r.status||'Ativo', obs:r.obs||'', ultima:r.ultima||'', estCivil:r.est_civil||'', profissao:r.profissao||'', titular:r.titular||'', foto:r.foto||'' }),
+    profToDb: p => ({ nome:p.nome, nome_agenda:p.nomeAgenda||null, esp:p.esp||null, conselho:p.conselho||null, num:p.num||null, uf:p.uf||'SP', cbo:p.cbo||null, tel:p.tel||null, email:p.email||null, cor:p.cor||'#4f8ef7', status:p.status||'Ativo', instagram:p.instagram||null, linkedin:p.linkedin||null, google_cal_id:p.googleCalendarId||null, foto:p.foto||null }),
+    dbToProf: r => ({ id:r.id, nome:r.nome, nomeAgenda:r.nome_agenda||r.nome?.split(' ')[0]||'', esp:r.esp||'', conselho:r.conselho||'', num:r.num||'', uf:r.uf||'SP', cbo:r.cbo||'', tel:r.tel||'', email:r.email||'', cor:r.cor||'#4f8ef7', status:r.status||'Ativo', instagram:r.instagram||'', linkedin:r.linkedin||'', googleCalendarId:r.google_cal_id||'', foto:r.foto||'' }),
     planoToDb: p => ({ nome:p.nome, nome_guia:p.nomeGuia||null, cnpj:p.cnpj||null, ans:p.ans||null, tabela:p.tabela||'CBHPM', cod_prestador:p.codPrestador||null, nome_contratado:p.nomeContratado||null, cnes:p.cnes||null, num_guia_inicial:p.numGuiaInicial||1, usa_tiss:p.usaTiss!==false, aplica_todos:p.aplicaTodos!==false, tipo_id:p.tipoId||'Código', versao_tiss:p.versaoTiss||'4.02.00', tel:p.tel||null, email:p.email||null, obs:p.obs||null, status:p.status||'Ativo', pacientes:p.pacientes||0, juntar_guia:p.juntarGuia!==false, nome_plano_guia:p.nomePlanoGuia||null, logo:p.logo||null }),
     dbToPlano: r => ({ id:r.id, nome:r.nome, nomeGuia:r.nome_guia||'', cnpj:r.cnpj||'', ans:r.ans||'', tabela:r.tabela||'CBHPM', codPrestador:r.cod_prestador||'', nomeContratado:r.nome_contratado||'', cnes:r.cnes||'', numGuiaInicial:r.num_guia_inicial||1, usaTiss:r.usa_tiss!==false, aplicaTodos:r.aplica_todos!==false, tipoId:r.tipo_id||'Código', versaoTiss:r.versao_tiss||'4.02.00', tel:r.tel||'', email:r.email||'', obs:r.obs||'', status:r.status||'Ativo', pacientes:r.pacientes||0, juntarGuia:r.juntar_guia!==false, nomePlanoGuia:r.nome_plano_guia||'', logo:r.logo||null }),
     procToDb: p => ({ codigo:p.codigo||null, descricao:p.desc, desc_curta:p.descCurta||null, tipo:p.tipo||'Sessão', val_part:p.valPart||0, val_plano:p.valPlano||0, tabela:p.tabela||'TUSS', plano_id:p.planoId||0, status:p.status||'Ativo', obs:p.obs||null }),
@@ -12093,6 +12166,8 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
+      // Atualiza avatar da sidebar com foto do usuário logado (se cadastrada)
+      try { if (typeof atualizarAvatarSidebar === 'function') atualizarAvatarSidebar(); } catch(_e2) {}
     } catch (e) {
       showToast('Erro ao carregar dados: ' + e.message, 'error');
       console.error('[ClinicFlow Supabase]', e);
@@ -12160,6 +12235,7 @@ document.addEventListener('DOMContentLoaded', function() {
       sexo: document.getElementById('pac-sexo').value, estCivil: document.getElementById('pac-estcivil').value,
       profissao: document.getElementById('pac-profissao').value, obs: document.getElementById('pac-obs').value,
       status: document.getElementById('pac-status').value, ultima: new Date().toLocaleDateString('pt-BR'),
+      foto: document.getElementById('pac-foto-data')?.value || '',
     };
     const sb = getDb();
     if (editingPacId !== null) {
@@ -12191,6 +12267,7 @@ document.addEventListener('DOMContentLoaded', function() {
       linkedin: document.getElementById('prf-linkedin').value,
       googleCalendarId: document.getElementById('prf-google-cal-id').value.trim(),
       cor: selectedColor || '#4f8ef7', status: document.getElementById('prf-status').value,
+      foto: document.getElementById('prf-foto-data')?.value || '',
     };
     const sb = getDb();
     if (editingPrfId !== null) {
@@ -12928,8 +13005,37 @@ function salvarUsuario() {
   closeModal('modal-usuario');
   renderUsuarios();
 
+  // Atualiza avatar da sidebar se for o usuário logado
+  atualizarAvatarSidebar();
+
   // sincroniza com Supabase se disponível
   sincronizarUsuarioSupabase();
+}
+
+function atualizarAvatarSidebar() {
+  if (!currentUser) return;
+  const emailAtual = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
+  const role = currentUser.role;
+  const usuarioCadastrado = USUARIOS.find(u =>
+    u.email && u.email.toLowerCase() === emailAtual && u.perfil === role
+  );
+  const foto = usuarioCadastrado?.foto || currentUser.foto || '';
+  const nome = usuarioCadastrado?.nome || currentUser.nome || '';
+  const initials = nome.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase() || currentUser.initials || '?';
+  const avatarEl = document.getElementById('sidebar-avatar');
+  if (!avatarEl) return;
+  if (foto) {
+    avatarEl.innerHTML = `<img src="${foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    avatarEl.style.padding = '0';
+    avatarEl.style.overflow = 'hidden';
+    avatarEl.style.background = 'transparent';
+  } else {
+    avatarEl.textContent = initials;
+    avatarEl.style.padding = '';
+    avatarEl.style.overflow = '';
+    avatarEl.style.background = '';
+  }
+  document.getElementById('sidebar-username').textContent = nome;
 }
 
 function excluirUsuario(id) {
