@@ -1290,7 +1290,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.23</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.24</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -9894,7 +9894,7 @@ function renderTimeline() {
 
   // Guias SADT do paciente, agrupadas por data
   const guiasPac = (typeof GUIAS !== 'undefined' ? GUIAS : []).filter(g =>
-    g.paciente === p.nome || g.pacienteNome === p.nome || g.nomePaciente === p.nome
+    (g.pac||g.paciente||g.pacienteNome||g.nomePaciente||'').toLowerCase() === p.nome.toLowerCase()
   );
   const guiasByDate = {};
   guiasPac.forEach(g => {
@@ -10084,7 +10084,7 @@ function renderHistGuiasSadt() {
   if (!p) return;
 
   const guiasPac = (typeof GUIAS !== 'undefined' ? GUIAS : []).filter(g =>
-    g.paciente === p.nome || g.pacienteNome === p.nome || g.nomePaciente === p.nome
+    (g.pac||g.paciente||g.pacienteNome||g.nomePaciente||'').toLowerCase() === p.nome.toLowerCase()
   ).sort((a,b) => ((b.data||b.dataAtendimento||'').localeCompare(a.data||a.dataAtendimento||'')));
 
   const headerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
