@@ -377,7 +377,7 @@ a { text-decoration: none; color: inherit; }
   display: none;
   overflow-y: auto;
   padding: 24px;
-}
+} 
 #page-fechamento.active {
   display: block;
 }
@@ -2768,7 +2768,8 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
           <div class="form-group">
             <label>Tipo de atendimento</label>
             <select class="form-select" id="ag-tipo">
-              <option value="avaliacao">Avaliação / Anamnese</option>
+              <option value="avaliacao">Avaliação</option>
+              <option value="anamnese">Anamnese</option>
               <option value="retorno">Consulta de retorno</option>
               <option value="sessao">Sessão terapêutica</option>
               <option value="alta">Sessão de alta</option>
