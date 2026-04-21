@@ -11227,21 +11227,23 @@ const IMP_SCHEMAS = {
       {key:'carteirinha', label:'Carteirinha',           required:false},
       {key:'numGuiaOp',   label:'Nº guia operadora',     required:false},
       {key:'cid',         label:'CID-10',                required:false},
-      {key:'procedimento',label:'Procedimento',          required:false},
+      {key:'codigoProc',  label:'Código TUSS',           required:false},
+      {key:'procedimento',label:'Descrição procedimento',required:false},
     ],
     autoMatch:{
       paciente:['paciente','beneficiario','nome'],
-      plano:['plano','convenio'],
-      numSenha:['senha','autorização','autorizacao','nº senha','num senha'],
-      dataAut:['data aut','data autorização','data autorizacao','dt aut','data da autorização','autorizacao data'],
-      validade:['validade','val.','vencimento','dt vencimento','data vencimento','data validade'],
-      qtdAut:['qtd','quantidade','sessões','sessoes','autorizado','qtd autorizada'],
+      plano:['plano','convenio','convênio'],
+      numSenha:['senha','autorização','autorizacao','nº senha','num senha','numero senha'],
+      dataAut:['data aut','data autorização','data autorizacao','dt aut','data da autorização','autorizacao data','data_aut'],
+      validade:['validade','val.','vencimento','dt vencimento','data vencimento','data validade','validade senha'],
+      qtdAut:['qtd','quantidade','sessões','sessoes','autorizado','qtd autorizada','qtd_autorizada'],
       carteirinha:['carteirinha','cartão','numero cartao','num carteirinha'],
       numGuiaOp:['guia op','nº guia','num guia op','numero guia operadora'],
       cid:['cid','cid-10'],
-      procedimento:['procedimento','proc','código','descricao proc'],
+      codigoProc:['código tuss','codigo tuss','tuss','cod proc','codigo proc','código proc','cod. proc','codigo procedimento','código procedimento'],
+      procedimento:['procedimento','proc','descricao proc','descrição proc','desc proc','descricao','descrição'],
     },
-    demo:"Paciente,Plano,NumSenha,DataAutorizacao,Validade,QtdAutorizada,Carteirinha\nAna Maria Silva,SulAmérica,A30152689,01/04/2026,30/04/2026,12,1234567890123",
+    demo:"Paciente,Plano,NumSenha,DataAutorizacao,Validade,QtdAutorizada,Carteirinha,CodigoTUSS,Procedimento\nAna Maria Silva,SulAmérica,A30152689,01/04,30/04,12,1234567890123,50000470,Avaliação Fonoaudiológica",
   },
 };
 
@@ -11544,10 +11546,16 @@ function corrPacIgnorarTodos() {
 
 function parseISODate(str) {
   if(!str) return null;
+  str = str.trim();
+  // Formato dd/mm/yyyy ou dd-mm-yyyy (com ano completo ou 2 dígitos)
   let m=str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if(m) return (m[3].length===2?'20'+m[3]:m[3])+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  // Formato yyyy-mm-dd (já ISO)
   m=str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(m) return str;
+  // Formato dd/mm ou dd-mm sem ano → assume ano corrente
+  m=str.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+  if(m) return new Date().getFullYear()+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
   return null;
 }
 
@@ -11771,22 +11779,31 @@ function processRowsByType() {
         item.paciente=impGetCell(row,'paciente');
         item.planoNome=impGetCell(row,'plano');
         item.numSenha=impGetCell(row,'numSenha');
-        // Datas: converte dd/mm/yyyy → yyyy-mm-dd
+        // Datas: suporta dd/mm (ano corrente) e dd/mm/yyyy
         item.dataAut=parseISODate(impGetCell(row,'dataAut')) || null;
         item.validade=parseISODate(impGetCell(row,'validade')) || null;
         item.qtdAut=parseInt(impGetCell(row,'qtdAut'))||10;
         item.carteirinha=impGetCell(row,'carteirinha');
         item.numGuiaOp=impGetCell(row,'numGuiaOp');
         item.cid=impGetCell(row,'cid');
-        item.procedimento=impGetCell(row,'procedimento');
+        item.codigoProc=impGetCell(row,'codigoProc');   // código TUSS separado
+        item.procedimento=impGetCell(row,'procedimento'); // descrição do procedimento
         if(!item.paciente) issues.push('Paciente obrigatório');
         if(!item.numSenha) issues.push('Número da senha obrigatório');
+        if(item.dataAut) {
+          const d=new Date(item.dataAut+'T00:00:00');
+          if(isNaN(d)) issues.push('Data de autorização inválida: '+impGetCell(row,'dataAut'));
+        }
+        if(item.validade) {
+          const d=new Date(item.validade+'T00:00:00');
+          if(isNaN(d)) issues.push('Data de validade inválida: '+impGetCell(row,'validade'));
+        }
         const plano=item.planoNome?PLANOS.find(p=>p.nome.toLowerCase().includes(item.planoNome.toLowerCase())):null;
         if(!plano&&item.planoNome) warnings.push('Plano não encontrado');
         item.planoObj=plano;
         const dup=SENHAS_PLANO.find(s=>s.paciente===item.paciente&&s.numSenha===item.numSenha);
         if(dup) warnings.push('Senha já cadastrada');
-        item.detail=item.paciente; item.extra='Senha '+item.numSenha;
+        item.detail=item.paciente; item.extra='Senha '+item.numSenha+(item.dataAut?' · Aut:'+item.dataAut.split('-').reverse().join('/'):'')+(item.validade?' · Val:'+item.validade.split('-').reverse().join('/'):'');
         break;
       }
     }
@@ -12168,12 +12185,17 @@ async function _impConfirmarExecutar() {
         case 'senhas':{
           const plano=r.planoObj;
           if(!plano){skipped++;continue;}
+          // Monta procs com código TUSS e descrição separados
+          let procs = [];
+          if (r.codigoProc || r.procedimento) {
+            procs = [{ codigo: r.codigoProc || '', desc: r.procedimento || '' }];
+          }
           const obj={id:nextSenhaId++,planoId:plano.id,paciente:r.paciente,
             carteirinha:r.carteirinha||'',numGuiaOp:r.numGuiaOp||'',numSenha:r.numSenha,
-            dataAut: r.dataAut || null,   // usa data importada, não data de hoje
-            validade:r.validade || null,
+            dataAut: r.dataAut || null,
+            validade: r.validade || null,
             qtdAutorizada:r.qtdAut,qtdUsada:0,cid:r.cid||'',
-            procs:r.procedimento?[{codigo:'',desc:r.procedimento}]:[],
+            procs,
             status:'Ativa',ativa:true,obs:''};
           const dbId=await sbInsert('senhas_plano',{plano_id:obj.planoId,paciente:obj.paciente,
             carteirinha:obj.carteirinha||null,num_guia_op:obj.numGuiaOp||null,num_senha:obj.numSenha,
