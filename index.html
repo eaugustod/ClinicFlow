@@ -328,6 +328,39 @@ a { text-decoration: none; color: inherit; }
   display: flex;
 }
 
+/* Guias SADT — flex column, scroll isolado na listagem */
+#page-tiss {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 20px 24px;
+}
+#page-tiss.active {
+  display: flex;
+}
+#page-tiss #guias-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+/* Senhas & Autorizações — flex column, scroll isolado na tabela */
+#page-senhas {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 20px 24px;
+}
+#page-senhas.active {
+  display: flex;
+}
+#page-senhas .senhas-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
 /* Relatórios — mesmo padrão flex, conteúdo não escapa da tela */
 #page-relatorios {
   display: none;
@@ -1830,9 +1863,9 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
 
     <!-- TISS GUIAS -->
-    <div class="page" id="page-tiss" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
-      <div class="tiss-header-info" id="tiss-stats-row" style="flex-shrink:0"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0">
+    <div class="page" id="page-tiss">
+      <div class="tiss-header-info" id="tiss-stats-row"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;" id="tiss-toolbar">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <h3 style="font-size:15px;font-weight:600">Guias SADT</h3>
           <div class="search-input-wrap" style="width:200px">
@@ -1869,7 +1902,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           </button>
         </div>
       </div>
-      <div id="guias-list" style="flex:1;overflow-y:auto;min-height:0;padding-right:4px"></div>
+      <div id="guias-list"></div>
     </div>
 
     <!-- LOTES -->
@@ -2113,8 +2146,8 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
 
     <!-- SENHAS / AUTORIZAÇÕES -->
-    <div class="page" id="page-senhas" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
-      <div style="flex-shrink:0">
+    <div class="page" id="page-senhas">
+      <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div>
             <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Senhas &amp; Autorizações</h2>
@@ -2140,7 +2173,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       </div>
 
         <!-- Table -->
-        <div class="table-card" style="flex:1;overflow-y:auto;min-height:0;margin-top:0">
+        <div class="senhas-table-wrap"><div class="table-card">
           <table class="data-table">
             <thead><tr>
               <th>Paciente</th><th>Plano / ANS</th><th>Nº Senha</th><th>Nº Guia Op.</th>
