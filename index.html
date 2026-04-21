@@ -1257,7 +1257,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.22</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.24</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -1830,11 +1830,15 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
 
     <!-- TISS GUIAS -->
-    <div class="page" id="page-tiss">
-      <div class="tiss-header-info" id="tiss-stats-row"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:12px">
+    <div class="page" id="page-tiss" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+      <div class="tiss-header-info" id="tiss-stats-row" style="flex-shrink:0"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <h3 style="font-size:15px;font-weight:600">Guias SADT</h3>
+          <div class="search-input-wrap" style="width:200px">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input class="search-input" id="tiss-busca-pac" placeholder="Buscar paciente..." oninput="renderGuiasList()" style="width:200px">
+          </div>
           <select class="form-select" id="tiss-filtro-status" style="width:140px;padding:5px 10px;font-size:12px" onchange="renderGuiasList()">
             <option value="">Todos os status</option>
             <option value="Pendente">Pendente</option>
@@ -1865,7 +1869,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           </button>
         </div>
       </div>
-      <div id="guias-list"></div>
+      <div id="guias-list" style="flex:1;overflow-y:auto;min-height:0;padding-right:4px"></div>
     </div>
 
     <!-- LOTES -->
@@ -2109,8 +2113,8 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
 
     <!-- SENHAS / AUTORIZAÇÕES -->
-    <div class="page" id="page-senhas">
-      <div>
+    <div class="page" id="page-senhas" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+      <div style="flex-shrink:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div>
             <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Senhas &amp; Autorizações</h2>
@@ -2133,9 +2137,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
         <!-- Stats -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="senhas-stats"></div>
+      </div>
 
         <!-- Table -->
-        <div class="table-card">
+        <div class="table-card" style="flex:1;overflow-y:auto;min-height:0;margin-top:0">
           <table class="data-table">
             <thead><tr>
               <th>Paciente</th><th>Plano / ANS</th><th>Nº Senha</th><th>Nº Guia Op.</th>
@@ -2144,7 +2149,6 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <tbody id="senhas-tbody"></tbody>
           </table>
         </div>
-      </div>
     </div>
 
     <div class="page" id="page-config">
@@ -6179,10 +6183,12 @@ function renderGuiasList() {
 
   const statusFiltro = document.getElementById('tiss-filtro-status')?.value || '';
   const planoFiltro  = parseInt(document.getElementById('tiss-filtro-plano')?.value  || '0');
+  const buscaPac     = (document.getElementById('tiss-busca-pac')?.value || '').toLowerCase().trim();
 
   let list = GUIAS;
   if (statusFiltro) list = list.filter(g=>g.status===statusFiltro);
   if (planoFiltro)  list = list.filter(g=>g.planoId===planoFiltro);
+  if (buscaPac)     list = list.filter(g=>(g.pac||'').toLowerCase().includes(buscaPac));
 
   const el = document.getElementById('guias-list');
   if (!el) return;
