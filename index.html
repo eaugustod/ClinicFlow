@@ -1257,7 +1257,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.21</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.22</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -2042,6 +2042,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
               <button class="imp-tab active" id="htab-linha" onclick="histTab('linha',this)">📅 Linha do tempo</button>
               <button class="imp-tab" id="htab-evolucoes" onclick="histTab('evolucoes',this)">📝 Evoluções</button>
               <button class="imp-tab" id="htab-anamnese" onclick="histTab('anamnese',this)">📋 Anamnese</button>
+              <button class="imp-tab" id="htab-guias" onclick="histTab('guias',this)">🧾 Guias SADT</button>
               <button class="imp-tab" id="htab-completo" onclick="histTab('completo',this)">🗂️ Prontuário completo</button>
             </div>
 
@@ -2058,6 +2059,11 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <!-- Painel Anamnese -->
             <div id="hist-panel-anamnese" style="display:none;flex:1;overflow-y:auto;padding:16px">
               <div id="hist-anamnese-content"></div>
+            </div>
+
+            <!-- Painel Guias SADT -->
+            <div id="hist-panel-guias" style="display:none;flex:1;overflow-y:auto;padding:16px">
+              <div id="hist-guias-content"></div>
             </div>
 
             <!-- Painel Prontuário Completo -->
@@ -9822,7 +9828,7 @@ function abrirHistPaciente(pacId) {
 }
 
 function histTab(tab, btn) {
-  ['linha','evolucoes','anamnese','completo'].forEach(t => {
+  ['linha','evolucoes','anamnese','guias','completo'].forEach(t => {
     const panEl = document.getElementById('hist-panel-'+t);
     const tabEl = document.getElementById('htab-'+t);
     if (panEl) panEl.style.display = t===tab ? 'block' : 'none';
@@ -9831,6 +9837,7 @@ function histTab(tab, btn) {
   if (tab==='linha')     renderTimeline();
   if (tab==='evolucoes') renderEvolucoes();
   if (tab==='anamnese')  renderAnamnese();
+  if (tab==='guias')     renderHistGuiasSadt();
   if (tab==='completo')  renderProntuarioCompleto();
 }
 
@@ -9844,6 +9851,18 @@ function renderTimeline() {
   // Merge appointments and historico events, sort by date desc
   const appts = APPOINTMENTS.filter(a=>a.paciente===p.nome);
   const hists = HISTORICO.filter(h=>h.pacId===pacId);
+
+  // Guias SADT do paciente, agrupadas por data
+  const guiasPac = (typeof GUIAS !== 'undefined' ? GUIAS : []).filter(g =>
+    g.paciente === p.nome || g.pacienteNome === p.nome || g.nomePaciente === p.nome
+  );
+  const guiasByDate = {};
+  guiasPac.forEach(g => {
+    const d = g.data || g.dataAtendimento || g.dataEmissao || '';
+    if (!d) return;
+    if (!guiasByDate[d]) guiasByDate[d] = [];
+    guiasByDate[d].push(g);
+  });
 
   // Build a date-keyed map for quick grouping
   const apptByDate = {};
@@ -9863,11 +9882,12 @@ function renderTimeline() {
   // Non-evolucao historico items (anamnese, etc.)
   const otherHists = hists.filter(h=>h.tipo!=='evolucao');
 
-  // Collect all dates
+  // Collect all dates (inclui datas com guias SADT)
   const allDates = new Set([
     ...Object.keys(apptByDate),
     ...Object.keys(evolByDate),
     ...otherHists.map(h=>h.data||''),
+    ...Object.keys(guiasByDate),
   ]);
 
   if (!allDates.size) {
@@ -9879,6 +9899,19 @@ function renderTimeline() {
 
   const icons = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
   const statusColors = { agendado:'var(--accent)', confirmado:'var(--success)', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
+
+  // Helper: renderiza badge(s) de guia SADT para uma data
+  function guiasBadge(date) {
+    const gs = guiasByDate[date] || [];
+    if (!gs.length) return '';
+    return gs.map(g => {
+      const num = g.numGuiaPrestador || g.numGuia || g.num || g.id || '—';
+      const plano = g.plano || g.convenio || '';
+      const status = g.status || 'Pendente';
+      const statusCor = status==='Enviado'||status==='Faturado' ? 'var(--success)' : status==='Pendente' ? 'var(--warning)' : 'var(--text-muted)';
+      return '<span title="Guia SADT'+(plano?' · '+plano:'')+' · '+status+'" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);border-radius:99px;padding:2px 8px;font-size:10px;font-family:var(--font-mono);color:#60a5fa;cursor:default">🧾 '+num+'</span>';
+    }).join(' ');
+  }
 
   el.innerHTML = sortedDates.map(date => {
     const dateFmt = date ? date.split('-').reverse().join('/') : '—';
@@ -9901,16 +9934,18 @@ function renderTimeline() {
           '</div>' +
         '</div>';
       }).join('') : '';
+      const badges = guiasBadge(date);
       html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
         '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
           '<div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
           '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
         '</div>' +
         '<div style="flex:1;padding-bottom:4px">' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
             '<span style="font-size:14px">📅</span>' +
             '<span style="font-size:13px;font-weight:500">'+a.hora+' — '+a.plano+'</span>' +
             chipStr +
+            (badges ? badges : '') +
             '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
           '</div>' +
           (a.obs?'<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+a.obs+'</div>':'') +
@@ -9923,16 +9958,18 @@ function renderTimeline() {
     if (!apptByDate[date] || !apptByDate[date].length) {
       (evolByDate[date]||[]).forEach(ev => {
         const prof = PROFISSIONAIS.find(x=>x.id===ev.profId);
+        const badges = guiasBadge(date);
         html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
           '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
             '<div style="width:12px;height:12px;border-radius:50%;background:#34d399;border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
             '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
           '</div>' +
           '<div style="flex:1;padding-bottom:4px">' +
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
               '<span style="font-size:14px">📝</span>' +
               '<span style="font-size:13px;font-weight:500">'+(ev.titulo||'Evolução')+'</span>' +
               (prof?'<span style="font-size:11px;color:var(--text-muted)">'+prof.nome+'</span>':'') +
+              (badges ? badges : '') +
               '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
             '</div>' +
             (ev.conteudo?.texto?'<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5;background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+ev.conteudo.texto+'</div>':'') +
@@ -9966,8 +10003,103 @@ function renderTimeline() {
       '</div>';
     });
 
+    // Guias SADT em datas sem agendamento nem evolução (entrada exclusiva de guia)
+    const temAppt = !!(apptByDate[date] && apptByDate[date].length);
+    const temEvol = !!(evolByDate[date] && evolByDate[date].length);
+    const temOther = otherHists.some(h=>(h.data||'')===date);
+    if (!temAppt && !temEvol && !temOther && guiasByDate[date]) {
+      guiasByDate[date].forEach(g => {
+        const num = g.numGuiaPrestador || g.numGuia || g.num || g.id || '—';
+        const plano = g.plano || g.convenio || '—';
+        const status = g.status || 'Pendente';
+        const statusCor = status==='Enviado'||status==='Faturado' ? 'var(--success)' : status==='Pendente' ? 'var(--warning)' : 'var(--text-muted)';
+        const valor = g.valor != null ? ' · R$ '+parseFloat(g.valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+        html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
+            '<div style="width:12px;height:12px;border-radius:50%;background:#60a5fa;border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
+            '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
+          '</div>' +
+          '<div style="flex:1;padding-bottom:4px">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
+              '<span style="font-size:14px">🧾</span>' +
+              '<span style="font-size:13px;font-weight:500">Guia SADT — '+plano+'</span>' +
+              '<span style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);border-radius:99px;padding:2px 8px;font-size:10px;font-family:var(--font-mono);color:#60a5fa">'+num+'</span>' +
+              '<span style="font-size:11px;color:'+statusCor+'">'+status+'</span>' +
+              '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
+            '</div>' +
+            (valor?'<div style="font-size:12px;color:var(--text-muted)">'+valor.trim()+'</div>':'') +
+          '</div>' +
+        '</div>';
+      });
+    }
+
     return html;
   }).join('');
+}
+
+function renderHistGuiasSadt() {
+  const el = document.getElementById('hist-guias-content');
+  if (!el || !historicoAtualPacId) return;
+  const p = PACIENTES.find(x => x.id === historicoAtualPacId);
+  if (!p) return;
+
+  const guiasPac = (typeof GUIAS !== 'undefined' ? GUIAS : []).filter(g =>
+    g.paciente === p.nome || g.pacienteNome === p.nome || g.nomePaciente === p.nome
+  ).sort((a,b) => ((b.data||b.dataAtendimento||'').localeCompare(a.data||a.dataAtendimento||'')));
+
+  const headerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
+    '<div>' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-secondary)">Guias SADT do paciente</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">'+guiasPac.length+' guia(s) encontrada(s)</div>' +
+    '</div>' +
+    '<button class="btn-sm btn-accent" onclick="switchAgTab&&switchAgTab(\'sadt\',null)">+ Nova guia SADT</button>' +
+  '</div>';
+
+  if (!guiasPac.length) {
+    el.innerHTML = headerHTML + '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);background:var(--bg-raised);border-radius:var(--radius-md)">' +
+      '<div style="font-size:28px;margin-bottom:8px">🧾</div>' +
+      '<div style="font-size:13px">Nenhuma guia SADT gerada para este paciente.</div>' +
+    '</div>';
+    return;
+  }
+
+  const rows = guiasPac.map(g => {
+    const num = g.numGuiaPrestador || g.numGuia || g.num || g.id || '—';
+    const data = g.data || g.dataAtendimento || g.dataEmissao || '';
+    const dataFmt = data ? data.split('-').reverse().join('/') : '—';
+    const plano = g.plano || g.convenio || '—';
+    const status = g.status || 'Pendente';
+    const statusCor = status==='Enviado'||status==='Faturado' ? 'var(--success)' : status==='Pendente' ? 'var(--warning)' : 'var(--text-muted)';
+    const valor = g.valor != null ? 'R$ '+parseFloat(g.valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+    const lote = g.loteNum ? '<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">Lote '+g.loteNum+'</span>' : '';
+    const procs = Array.isArray(g.procedimentos) && g.procedimentos.length
+      ? '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">' +
+          g.procedimentos.map(pr => '<span style="font-size:10px;background:var(--bg-overlay);border-radius:4px;padding:2px 6px;color:var(--text-secondary)">'+(pr.codigo||pr.cod||'')+(pr.desc?' — '+pr.desc:'')+'</span>').join('') +
+        '</div>'
+      : '';
+    return '<div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px">' +
+      '<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">' +
+        '<div style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:var(--radius-sm);background:rgba(96,165,250,0.12);flex-shrink:0">' +
+          '<span style="font-size:18px">🧾</span>' +
+        '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+            '<span style="font-size:13px;font-weight:600;font-family:var(--font-mono);color:#60a5fa">#'+num+'</span>' +
+            '<span style="font-size:12px;color:var(--text-secondary)">'+plano+'</span>' +
+            '<span style="font-size:11px;font-weight:500;color:'+statusCor+'">● '+status+'</span>' +
+            lote +
+            '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dataFmt+'</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-muted)">' +
+            '<span>💰 '+valor+'</span>' +
+          '</div>' +
+          procs +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  el.innerHTML = headerHTML + rows;
 }
 
 function renderEvolucoes() {
