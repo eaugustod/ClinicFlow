@@ -1256,6 +1256,9 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       </select>
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
+    <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.21</span>
+    </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
       <div class="demo-pills">
@@ -3658,7 +3661,7 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
         <div style="height:6px;background:var(--bg-overlay);border-radius:3px;overflow:hidden">
           <div id="lote-progress-bar" style="height:100%;width:0%;background:var(--success);transition:width 0.2s,background 0.2s;border-radius:3px"></div>
         </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Máximo: 90 guias por lote · Selecionadas: <strong id="lote-qtd-sel">0</strong></div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Limite de 90 guias por lote · Selecionadas: <strong id="lote-qtd-sel">0</strong> · <span style="color:var(--success)">Acima de 90, lotes serão criados automaticamente</span></div>
       </div>
       <div class="form-row" style="margin-top:12px">
         <div class="form-group"><label>Observações</label><textarea class="form-input" rows="2" id="lote-obs" placeholder="Observações sobre o lote..."></textarea></div>
@@ -7345,11 +7348,12 @@ function loteAtualizarGuias() {
     total += g.valor; qtd++;
   });
 
-  // Warning if > 90
+  // Warning if > 90 — informa divisão automática
   if (qtd > 90) {
     const warn = document.createElement('div');
-    warn.style.cssText = 'padding:8px 12px;background:rgba(251,191,36,0.1);border-top:1px solid rgba(251,191,36,0.3);font-size:12px;color:var(--warning)';
-    warn.textContent = '⚠ Este plano tem '+qtd+' guias disponíveis. O máximo por lote é 90. As excedentes serão ignoradas — desmarque as que não devem entrar.';
+    warn.style.cssText = 'padding:8px 12px;background:rgba(52,211,153,0.08);border-top:1px solid rgba(52,211,153,0.25);font-size:12px;color:var(--success)';
+    const lotes = Math.ceil(qtd / 90);
+    warn.textContent = '✔ ' + qtd + ' guias selecionadas — ao salvar, o sistema criará ' + lotes + ' lote(s) automaticamente (grupos de até 90 guias cada).';
     el.appendChild(warn);
   }
 
@@ -7361,7 +7365,10 @@ function loteAtualizarGuias() {
 function loteRecalcAndWarn() {
   loteRecalc();
   const qtd = parseInt(document.getElementById('lote-qtd-sel').textContent || '0');
-  if (qtd > 90) showToast('Máximo de 90 guias por lote. Desmarque '+(qtd-90)+' guias.','error');
+  if (qtd > 90) {
+    const lotes = Math.ceil(qtd / 90);
+    showToast(qtd + ' guias selecionadas — serão criados ' + lotes + ' lote(s) automaticamente ao salvar.', 'success');
+  }
 }
 
 function loteRecalc() {
@@ -7377,10 +7384,17 @@ function atualizarBarraLote(qtd, total) {
   const barEl  = document.getElementById('lote-progress-bar');
   const cntEl  = document.getElementById('lote-count-label');
   if (!barEl) return;
-  const pct    = Math.min(100, Math.round(qtd/90*100));
-  barEl.style.width = pct+'%';
-  barEl.style.background = qtd > 90 ? 'var(--danger)' : qtd > 70 ? 'var(--warning)' : 'var(--success)';
-  if (cntEl) cntEl.textContent = qtd+' / 90 guias selecionadas · '+brl(total);
+  const pct    = Math.min(100, Math.round((qtd % 90 || (qtd > 0 ? 90 : 0)) / 90 * 100));
+  barEl.style.width = (qtd > 0 ? Math.max(4, pct) : 0)+'%';
+  barEl.style.background = qtd > 90 ? 'var(--success)' : qtd > 70 ? 'var(--warning)' : 'var(--success)';
+  if (cntEl) {
+    if (qtd > 90) {
+      const lotes = Math.ceil(qtd / 90);
+      cntEl.textContent = qtd + ' guias → ' + lotes + ' lotes de até 90 · ' + brl(total);
+    } else {
+      cntEl.textContent = qtd + ' / 90 guias selecionadas · ' + brl(total);
+    }
+  }
 }
 
 function salvarLote() {
@@ -7393,26 +7407,46 @@ function salvarLote() {
   if (!selectedIds.length) { showToast('Selecione ao menos uma guia','error'); return; }
   const total = [...checkboxes].reduce((s,c)=>s+parseFloat(c.dataset.valor||0),0);
 
-  if (selectedIds.length > 90) { showToast('Máximo de 90 guias por lote. Desmarque '+(selectedIds.length-90)+' guias.','error'); return; }
-
   if (editingLoteId !== null) {
     const l = LOTES.find(x=>x.id===editingLoteId);
     if (l) { l.competencia=comp; l.planoId=planoId; l.plano=plano?.nome||'—'; l.qtd=selectedIds.length; l.valor=total; l.obs=document.getElementById('lote-obs')?.value||''; }
     showToast('Lote atualizado!','success');
-  } else {
-    const ano  = new Date().getFullYear();
-    const num  = String(ano)+String(nextLoteId).padStart(4,'0');
+    closeModal('modal-lote');
+    renderLotesTable();
+    renderGuiasList();
+    return;
+  }
+
+  // ── Divisão automática em sublotes de até 90 guias ──────────────────────
+  const MAX_POR_LOTE = 90;
+  const obs = document.getElementById('lote-obs')?.value||'';
+  const ano = new Date().getFullYear();
+  const lotesCriados = [];
+
+  // Calcula valor de cada guia via checkbox dataset
+  const valorPorId = {};
+  [...checkboxes].forEach(c => { valorPorId[parseInt(c.dataset.guiaId)] = parseFloat(c.dataset.valor||0); });
+
+  for (let i = 0; i < selectedIds.length; i += MAX_POR_LOTE) {
+    const chunk = selectedIds.slice(i, i + MAX_POR_LOTE);
+    const chunkValor = chunk.reduce((s,id) => s + (valorPorId[id]||0), 0);
+    const num = String(ano)+String(nextLoteId).padStart(4,'0');
     const newLote = { id:nextLoteId++, num, competencia:comp, planoId, plano:plano?.nome||'—',
-      qtd:selectedIds.length, valor:total, status:'Pendente',
+      qtd:chunk.length, valor:chunkValor, status:'Pendente',
       dataCriacao:new Date().toISOString().slice(0,10), dataEnvio:'',
-      obs:document.getElementById('lote-obs')?.value||'', guiaIds:selectedIds, xml:'' };
+      obs, guiaIds:chunk, xml:'' };
     LOTES.push(newLote);
-    // Stamp loteId AND loteNum on each guia so it shows in the guias list
-    selectedIds.forEach(id => {
+    chunk.forEach(id => {
       const g=GUIAS.find(x=>x.id===id);
       if(g){ g.loteId=newLote.id; g.loteNum=newLote.num; g.status='Enviado'; }
     });
-    showToast('Lote '+num+' criado com '+selectedIds.length+' guias!','success');
+    lotesCriados.push(newLote);
+  }
+
+  if (lotesCriados.length === 1) {
+    showToast('Lote '+lotesCriados[0].num+' criado com '+lotesCriados[0].qtd+' guias!','success');
+  } else {
+    showToast(lotesCriados.length+' lotes criados automaticamente ('+selectedIds.length+' guias divididas em grupos de até 90)!','success');
   }
   closeModal('modal-lote');
   renderLotesTable();
@@ -12781,29 +12815,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('#lote-guias-disponiveis input[type=checkbox]:checked');
     const selectedIds = [...checkboxes].map(c => parseInt(c.dataset.guiaId));
     if (!selectedIds.length) { showToast('Selecione ao menos uma guia', 'error'); return; }
-    if (selectedIds.length > 90) { showToast('Máximo de 90 guias por lote.', 'error'); return; }
     const total = [...checkboxes].reduce((s, c) => s + parseFloat(c.dataset.valor || 0), 0);
     const sb = getDb();
+    const obs = document.getElementById('lote-obs')?.value || '';
+
     if (editingLoteId !== null) {
       const l = LOTES.find(x => x.id === editingLoteId);
-      if (l) { l.competencia = comp; l.planoId = planoId; l.plano = plano?.nome || '—'; l.qtd = selectedIds.length; l.valor = total; l.obs = document.getElementById('lote-obs')?.value || ''; }
+      if (l) { l.competencia = comp; l.planoId = planoId; l.plano = plano?.nome || '—'; l.qtd = selectedIds.length; l.valor = total; l.obs = obs; }
       if (sb) await sb.from('lotes_tiss').update(map.loteToDb(l)).eq('id', editingLoteId);
       showToast('Lote atualizado!', 'success');
-    } else {
-      const ano = new Date().getFullYear();
+      closeModal('modal-lote'); refreshUI({ skipHistorico: true });
+      return;
+    }
+
+    // ── Divisão automática em sublotes de até 90 guias ──────────────────────
+    const MAX_POR_LOTE = 90;
+    const ano = new Date().getFullYear();
+    const valorPorId = {};
+    [...checkboxes].forEach(c => { valorPorId[parseInt(c.dataset.guiaId)] = parseFloat(c.dataset.valor || 0); });
+    const lotesCriados = [];
+
+    for (let i = 0; i < selectedIds.length; i += MAX_POR_LOTE) {
+      const chunk = selectedIds.slice(i, i + MAX_POR_LOTE);
+      const chunkValor = chunk.reduce((s, id) => s + (valorPorId[id] || 0), 0);
       const num = String(ano) + String(nextLoteId).padStart(4, '0');
-      const newLote = { id: nextLoteId++, num, competencia: comp, planoId, plano: plano?.nome || '—', qtd: selectedIds.length, valor: total, status: 'Pendente', dataCriacao: new Date().toISOString().slice(0, 10), dataEnvio: '', obs: document.getElementById('lote-obs')?.value || '', guiaIds: selectedIds, xml: '' };
+      const newLote = { id: nextLoteId++, num, competencia: comp, planoId, plano: plano?.nome || '—', qtd: chunk.length, valor: chunkValor, status: 'Pendente', dataCriacao: new Date().toISOString().slice(0, 10), dataEnvio: '', obs, guiaIds: chunk, xml: '' };
       if (sb) {
         const { data, error } = await sb.from('lotes_tiss').insert([map.loteToDb(newLote)]).select().single();
-        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+        if (error) { showToast('Erro ao criar lote: ' + error.message, 'error'); return; }
         newLote.id = data.id;
       }
       LOTES.push(newLote);
-      selectedIds.forEach(id => {
+      chunk.forEach(id => {
         const g = GUIAS.find(x => x.id === id);
         if (g) { g.loteId = newLote.id; g.loteNum = newLote.num; g.status = 'Enviado'; const sb2 = getDb(); if (sb2) sb2.from('guias_sadt').update({ lote_id: newLote.id, lote_num: newLote.num, status: 'Enviado' }).eq('id', id); }
       });
-      showToast('Lote ' + num + ' criado com ' + selectedIds.length + ' guias!', 'success');
+      lotesCriados.push(newLote);
+    }
+
+    if (lotesCriados.length === 1) {
+      showToast('Lote ' + lotesCriados[0].num + ' criado com ' + lotesCriados[0].qtd + ' guias!', 'success');
+    } else {
+      showToast(lotesCriados.length + ' lotes criados automaticamente (' + selectedIds.length + ' guias divididas em grupos de até 90)!', 'success');
     }
     closeModal('modal-lote'); refreshUI({ skipHistorico: true });
   };
