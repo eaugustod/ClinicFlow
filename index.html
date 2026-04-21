@@ -13823,7 +13823,7 @@ console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
 // Identifica se o agendamento é do tipo "Avaliação Neuropsicológica"
 function isAvalNeuropsico(appt) {
   const campos = [appt.tipo, appt.tipoSessao, appt.obs, appt.procedimento, appt.descricao];
-  const re = /aval[ia]+[çc][aã]o\s+neuro|neuro.*aval|avalia[çc][aã]o\s+nps|avalia[çc][aã]o\s+neuropsico/i;
+  const re = /aval[ia]+[çc][aã]o\s+neuro|AN ·|neuro.*aval|avalia[çc][aã]o\s+nps|avalia[çc][aã]o\s+neuropsico/i;
   return campos.some(c => c && re.test(String(c)));
 }
 
