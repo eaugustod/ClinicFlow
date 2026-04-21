@@ -537,6 +537,29 @@ a { text-decoration: none; color: inherit; }
   z-index: 2;
 }
 .appt-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); z-index: 5; }
+/* ── Drag & Drop ── */
+.appt-card[draggable="true"] { cursor: grab; }
+.appt-card[draggable="true"]:active { cursor: grabbing; }
+.appt-card.dragging { opacity: 0.35; transform: scale(0.97); box-shadow: none; pointer-events: none; }
+.slot-row.drag-over,
+.week-drop-cell.drag-over {
+  background: var(--accent-soft) !important;
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+.drag-ghost {
+  position: fixed; pointer-events: none; z-index: 9999;
+  opacity: 0.92; transform: rotate(2deg) scale(1.04);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-raised);
+  border-left: 4px solid var(--accent);
+  white-space: nowrap;
+  min-width: 120px;
+}
 .appt-patient { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .appt-plan { font-size: 11px; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .appt-status-dot {
@@ -5004,7 +5027,8 @@ function renderDayView() {
     const appts = APPOINTMENTS.filter(a => a.profId === p.id && a.dataISO === currentISO);
     return `<div class="prof-col">${HOURS.map(h => {
       const appt = appts.find(a => a.hora === h);
-      return `<div class="slot-row" onclick="slotClick(event,${p.id},'${h}')">${appt ? buildApptCard(appt, p.cor) : ''}</div>`;
+      const dropAttrs = `ondragover="agendaDayDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDayDrop(event,${p.id},'${h}')" data-prof-id="${p.id}" data-hora="${h}"`;
+      return `<div class="slot-row" onclick="slotClick(event,${p.id},'${h}')" ${dropAttrs}>${appt ? buildApptCard(appt, p.cor) : ''}</div>`;
     }).join('')}</div>`;
   }).join('');
 }
@@ -5042,7 +5066,13 @@ function buildApptCard(appt, cor) {
     ? '<div style="margin-top:3px"><button class="wa-btn" onclick="event.stopPropagation();abrirModalWA(' + appt.id + ')">' + waSentTxt + '</button></div>'
     : '';
 
-  return '<div class="appt-card ' + sc + '" style="height:' + h + 'px;top:2px" onclick="event.stopPropagation();openAppt(' + appt.id + ')">' +
+  return '<div class="appt-card ' + sc + '"' +
+    ' draggable="true"' +
+    ' data-appt-id="' + appt.id + '"' +
+    ' style="height:' + h + 'px;top:2px"' +
+    ' onclick="event.stopPropagation();openAppt(' + appt.id + ')"' +
+    ' ondragstart="agendaDragStart(event,' + appt.id + ')"' +
+    ' ondragend="agendaDragEnd(event)">' +
     '<div class="appt-patient">' + appt.paciente + guiaIcon + statusLabel + '</div>' +
     '<div class="appt-plan">' + plano + ' · ' + appt.hora + '</div>' +
     actionsHTML + waBtnHTML +
@@ -5462,7 +5492,7 @@ function renderWeekView() {
         a.dataISO === dISO && a.hora === h && activeProfs.some(p => p.id === a.profId)
       );
 
-      html += '<td onclick="slotClickWeek(event,\''+dISO+'\',\''+h+'\')" style="'+
+      html += '<td class="week-drop-cell" onclick="slotClickWeek(event,\''+dISO+'\',\''+h+'\')" ondragover="agendaDayDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaWeekDrop(event,\''+dISO+'\',\''+h+'\')" data-iso="'+dISO+'" data-hora="'+h+'" style="'+
         'border-left:1px solid var(--border);'+
         'border-bottom:1px solid var(--border);'+
         'vertical-align:top;'+
@@ -5484,13 +5514,18 @@ function renderWeekView() {
           const dimmed = (appt.status==='cancelado'||appt.status==='desmarcado') ? 'opacity:0.5;' : '';
 
           html +=
-            '<div onclick="event.stopPropagation();openAppt('+appt.id+')" style="'+
+            '<div draggable="true"'
+            +' onclick="event.stopPropagation();openAppt('+appt.id+')"'
+            +' ondragstart="agendaDragStart(event,'+appt.id+')"'
+            +' ondragend="agendaDragEnd(event)"'
+            +' data-appt-id="'+appt.id+'"'
+            +' style="'+
               'border-left:3px solid '+cor+';'+
               'background:'+bgColor+';'+
               'border-radius:4px;'+
               'padding:3px 5px 4px;'+
               'margin-bottom:2px;'+
-              'cursor:pointer;'+
+              'cursor:grab;'+
               dimmed+
               'overflow:hidden;'+
             '">' +
@@ -5528,6 +5563,180 @@ function slotClickWeek(e, dateISO, hora) {
   updateDateLabel();
   openNovoAgendamento(null, hora);
 }
+
+// ═══════════════════════════════════════
+//  DRAG & DROP — AGENDA
+// ═══════════════════════════════════════
+let _dragApptId = null;   // id do agendamento sendo arrastado
+let _dragEl     = null;   // elemento DOM do card
+
+function agendaDragStart(event, apptId) {
+  _dragApptId = apptId;
+  _dragEl = event.currentTarget;
+
+  // Transfere dados via dataTransfer (compatibilidade)
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', String(apptId));
+
+  // Ghost image customizado — nome do paciente + hora
+  const appt = APPOINTMENTS.find(a => a.id === apptId);
+  if (appt) {
+    const ghost = document.createElement('div');
+    ghost.className = 'drag-ghost';
+    ghost.textContent = appt.paciente + '  ' + appt.hora;
+    document.body.appendChild(ghost);
+    ghost.style.left = '-999px';
+    ghost.style.top  = '-999px';
+    try { event.dataTransfer.setDragImage(ghost, 60, 20); } catch(e) {}
+    setTimeout(() => ghost.remove(), 0);
+  }
+
+  // Marca o card original como "esmaecido"
+  requestAnimationFrame(() => {
+    if (_dragEl) _dragEl.classList.add('dragging');
+  });
+}
+
+function agendaDragEnd(event) {
+  if (_dragEl) _dragEl.classList.remove('dragging');
+  _dragEl = null;
+  // Remove todos os highlights de drop
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function agendaDayDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  // Destaca o slot-row sob o cursor
+  const cell = event.currentTarget;
+  if (!cell.classList.contains('drag-over')) {
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    cell.classList.add('drag-over');
+  }
+}
+
+function agendaDragLeave(event) {
+  // Só remove se saiu de fato da célula (não entrou em filho)
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    event.currentTarget.classList.remove('drag-over');
+  }
+}
+
+// Drop na vista DIA — muda profissional e horário
+function agendaDayDrop(event, novoProfId, novaHora) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+
+  const apptId = _dragApptId || parseInt(event.dataTransfer.getData('text/plain'));
+  if (!apptId) return;
+
+  const appt = APPOINTMENTS.find(a => a.id === apptId);
+  if (!appt) return;
+
+  const profIdNum = parseInt(novoProfId);
+  const profAtual = appt.profId;
+  const horaAtual = appt.hora;
+
+  // Nada mudou
+  if (profIdNum === profAtual && novaHora === horaAtual) return;
+
+  // Checa conflito: já existe agendamento nesse slot?
+  const conflito = APPOINTMENTS.find(a =>
+    a.id !== apptId &&
+    a.profId === profIdNum &&
+    a.hora === novaHora &&
+    a.dataISO === appt.dataISO
+  );
+  if (conflito) {
+    showToast('Já existe um agendamento nesse horário para este profissional.', 'error');
+    return;
+  }
+
+  moverAgendamento(appt, { profId: profIdNum, hora: novaHora });
+}
+
+// Drop na vista SEMANA — muda data e horário (mantém profissional)
+function agendaWeekDrop(event, novaData, novaHora) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+
+  const apptId = _dragApptId || parseInt(event.dataTransfer.getData('text/plain'));
+  if (!apptId) return;
+
+  const appt = APPOINTMENTS.find(a => a.id === apptId);
+  if (!appt) return;
+
+  // Nada mudou
+  if (novaData === appt.dataISO && novaHora === appt.hora) return;
+
+  // Checa conflito
+  const conflito = APPOINTMENTS.find(a =>
+    a.id !== apptId &&
+    a.profId === appt.profId &&
+    a.hora === novaHora &&
+    a.dataISO === novaData
+  );
+  if (conflito) {
+    showToast('Já existe um agendamento nesse horário.', 'error');
+    return;
+  }
+
+  moverAgendamento(appt, { dataISO: novaData, hora: novaHora });
+}
+
+// Aplica a mudança, salva no Supabase e re-renderiza
+async function moverAgendamento(appt, mudancas) {
+  const antes = {
+    profId:  appt.profId,
+    hora:    appt.hora,
+    dataISO: appt.dataISO,
+  };
+
+  // Aplica localmente
+  Object.assign(appt, mudancas);
+
+  // Atualiza horaFim proporcionalmente
+  if (mudancas.hora && appt.durMin) {
+    try {
+      const [hh, mm] = mudancas.hora.split(':').map(Number);
+      const totalMin = hh * 60 + mm + appt.durMin;
+      appt.horaFim = String(Math.floor(totalMin / 60)).padStart(2,'0') + ':' + String(totalMin % 60).padStart(2,'0');
+    } catch(e) {}
+  }
+
+  // Feedback visual imediato
+  const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
+  const profNome = prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : '';
+  const dataFmt = appt.dataISO ? appt.dataISO.split('-').reverse().join('/') : '';
+  showToast(
+    'Movido para ' + appt.hora + (dataFmt ? ' · ' + dataFmt : '') + (profNome ? ' · ' + profNome : ''),
+    'success'
+  );
+
+  // Persiste no Supabase
+  try {
+    const sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (sb) {
+      const payload = {};
+      if (mudancas.profId  !== undefined) payload.prof_id  = appt.profId;
+      if (mudancas.hora    !== undefined) { payload.hora = appt.hora; payload.hora_fim = appt.horaFim || null; }
+      if (mudancas.dataISO !== undefined) payload.data_iso = appt.dataISO;
+      const { error } = await sb.from('agendamentos').update(payload).eq('id', appt.id);
+      if (error) {
+        // Reverte se falhou
+        Object.assign(appt, antes);
+        showToast('Erro ao salvar: ' + error.message, 'error');
+      }
+    }
+  } catch(e) {
+    console.error('[Drag&Drop]', e);
+  }
+
+  // Re-renderiza a view ativa
+  if (currentView === 'semana') renderWeekView();
+  else renderDayView();
+}
+
 
 function buildProfFilters() {
   document.getElementById('prof-filters').innerHTML = PROFISSIONAIS.map(p =>
