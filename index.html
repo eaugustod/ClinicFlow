@@ -372,6 +372,16 @@ a { text-decoration: none; color: inherit; }
   display: flex;
 }
 
+/* Fechamento Mensal */
+#page-fechamento {
+  display: none;
+  overflow-y: auto;
+  padding: 24px;
+}
+#page-fechamento.active {
+  display: block;
+}
+
 /* Agenda page overrides — ocupa altura total, sem scroll na página inteira */
 #page-agenda {
   display: none;
@@ -1290,7 +1300,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.24</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.25</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -1386,6 +1396,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <div class="nav-item" onclick="gotoPage('relatorios',this)">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
           Relatórios
+        </div>
+        <div class="nav-item" onclick="gotoPage('fechamento',this)" id="nav-fechamento-item">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+          Fechamento Mensal
         </div>
         <div class="nav-item" onclick="gotoPage('config',this)">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
@@ -2584,6 +2598,61 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
       </div>
     </div>
 
+    <!-- ══════════════════════════════════════
+         FECHAMENTO MENSAL
+    ══════════════════════════════════════ -->
+    <div class="page" id="page-fechamento" style="overflow-y:auto">
+      <!-- Toolbar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Fechamento Mensal</h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Cálculo de valores por terapeuta, plano e tipo de sessão</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="form-group" style="margin:0">
+            <input class="form-input" type="month" id="fech-mes" style="padding:7px 12px;font-size:13px;width:170px">
+          </div>
+          <button class="btn-sm btn-accent" onclick="renderFechamento()">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2z"/></svg>
+            Calcular
+          </button>
+          <button class="btn-sm btn-secondary" onclick="emitirRelatorioFechamento()" id="btn-emitir-rel-fech" style="display:none">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+            Relatório Sintético PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="stats-row" id="fech-kpis" style="display:none"></div>
+
+      <!-- Terapeutas (sessões 30/60 min) -->
+      <div id="fech-terapeutas-section" style="display:none">
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--accent)"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z"/></svg>
+          Terapeutas — Sessões Regulares
+        </div>
+        <div id="fech-cards-terapeutas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:28px"></div>
+      </div>
+
+      <!-- Terapeutas (avaliação neuropsicológica) -->
+      <div id="fech-aval-section" style="display:none">
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--warning)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86zm2-15.86c1.03.13 2 .45 2.87.93H13v-.93zm0 2.93h3.36c.61.76 1.07 1.65 1.34 2.6H13V7zm0 4.6h4.93c.07.46.11.92.11 1.4 0 .48-.04.94-.11 1.4H13v-2.8zm0 4.8h3.36c-.27.95-.73 1.84-1.34 2.6H13v-2.6z"/></svg>
+          Terapeutas — Avaliação Neuropsicológica
+        </div>
+        <div id="fech-cards-aval" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:28px"></div>
+      </div>
+
+      <!-- Estado vazio -->
+      <div id="fech-empty" style="text-align:center;padding:60px 20px;color:var(--text-muted)">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:48px;height:48px;margin:0 auto 16px;opacity:.3"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        <div style="font-size:16px;font-weight:500;margin-bottom:8px">Nenhum dado calculado</div>
+        <div style="font-size:13px">Selecione o mês e clique em <strong>Calcular</strong> para gerar o fechamento.</div>
+        <div style="font-size:12px;margin-top:8px;color:var(--warning)">⚠ Configure os valores por tipo de sessão no cadastro de cada profissional.</div>
+      </div>
+    </div>
+
   </div><!-- end main -->
 </div><!-- end app -->
 
@@ -3384,6 +3453,24 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
               <option value="Inativo">Inativo</option>
             </select>
           </div>
+        </div>
+      </div>
+      <div class="section-divider">Valores por tipo de sessão</div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label>Sessão 30 min (R$)</label>
+          <input class="form-input" id="prf-valor-30" placeholder="0,00" oninput="formatCurrencyInput(this)">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Valor por atendimento de 30 min</div>
+        </div>
+        <div class="form-group">
+          <label>Sessão 60 min (R$)</label>
+          <input class="form-input" id="prf-valor-60" placeholder="0,00" oninput="formatCurrencyInput(this)">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Valor por atendimento de 60 min</div>
+        </div>
+        <div class="form-group">
+          <label>Avaliação Neuropsicológica (R$)</label>
+          <input class="form-input" id="prf-valor-aval" placeholder="0,00" oninput="formatCurrencyInput(this)">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Valor total da avaliação (1º atend.)</div>
         </div>
       </div>
     </div>
@@ -6069,7 +6156,8 @@ function openNovoProfissional() {
   document.getElementById('prof-modal-sub').textContent   = 'Preencha os dados do profissional';
   document.getElementById('prf-id-display').textContent   = '';
   ['prf-nome','prf-nome-agenda','prf-esp','prf-num-conselho','prf-cbo','prf-tel',
-   'prf-email','prf-instagram','prf-linkedin','prf-google-cal-id'].forEach(id => {
+   'prf-email','prf-instagram','prf-linkedin','prf-google-cal-id',
+   'prf-valor-30','prf-valor-60','prf-valor-aval'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
   selectedColor = '#4f8ef7';
@@ -6101,6 +6189,14 @@ function editarProfissional(id) {
   document.getElementById('prf-linkedin').value       = p.linkedin       || '';
   document.getElementById('prf-google-cal-id').value  = p.googleCalendarId|| '';
   document.getElementById('prf-status').value         = p.status         || 'Ativo';
+  // Valores por tipo de sessão
+  const fmt = v => v ? Number(v).toFixed(2).replace('.',',') : '';
+  const v30El   = document.getElementById('prf-valor-30');
+  const v60El   = document.getElementById('prf-valor-60');
+  const vAvEl   = document.getElementById('prf-valor-aval');
+  if (v30El)  v30El.value  = fmt(p.valor30);
+  if (v60El)  v60El.value  = fmt(p.valor60);
+  if (vAvEl)  vAvEl.value  = fmt(p.valorAval);
   selectedColor = p.cor || '#4f8ef7';
   document.querySelectorAll('.color-swatch').forEach(s => {
     s.classList.toggle('selected', s.dataset.color === p.cor);
@@ -9050,6 +9146,12 @@ function salvarPaciente() {
   populateSelects();
 }
 
+function parseCurrencyField(id) {
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  return parseFloat((el.value || '0').replace(/[R$\s.]/g,'').replace(',','.')) || 0;
+}
+
 function salvarProfissional() {
   const nome = document.getElementById('prf-nome').value.trim();
   if (!nome) { showToast('Informe o nome do profissional','error'); return; }
@@ -9068,6 +9170,9 @@ function salvarProfissional() {
     googleCalendarId:document.getElementById('prf-google-cal-id').value.trim(),
     cor:             selectedColor || '#4f8ef7',
     status:          document.getElementById('prf-status').value,
+    valor30:         parseCurrencyField('prf-valor-30'),
+    valor60:         parseCurrencyField('prf-valor-60'),
+    valorAval:       parseCurrencyField('prf-valor-aval'),
   };
   if (editingPrfId !== null) {
     Object.assign(PROFISSIONAIS.find(p=>p.id===editingPrfId), dados);
@@ -12697,6 +12802,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.salvarProfissional = async function () {
     const nome = document.getElementById('prf-nome').value.trim();
     if (!nome) { showToast('Informe o nome', 'error'); return; }
+    const _pcf = id => parseFloat((document.getElementById(id)?.value||'0').replace(/[R$\s.]/g,'').replace(',','.')) || 0;
     const dados = {
       nome, nomeAgenda: document.getElementById('prf-nome-agenda').value.trim() || nome.split(' ')[0],
       esp: document.getElementById('prf-esp').value, conselho: document.getElementById('prf-conselho').value,
@@ -12707,6 +12813,9 @@ document.addEventListener('DOMContentLoaded', function() {
       googleCalendarId: document.getElementById('prf-google-cal-id').value.trim(),
       cor: selectedColor || '#4f8ef7', status: document.getElementById('prf-status').value,
       foto: document.getElementById('prf-foto-data')?.value || '',
+      valor30:   _pcf('prf-valor-30'),
+      valor60:   _pcf('prf-valor-60'),
+      valorAval: _pcf('prf-valor-aval'),
     };
     const sb = getDb();
     if (editingPrfId !== null) {
@@ -13669,6 +13778,14 @@ window.gotoPage = function(page, el) {
   if (page === 'usuarios') {
     renderUsuarios();
   }
+  if (page === 'fechamento') {
+    // Inicializa mês atual se não preenchido
+    const mesInput = document.getElementById('fech-mes');
+    if (mesInput && !mesInput.value) {
+      const now = new Date();
+      mesInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2,'0');
+    }
+  }
 };
 
 // ── Override previewPhoto para paciente (manter compat.) ─
@@ -13695,6 +13812,436 @@ document.addEventListener('DOMContentLoaded', function() {
   const navItem = document.getElementById('nav-usuarios-item');
   // O controle de visibilidade real é feito pelo applyRoleRestrictions existente
 });
+
+console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
+
+// ═══════════════════════════════════════════════════════════════
+//  FECHAMENTO MENSAL — MÓDULO COMPLETO
+// ═══════════════════════════════════════════════════════════════
+
+// Identifica se o agendamento é do tipo "Avaliação Neuropsicológica"
+function isAvalNeuropsico(appt) {
+  const campos = [appt.tipo, appt.tipoSessao, appt.obs, appt.procedimento, appt.descricao];
+  const re = /aval[ia]+[çc][aã]o\s+neuro|neuro.*aval|avalia[çc][aã]o\s+nps|avalia[çc][aã]o\s+neuropsico/i;
+  return campos.some(c => c && re.test(String(c)));
+}
+
+function brlFmt(v) {
+  return 'R$ ' + (v || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function renderFechamento() {
+  const mesVal = document.getElementById('fech-mes')?.value;
+  if (!mesVal) { showToast('Selecione o mês','error'); return; }
+
+  const [ano, mes] = mesVal.split('-').map(Number);
+  const D_PRIM = new Date(ano, mes - 1, 1);
+  const D_ULT  = new Date(ano, mes, 0);
+  const ISO_PRIM = D_PRIM.toISOString().slice(0,10);
+  const ISO_ULT  = D_ULT.toISOString().slice(0,10);
+  const mesLabel = D_PRIM.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+
+  // Filtra apenas atendimentos com status "atendido" no período
+  const aptsAtend = APPOINTMENTS.filter(a =>
+    a.status === 'atendido' &&
+    a.dataISO >= ISO_PRIM && a.dataISO <= ISO_ULT
+  );
+
+  // ── Agrupa por profissional ──────────────────────────────────
+  // Cada entrada: { prof, sessoes30:[], sessoes60:[], avals:[] }
+  const porProf = {};
+
+  aptsAtend.forEach(a => {
+    const profId = a.profId;
+    const prof   = PROFISSIONAIS.find(p => p.id === profId);
+    if (!prof) return;
+
+    if (!porProf[profId]) {
+      porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [] };
+    }
+
+    const dur = a.durMin || 30;
+
+    if (isAvalNeuropsico(a)) {
+      porProf[profId].avals.push(a);
+    } else if (dur >= 60) {
+      porProf[profId].sessoes60.push(a);
+    } else {
+      porProf[profId].sessoes30.push(a);
+    }
+  });
+
+  // ── Avaliação neuropsicológica: apenas 1º atendimento por paciente/profissional ──
+  Object.values(porProf).forEach(entry => {
+    // Agrupa avaliações por paciente e mantém apenas o mais antigo
+    const byPac = {};
+    entry.avals.forEach(a => {
+      if (!byPac[a.paciente] || a.dataISO < byPac[a.paciente].dataISO) {
+        byPac[a.paciente] = a;
+      }
+    });
+    entry.avalsContabilizadas = Object.values(byPac);
+    // Mantém todas para exibição mas marca quais contam
+    entry.avalsTotal = entry.avals.length;
+  });
+
+  // ── Calcula totais ───────────────────────────────────────────
+  let totalGeralAtend = 0, totalGeralValor = 0;
+  let totalGeralAval = 0, totalGeralValorAval = 0;
+
+  const profs = Object.values(porProf).sort((a,b) => a.prof.nome.localeCompare(b.prof.nome));
+
+  // ── KPIs ────────────────────────────────────────────────────
+  profs.forEach(e => {
+    const n30 = e.sessoes30.length, n60 = e.sessoes60.length;
+    const v30 = e.prof.valor30 || 0, v60 = e.prof.valor60 || 0;
+    e.totalSessoes  = n30 + n60;
+    e.totalValorSess = n30 * v30 + n60 * v60;
+    e.totalAvals    = e.avalsContabilizadas.length;
+    e.totalValorAval = e.totalAvals * (e.prof.valorAval || 0);
+    totalGeralAtend += e.totalSessoes;
+    totalGeralValor += e.totalValorSess;
+    totalGeralAval  += e.totalAvals;
+    totalGeralValorAval += e.totalValorAval;
+  });
+
+  const totalGeral = totalGeralValor + totalGeralValorAval;
+
+  // ── Renderiza KPIs ───────────────────────────────────────────
+  const kpisEl = document.getElementById('fech-kpis');
+  if (kpisEl) {
+    kpisEl.style.display = '';
+    kpisEl.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2z"/></svg></div>
+        <div class="stat-label">Atendimentos no mês</div>
+        <div class="stat-value">${totalGeralAtend}</div>
+        <div class="stat-delta">${mesLabel}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div>
+        <div class="stat-label">Valor total sessões</div>
+        <div class="stat-value" style="font-size:22px">${brlFmt(totalGeralValor)}</div>
+        <div class="stat-delta">${totalGeralAtend} atend. × valores cadastrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86z"/></svg></div>
+        <div class="stat-label">Avaliações neuropsico.</div>
+        <div class="stat-value">${totalGeralAval}</div>
+        <div class="stat-delta">${brlFmt(totalGeralValorAval)} total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div>
+        <div class="stat-label">Total geral a receber</div>
+        <div class="stat-value" style="font-size:22px;color:var(--success)">${brlFmt(totalGeral)}</div>
+        <div class="stat-delta">Sessões + Avaliações</div>
+      </div>`;
+  }
+
+  // ── Renderiza cards de terapeutas ────────────────────────────
+  const profsComSessoes = profs.filter(e => e.totalSessoes > 0);
+  const profsComAvals   = profs.filter(e => e.totalAvals > 0);
+
+  const terapSection = document.getElementById('fech-terapeutas-section');
+  const terapCards   = document.getElementById('fech-cards-terapeutas');
+  const avalSection  = document.getElementById('fech-aval-section');
+  const avalCards    = document.getElementById('fech-cards-aval');
+  const emptyEl      = document.getElementById('fech-empty');
+  const btnRel       = document.getElementById('btn-emitir-rel-fech');
+
+  // Limpa
+  if (terapCards)  terapCards.innerHTML  = '';
+  if (avalCards)   avalCards.innerHTML   = '';
+
+  if (profs.length === 0) {
+    if (terapSection) terapSection.style.display = 'none';
+    if (avalSection)  avalSection.style.display  = 'none';
+    if (emptyEl)      emptyEl.style.display      = '';
+    if (btnRel)       btnRel.style.display        = 'none';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (btnRel)  btnRel.style.display  = '';
+
+  // ── Cards de sessões regulares ───────────────────────────────
+  if (terapSection) terapSection.style.display = profsComSessoes.length ? '' : 'none';
+  profsComSessoes.forEach(e => {
+    const { prof, sessoes30, sessoes60 } = e;
+    const n30 = sessoes30.length, n60 = sessoes60.length;
+    const v30 = prof.valor30 || 0, v60 = prof.valor60 || 0;
+
+    // Agrupa por plano
+    const porPlano = {};
+    [...sessoes30, ...sessoes60].forEach(a => {
+      const pl = a.plano || 'Particular';
+      if (!porPlano[pl]) porPlano[pl] = { n30: 0, n60: 0 };
+      if ((a.durMin || 30) >= 60) porPlano[pl].n60++;
+      else porPlano[pl].n30++;
+    });
+
+    const planoRows = Object.entries(porPlano).sort((a,b) => a[0].localeCompare(b[0])).map(([pl, c]) => {
+      const vpl = c.n30 * v30 + c.n60 * v60;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="color:var(--text-secondary)">${pl}</div>
+        <div style="display:flex;gap:16px;align-items:center">
+          ${c.n30 > 0 ? `<span style="color:var(--text-muted)">${c.n30}× 30min</span>` : ''}
+          ${c.n60 > 0 ? `<span style="color:var(--text-muted)">${c.n60}× 60min</span>` : ''}
+          <span style="font-weight:600;color:var(--success)">${brlFmt(vpl)}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    const alertValor = (v30 === 0 && n30 > 0) || (v60 === 0 && n60 > 0)
+      ? `<div style="font-size:11px;color:var(--warning);margin-top:8px">⚠ Valor R$0,00 — configure os valores no cadastro do profissional</div>` : '';
+
+    const card = document.createElement('div');
+    card.className = 'table-card';
+    card.style.cssText = 'padding:18px 20px';
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${prof.cor};flex-shrink:0"></div>
+        <div style="font-size:14px;font-weight:600">${prof.nome}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-left:auto">${prof.esp || ''}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--accent)">${n30}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Sessões 30min</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${brlFmt(v30)}/un</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--info)">${n60}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Sessões 60min</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${brlFmt(v60)}/un</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:700;color:var(--success)">${brlFmt(e.totalValorSess)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Total ${n30+n60} atend.</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Por plano de saúde</div>
+      ${planoRows}
+      ${alertValor}`;
+    terapCards.appendChild(card);
+  });
+
+  // ── Cards de avaliações neuropsicológicas ────────────────────
+  if (avalSection) avalSection.style.display = profsComAvals.length ? '' : 'none';
+  profsComAvals.forEach(e => {
+    const { prof } = e;
+    const contabilizadas = e.avalsContabilizadas;
+    const vAval = prof.valorAval || 0;
+
+    // Agrupa por plano
+    const porPlano = {};
+    contabilizadas.forEach(a => {
+      const pl = a.plano || 'Particular';
+      porPlano[pl] = (porPlano[pl] || 0) + 1;
+    });
+
+    const planoRows = Object.entries(porPlano).sort((a,b) => a[0].localeCompare(b[0])).map(([pl, n]) => {
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="color:var(--text-secondary)">${pl}</div>
+        <div style="display:flex;gap:16px;align-items:center">
+          <span style="color:var(--text-muted)">${n} avaliação${n > 1 ? 'ões' : ''}</span>
+          <span style="font-weight:600;color:var(--success)">${brlFmt(n * vAval)}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    const descartadas = e.avalsTotal - contabilizadas.length;
+    const descartInfo = descartadas > 0
+      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px">ℹ ${descartadas} atendimento(s) de retorno/continuação não contabilizado(s) (apenas 1º atendimento por paciente)</div>` : '';
+
+    const alertValor = vAval === 0
+      ? `<div style="font-size:11px;color:var(--warning);margin-top:8px">⚠ Valor R$0,00 — configure no cadastro do profissional</div>` : '';
+
+    const pacientes = [...new Set(contabilizadas.map(a => a.paciente))];
+
+    const card = document.createElement('div');
+    card.className = 'table-card';
+    card.style.cssText = 'padding:18px 20px';
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${prof.cor};flex-shrink:0"></div>
+        <div style="font-size:14px;font-weight:600">${prof.nome}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-left:auto">${prof.esp || ''}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--warning)">${contabilizadas.length}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Avaliações</div>
+          <div style="font-size:11px;color:var(--text-secondary)">(1º atend./paciente)</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--text-secondary)">${pacientes.length}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Pacientes distintos</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:700;color:var(--success)">${brlFmt(e.totalValorAval)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${brlFmt(vAval)}/avaliação</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Por plano de saúde</div>
+      ${planoRows}
+      ${descartInfo}
+      ${alertValor}`;
+    avalCards.appendChild(card);
+  });
+
+  showToast('Fechamento calculado com sucesso!', 'success');
+}
+
+// ── Relatório Sintético PDF ──────────────────────────────────────────────────
+function emitirRelatorioFechamento() {
+  const mesVal = document.getElementById('fech-mes')?.value;
+  if (!mesVal) { showToast('Calcule o fechamento primeiro','error'); return; }
+
+  const [ano, mes] = mesVal.split('-').map(Number);
+  const D_PRIM = new Date(ano, mes - 1, 1);
+  const D_ULT  = new Date(ano, mes, 0);
+  const ISO_PRIM = D_PRIM.toISOString().slice(0,10);
+  const ISO_ULT  = D_ULT.toISOString().slice(0,10);
+  const mesLabel = D_PRIM.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  const mesLabCap = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+
+  const aptsAtend = APPOINTMENTS.filter(a =>
+    a.status === 'atendido' &&
+    a.dataISO >= ISO_PRIM && a.dataISO <= ISO_ULT
+  );
+
+  const porProf = {};
+  aptsAtend.forEach(a => {
+    const profId = a.profId;
+    const prof   = PROFISSIONAIS.find(p => p.id === profId);
+    if (!prof) return;
+    if (!porProf[profId]) porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [] };
+    const dur = a.durMin || 30;
+    if (isAvalNeuropsico(a)) porProf[profId].avals.push(a);
+    else if (dur >= 60)       porProf[profId].sessoes60.push(a);
+    else                      porProf[profId].sessoes30.push(a);
+  });
+
+  // Avaliações: apenas 1º por paciente
+  Object.values(porProf).forEach(e => {
+    const byPac = {};
+    e.avals.forEach(a => {
+      if (!byPac[a.paciente] || a.dataISO < byPac[a.paciente].dataISO) byPac[a.paciente] = a;
+    });
+    e.avalsContabilizadas = Object.values(byPac);
+  });
+
+  const profs = Object.values(porProf).sort((a,b) => a.prof.nome.localeCompare(b.prof.nome));
+
+  let totalAtend = 0, totalValor = 0;
+
+  const rows = profs.map(e => {
+    const { prof, sessoes30, sessoes60 } = e;
+    const n30 = sessoes30.length, n60 = sessoes60.length;
+    const nAval = e.avalsContabilizadas.length;
+    const total = n30 + n60;
+    const v30  = prof.valor30  || 0, v60 = prof.valor60 || 0, vAv = prof.valorAval || 0;
+    const valor = n30 * v30 + n60 * v60 + nAval * vAv;
+    totalAtend += total;
+    totalValor += valor;
+    const fmt = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0">${prof.nome}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${total}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${n30}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${n60}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${nAval}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#16a34a">${fmt(valor)}</td>
+    </tr>`;
+  }).join('');
+
+  const fmtBrl = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const clinNome = (typeof CLINICA !== 'undefined' && CLINICA.nome) ? CLINICA.nome : 'ClinicFlow';
+  const dataEmis = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Fechamento Mensal — ${mesLabCap}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #1e293b; background: #fff; padding: 18mm 15mm; }
+  .header { text-align: center; margin-bottom: 18px; border-bottom: 2px solid #1e3a6e; padding-bottom: 12px; }
+  .header h1 { font-size: 16pt; color: #1e3a6e; margin-bottom: 4px; }
+  .header p  { font-size: 10pt; color: #475569; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 8.5pt; color: #64748b; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  thead tr { background: #1e3a6e; color: #fff; }
+  thead th { padding: 8px 10px; text-align: left; font-weight: 600; }
+  thead th:nth-child(2),thead th:nth-child(3),thead th:nth-child(4),thead th:nth-child(5),thead th:nth-child(6) { text-align: center; }
+  thead th:nth-child(6) { text-align: right; }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  .tfoot { margin-top: 0; }
+  .tfoot tr { background: #e8f0fe !important; font-weight: 700; }
+  .tfoot td { padding: 10px 10px; border-top: 2px solid #1e3a6e; font-size: 10pt; }
+  .footer { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 8pt; color: #94a3b8; text-align: center; }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 8pt; font-weight: 600; }
+  .badge-green { background: #dcfce7; color: #16a34a; }
+  @media print {
+    body { padding: 10mm 12mm; }
+    button { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>${clinNome}</h1>
+  <p>Relatório Sintético de Fechamento Mensal — <strong>${mesLabCap}</strong></p>
+</div>
+<div class="meta">
+  <span>Emitido em: ${dataEmis}</span>
+  <span>Competência: <strong>${mesLabCap}</strong></span>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>Terapeuta</th>
+      <th style="text-align:center">Total Atend.</th>
+      <th style="text-align:center">30 min</th>
+      <th style="text-align:center">60 min</th>
+      <th style="text-align:center">Aval. Neuro.</th>
+      <th style="text-align:right">Valor Total</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+  <tfoot class="tfoot">
+    <tr>
+      <td><strong>TOTAL GERAL</strong></td>
+      <td style="text-align:center"><strong>${totalAtend}</strong></td>
+      <td colspan="3" style="text-align:center;font-size:8.5pt;color:#475569">— — —</td>
+      <td style="text-align:right;color:#16a34a;font-size:11pt"><strong>${fmtBrl(totalValor)}</strong></td>
+    </tr>
+  </tfoot>
+</table>
+<div class="footer">
+  Documento gerado automaticamente pelo ClinicFlow &bull; Apenas atendimentos com status "Atendido" &bull; Avaliação neuropsicológica: contabilizado 1º atendimento por paciente
+</div>
+<script>window.onload = function(){ window.print(); };<\/script>
+</body>
+</html>`;
+
+  // Abre em nova janela para impressão/PDF
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  } else {
+    // Fallback: download como HTML
+    const blob = new Blob([html], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `fechamento_${mesVal}.html`;
+    a.click();
+    showToast('Arquivo baixado — abra no navegador e use Ctrl+P para imprimir/salvar como PDF','success');
+  }
+}
 
 console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
 </script>
