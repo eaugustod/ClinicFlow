@@ -1300,7 +1300,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.25</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.26</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -4917,7 +4917,7 @@ function renderDashboard() {
   }
 
   // Resumo geral
-  const mesAtual = hoje.slice(0, 7);
+  const mesAtual = new Date().toISOString().slice(0, 7);
   const apptMes  = APPOINTMENTS.filter(a => (a.dataISO||'').startsWith(mesAtual));
   const resumoEl = document.getElementById('dash-resumo-geral');
   if (resumoEl) {
@@ -9706,7 +9706,7 @@ function renderSidebarLogo() {
   const logoText = document.getElementById('sidebar-logo-name');
   if (logoWrap) {
     if (CLINICA.logo) {
-      logoWrap.innerHTML = '<img src="'+CLINICA.logo+'" style="height:48px;max-width:180px;object-fit:contain;border-radius:4px">';
+      logoWrap.innerHTML = '<img src="'+CLINICA.logo+'" style="height:32px;max-width:140px;object-fit:contain;border-radius:4px">';
       if (logoText) logoText.style.display = 'none';
     } else {
       logoWrap.innerHTML = '';
