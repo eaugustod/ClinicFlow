@@ -1281,7 +1281,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v2026.0.28</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v2026.0.29</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
       <input class="form-input" type="email" id="login-email" placeholder="seu email" value="admin">
@@ -1300,7 +1300,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.28</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.29</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -2565,7 +2565,7 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
           <table class="data-table">
             <thead><tr>
               <th style="width:48px"></th>
-              <th>Nome</th><th>E-mail</th><th>CPF</th><th>Telefone</th><th>Perfil</th><th>Status</th><th></th>
+              <th>Nome</th><th>E-mail</th><th>CPF</th><th>Telefone</th><th>Perfil</th><th>Profissional vinculado</th><th>Status</th><th></th>
             </tr></thead>
             <tbody id="usuarios-tbody"></tbody>
           </table>
@@ -3202,7 +3202,7 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
           <div class="form-row cols-2">
             <div class="form-group"><label>E-mail *</label><input class="form-input" id="usr-email" type="email" placeholder="email@clinica.com.br"></div>
             <div class="form-group"><label>Perfil de acesso *</label>
-              <select class="form-select" id="usr-perfil">
+              <select class="form-select" id="usr-perfil" onchange="onUsrPerfilChange(this.value)">
                 <option value="admin">👑 Administrador</option>
                 <option value="recepcao">📋 Recepção</option>
                 <option value="prof">🩺 Profissional</option>
@@ -3251,6 +3251,22 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:-8px;margin-bottom:4px">
         ⚠️ As senhas são armazenadas localmente. Para produção, utilize autenticação via Supabase Auth.
+      </div>
+
+      <!-- Vínculo com Profissional (visível apenas quando perfil = prof) -->
+      <div id="usr-prof-vinculo-wrap" style="display:none">
+        <div class="section-divider">Vínculo com Profissional</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Profissional vinculado</label>
+            <select class="form-select" id="usr-prof-id">
+              <option value="">— Selecione o profissional —</option>
+            </select>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:5px">
+              🔗 Vinculando ao profissional, o usuário verá apenas a própria agenda e seus pacientes ao fazer login com perfil <strong>Profissional</strong>.
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -4720,6 +4736,9 @@ async function sincronizarDados() {
     if (m.dbToEspera)rep(LISTA_ESPERA, esp.data,  m.dbToEspera);
     if (m.dbToHist)  rep(HISTORICO,    hist,      m.dbToHist);
     if (cfg.data && cfg.data.length > 0) Object.assign(CLINICA, cfg.data[0].dados || {});
+
+    // Carrega usuários do Supabase (merge com localStorage)
+    try { if (typeof carregarUsuariosSupabase === 'function') await carregarUsuariosSupabase(); } catch(_eu) {}
 
     // Recalcula próximos IDs
     const maxId = arr => arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
@@ -12621,8 +12640,8 @@ document.addEventListener('DOMContentLoaded', function() {
     dbToPlano: r => ({ id:r.id, nome:r.nome, nomeGuia:r.nome_guia||'', cnpj:r.cnpj||'', ans:r.ans||'', tabela:r.tabela||'CBHPM', codPrestador:r.cod_prestador||'', nomeContratado:r.nome_contratado||'', cnes:r.cnes||'', numGuiaInicial:r.num_guia_inicial||1, usaTiss:r.usa_tiss!==false, aplicaTodos:r.aplica_todos!==false, tipoId:r.tipo_id||'Código', versaoTiss:r.versao_tiss||'4.02.00', tel:r.tel||'', email:r.email||'', obs:r.obs||'', status:r.status||'Ativo', pacientes:r.pacientes||0, juntarGuia:r.juntar_guia!==false, nomePlanoGuia:r.nome_plano_guia||'', logo:r.logo||null }),
     procToDb: p => ({ codigo:p.codigo||null, descricao:p.desc, desc_curta:p.descCurta||null, tipo:p.tipo||'Sessão', val_part:p.valPart||0, val_plano:p.valPlano||0, tabela:p.tabela||'TUSS', plano_id:p.planoId||0, status:p.status||'Ativo', obs:p.obs||null }),
     dbToProc: r => ({ id:r.id, codigo:r.codigo||'', desc:r.descricao||r.desc||'', descCurta:r.desc_curta||'', tipo:r.tipo||'Sessão', valPart:r.val_part||0, valPlano:r.val_plano||0, tabela:r.tabela||'TUSS', planoId:r.plano_id||0, status:r.status||'Ativo', obs:r.obs||'' }),
-    apptToDb: a => ({ prof_id:a.profId, pac_id:a.pacId||null, paciente:a.paciente, plano:a.plano||'Particular', plano_id:a.planoId||5, hora:a.hora, hora_fim:a.horaFim||null, dur_min:a.durMin||30, data_iso:a.dataISO||null, status:a.status||'agendado', obs:a.obs||null, modalidade:a.modalidade||'presencial', meet_link:a.meetLink||null, wa_sent:a.waSent||false, carteirinha:a.carteirinha||null, guia:a.guia||null }),
-    dbToAppt: r => ({ id:r.id, profId:r.prof_id, pacId:r.pac_id||null, paciente:r.paciente, plano:r.plano||'Particular', planoId:r.plano_id, hora:r.hora, horaFim:r.hora_fim||'', durMin:r.dur_min||30, dataISO:r.data_iso||'', status:r.status||'agendado', obs:r.obs||'', modalidade:r.modalidade||'presencial', meetLink:r.meet_link||'', waSent:r.wa_sent||false, carteirinha:r.carteirinha||'', guia:r.guia||null }),
+    apptToDb: a => ({ prof_id:a.profId, paciente:a.paciente, plano:a.plano||'Particular', plano_id:a.planoId||5, hora:a.hora, hora_fim:a.horaFim||null, dur_min:a.durMin||30, data_iso:a.dataISO||null, status:a.status||'agendado', obs:a.obs||null, modalidade:a.modalidade||'presencial', meet_link:a.meetLink||null, wa_sent:a.waSent||false, carteirinha:a.carteirinha||null, guia:a.guia||null }),
+    dbToAppt: r => ({ id:r.id, profId:r.prof_id, paciente:r.paciente, plano:r.plano||'Particular', planoId:r.plano_id, hora:r.hora, horaFim:r.hora_fim||'', durMin:r.dur_min||30, dataISO:r.data_iso||'', status:r.status||'agendado', obs:r.obs||'', modalidade:r.modalidade||'presencial', meetLink:r.meet_link||'', waSent:r.wa_sent||false, carteirinha:r.carteirinha||'', guia:r.guia||null }),
     guiaToDb: g => ({ num:g.num, pac:g.pac, plano_id:g.planoId, plano:g.plano, prof_id:g.profId, valor:g.valor||0, status:g.status||'Pendente', data:g.data||null, lote_id:g.loteId||null, lote_num:g.loteNum||null, dados:g.dados||null, carteirinha:g.carteirinha||null, num_op:g.numOp||null, cid:g.cid||null }),
     dbToGuia: r => ({ id:r.id, num:r.num, pac:r.pac, planoId:r.plano_id, plano:r.plano, profId:r.prof_id, valor:r.valor||0, status:r.status||'Pendente', data:r.data||'', loteId:r.lote_id||null, loteNum:r.lote_num||null, dados:r.dados||{}, carteirinha:r.carteirinha||'', numOp:r.num_op||'', cid:r.cid||'' }),
     loteToDb: l => ({ num:l.num, competencia:l.competencia, plano_id:l.planoId, plano:l.plano, qtd:l.qtd||0, valor:l.valor||0, status:l.status||'Pendente', data_criacao:l.dataCriacao||null, data_envio:l.dataEnvio||null, obs:l.obs||null, guia_ids:l.guiaIds||[] }),
@@ -12691,6 +12710,9 @@ document.addEventListener('DOMContentLoaded', function() {
       rep(LISTA_ESPERA, esp.data,   map.dbToEspera);
       rep(HISTORICO,    hist,       map.dbToHist);
       if (cfg.data && cfg.data.length > 0) Object.assign(CLINICA, cfg.data[0].dados || {});
+
+      // Carrega usuários do Supabase (merge com localStorage)
+      try { await carregarUsuariosSupabase(); } catch(_eu) {}
 
       const maxId = (arr) => arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
       nextPacId    = maxId(PACIENTES);
@@ -12929,7 +12951,6 @@ document.addEventListener('DOMContentLoaded', function() {
       meetLink: document.getElementById('ag-meet-link')?.value || '',
       carteirinha: document.getElementById('ag-carteirinha')?.value || '',
       waSent: false, guia: null,
-      pacId: (PACIENTES.find(p => p.nome.toLowerCase() === pac.toLowerCase()))?.id || null,
     };
     const sb = getDb();
     if (currentApptId) {
@@ -13459,6 +13480,9 @@ function renderUsuarios() {
     const statusChip = u.status === 'Ativo'
       ? `<span class="chip green" style="font-size:11px">Ativo</span>`
       : `<span class="chip gray" style="font-size:11px">Inativo</span>`;
+    const profVinc = u.profId
+      ? (() => { const pf = PROFISSIONAIS.find(p => p.id === u.profId); return pf ? `<span style="font-size:12px;color:var(--warning)">🩺 ${pf.nome}</span>` : `<span style="font-size:11px;color:var(--text-muted)">ID:${u.profId} (não encontrado)</span>`; })()
+      : `<span style="font-size:11px;color:var(--text-muted)">—</span>`;
     return `<tr>
       <td>${foto}</td>
       <td style="font-weight:500">${u.nome}</td>
@@ -13466,6 +13490,7 @@ function renderUsuarios() {
       <td style="font-family:var(--font-mono);font-size:12px">${u.cpf || '—'}</td>
       <td>${u.tel || '—'}</td>
       <td><span style="font-size:12px;font-weight:500;color:${perfilColor}">${perfilLabel}</span></td>
+      <td>${profVinc}</td>
       <td>${statusChip}</td>
       <td style="text-align:right">
         <div style="display:flex;gap:4px;justify-content:flex-end">
@@ -13474,7 +13499,7 @@ function renderUsuarios() {
         </div>
       </td>
     </tr>`;
-  }).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum usuário cadastrado</td></tr>`;
+  }).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum usuário cadastrado</td></tr>`;
 }
 
 function filterUsuarios(q) {
@@ -13500,6 +13525,8 @@ function abrirNovoUsuario() {
   document.getElementById('usr-foto-data').value = '';
   const wrap = document.getElementById('usr-foto-wrap');
   wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px;color:var(--text-muted)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+  _popularSelectProfissionaisUsuario(null);
+  document.getElementById('usr-prof-vinculo-wrap').style.display = 'none';
   document.getElementById('modal-usuario').classList.add('active');
 }
 
@@ -13527,6 +13554,9 @@ function editarUsuario(id) {
   } else {
     wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px;color:var(--text-muted)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
   }
+  _popularSelectProfissionaisUsuario(u.profId || null);
+  const vincWrap = document.getElementById('usr-prof-vinculo-wrap');
+  if (vincWrap) vincWrap.style.display = u.perfil === 'prof' ? '' : 'none';
   document.getElementById('modal-usuario').classList.add('active');
 }
 
@@ -13560,6 +13590,7 @@ function salvarUsuario() {
       u.nome = nome; u.email = email; u.cpf = cpf; u.rg = rg;
       u.tel = tel; u.nasc = nasc; u.perfil = perfil; u.status = status;
       u.foto = foto;
+      u.profId = perfil === 'prof' ? (parseInt(document.getElementById('usr-prof-id')?.value || '0') || null) : null;
       if (senha) u.senha = senha;
     }
     showToast('Usuário atualizado!', 'success');
@@ -13568,6 +13599,7 @@ function salvarUsuario() {
       id: 'usr-' + Date.now(),
       nome, email, cpf, rg, tel, nasc, perfil, status, foto,
       senha: senha,
+      profId: perfil === 'prof' ? (parseInt(document.getElementById('usr-prof-id')?.value || '0') || null) : null,
       criadoEm: new Date().toISOString()
     });
     showToast('Usuário cadastrado!', 'success');
@@ -13628,9 +13660,50 @@ async function sincronizarUsuarioSupabase() {
     await sb.from('usuarios').upsert(USUARIOS.map(u => ({
       id: u.id, nome: u.nome, email: u.email, cpf: u.cpf, rg: u.rg,
       telefone: u.tel, data_nascimento: u.nasc || null,
-      perfil: u.perfil, status: u.status, foto: u.foto, created_at: u.criadoEm
+      perfil: u.perfil, status: u.status, foto: u.foto,
+      prof_id: u.profId || null,
+      created_at: u.criadoEm
     })));
   } catch(e) { /* tabela pode não existir ainda */ }
+}
+
+// ── Carrega usuários do Supabase (chamado no sync principal) ──────────
+async function carregarUsuariosSupabase() {
+  try {
+    const sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (!sb) return;
+    const { data, error } = await sb.from('usuarios').select('*').order('nome').limit(500);
+    if (error || !data || !data.length) return;
+    USUARIOS.length = 0;
+    data.forEach(r => USUARIOS.push({
+      id: r.id, nome: r.nome, email: r.email, cpf: r.cpf || '',
+      rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
+      perfil: r.perfil || 'admin', status: r.status || 'Ativo',
+      foto: r.foto || '', senha: r.senha || '',
+      profId: r.prof_id || null,
+      criadoEm: r.created_at || ''
+    }));
+    salvarUsuariosLocal();
+    renderUsuarios();
+  } catch(e) { console.warn('[ClinicFlow] Tabela usuarios não encontrada, usando localStorage', e.message); }
+}
+
+// ── Popula o select de profissionais no modal de usuário ──────────────
+function _popularSelectProfissionaisUsuario(selectedProfId) {
+  const sel = document.getElementById('usr-prof-id');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Selecione o profissional —</option>' +
+    PROFISSIONAIS.filter(p => p.status !== 'Inativo').map(p =>
+      `<option value="${p.id}" ${p.id === selectedProfId ? 'selected' : ''}>${p.nome}${p.esp ? ' — ' + p.esp : ''}</option>`
+    ).join('');
+}
+
+// ── Mostra/oculta o bloco de vínculo ao mudar o perfil ───────────────
+function onUsrPerfilChange(val) {
+  const wrap = document.getElementById('usr-prof-vinculo-wrap');
+  if (!wrap) return;
+  wrap.style.display = val === 'prof' ? '' : 'none';
+  if (val === 'prof') _popularSelectProfissionaisUsuario(null);
 }
 
 // ── Masks ────────────────────────────────────────────
@@ -13782,6 +13855,8 @@ window.gotoPage = function(page, el) {
   _origGotoPage && _origGotoPage(page, el);
   if (page === 'usuarios') {
     renderUsuarios();
+    // Tenta recarregar do Supabase em segundo plano
+    try { if (typeof carregarUsuariosSupabase === 'function') carregarUsuariosSupabase(); } catch(_e) {}
   }
   if (page === 'fechamento') {
     // Inicializa mês atual se não preenchido
