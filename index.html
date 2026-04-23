@@ -1281,7 +1281,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v2026.0.29</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.30</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
       <input class="form-input" type="email" id="login-email" placeholder="seu email" value="admin">
@@ -1300,7 +1300,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.29</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.30</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -13494,8 +13494,14 @@ function renderUsuarios() {
       <td>${statusChip}</td>
       <td style="text-align:right">
         <div style="display:flex;gap:4px;justify-content:flex-end">
-          <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:12px" onclick="editarUsuario('${u.id}')">Editar</button>
-          <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="excluirUsuario('${u.id}')">Excluir</button>
+          <button class="btn-sm btn-secondary" style="padding:5px 10px;font-size:12px;gap:5px;display:flex;align-items:center" onclick="editarUsuario('${u.id}')">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            Editar
+          </button>
+          <button class="btn-sm btn-secondary" style="padding:5px 10px;font-size:12px;gap:5px;display:flex;align-items:center;color:var(--danger)" onclick="excluirUsuario('${u.id}')">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            Excluir
+          </button>
         </div>
       </td>
     </tr>`;
@@ -13531,12 +13537,13 @@ function abrirNovoUsuario() {
 }
 
 function editarUsuario(id) {
-  const u = USUARIOS.find(x => x.id === id);
-  if (!u) return;
-  _editUsuarioId = id;
+  // Busca tolerando id numérico ou string
+  const u = USUARIOS.find(x => String(x.id) === String(id));
+  if (!u) { showToast('Usuário não encontrado', 'error'); return; }
+  _editUsuarioId = u.id; // guarda o id original (pode ser number ou string)
   document.getElementById('usr-modal-title').textContent = 'Editar Usuário';
   document.getElementById('usr-modal-sub').textContent = 'Atualize os dados do usuário';
-  document.getElementById('usr-id-display').textContent = 'ID: ' + id;
+  document.getElementById('usr-id-display').textContent = 'ID: ' + u.id;
   document.getElementById('usr-nome').value = u.nome || '';
   document.getElementById('usr-email').value = u.email || '';
   document.getElementById('usr-cpf').value = u.cpf || '';
@@ -13581,27 +13588,34 @@ function salvarUsuario() {
   if (senha && senha.length < 6) { showToast('A senha deve ter mínimo 6 caracteres', 'error'); return; }
 
   // Verifica email duplicado
-  const duplicado = USUARIOS.find(u => u.email === email && u.id !== _editUsuarioId);
+  const duplicado = USUARIOS.find(u => u.email === email && String(u.id) !== String(_editUsuarioId));
   if (duplicado) { showToast('Já existe um usuário com este e-mail', 'error'); return; }
 
+  const profIdVal = perfil === 'prof' ? (parseInt(document.getElementById('usr-prof-id')?.value || '0') || null) : null;
+
   if (_editUsuarioId) {
-    const u = USUARIOS.find(x => x.id === _editUsuarioId);
+    const u = USUARIOS.find(x => String(x.id) === String(_editUsuarioId));
     if (u) {
       u.nome = nome; u.email = email; u.cpf = cpf; u.rg = rg;
       u.tel = tel; u.nasc = nasc; u.perfil = perfil; u.status = status;
       u.foto = foto;
-      u.profId = perfil === 'prof' ? (parseInt(document.getElementById('usr-prof-id')?.value || '0') || null) : null;
+      u.profId = profIdVal;
       if (senha) u.senha = senha;
+      // Persiste update individual no Supabase
+      _upsertUsuarioSupabase(u);
     }
     showToast('Usuário atualizado!', 'success');
   } else {
-    USUARIOS.push({
+    const novoUsuario = {
       id: 'usr-' + Date.now(),
       nome, email, cpf, rg, tel, nasc, perfil, status, foto,
       senha: senha,
-      profId: perfil === 'prof' ? (parseInt(document.getElementById('usr-prof-id')?.value || '0') || null) : null,
+      profId: profIdVal,
       criadoEm: new Date().toISOString()
-    });
+    };
+    USUARIOS.push(novoUsuario);
+    // Persiste insert individual no Supabase
+    _upsertUsuarioSupabase(novoUsuario);
     showToast('Usuário cadastrado!', 'success');
   }
 
@@ -13644,26 +13658,53 @@ function atualizarAvatarSidebar() {
 
 function excluirUsuario(id) {
   if (USUARIOS.length <= 1) { showToast('Deve existir ao menos um usuário', 'error'); return; }
-  if (!confirm('Excluir este usuário?')) return;
-  const i = USUARIOS.findIndex(u => u.id === id);
+  const u = USUARIOS.find(x => String(x.id) === String(id));
+  if (!u) return;
+  if (!confirm(`Excluir o usuário "${u.nome}"? Esta ação não pode ser desfeita.`)) return;
+  const i = USUARIOS.findIndex(x => String(x.id) === String(id));
   if (i > -1) USUARIOS.splice(i, 1);
   salvarUsuariosLocal();
   renderUsuarios();
   showToast('Usuário excluído.', 'error');
+  // Remove do Supabase
+  try {
+    const sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (sb) sb.from('usuarios').delete().eq('id', id).then(({ error: e }) => {
+      if (e) console.error('[ClinicFlow] Erro ao excluir usuário do Supabase:', e.message);
+    });
+  } catch(_e) {}
+}
+
+// ── Persiste um único usuário no Supabase (upsert) ────────────────────
+async function _upsertUsuarioSupabase(u) {
+  try {
+    const sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (!sb) return;
+    const payload = {
+      id: u.id, nome: u.nome, email: u.email, cpf: u.cpf || null, rg: u.rg || null,
+      telefone: u.tel || null, data_nascimento: u.nasc || null,
+      perfil: u.perfil, status: u.status, foto: u.foto || null,
+      prof_id: u.profId || null, created_at: u.criadoEm || new Date().toISOString()
+    };
+    if (u.senha) payload.senha = u.senha;
+    const { error } = await sb.from('usuarios').upsert([payload], { onConflict: 'id' });
+    if (error) console.error('[ClinicFlow] Erro ao salvar usuário no Supabase:', error.message);
+  } catch(e) { console.warn('[ClinicFlow] _upsertUsuarioSupabase:', e.message); }
 }
 
 async function sincronizarUsuarioSupabase() {
   try {
     const sb = window._cfGetDb ? window._cfGetDb() : null;
     if (!sb) return;
-    // Tenta sincronizar tabela usuarios no Supabase
-    await sb.from('usuarios').upsert(USUARIOS.map(u => ({
-      id: u.id, nome: u.nome, email: u.email, cpf: u.cpf, rg: u.rg,
-      telefone: u.tel, data_nascimento: u.nasc || null,
-      perfil: u.perfil, status: u.status, foto: u.foto,
-      prof_id: u.profId || null,
-      created_at: u.criadoEm
-    })));
+    // Upsert em massa (chamado no sync geral)
+    const payload = USUARIOS.map(u => ({
+      id: u.id, nome: u.nome, email: u.email, cpf: u.cpf || null, rg: u.rg || null,
+      telefone: u.tel || null, data_nascimento: u.nasc || null,
+      perfil: u.perfil, status: u.status, foto: u.foto || null,
+      prof_id: u.profId || null, created_at: u.criadoEm || new Date().toISOString()
+    }));
+    const { error } = await sb.from('usuarios').upsert(payload, { onConflict: 'id' });
+    if (error) console.error('[ClinicFlow] Erro ao sincronizar usuários:', error.message);
   } catch(e) { /* tabela pode não existir ainda */ }
 }
 
@@ -13676,7 +13717,8 @@ async function carregarUsuariosSupabase() {
     if (error || !data || !data.length) return;
     USUARIOS.length = 0;
     data.forEach(r => USUARIOS.push({
-      id: r.id, nome: r.nome, email: r.email, cpf: r.cpf || '',
+      id: String(r.id),        // sempre string para evitar mismatch numérico
+      nome: r.nome, email: r.email, cpf: r.cpf || '',
       rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
       perfil: r.perfil || 'admin', status: r.status || 'Ativo',
       foto: r.foto || '', senha: r.senha || '',
