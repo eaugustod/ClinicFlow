@@ -2519,79 +2519,88 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
 
     <!-- USUÁRIOS & CONTROLE DE ACESSO -->
     <div class="page" id="page-usuarios">
-      <div style="max-width:900px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-          <div>
-            <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Usuários &amp; Controle de Acesso</h2>
-            <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Gerencie os usuários do sistema e seus perfis de acesso</p>
-          </div>
-          <button class="btn-sm btn-accent" onclick="abrirNovoUsuario()">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            Novo usuário
-          </button>
+      <!-- sem max-width: ocupa todo o espaço disponível -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Usuários &amp; Controle de Acesso</h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Gerencie os usuários do sistema e seus perfis de acesso</p>
         </div>
+        <button class="btn-sm btn-accent" onclick="abrirNovoUsuario()">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Novo usuário
+        </button>
+      </div>
 
-        <!-- Perfis de acesso resumo -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px" id="usuarios-perfis-stats">
-          <div class="stat-card" style="cursor:default">
-            <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-            <div class="stat-label">Administradores</div>
-            <div class="stat-value" id="usr-count-admin">0</div>
-            <div class="stat-delta">Acesso total ao sistema</div>
-          </div>
-          <div class="stat-card" style="cursor:default">
-            <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/></svg></div>
-            <div class="stat-label">Recepção</div>
-            <div class="stat-value" id="usr-count-recepcao">0</div>
-            <div class="stat-delta">Agenda, pacientes e caixa</div>
-          </div>
-          <div class="stat-card" style="cursor:default">
-            <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-            <div class="stat-label">Profissionais</div>
-            <div class="stat-value" id="usr-count-prof">0</div>
-            <div class="stat-delta">Prontuário e evolução</div>
+      <!-- Perfis de acesso resumo -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;max-width:600px" id="usuarios-perfis-stats">
+        <div class="stat-card" style="cursor:default">
+          <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+          <div class="stat-label">Administradores</div>
+          <div class="stat-value" id="usr-count-admin">0</div>
+          <div class="stat-delta">Acesso total ao sistema</div>
+        </div>
+        <div class="stat-card" style="cursor:default">
+          <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/></svg></div>
+          <div class="stat-label">Recepção</div>
+          <div class="stat-value" id="usr-count-recepcao">0</div>
+          <div class="stat-delta">Agenda, pacientes e caixa</div>
+        </div>
+        <div class="stat-card" style="cursor:default">
+          <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+          <div class="stat-label">Profissionais</div>
+          <div class="stat-value" id="usr-count-prof">0</div>
+          <div class="stat-delta">Prontuário e evolução</div>
+        </div>
+      </div>
+
+      <!-- Tabela de usuários: scroll horizontal quando necessário -->
+      <div class="table-card" style="padding:0;overflow:hidden;margin-bottom:16px">
+        <div class="table-header" style="padding:14px 16px">
+          <div class="table-title">Usuários cadastrados</div>
+          <div class="search-input-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input class="search-input" placeholder="Buscar usuário..." oninput="filterUsuarios(this.value)" style="width:220px">
           </div>
         </div>
-
-        <!-- Tabela de usuários -->
-        <div class="table-card" style="padding:0;overflow:hidden">
-          <div class="table-header" style="padding:14px 16px">
-            <div class="table-title">Usuários cadastrados</div>
-            <div class="search-input-wrap">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              <input class="search-input" placeholder="Buscar usuário..." oninput="filterUsuarios(this.value)" style="width:200px">
-            </div>
-          </div>
-          <table class="data-table">
+        <!-- wrapper com overflow-x: auto garante scroll horizontal sem quebrar o layout -->
+        <div style="overflow-x:auto;width:100%">
+          <table class="data-table" style="min-width:900px">
             <thead><tr>
-              <th style="width:48px"></th>
-              <th>Nome</th><th>E-mail</th><th>CPF</th><th>Telefone</th><th>Perfil</th><th>Profissional vinculado</th><th>Status</th><th></th>
+              <th style="width:52px"></th>
+              <th style="min-width:160px">Nome</th>
+              <th style="min-width:190px">E-mail</th>
+              <th style="min-width:130px">CPF</th>
+              <th style="min-width:120px">Telefone</th>
+              <th style="min-width:110px">Perfil</th>
+              <th style="min-width:180px">Profissional vinculado</th>
+              <th style="min-width:80px">Status</th>
+              <th style="min-width:160px;text-align:right">Ações</th>
             </tr></thead>
             <tbody id="usuarios-tbody"></tbody>
           </table>
         </div>
+      </div>
 
-        <!-- Legenda de permissões -->
-        <div class="table-card" style="padding:20px;margin-top:16px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text-secondary)">Permissões por perfil</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
-            <div>
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block"></span><strong style="color:var(--accent)">Administrador</strong></div>
-              <div style="color:var(--text-muted);line-height:1.8">
-                ✓ Dashboard completo<br>✓ Agenda e agendamentos<br>✓ Pacientes e prontuário<br>✓ Profissionais<br>✓ Planos e procedimentos<br>✓ Faturamento e TISS<br>✓ Relatórios<br>✓ Configurações<br>✓ Usuários e acesso
-              </div>
+      <!-- Legenda de permissões -->
+      <div class="table-card" style="padding:20px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text-secondary)">Permissões por perfil</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;font-size:12px">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block"></span><strong style="color:var(--accent)">Administrador</strong></div>
+            <div style="color:var(--text-muted);line-height:1.8">
+              ✓ Dashboard completo<br>✓ Agenda e agendamentos<br>✓ Pacientes e prontuário<br>✓ Profissionais<br>✓ Planos e procedimentos<br>✓ Faturamento e TISS<br>✓ Relatórios<br>✓ Configurações<br>✓ Usuários e acesso
             </div>
-            <div>
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block"></span><strong style="color:var(--success)">Recepção</strong></div>
-              <div style="color:var(--text-muted);line-height:1.8">
-                ✓ Dashboard básico<br>✓ Agenda e agendamentos<br>✓ Pacientes (cadastro)<br>✓ Lista de espera<br>✓ Planos de saúde<br>✓ Senhas / Autorizações<br>✗ Prontuário completo<br>✗ Relatórios financeiros<br>✗ Configurações
-              </div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block"></span><strong style="color:var(--success)">Recepção</strong></div>
+            <div style="color:var(--text-muted);line-height:1.8">
+              ✓ Dashboard básico<br>✓ Agenda e agendamentos<br>✓ Pacientes (cadastro)<br>✓ Lista de espera<br>✓ Planos de saúde<br>✓ Senhas / Autorizações<br>✗ Prontuário completo<br>✗ Relatórios financeiros<br>✗ Configurações
             </div>
-            <div>
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--warning);display:inline-block"></span><strong style="color:var(--warning)">Profissional</strong></div>
-              <div style="color:var(--text-muted);line-height:1.8">
-                ✓ Sua agenda do dia<br>✓ Histórico de pacientes<br>✓ Registro de evoluções<br>✓ Guias SADT (próprias)<br>✗ Outros profissionais<br>✗ Faturamento<br>✗ Cadastros<br>✗ Relatórios<br>✗ Configurações
-              </div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--warning);display:inline-block"></span><strong style="color:var(--warning)">Profissional</strong></div>
+            <div style="color:var(--text-muted);line-height:1.8">
+              ✓ Sua agenda do dia<br>✓ Histórico de pacientes<br>✓ Registro de evoluções<br>✓ Guias SADT (próprias)<br>✗ Outros profissionais<br>✗ Faturamento<br>✗ Cadastros<br>✗ Relatórios<br>✗ Configurações
             </div>
           </div>
         </div>
