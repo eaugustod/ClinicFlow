@@ -8982,15 +8982,17 @@ async function cancelouTerapia() {
 function renderPlanosGrid() {
   document.getElementById('planos-grid').innerHTML = PLANOS.map(p => {
     const procCount = PROCEDIMENTOS.filter(pr => pr.planoId === p.id).length;
+    const pacCount  = PACIENTES.filter(function(pac){ return pac.planoId === p.id && pac.status !== 'Inativo'; }).length;
     const logoEl = p.logo
-      ? `<img src="${p.logo}" style="max-width:80px;max-height:28px;object-fit:contain;margin-bottom:4px;border-radius:3px" title="Logo cadastrado">`
-      : `<span style="font-size:10px;color:var(--text-muted)">sem logo</span>`;
+      ? '<img src="'+p.logo+'" style="max-width:80px;max-height:28px;object-fit:contain;margin-bottom:4px;border-radius:3px" title="Logo cadastrado">'
+      : '<span style="font-size:10px;color:var(--text-muted)">sem logo</span>';
+    const contratadoEl = p.nomeContratado ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+p.nomeContratado+'</div>' : '';
     return `<div class="plan-card" style="${p.status==='Inativo'?'opacity:.55':''}">
       <div class="plan-card-header">
         <div>
           <div class="plan-name">${p.nome}</div>
           <div class="plan-meta" style="margin-top:2px">ANS: <strong>${p.ans}</strong> · ${p.tabela}${p.versaoTiss?' · TISS '+p.versaoTiss:''}</div>
-          ${p.nomeContratado?`<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${p.nomeContratado}</div>`:''}
+          ${contratadoEl}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
           <div style="margin-bottom:2px">${logoEl}</div>
