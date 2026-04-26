@@ -9003,7 +9003,7 @@ function renderPlanosGrid() {
       </div>
       <div style="font-size:12px;color:var(--text-muted);margin-top:4px">CNPJ: ${p.cnpj} ${p.cnes?'· CNES: '+p.cnes:''}</div>
       <div class="plan-stats" style="margin-top:10px">
-        <div class="plan-stat"><div class="plan-stat-val">${p.pacientes||0}</div><div class="plan-stat-lbl">Pacientes</div></div>
+        <div class="plan-stat"><div class="plan-stat-val">${pacCount}</div><div class="plan-stat-lbl">Pacientes</div></div>
         <div class="plan-stat"><div class="plan-stat-val">${procCount}</div><div class="plan-stat-lbl">Procedimentos</div></div>
         <div class="plan-stat"><div class="plan-stat-val" style="font-size:12px">${p.usaTiss?'Sim':'Não'}</div><div class="plan-stat-lbl">Usa TISS</div></div>
       </div>
