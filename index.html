@@ -620,16 +620,16 @@ a { text-decoration: none; color: inherit; }
 .appt-action-btn:hover { opacity: 0.8; }
 
 /* Status colors */
-.status-agendado  { background: rgba(96,165,250,0.15); border-color: #60a5fa; }
-.status-confirmado{ background: rgba(52,211,153,0.13); border-color: #34d399; }
-.status-atendido  { background: rgba(139,146,168,0.12); border-color: #555d74; }
-.status-cancelado { background: rgba(248,113,113,0.08);  border-color: #f87171; opacity: 0.7; }
-.status-desmarcado{ background: rgba(248,113,113,0.1);  border-color: #f87171; }
-.status-chegou    { background: rgba(251,146,60,0.13); border-color: #fff44f; }
-.btn-confirmar  { background: rgba(52,211,153,0.2);  color: #34d399; }
-.btn-atendido   { background: rgba(139,146,168,0.2); color: #8b92a8; }
-.btn-desmarcar  { background: rgba(248,113,113,0.18);color: #f87171; }
-.btn-em-espera  { background: rgba(251,146,60,0.2);  color: #fff44f; }
+.status-agendado  { background: rgba(96,165,250,0.15);  border-color: #60a5fa; }
+.status-confirmado{ background: rgba(167,139,250,0.15); border-color: #a78bfa; }
+.status-atendido  { background: rgba(52,211,153,0.14);  border-color: #34d399; }
+.status-cancelado { background: rgba(148,163,184,0.12); border-color: #94a3b8; opacity: 0.65; }
+.status-desmarcado{ background: rgba(248,113,113,0.13); border-color: #f87171; }
+.status-chegou    { background: rgba(250,204,21,0.14);  border-color: #facc15; }
+.btn-confirmar  { background: rgba(167,139,250,0.2);  color: #a78bfa; }
+.btn-atendido   { background: rgba(52,211,153,0.2);   color: #34d399; }
+.btn-desmarcar  { background: rgba(248,113,113,0.18); color: #f87171; }
+.btn-em-espera  { background: rgba(250,204,21,0.2);   color: #facc15; }
 
 /* ═══════════════════════════════════════
    WEEK VIEW — estrutura independente
@@ -857,12 +857,13 @@ a { text-decoration: none; color: inherit; }
   border-radius: 99px;
   font-size: 11px; font-weight: 500;
 }
-.chip.green { background: rgba(52,211,153,0.12); color: var(--success); }
-.chip.blue  { background: rgba(79,142,247,0.12); color: var(--accent); }
-.chip.yellow{ background: rgba(251,191,36,0.12); color: var(--warning); }
+.chip.green  { background: rgba(52,211,153,0.12);  color: var(--success); }
+.chip.blue   { background: rgba(79,142,247,0.12);  color: var(--accent); }
+.chip.yellow { background: rgba(250,204,21,0.15);  color: #ca8a04; }
 .chip.red    { background: rgba(248,113,113,0.12); color: var(--danger); }
 .chip.orange { background: rgba(251,146,60,0.12);  color: #fb923c; }
-.chip.gray  { background: rgba(139,146,168,0.12); color: var(--text-secondary); }
+.chip.gray   { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.chip.purple { background: rgba(167,139,250,0.15); color: #a78bfa; }
 
 .table-actions { display: flex; gap: 6px; }
 .action-btn {
@@ -1283,7 +1284,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.31</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.32</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
       <input class="form-input" type="email" id="login-email" placeholder="seu email" value="admin">
@@ -1302,7 +1303,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.31</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.32</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -4896,10 +4897,11 @@ function renderDashboard() {
     } else {
       const statusMap = {
         agendado:   {cls:'blue',   lbl:'Agendado'},
-        confirmado: {cls:'green',  lbl:'Confirmado'},
+        confirmado: {cls:'purple', lbl:'Confirmado'},
+        chegou:     {cls:'yellow', lbl:'Em Espera'},
         atendido:   {cls:'green',  lbl:'Atendido'},
         desmarcado: {cls:'red',    lbl:'Desmarcado'},
-        cancelado:  {cls:'orange', lbl:'Cancelado'},  // cor diferente de desmarcado
+        cancelado:  {cls:'gray',   lbl:'Cancelado'},
       };
       tbody.innerHTML = sorted.map(a => {
         const prof = PROFISSIONAIS.find(p => p.id === a.profId);
@@ -5138,7 +5140,7 @@ function renderRelatorios() {
   if (statusDistEl) {
     const statusMap = {};
     appts.forEach(a => { statusMap[a.status||'agendado'] = (statusMap[a.status||'agendado']||0)+1; });
-    const cores = { agendado:'var(--accent)', confirmado:'var(--info)', chegou:'#fff44f', atendido:'var(--success)', desmarcado:'var(--warning)', cancelado:'var(--danger)' };
+    const cores = { agendado:'#60a5fa', confirmado:'#a78bfa', chegou:'#facc15', atendido:'#34d399', desmarcado:'#f87171', cancelado:'#94a3b8' };
     const labels = { agendado:'Agendado', confirmado:'Confirmado', chegou:'Em Espera', atendido:'Atendido', desmarcado:'Desmarcado', cancelado:'Cancelado' };
     const rows = Object.entries(statusMap).sort((a,b)=>b[1]-a[1]);
     statusDistEl.innerHTML = rows.length ? rows.map(([status, n])=>
@@ -5221,7 +5223,7 @@ function buildApptCard(appt, cor) {
     : (plano !== 'Particular' ? '<span style="color:var(--warning);font-size:10px;margin-left:4px">⚠ s/ guia</span>' : '');
 
   const statusLabels = { agendado:'Agendado', confirmado:'Confirmado', atendido:'Atendido', desmarcado:'Desmarcado', chegou:'Em Espera' };
-  const statusColors = { agendado:'#60a5fa', confirmado:'#34d399', atendido:'#8b92a8', desmarcado:'#f87171', chegou:'#fff44f' };
+  const statusColors = { agendado:'#60a5fa', confirmado:'#a78bfa', atendido:'#34d399', desmarcado:'#f87171', chegou:'#facc15' };
   const statusLabel  = (appt.status === 'atendido' || appt.status === 'desmarcado' || appt.status === 'chegou')
     ? '<span style="font-size:10px;font-weight:600;color:' + statusColors[appt.status] + ';margin-left:4px">[' + statusLabels[appt.status] + ']</span>'
     : '';
@@ -10112,7 +10114,7 @@ function renderTimeline() {
   const sortedDates = [...allDates].filter(Boolean).sort((a,b)=>b.localeCompare(a));
 
   const icons = { agendamento:'📅', evolucao:'📝', anamnese:'📋', avaliacao:'🩺' };
-  const statusColors = { agendado:'var(--accent)', confirmado:'var(--success)', chegou:'#fb923c', atendido:'var(--text-muted)', cancelado:'var(--danger)', desmarcado:'var(--danger)' };
+  const statusColors = { agendado:'#60a5fa', confirmado:'#a78bfa', chegou:'#facc15', atendido:'#34d399', cancelado:'#94a3b8', desmarcado:'#f87171' };
 
   // Helper: renderiza badge(s) de guia SADT para uma data
   function guiasBadge(date) {
@@ -10134,7 +10136,7 @@ function renderTimeline() {
     // Appointments for this date
     (apptByDate[date]||[]).forEach(a => {
       const dotColor = statusColors[a.status] || 'var(--accent)';
-      const chipStr = '<span class="chip '+(a.status==='atendido'?'gray':a.status==='cancelado'?'orange':'blue')+'" style="font-size:10px">'+a.status+'</span>';
+      const chipStr = '<span class="chip '+(a.status==='atendido'?'green':a.status==='cancelado'?'gray':a.status==='confirmado'?'purple':a.status==='chegou'?'yellow':a.status==='desmarcado'?'red':'blue')+'" style="font-size:10px">'+a.status+'</span>';
       // Evoluções do mesmo dia — embute dentro do box do agendamento
       const evolsNoDia = (evolByDate[date]||[]);
       const evolsHTML = evolsNoDia.length ? evolsNoDia.map(ev => {
@@ -10755,7 +10757,7 @@ function renderProntuarioCompleto() {
       return '<tr><td>'+(a.dataISO?a.dataISO.split('-').reverse().join('/'):'—')+'</td>' +
         '<td>'+a.hora+'</td><td>'+(prof?prof.nome:'—')+'</td>' +
         '<td>'+a.plano+'</td>' +
-        '<td><span class="chip '+(a.status==='atendido'?'green':a.status==='cancelado'?'orange':'blue')+'" style="font-size:10px">'+a.status+'</span></td></tr>';
+        '<td><span class="chip '+(a.status==='atendido'?'green':a.status==='cancelado'?'gray':a.status==='confirmado'?'purple':a.status==='chegou'?'yellow':a.status==='desmarcado'?'red':'blue')+'" style="font-size:10px">'+a.status+'</span></td></tr>';
     }).join('') +
     '</tbody></table>';
 }
