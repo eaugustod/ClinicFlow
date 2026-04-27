@@ -1284,7 +1284,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.32</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.33</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
       <input class="form-input" type="email" id="login-email" placeholder="seu email" value="admin">
@@ -1303,7 +1303,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.32</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.33</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -1552,7 +1552,64 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           <button class="view-btn" onclick="setAgendaView('semana',this)">Semana</button>
           <button class="view-btn" onclick="setAgendaView('mes',this)">Mês</button>
         </div>
-        <div class="agenda-filter" id="prof-filters"></div>
+
+        <!-- Botão Legenda -->
+        <div style="position:relative" id="legenda-wrap">
+          <button class="btn-sm btn-secondary" onclick="toggleLegenda()" id="legenda-btn" style="gap:6px">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;opacity:.7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            Legenda
+          </button>
+          <div id="legenda-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:300;width:230px;background:var(--bg-surface);border:1px solid var(--border-mid);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:12px 14px;animation:fadeIn .15s ease">
+            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Status dos agendamentos</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:28px;height:10px;border-radius:3px;background:rgba(96,165,250,0.25);border-left:3px solid #60a5fa;flex-shrink:0"></span>
+                <span style="font-size:13px;color:var(--text-primary)">Agendado</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:28px;height:10px;border-radius:3px;background:rgba(167,139,250,0.25);border-left:3px solid #a78bfa;flex-shrink:0"></span>
+                <span style="font-size:13px;color:var(--text-primary)">Confirmado</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:28px;height:10px;border-radius:3px;background:rgba(250,204,21,0.25);border-left:3px solid #facc15;flex-shrink:0"></span>
+                <span style="font-size:13px;color:var(--text-primary)">Em Espera</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:28px;height:10px;border-radius:3px;background:rgba(52,211,153,0.25);border-left:3px solid #34d399;flex-shrink:0"></span>
+                <span style="font-size:13px;color:var(--text-primary)">Atendido</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:28px;height:10px;border-radius:3px;background:rgba(248,113,113,0.2);border-left:3px solid #f87171;flex-shrink:0"></span>
+                <span style="font-size:13px;color:var(--text-primary)">Desmarcado</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:28px;height:10px;border-radius:3px;background:rgba(148,163,184,0.18);border-left:3px solid #94a3b8;flex-shrink:0;opacity:.65"></span>
+                <span style="font-size:13px;color:var(--text-secondary)">Cancelado</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="agenda-filter" id="prof-filter-wrap" style="position:relative">
+          <button class="btn-sm btn-secondary" id="prof-filter-btn" onclick="toggleProfDropdown()" style="gap:8px;min-width:160px;justify-content:space-between">
+            <span style="display:flex;align-items:center;gap:6px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;opacity:.7"><path d="M3 18h6v-2H3v2zm0-5h12v-2H3v2zm0-7v2h18V6H3z"/></svg>
+              <span id="prof-filter-label">Todos os profissionais</span>
+            </span>
+            <svg id="prof-filter-chevron" viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;opacity:.5;transition:transform .18s ease"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          </button>
+          <div id="prof-filter-dropdown" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:200;min-width:220px;background:var(--bg-surface);border:1px solid var(--border-mid);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:8px 0;overflow:hidden">
+            <div style="padding:6px 12px 8px;border-bottom:1px solid var(--border)">
+              <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Profissionais com agenda hoje</div>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-secondary);padding:3px 0" onclick="toggleAllProfs(event)">
+                <span id="prof-filter-all-check" style="width:15px;height:15px;border-radius:3px;border:1.5px solid var(--border-mid);background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s">
+                  <svg viewBox="0 0 12 12" fill="white" style="width:9px;height:9px"><path d="M1.5 6l3 3 6-6"/></svg>
+                </span>
+                Selecionar todos
+              </label>
+            </div>
+            <div id="prof-filter-list" style="padding:6px 0;max-height:280px;overflow-y:auto"></div>
+          </div>
+        </div>
         <button class="btn-sm btn-secondary" onclick="waEnviarConfirmacoesDoDia()" style="gap:6px" title="Enviar confirmação WhatsApp para todos os pacientes de hoje">
           <svg viewBox="0 0 24 24" fill="#25d366" style="width:14px;height:14px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.562-1.368C8.2 23.504 10.06 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.88 0-3.63-.49-5.15-1.345L2.5 21.5l.87-4.23A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
           Confirmar todos
@@ -4772,7 +4829,7 @@ async function sincronizarDados() {
     nextSenhaId  = maxId(SENHAS_PLANO);
     nextEsperaId = maxId(LISTA_ESPERA);
     nextHistId   = maxId(HISTORICO);
-    activeProfFilters = new Set(PROFISSIONAIS.map(p => p.id));
+    activeProfFilters = new Set(getProfisComAgendaHoje().map(p => p.id));
 
     // ── Atualiza toda a UI ────────────────────────────────────────────────
     refreshUI();
@@ -5590,9 +5647,26 @@ function changeDate(dir) {
   if (currentView==='mes')    currentDate.setMonth(currentDate.getMonth()+dir);
   else if (currentView==='semana') currentDate.setDate(currentDate.getDate()+(dir*7));
   else                        currentDate.setDate(currentDate.getDate()+dir);
+  if (currentView === 'dia') { refreshProfFiltersForDay(); }
   updateDateLabel(); renderAgenda();
 }
-function gotoToday() { currentDate=new Date(); updateDateLabel(); renderAgenda(); }
+function gotoToday() { currentDate=new Date(); if (currentView==='dia') refreshProfFiltersForDay(); updateDateLabel(); renderAgenda(); }
+
+function refreshProfFiltersForDay() {
+  // Recalcula profissionais com agenda no novo dia e reseta o filtro para "todos"
+  const profsHoje = getProfisComAgendaHoje();
+  const idsHoje = new Set(profsHoje.map(p => p.id));
+  // Limpa filtros de dias anteriores e ativa todos do novo dia
+  activeProfFilters.clear();
+  profsHoje.forEach(p => activeProfFilters.add(p.id));
+  // Atualiza label do botão sem abrir o dropdown
+  const lbl = document.getElementById('prof-filter-label');
+  if (lbl) {
+    if (profsHoje.length === 0) lbl.textContent = 'Sem agenda hoje';
+    else if (profsHoje.length === 1) lbl.textContent = profsHoje[0].nomeAgenda||profsHoje[0].nome.split(' ')[0];
+    else lbl.textContent = 'Todos os profissionais';
+  }
+}
 function updateDateLabel() {
   const months=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const days=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
@@ -5941,16 +6015,114 @@ async function moverAgendamento(appt, mudancas) {
 }
 
 
-function buildProfFilters() {
-  document.getElementById('prof-filters').innerHTML = PROFISSIONAIS.map(p =>
-    `<div class="filter-chip" onclick="toggleProfFilter(${p.id},this)" data-id="${p.id}" style="border-color:${p.cor}40">
-      <span class="dot" style="background:${p.cor}"></span>${p.nomeAgenda || p.nome.split(' ')[0]}
-    </div>`).join('');
+function getProfisComAgendaHoje() {
+  const cd = currentDate;
+  const iso = cd.getFullYear()+'-'+String(cd.getMonth()+1).padStart(2,'0')+'-'+String(cd.getDate()).padStart(2,'0');
+  const idsComAgenda = new Set(APPOINTMENTS.filter(a => a.dataISO === iso && a.status !== 'cancelado').map(a => a.profId));
+  return PROFISSIONAIS.filter(p => idsComAgenda.has(p.id));
 }
-function toggleProfFilter(id, el) {
-  activeProfFilters.has(id) ? (activeProfFilters.delete(id), el.style.opacity='0.4') : (activeProfFilters.add(id), el.style.opacity='1');
+
+function buildProfFilters() {
+  const profsHoje = getProfisComAgendaHoje();
+  // Garante que activeProfFilters só contém profs com agenda hoje
+  const idsHoje = new Set(profsHoje.map(p => p.id));
+  // Remove do filtro os que não têm agenda hoje
+  for (const id of [...activeProfFilters]) { if (!idsHoje.has(id)) activeProfFilters.delete(id); }
+  // Adiciona todos que têm agenda hoje (caso ainda não estejam)
+  profsHoje.forEach(p => activeProfFilters.add(p.id));
+
+  const list = document.getElementById('prof-filter-list');
+  if (!list) return;
+  list.innerHTML = profsHoje.length === 0
+    ? '<div style="padding:10px 14px;font-size:12px;color:var(--text-muted)">Nenhum profissional com agenda hoje</div>'
+    : profsHoje.map(p => `
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:7px 14px;transition:background .15s;border-radius:0" onmouseenter="this.style.background='var(--bg-raised)'" onmouseleave="this.style.background=''" onclick="event.preventDefault();toggleProfFilter(${p.id})">
+        <span class="prof-check-box" id="pcheck-${p.id}" style="width:15px;height:15px;border-radius:3px;border:1.5px solid ${p.cor};background:${activeProfFilters.has(p.id)?p.cor:'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s">
+          ${activeProfFilters.has(p.id)?'<svg viewBox="0 0 12 12" fill="white" style="width:9px;height:9px"><path d="M1.5 6l3 3 6-6" stroke="white" stroke-width="1.5" fill="none"/></svg>':''}
+        </span>
+        <span style="width:8px;height:8px;border-radius:50%;background:${p.cor};flex-shrink:0"></span>
+        <span style="font-size:13px;color:var(--text-primary)">${p.nomeAgenda || p.nome.split(' ')[0]}</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-left:auto">${p.esp||''}</span>
+      </label>`).join('');
+  updateProfFilterLabel(profsHoje);
+}
+
+function toggleProfFilter(id) {
+  activeProfFilters.has(id) ? activeProfFilters.delete(id) : activeProfFilters.add(id);
+  const profsHoje = getProfisComAgendaHoje();
+  const box = document.getElementById('pcheck-'+id);
+  const p = PROFISSIONAIS.find(x=>x.id===id);
+  if (box && p) {
+    box.style.background = activeProfFilters.has(id) ? p.cor : 'transparent';
+    box.innerHTML = activeProfFilters.has(id) ? '<svg viewBox="0 0 12 12" fill="white" style="width:9px;height:9px"><path d="M1.5 6l3 3 6-6" stroke="white" stroke-width="1.5" fill="none"/></svg>' : '';
+  }
+  updateProfFilterLabel(profsHoje);
+  updateAllCheck(profsHoje);
   renderAgenda();
 }
+
+function toggleAllProfs(e) {
+  e.stopPropagation();
+  const profsHoje = getProfisComAgendaHoje();
+  const allOn = profsHoje.every(p => activeProfFilters.has(p.id));
+  if (allOn) { profsHoje.forEach(p => activeProfFilters.delete(p.id)); }
+  else        { profsHoje.forEach(p => activeProfFilters.add(p.id)); }
+  buildProfFilters();
+  renderAgenda();
+}
+
+function updateProfFilterLabel(profsHoje) {
+  const lbl = document.getElementById('prof-filter-label');
+  if (!lbl) return;
+  const total = profsHoje.length;
+  const sel = profsHoje.filter(p => activeProfFilters.has(p.id)).length;
+  if (sel === 0)     lbl.textContent = 'Nenhum selecionado';
+  else if (sel === total) lbl.textContent = total === 1 ? (profsHoje[0].nomeAgenda||profsHoje[0].nome.split(' ')[0]) : 'Todos os profissionais';
+  else if (sel === 1) { const p = profsHoje.find(p => activeProfFilters.has(p.id)); lbl.textContent = p.nomeAgenda||p.nome.split(' ')[0]; }
+  else lbl.textContent = sel + ' profissionais';
+  updateAllCheck(profsHoje);
+}
+
+function updateAllCheck(profsHoje) {
+  const allBox = document.getElementById('prof-filter-all-check');
+  if (!allBox) return;
+  const allOn = profsHoje.length > 0 && profsHoje.every(p => activeProfFilters.has(p.id));
+  allBox.style.background = allOn ? 'var(--accent)' : 'transparent';
+  allBox.style.borderColor = allOn ? 'var(--accent)' : 'var(--border-mid)';
+  allBox.innerHTML = allOn ? '<svg viewBox="0 0 12 12" fill="white" style="width:9px;height:9px"><path d="M1.5 6l3 3 6-6" stroke="white" stroke-width="1.5" fill="none"/></svg>' : '';
+}
+
+function toggleProfDropdown() {
+  const dd = document.getElementById('prof-filter-dropdown');
+  const ch = document.getElementById('prof-filter-chevron');
+  if (!dd) return;
+  const open = dd.style.display === 'block';
+  dd.style.display = open ? 'none' : 'block';
+  if (ch) ch.style.transform = open ? '' : 'rotate(180deg)';
+  if (!open) buildProfFilters();
+}
+
+function toggleLegenda() {
+  const dd = document.getElementById('legenda-dropdown');
+  if (!dd) return;
+  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+}
+
+// Fecha dropdown ao clicar fora
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('prof-filter-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const dd = document.getElementById('prof-filter-dropdown');
+    const ch = document.getElementById('prof-filter-chevron');
+    if (dd) dd.style.display = 'none';
+    if (ch) ch.style.transform = '';
+  }
+  const legendaWrap = document.getElementById('legenda-wrap');
+  if (legendaWrap && !legendaWrap.contains(e.target)) {
+    const ld = document.getElementById('legenda-dropdown');
+    if (ld) ld.style.display = 'none';
+  }
+});
 
 // ═══════════════════════════════════════
 //  TABLES
@@ -12772,7 +12944,7 @@ document.addEventListener('DOMContentLoaded', function() {
       nextSenhaId  = maxId(SENHAS_PLANO);
       nextEsperaId = maxId(LISTA_ESPERA);
       nextHistId   = maxId(HISTORICO);
-      activeProfFilters = new Set(PROFISSIONAIS.map(p => p.id));
+      activeProfFilters = new Set(getProfisComAgendaHoje().map(p => p.id));
 
       // Re-render all modules via refreshUI central
       try { refreshUI(); } catch(e) {
