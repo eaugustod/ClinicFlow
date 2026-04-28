@@ -860,8 +860,34 @@ a { text-decoration: none; color: inherit; }
   overflow-y: auto;
 }
 
+/* Pacientes — layout flex para isolar scroll no tbody */
+#page-pacientes {
+  overflow: hidden !important;
+  display: none;
+  flex-direction: column;
+  padding: 24px;
+}
+#page-pacientes.active {
+  display: flex;
+}
+#page-pacientes .table-card {
+  flex: 1;
+  min-height: 0;
+}
+/* Remove margem entre a tabela de cabeçalho e a de dados */
+#pacientes-table-head {
+  border-bottom: none;
+}
+#pacientes-table-head thead th {
+  border-bottom: 2px solid var(--border-mid);
+}
+#pacientes-table tbody tr:first-child td {
+  /* sem borda dupla no topo */
+  border-top: none;
+}
+
 /* table-card não pode cortar o overflow-y nessas páginas */
-#page-pacientes .table-card,
+//#page-pacientes .table-card,
 #page-profissionais .table-card,
 #page-procedimentos .table-card,
 #page-lotes .table-card {
@@ -2241,7 +2267,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- LISTA DE ESPERA -->
     <div class="page" id="page-espera">
-      <div>
+      <div style="display:flex;flex-direction:column;height:100%">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div>
             <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Lista de Espera</h2>
