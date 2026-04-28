@@ -836,6 +836,58 @@ a { text-decoration: none; color: inherit; }
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
+
+/* ═══════════════════════════════════════
+   CABEÇALHO FIXO (STICKY THEAD) — módulos
+═══════════════════════════════════════ */
+#page-pacientes .data-table thead th,
+#page-profissionais .data-table thead th,
+#page-procedimentos .data-table thead th,
+#page-espera .data-table thead th,
+#page-lotes .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+/* Garante scroll interno nas páginas simples */
+#page-pacientes,
+#page-profissionais,
+#page-procedimentos,
+#page-espera,
+#page-lotes {
+  overflow-y: auto;
+}
+
+/* table-card não pode cortar o overflow-y nessas páginas */
+#page-pacientes .table-card,
+#page-profissionais .table-card,
+#page-procedimentos .table-card,
+#page-lotes .table-card {
+  overflow: visible;
+}
+
+/* Lista de espera — o wrapper interno também precisa deixar fluir */
+#page-espera > div {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Guias SADT — o toolbar fica fixo, lista rola */
+#page-tiss #tiss-toolbar,
+#page-tiss .tiss-header-info {
+  flex-shrink: 0;
+}
+
+/* Senhas — thead sticky dentro do wrapper com scroll */
+#page-senhas .senhas-table-wrap .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 1px 0 var(--border);
+}
 .data-table td {
   padding: 11px 16px;
   border-bottom: 1px solid var(--border);
@@ -1284,7 +1336,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.33</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.34</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
       <input class="form-input" type="email" id="login-email" placeholder="seu email" value="admin">
@@ -1303,7 +1355,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.33</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.34</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
