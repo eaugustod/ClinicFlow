@@ -361,6 +361,75 @@ a { text-decoration: none; color: inherit; }
   min-height: 0;
 }
 
+/* Profissionais */
+#page-profissionais {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+#page-profissionais.active { display: flex; }
+#page-profissionais .table-card {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+}
+#page-profissionais .table-header { flex-shrink: 0; }
+#page-profissionais .prof-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
+#page-profissionais .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
+
+/* Planos de Saúde */
+#page-planos {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+#page-planos.active { display: flex; }
+#page-planos .planos-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
+#page-planos .plan-grid-wrap { flex: 1; overflow-y: auto; min-height: 0; }
+
+/* Tabela de Preços / Procedimentos */
+#page-procedimentos {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+#page-procedimentos.active { display: flex; }
+#page-procedimentos .table-card {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+}
+#page-procedimentos .table-header { flex-shrink: 0; }
+#page-procedimentos .proc-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
+#page-procedimentos .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
+
+/* Lista de Espera */
+#page-espera {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+#page-espera.active { display: flex; }
+#page-espera .espera-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
+#page-espera .espera-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
+#page-espera .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
+
+/* Senhas — thead sticky adicionado */
+#page-senhas .senhas-table-wrap .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
+#page-senhas .senhas-stats-wrap { flex-shrink: 0; }
+
+/* Lotes TISS */
+#page-lotes {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+#page-lotes.active { display: flex; }
+#page-lotes .lotes-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
+#page-lotes .lotes-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
+#page-lotes .lotes-table-wrap .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
+
 /* Relatórios — mesmo padrão flex, conteúdo não escapa da tela */
 #page-relatorios {
   display: none;
@@ -1316,7 +1385,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.34</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.35</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
       <input class="form-input" type="email" id="login-email" placeholder="seu email" value="admin">
@@ -1335,7 +1404,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     </div>
     <button class="btn-primary" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.34</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.35</span>
     </div>
     <div class="login-demo-hint">
       <p>Acesso rápido por perfil:</p>
@@ -1716,18 +1785,20 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             Novo profissional
           </button>
         </div>
-        <table class="data-table">
-          <thead><tr>
-            <th>Profissional</th><th>Especialidade</th><th>Conselho</th><th>Telefone</th><th>Cor agenda</th><th>Status</th><th></th>
-          </tr></thead>
-          <tbody id="profissionais-tbody"></tbody>
-        </table>
+        <div class="prof-table-wrap">
+          <table class="data-table">
+            <thead><tr>
+              <th>Profissional</th><th>Especialidade</th><th>Conselho</th><th>Telefone</th><th>Cor agenda</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="profissionais-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
     <!-- PLANOS -->
     <div class="page" id="page-planos">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="planos-fixed-header" style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Planos de Saúde</h2>
           <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Gerencie convênios, tabelas e pacotes</p>
@@ -1737,7 +1808,9 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           Novo plano
         </button>
       </div>
-      <div class="plan-grid" id="planos-grid"></div>
+      <div class="plan-grid-wrap">
+        <div class="plan-grid" id="planos-grid"></div>
+      </div>
     </div>
 
     <!-- PROCEDIMENTOS -->
@@ -1757,16 +1830,16 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             Novo procedimento
           </button>
         </div>
-        <table class="data-table">
-          <thead><tr>
-            <th>Código TUSS</th><th>Descrição</th><th>Tipo</th><th>Plano vinculado</th><th>Valor Particular</th><th>Valor Plano</th><th>Status</th><th></th>
-          </tr></thead>
-          <tbody id="procedimentos-tbody"></tbody>
-        </table>
+        <div class="proc-table-wrap">
+          <table class="data-table">
+            <thead><tr>
+              <th>Código TUSS</th><th>Descrição</th><th>Tipo</th><th>Plano vinculado</th><th>Valor Particular</th><th>Valor Plano</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="procedimentos-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
-
-    <!-- IMPORTAR AGENDA -->
     <div class="page" id="page-importar">
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
@@ -2015,7 +2088,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- LOTES -->
     <div class="page" id="page-lotes">
-      <div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+      <div class="lotes-fixed-header" style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Lotes TISS</h2>
           <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Agrupe guias por plano e competência para envio</p>
@@ -2031,14 +2104,16 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           </button>
         </div>
       </div>
-      <div class="table-card">
-        <table class="data-table">
-          <thead><tr>
-            <th>Nº Lote</th><th>Competência</th><th>Plano</th>
-            <th>Qtd. Guias</th><th>Valor Total</th><th>Criação</th><th>Status</th><th></th>
-          </tr></thead>
-          <tbody id="lotes-tbody"></tbody>
-        </table>
+      <div class="lotes-table-wrap">
+        <div class="table-card">
+          <table class="data-table">
+            <thead><tr>
+              <th>Nº Lote</th><th>Competência</th><th>Plano</th>
+              <th>Qtd. Guias</th><th>Valor Total</th><th>Criação</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="lotes-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -2223,23 +2298,23 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- LISTA DE ESPERA -->
     <div class="page" id="page-espera">
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <div>
-            <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Lista de Espera</h2>
-            <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Pacientes aguardando vaga — converta em paciente cadastrado quando disponível</p>
-          </div>
-          <div style="display:flex;gap:8px">
-            <div class="search-input-wrap">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              <input class="search-input" placeholder="Buscar na lista..." oninput="filterEspera(this.value)" style="width:200px">
-            </div>
-            <button class="btn-sm btn-accent" onclick="abrirNovoEspera()">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-              Adicionar à fila
-            </button>
-          </div>
+      <div class="espera-fixed-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Lista de Espera</h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Pacientes aguardando vaga — converta em paciente cadastrado quando disponível</p>
         </div>
+        <div style="display:flex;gap:8px">
+          <div class="search-input-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input class="search-input" placeholder="Buscar na lista..." oninput="filterEspera(this.value)" style="width:200px">
+          </div>
+          <button class="btn-sm btn-accent" onclick="abrirNovoEspera()">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Adicionar à fila
+          </button>
+        </div>
+      </div>
+      <div class="espera-table-wrap">
         <div class="table-card" style="padding:0;overflow:hidden">
           <table class="data-table">
             <thead><tr>
@@ -2255,7 +2330,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- SENHAS / AUTORIZAÇÕES -->
     <div class="page" id="page-senhas">
-      <div>
+      <div class="senhas-stats-wrap">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div>
             <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Senhas &amp; Autorizações</h2>
@@ -2275,21 +2350,19 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             </button>
           </div>
         </div>
-
         <!-- Stats -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="senhas-stats"></div>
       </div>
-
-        <!-- Table -->
-        <div class="senhas-table-wrap"><div class="table-card">
-          <table class="data-table">
-            <thead><tr>
-              <th>Paciente</th><th>Plano / ANS</th><th>Nº Senha</th><th>Nº Guia Op.</th>
-              <th>Procedimento</th><th>Qtd.Aut.</th><th>Qtd.Usada</th><th>Validade</th><th>Status</th><th></th>
-            </tr></thead>
-            <tbody id="senhas-tbody"></tbody>
-          </table>
-        </div>
+      <!-- Table -->
+      <div class="senhas-table-wrap"><div class="table-card">
+        <table class="data-table">
+          <thead><tr>
+            <th>Paciente</th><th>Plano / ANS</th><th>Nº Senha</th><th>Nº Guia Op.</th>
+            <th>Procedimento</th><th>Qtd.Aut.</th><th>Qtd.Usada</th><th>Validade</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="senhas-tbody"></tbody>
+        </table>
+      </div>
       </div>
     </div>
 
