@@ -1371,6 +1371,78 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
   margin-left:auto;font-size:8pt;font-weight:bold;
   border:1px solid #888;padding:2px 8px;
 }
+
+/* ═══════════════════════════════════════
+   BLOQUEIO DE AGENDA
+═══════════════════════════════════════ */
+.slot-row.bloqueado {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(248,113,113,0.06) 0px,
+    rgba(248,113,113,0.06) 4px,
+    transparent 4px,
+    transparent 10px
+  ) !important;
+  cursor: not-allowed;
+  pointer-events: all;
+}
+.slot-row.bloqueado:hover {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(248,113,113,0.12) 0px,
+    rgba(248,113,113,0.12) 4px,
+    transparent 4px,
+    transparent 10px
+  ) !important;
+}
+.bloqueio-card {
+  position: absolute;
+  left: 3px; right: 3px;
+  border-radius: var(--radius-sm);
+  padding: 5px 7px;
+  background: rgba(248,113,113,0.13);
+  border-left: 3px solid #f87171;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.bloqueio-card:hover { background: rgba(248,113,113,0.2); }
+.bloqueio-card-icon { font-size: 12px; flex-shrink: 0; }
+.bloqueio-card-text { font-size: 11px; color: #f87171; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn-bloqueio {
+  background: rgba(248,113,113,0.12);
+  color: #f87171;
+  border: 1px solid rgba(248,113,113,0.25);
+}
+.btn-bloqueio:hover { background: rgba(248,113,113,0.22); }
+.bloqueio-periodo-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text-primary);
+}
+.bloqueio-periodo-row:last-child { border-bottom: none; }
+.bloqueio-remove-btn {
+  margin-left: auto; flex-shrink: 0;
+  background: rgba(248,113,113,0.12); border: none;
+  color: #f87171; border-radius: var(--radius-sm);
+  padding: 3px 8px; font-size: 11px; cursor: pointer;
+  transition: background .15s;
+}
+.bloqueio-remove-btn:hover { background: rgba(248,113,113,0.25); }
+.week-bloqueio-cell {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(248,113,113,0.07) 0px,
+    rgba(248,113,113,0.07) 4px,
+    transparent 4px,
+    transparent 10px
+  ) !important;
+  cursor: not-allowed;
+}
+
 </style>
 </head>
 <body>
@@ -1385,34 +1457,24 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.35</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.36</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
-      <input class="form-input" type="email" id="login-email" placeholder="seu email" value="admin">
+      <input class="form-input" type="email" id="login-email" placeholder="seu@email.com" autocomplete="username">
     </div>
     <div class="form-group">
       <label class="form-label">Senha</label>
-      <input class="form-input" type="password" id="login-pass" placeholder="••••••••" value="••••••••">
+      <input class="form-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <div class="form-group">
-      <label class="form-label">Perfil (demo)</label>
-      <select class="form-select" id="login-role">
-        <option value="admin">Administrador</option>
-        <option value="recepcao">Recepcionista</option>
-        <option value="prof">Profissional</option>
-      </select>
-    </div>
-    <button class="btn-primary" onclick="doLogin()">Entrar</button>
+    <div id="login-error" style="display:none;color:var(--danger);font-size:13px;margin-bottom:8px;padding:8px 12px;background:rgba(248,113,113,0.1);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.2)"></div>
+    <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.35</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.36</span>
     </div>
-    <div class="login-demo-hint">
-      <p>Acesso rápido por perfil:</p>
-      <div class="demo-pills">
-        <span class="demo-pill admin" onclick="quickLogin('admin')">Admin</span>
-        <span class="demo-pill recepcao" onclick="quickLogin('recepcao')">Recepção</span>
-        <span class="demo-pill prof" onclick="quickLogin('prof')">Profissional</span>
-      </div>
+    <div style="text-align:center;margin-top:10px">
+      <button onclick="resetAdminLocal()" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;text-decoration:underline;opacity:.6" title="Use apenas se não conseguir entrar como admin">
+        Redefinir senha do admin local
+      </button>
     </div>
   </div>
 </div>
@@ -1714,6 +1776,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <button class="btn-sm btn-secondary" onclick="waEnviarConfirmacoesDoDia()" style="gap:6px" title="Enviar confirmação WhatsApp para todos os pacientes de hoje">
           <svg viewBox="0 0 24 24" fill="#25d366" style="width:14px;height:14px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.562-1.368C8.2 23.504 10.06 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.88 0-3.63-.49-5.15-1.345L2.5 21.5l.87-4.23A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
           Confirmar todos
+        </button>
+        <button class="btn-sm btn-bloqueio" onclick="openModalBloqueio()" title="Bloquear agenda de um profissional" style="gap:6px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          Bloquear agenda
         </button>
         <button class="btn-sm btn-accent" onclick="openNovoAgendamento()">
           <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -2835,6 +2901,78 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
 <!-- ═══════════════════ MODAIS ═══════════════════ -->
 
 <!-- Modal Novo Agendamento (com abas + SADT integrada) -->
+
+<!-- ═══ MODAL BLOQUEIO DE AGENDA ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-bloqueio">
+  <div class="modal-card" style="max-width:520px;width:95%">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 24 24" fill="#f87171" style="width:18px;height:18px;flex-shrink:0"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          Bloquear Agenda
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Impede novos agendamentos no período selecionado</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-bloqueio')">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:20px">
+
+      <!-- Formulário de novo bloqueio -->
+      <div style="background:var(--bg-raised);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Novo bloqueio</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Profissional</label>
+            <select class="form-select" id="blq-prof"></select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Motivo (opcional)</label>
+            <input class="form-input" id="blq-motivo" placeholder="Ex: Férias, Curso...">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Data início</label>
+            <input class="form-input" type="date" id="blq-data-ini">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Data fim</label>
+            <input class="form-input" type="date" id="blq-data-fim">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Hora início</label>
+            <select class="form-select" id="blq-hora-ini">
+              <option value="">— Dia todo —</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Hora fim</label>
+            <select class="form-select" id="blq-hora-fim">
+              <option value="">— Dia todo —</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+          <input type="checkbox" id="blq-dia-todo" onchange="blqToggleDiaTodo(this)" style="width:15px;height:15px;cursor:pointer" checked>
+          <label for="blq-dia-todo" style="cursor:pointer">Bloquear o dia todo (sem agendamentos no período inteiro)</label>
+        </div>
+        <button class="btn-sm btn-bloqueio" onclick="salvarBloqueio()" style="width:100%;justify-content:center;padding:9px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          Confirmar bloqueio
+        </button>
+      </div>
+
+      <!-- Lista de bloqueios ativos -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Bloqueios cadastrados</div>
+        <div id="blq-lista" style="max-height:260px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-agendamento">
   <div class="modal" style="max-width:720px">
     <div class="modal-header" style="padding-bottom:0">
@@ -4582,49 +4720,163 @@ let procRowCount  = 1;    // controle de linhas de procedimento SADT
 // ═══════════════════════════════════════
 //  LOGIN
 // ═══════════════════════════════════════
+// quickLogin desabilitado — acesso apenas por email + senha
 function quickLogin(role) {
-  document.getElementById('login-role').value = role;
-  doLogin();
+  console.warn('[ClinicFlow] Acesso rápido desabilitado. Use email e senha.');
 }
-function doLogin() {
-  const role = document.getElementById('login-role').value;
+
+async function doLogin() {
   const emailInput = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
-  const users = {
-    admin:    { nome:'Administrador',      role:'admin',    initials:'AD' },
-    recepcao: { nome:'Recepção',           role:'recepcao', initials:'RC' },
-    prof:     { nome:'Dra. Maria Cecília', role:'prof',     initials:'MC' },
-  };
-  currentUser = users[role];
-  // Tenta encontrar usuário cadastrado pelo email para usar nome e foto reais
-  const usuarioCadastrado = USUARIOS.find(u => u.email && u.email.toLowerCase() === emailInput && u.perfil === role);
-  if (usuarioCadastrado) {
-    currentUser = Object.assign({}, currentUser, {
-      nome: usuarioCadastrado.nome,
-      initials: usuarioCadastrado.nome.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase(),
-      foto: usuarioCadastrado.foto || '',
-    });
+  const senhaInput = (document.getElementById('login-pass')?.value || '');
+  const errEl      = document.getElementById('login-error');
+  const btnEl      = document.getElementById('btn-login');
+
+  errEl.style.display = 'none';
+  errEl.textContent   = '';
+
+  if (!emailInput || !senhaInput) {
+    errEl.textContent   = '⚠ Preencha o e-mail e a senha.';
+    errEl.style.display = 'block';
+    return;
   }
+
+  btnEl.disabled    = true;
+  btnEl.textContent = 'Verificando...';
+
+  // ── Tenta autenticar via Supabase ─────────────────────────────────────────
+  const cfgUrl = localStorage.getItem('cf_supa_url') || '';
+  const cfgKey = localStorage.getItem('cf_supa_key') || '';
+
+  if (cfgUrl && cfgKey && window.supabase) {
+    try {
+      const _sbLogin = window.supabase.createClient(cfgUrl, cfgKey);
+
+      const { data: rows, error } = await _sbLogin
+        .from('usuarios')
+        .select('*')
+        .eq('email', emailInput)
+        .limit(1);
+
+      if (error) throw error;
+
+      const usuario = rows && rows[0];
+
+      if (!usuario) {
+        errEl.textContent   = '✗ E-mail não encontrado. Verifique com o administrador.';
+        errEl.style.display = 'block';
+        btnEl.disabled      = false;
+        btnEl.textContent   = 'Entrar';
+        return;
+      }
+
+      // Valida senha (campo 'senha' na tabela usuarios)
+      const senhaCorreta = (usuario.senha || usuario.password || '').trim();
+      if (!senhaCorreta || senhaCorreta !== senhaInput) {
+        errEl.textContent   = '✗ Senha incorreta.';
+        errEl.style.display = 'block';
+        btnEl.disabled      = false;
+        btnEl.textContent   = 'Entrar';
+        return;
+      }
+
+      if ((usuario.status || 'Ativo') !== 'Ativo') {
+        errEl.textContent   = '✗ Usuário inativo. Contate o administrador.';
+        errEl.style.display = 'block';
+        btnEl.disabled      = false;
+        btnEl.textContent   = 'Entrar';
+        return;
+      }
+
+      // Login bem-sucedido via Supabase
+      _finalizarLogin({
+        nome:     usuario.nome     || emailInput,
+        role:     usuario.perfil   || 'recepcao',
+        initials: (usuario.nome || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
+        foto:     usuario.foto     || '',
+        id:       usuario.id,
+      });
+      return;
+
+    } catch (err) {
+      console.error('[ClinicFlow] Erro Supabase login:', err);
+      errEl.textContent   = '✗ Erro ao conectar ao servidor. Verifique a conexão.';
+      errEl.style.display = 'block';
+      btnEl.disabled      = false;
+      btnEl.textContent   = 'Entrar';
+      return;
+    }
+  }
+
+  // ── Fallback: Supabase não configurado ────────────────────────────────────
+  // Verifica na lista local de usuários (apenas para admin inicial)
+  const usuarioLocal = (typeof USUARIOS !== 'undefined' ? USUARIOS : [])
+    .find(u => u.email && u.email.toLowerCase() === emailInput && u.perfil === 'admin');
+
+  if (usuarioLocal) {
+    const senhaLocal = (usuarioLocal.senha || '').trim();
+    if (!senhaLocal || senhaLocal !== senhaInput) {
+      errEl.textContent   = '✗ Senha incorreta.';
+      errEl.style.display = 'block';
+      btnEl.disabled      = false;
+      btnEl.textContent   = 'Entrar';
+      return;
+    }
+    _finalizarLogin({
+      nome:     usuarioLocal.nome     || 'Administrador',
+      role:     'admin',
+      initials: (usuarioLocal.nome || 'AD').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
+      foto:     usuarioLocal.foto     || '',
+      id:       usuarioLocal.id,
+    });
+    showToast('⚠ Supabase não configurado. Configure em Configurações > Supabase para habilitar todos os usuários.', 'warning');
+    return;
+  }
+
+  errEl.textContent   = '✗ Acesso negado. Configure o Supabase ou use as credenciais de administrador.';
+  errEl.style.display = 'block';
+  btnEl.disabled      = false;
+  btnEl.textContent   = 'Entrar';
+}
+
+function _finalizarLogin(user) {
+  currentUser = user;
+  const role  = user.role;
+
   const avatarEl = document.getElementById('sidebar-avatar');
-  if (currentUser.foto) {
-    avatarEl.innerHTML = `<img src="${currentUser.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  if (user.foto) {
+    avatarEl.innerHTML = `<img src="${user.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     avatarEl.className = `user-avatar ${role}`;
-    avatarEl.style.padding = '0';
-    avatarEl.style.overflow = 'hidden';
+    avatarEl.style.padding    = '0';
+    avatarEl.style.overflow   = 'hidden';
     avatarEl.style.background = 'transparent';
   } else {
-    avatarEl.textContent   = currentUser.initials;
-    avatarEl.className     = `user-avatar ${role}`;
-    avatarEl.style.padding = '';
-    avatarEl.style.overflow = '';
+    avatarEl.textContent      = user.initials;
+    avatarEl.className        = `user-avatar ${role}`;
+    avatarEl.style.padding    = '';
+    avatarEl.style.overflow   = '';
     avatarEl.style.background = '';
   }
-  document.getElementById('sidebar-username').textContent = currentUser.nome;
-  document.getElementById('sidebar-badge').textContent    = role === 'recepcao' ? 'Recepção' : role.charAt(0).toUpperCase() + role.slice(1);
-  document.getElementById('sidebar-badge').className      = `role-badge ${role}`;
-  if (role === 'prof')     { document.getElementById('nav-admin-section').style.display='none'; document.getElementById('nav-config-section').style.display='none'; }
-  if (role === 'recepcao') { document.getElementById('nav-config-section').style.display='none'; document.getElementById('nav-fatur-section').style.display='none'; }
+
+  document.getElementById('sidebar-username').textContent = user.nome;
+  const badge = document.getElementById('sidebar-badge');
+  badge.textContent = role === 'recepcao' ? 'Recepção' : role.charAt(0).toUpperCase() + role.slice(1);
+  badge.className   = `role-badge ${role}`;
+
+  if (role === 'prof') {
+    document.getElementById('nav-admin-section').style.display  = 'none';
+    document.getElementById('nav-config-section').style.display = 'none';
+  }
+  if (role === 'recepcao') {
+    document.getElementById('nav-config-section').style.display = 'none';
+    document.getElementById('nav-fatur-section').style.display  = 'none';
+  }
+
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('active');
+
+  const btnEl = document.getElementById('btn-login');
+  if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Entrar'; }
+
   initApp();
 }
 function doLogout() {
@@ -4677,6 +4929,8 @@ function refreshUI(opts = {}) {
   safe('renderEsperaTable');
   safe('buildProfFilters');
   safe('populateSelects');
+  // Carrega bloqueios persistidos
+  if (typeof _carregarBloqueiosLocal === 'function') _carregarBloqueiosLocal();
   safe('renderAgenda');
   safe('renderRelatorios');
   safe('renderSidebarLogo');
@@ -4924,6 +5178,8 @@ async function sincronizarDados() {
 
     // Carrega usuários do Supabase (merge com localStorage)
     try { if (typeof carregarUsuariosSupabase === 'function') await carregarUsuariosSupabase(); } catch(_eu) {}
+    // Carrega bloqueios de agenda do Supabase
+    try { if (typeof _carregarBloqueiosSupabase === 'function') await _carregarBloqueiosSupabase(sb); } catch(_eb) {}
 
     // Recalcula próximos IDs
     const maxId = arr => arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
@@ -5370,9 +5626,21 @@ function renderDayView() {
   document.getElementById('prof-cols').innerHTML = profs.map(p => {
     const appts = APPOINTMENTS.filter(a => a.profId === p.id && a.dataISO === currentISO);
     return `<div class="prof-col">${HOURS.map(h => {
-      const appt = appts.find(a => a.hora === h);
-      const dropAttrs = `ondragover="agendaDayDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDayDrop(event,${p.id},'${h}')" data-prof-id="${p.id}" data-hora="${h}"`;
-      return `<div class="slot-row" onclick="slotClick(event,${p.id},'${h}')" ${dropAttrs}>${appt ? buildApptCard(appt, p.cor) : ''}</div>`;
+      const appt      = appts.find(a => a.hora === h);
+      const bloqueio  = getBloqueioDoSlot(p.id, currentISO, h);
+      const dropAttrs = bloqueio
+        ? `data-prof-id="${p.id}" data-hora="${h}"`
+        : `ondragover="agendaDayDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDayDrop(event,${p.id},'${h}')" data-prof-id="${p.id}" data-hora="${h}"`;
+      const clickAttr = bloqueio
+        ? `onclick="slotBloqueadoClick(event,${bloqueio.id})"`
+        : `onclick="slotClick(event,${p.id},'${h}')"`;
+      const bloqueioCard = bloqueio && !appt
+        ? `<div class="bloqueio-card" style="height:58px;top:2px" onclick="event.stopPropagation();slotBloqueadoClick(event,${bloqueio.id})">
+             <span class="bloqueio-card-icon">🔒</span>
+             <span class="bloqueio-card-text">${bloqueio.motivo || 'Agenda bloqueada'}</span>
+           </div>`
+        : '';
+      return `<div class="slot-row${bloqueio ? ' bloqueado' : ''}" ${clickAttr} ${dropAttrs}>${appt ? buildApptCard(appt, p.cor) : bloqueioCard}</div>`;
     }).join('')}</div>`;
   }).join('');
 }
@@ -5454,7 +5722,29 @@ function marcarAtendidoModal() {
 
 function slotClick(e, profId, hora) {
   if (e.target.closest('.appt-card') || e.target.closest('.appt-action-btn')) return;
+  const currentISO = currentDate.toISOString().split('T')[0];
+  if (slotBloqueado(profId, currentISO, hora)) {
+    const b = getBloqueioDoSlot(profId, currentISO, hora);
+    slotBloqueadoClick(e, b ? b.id : null);
+    return;
+  }
   openNovoAgendamento(profId, hora);
+}
+
+function slotBloqueadoClick(e, bloqueioId) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const b = BLOQUEIOS.find(x => x.id === bloqueioId);
+  if (!b) { showToast('🔒 Este horário está bloqueado.', 'warning'); return; }
+  const prof = PROFISSIONAIS.find(p => p.id === b.profId);
+  const profNome = prof?.nomeAgenda || prof?.nome || 'Profissional';
+  const horario  = b.diaTodo ? 'dia todo' : `${b.horaIni} – ${b.horaFim}`;
+  const periodo  = b.dataIni === b.dataFim
+    ? formatDateBR(b.dataIni)
+    : `${formatDateBR(b.dataIni)} a ${formatDateBR(b.dataFim)}`;
+  const msg = `🔒 Agenda bloqueada — ${profNome}\n${periodo} · ${horario}${b.motivo ? '\nMotivo: ' + b.motivo : ''}\n\nRemover este bloqueio?`;
+  if (confirm(msg)) {
+    removerBloqueio(b.id);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -5942,6 +6232,13 @@ function gotoWeekDay(dateISO) {
 
 function slotClickWeek(e, dateISO, hora) {
   if (e.target.closest('.week-appt-card') || e.target.closest('.appt-card')) return;
+  // Verifica bloqueio para todos os profs ativos nesta célula
+  const profsAtivos = PROFISSIONAIS.filter(p => activeProfFilters.has(p.id));
+  const todosBloqueados = profsAtivos.length > 0 && profsAtivos.every(p => slotBloqueado(p.id, dateISO, hora));
+  if (todosBloqueados) {
+    showToast('🔒 Todos os profissionais têm a agenda bloqueada neste horário.', 'warning');
+    return;
+  }
   const d = new Date(dateISO + 'T12:00:00');
   currentDate = d;
   updateDateLabel();
@@ -9129,6 +9426,17 @@ function salvarAgendamento() {
   const planoId    = parseInt(document.getElementById('ag-plano').value);
   const planoObj   = PLANOS.find(p=>p.id===planoId);
   const carteirinha= document.getElementById('ag-carteirinha')?.value || '';
+
+  // Verifica bloqueio de agenda
+  const dataAgISO = document.getElementById('ag-data')?.value || '';
+  if (!currentApptId && slotBloqueado(profId, dataAgISO, horaIni)) {
+    const b = getBloqueioDoSlot(profId, dataAgISO, horaIni);
+    const prof2 = PROFISSIONAIS.find(p => p.id === profId);
+    const profNome2 = prof2?.nomeAgenda || prof2?.nome || 'Profissional';
+    const horario2  = b?.diaTodo ? 'dia todo' : `${b?.horaIni||''} – ${b?.horaFim||''}`;
+    showToast(`🔒 Agenda de ${profNome2} bloqueada neste horário (${horario2}). Remova o bloqueio primeiro.`, 'error');
+    return;
+  }
 
   if (currentApptId) {
     const appt = APPOINTMENTS.find(a => a.id === currentApptId);
@@ -13081,41 +13389,11 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch(e) { console.error('[ClinicFlow Supabase] salvarConfig:', e); }
   }
 
-  // ── Hook no doLogin: carrega Supabase APÓS initApp rodar normalmente ────────
-  function interceptarDoLogin() {
-    const _origDoLogin = window.doLogin;
-    if (!_origDoLogin) return false;
-    if (_origDoLogin._sbPatched) return true; // já interceptado
-    window.doLogin = function () {
-      _origDoLogin();
-      if (getDb()) loadFromSupabase();
-    };
-    window.doLogin._sbPatched = true;
-    const _origQuickLogin = window.quickLogin;
-    if (_origQuickLogin && !_origQuickLogin._sbPatched) {
-      window.quickLogin = function (role) {
-        document.getElementById('login-role').value = role;
-        window.doLogin();
-      };
-      window.quickLogin._sbPatched = true;
-    }
-    console.log('[ClinicFlow Supabase] doLogin interceptado ✓');
-    return true;
-  }
-
-  // Tenta interceptar em DOMContentLoaded, load e com retry
-  document.addEventListener('DOMContentLoaded', function() {
-    if (!interceptarDoLogin()) {
-      // Retry after a short delay in case scripts load out of order
-      let retries = 0;
-      const iv = setInterval(() => {
-        if (interceptarDoLogin() || ++retries > 20) clearInterval(iv);
-      }, 50);
-    }
-  });
-  window.addEventListener('load', function () {
-    interceptarDoLogin();
-  });
+  // ── Supabase: carrega dados após _finalizarLogin via initApp ───────────────
+  // O patch de interceptação do doLogin foi removido.
+  // O carregamento do Supabase ocorre em initApp(), chamado por _finalizarLogin().
+  console.log('[ClinicFlow Supabase] Integração Supabase pronta (login autenticado) ✓');
+  // hook de login removido — autenticação agora feita em doLogin()
 
   // ── Override salvarPaciente ───────────────────────────────────────────────
   window.salvarPaciente = async function () {
@@ -13768,10 +14046,26 @@ if (!USUARIOS.length) {
     perfil: 'admin',
     status: 'Ativo',
     foto: '',
-    senha: 'admin123',
+    senha: 'admin',
     criadoEm: new Date().toISOString()
   }];
   salvarUsuariosLocal();
+} else {
+  // Migração: garante que o admin padrão existe e tem a senha correta
+  const admIdx = USUARIOS.findIndex(u => u.email === 'admin' && u.perfil === 'admin');
+  if (admIdx === -1) {
+    USUARIOS.unshift({
+      id: 'usr-1', nome: 'Administrador', email: 'admin',
+      cpf: '', rg: '', tel: '', nasc: '', perfil: 'admin',
+      status: 'Ativo', foto: '', senha: 'admin',
+      criadoEm: new Date().toISOString()
+    });
+    salvarUsuariosLocal();
+  } else if (USUARIOS[admIdx].senha === 'admin123') {
+    // Corrige senha legada
+    USUARIOS[admIdx].senha = 'admin';
+    salvarUsuariosLocal();
+  }
 }
 
 let _editUsuarioId = null;
@@ -14263,6 +14557,275 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  BLOQUEIO DE AGENDA
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BLOQUEIOS = []; // { id, profId, dataIni, dataFim, horaIni, horaFim, motivo, diaTodo }
+
+// Verifica se um slot está bloqueado
+function slotBloqueado(profId, dataISO, hora) {
+  return BLOQUEIOS.some(b => {
+    if (b.profId !== profId) return false;
+    if (dataISO < b.dataIni || dataISO > b.dataFim) return false;
+    if (b.diaTodo) return true;
+    if (!b.horaIni || !b.horaFim) return true;
+    return hora >= b.horaIni && hora < b.horaFim;
+  });
+}
+
+// Retorna o bloqueio que cobre este slot (para exibir card)
+function getBloqueioDoSlot(profId, dataISO, hora) {
+  return BLOQUEIOS.find(b => {
+    if (b.profId !== profId) return false;
+    if (dataISO < b.dataIni || dataISO > b.dataFim) return false;
+    if (b.diaTodo) return true;
+    if (!b.horaIni || !b.horaFim) return true;
+    return hora >= b.horaIni && hora < b.horaFim;
+  });
+}
+
+// Verifica se todo o dia está bloqueado para um prof (para view semana/mês)
+function diaBloqueadoParaProf(profId, dataISO) {
+  return BLOQUEIOS.some(b =>
+    b.profId === profId &&
+    dataISO >= b.dataIni &&
+    dataISO <= b.dataFim &&
+    b.diaTodo
+  );
+}
+
+function openModalBloqueio() {
+  // Popula select de profissionais
+  const sel = document.getElementById('blq-prof');
+  sel.innerHTML = PROFISSIONAIS.filter(p => p.status !== 'Inativo')
+    .map(p => `<option value="${p.id}">${p.nomeAgenda || p.nome}</option>`).join('');
+
+  // Popula selects de hora
+  ['blq-hora-ini','blq-hora-fim'].forEach(id => {
+    const el = document.getElementById(id);
+    el.innerHTML = '<option value="">— Dia todo —</option>' +
+      HOURS.map(h => `<option value="${h}">${h}</option>`).join('');
+  });
+
+  // Datas padrão: data atual
+  const today = currentDate.toISOString().split('T')[0];
+  document.getElementById('blq-data-ini').value = today;
+  document.getElementById('blq-data-fim').value = today;
+  document.getElementById('blq-motivo').value   = '';
+  document.getElementById('blq-dia-todo').checked = true;
+  document.getElementById('blq-hora-ini').disabled = true;
+  document.getElementById('blq-hora-fim').disabled = true;
+
+  renderListaBloqueios();
+  openModal('modal-bloqueio');
+}
+
+function blqToggleDiaTodo(cb) {
+  const dis = cb.checked;
+  document.getElementById('blq-hora-ini').disabled = dis;
+  document.getElementById('blq-hora-fim').disabled = dis;
+  if (dis) {
+    document.getElementById('blq-hora-ini').value = '';
+    document.getElementById('blq-hora-fim').value = '';
+  }
+}
+
+function salvarBloqueio() {
+  const profId   = parseInt(document.getElementById('blq-prof').value);
+  const dataIni  = document.getElementById('blq-data-ini').value;
+  const dataFim  = document.getElementById('blq-data-fim').value;
+  const motivo   = document.getElementById('blq-motivo').value.trim();
+  const diaTodo  = document.getElementById('blq-dia-todo').checked;
+  const horaIni  = diaTodo ? '' : document.getElementById('blq-hora-ini').value;
+  const horaFim  = diaTodo ? '' : document.getElementById('blq-hora-fim').value;
+
+  if (!profId)  { showToast('Selecione um profissional.', 'error'); return; }
+  if (!dataIni) { showToast('Informe a data de início.', 'error'); return; }
+  if (!dataFim) { showToast('Informe a data de fim.', 'error'); return; }
+  if (dataFim < dataIni) { showToast('A data fim deve ser igual ou posterior à data início.', 'error'); return; }
+  if (!diaTodo && (!horaIni || !horaFim)) { showToast('Informe as horas de início e fim ou marque "dia todo".', 'error'); return; }
+  if (!diaTodo && horaFim <= horaIni) { showToast('A hora fim deve ser posterior à hora início.', 'error'); return; }
+
+  // Verifica agendamentos existentes no período e avisa
+  const prof = PROFISSIONAIS.find(p => p.id === profId);
+  const conflitos = APPOINTMENTS.filter(a => {
+    if (a.profId !== profId) return false;
+    if (a.status === 'cancelado' || a.status === 'desmarcado') return false;
+    if (a.dataISO < dataIni || a.dataISO > dataFim) return false;
+    if (diaTodo) return true;
+    if (!horaIni || !horaFim) return true;
+    return a.hora >= horaIni && a.hora < horaFim;
+  });
+
+  const nextId = BLOQUEIOS.length ? Math.max(...BLOQUEIOS.map(b => b.id)) + 1 : 1;
+  BLOQUEIOS.push({ id: nextId, profId, dataIni, dataFim, horaIni, horaFim, motivo, diaTodo });
+
+  // Persiste em localStorage
+  _salvarBloqueiosLocal();
+
+  const profNome = prof?.nomeAgenda || prof?.nome || 'Profissional';
+  const msg = conflitos.length > 0
+    ? `Agenda bloqueada! ⚠ Atenção: há ${conflitos.length} agendamento(s) no período. Os existentes NÃO foram removidos automaticamente.`
+    : `Agenda de ${profNome} bloqueada com sucesso!`;
+  showToast(msg, conflitos.length > 0 ? 'warning' : 'success');
+
+  renderListaBloqueios();
+  renderAgenda();
+
+  // Salva no Supabase se disponível
+  _syncBloqueioSupabase({ id: nextId, profId, dataIni, dataFim, horaIni, horaFim, motivo, diaTodo }, 'insert');
+}
+
+function removerBloqueio(id) {
+  const idx = BLOQUEIOS.findIndex(b => b.id === id);
+  if (idx === -1) return;
+  if (!confirm('Remover este bloqueio? O período ficará disponível para agendamentos.')) return;
+  const [removed] = BLOQUEIOS.splice(idx, 1);
+  _salvarBloqueiosLocal();
+  showToast('Bloqueio removido. Período liberado para agendamentos.', 'success');
+  renderListaBloqueios();
+  renderAgenda();
+  _syncBloqueioSupabase(removed, 'delete');
+}
+
+function renderListaBloqueios() {
+  const el = document.getElementById('blq-lista');
+  if (!el) return;
+  if (!BLOQUEIOS.length) {
+    el.innerHTML = '<div style="padding:12px 0;font-size:13px;color:var(--text-muted);text-align:center">Nenhum bloqueio cadastrado</div>';
+    return;
+  }
+  // Ordena por data início
+  const sorted = [...BLOQUEIOS].sort((a,b) => a.dataIni.localeCompare(b.dataIni));
+  el.innerHTML = sorted.map(b => {
+    const prof = PROFISSIONAIS.find(p => p.id === b.profId);
+    const profNome = prof?.nomeAgenda || prof?.nome || 'Profissional';
+    const periodo = b.dataIni === b.dataFim
+      ? formatDateBR(b.dataIni)
+      : `${formatDateBR(b.dataIni)} → ${formatDateBR(b.dataFim)}`;
+    const horario = b.diaTodo ? 'Dia todo' : `${b.horaIni} – ${b.horaFim}`;
+    const isVencido = b.dataFim < new Date().toISOString().split('T')[0];
+    return `<div class="bloqueio-periodo-row" style="${isVencido?'opacity:.5':''}">
+      <span style="width:10px;height:10px;border-radius:50%;background:${prof?.cor||'#f87171'};flex-shrink:0"></span>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:500;color:var(--text-primary)">${profNome}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${periodo} · ${horario}${b.motivo?' · '+b.motivo:''}${isVencido?' · <span style="color:#f87171">Vencido</span>':''}</div>
+      </div>
+      <button class="bloqueio-remove-btn" onclick="removerBloqueio(${b.id})">Remover</button>
+    </div>`;
+  }).join('');
+}
+
+function formatDateBR(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return d+'/'+m+'/'+y;
+}
+
+// Persiste bloqueios em localStorage
+function _salvarBloqueiosLocal() {
+  try { localStorage.setItem('cf_bloqueios', JSON.stringify(BLOQUEIOS)); } catch(e) {}
+}
+
+// Carrega bloqueios do localStorage ao iniciar
+function _carregarBloqueiosLocal() {
+  try {
+    const raw = localStorage.getItem('cf_bloqueios');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      BLOQUEIOS.length = 0;
+      arr.forEach(b => BLOQUEIOS.push(b));
+    }
+  } catch(e) {}
+}
+
+// Sync Supabase para tabela bloqueios_agenda (opcional)
+async function _syncBloqueioSupabase(bloqueio, op) {
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (!sb) return;
+  try {
+    if (op === 'insert') {
+      await sb.from('bloqueios_agenda').insert([{
+        prof_id:   bloqueio.profId,
+        data_ini:  bloqueio.dataIni,
+        data_fim:  bloqueio.dataFim,
+        hora_ini:  bloqueio.horaIni || null,
+        hora_fim:  bloqueio.horaFim || null,
+        dia_todo:  bloqueio.diaTodo,
+        motivo:    bloqueio.motivo || null,
+      }]);
+    } else if (op === 'delete') {
+      await sb.from('bloqueios_agenda').delete().eq('id', bloqueio.id);
+    }
+  } catch(e) {
+    console.warn('[ClinicFlow Bloqueio] Supabase sync falhou:', e);
+  }
+}
+
+// Carrega bloqueios do Supabase
+async function _carregarBloqueiosSupabase(sb) {
+  try {
+    const { data, error } = await sb.from('bloqueios_agenda').select('*').limit(5000);
+    if (error || !data) return;
+    BLOQUEIOS.length = 0;
+    data.forEach(row => BLOQUEIOS.push({
+      id:      row.id,
+      profId:  row.prof_id,
+      dataIni: row.data_ini,
+      dataFim: row.data_fim,
+      horaIni: row.hora_ini || '',
+      horaFim: row.hora_fim || '',
+      diaTodo: row.dia_todo ?? true,
+      motivo:  row.motivo || '',
+    }));
+    _salvarBloqueiosLocal();
+  } catch(e) {
+    console.warn('[ClinicFlow Bloqueio] Falha ao carregar do Supabase:', e);
+    _carregarBloqueiosLocal(); // fallback local
+  }
+}
+
+// Expõe para uso externo
+window._carregarBloqueiosLocal  = _carregarBloqueiosLocal;
+window._carregarBloqueiosSupabase = _carregarBloqueiosSupabase;
+console.log('[ClinicFlow] Módulo Bloqueio de Agenda carregado ✓');
+
+// ── Reset admin local (emergência) ──────────────────────────────────────────
+function resetAdminLocal() {
+  if (!confirm('Redefinir o usuário admin com email "admin" e senha "admin"?\n\nIsso substitui o admin atual no armazenamento local.')) return;
+  try {
+    let usuarios = JSON.parse(localStorage.getItem('cf_usuarios') || '[]');
+    const admIdx = usuarios.findIndex(u => u.email === 'admin');
+    const adminObj = {
+      id: 'usr-1', nome: 'Administrador', email: 'admin',
+      cpf: '', rg: '', tel: '', nasc: '', perfil: 'admin',
+      status: 'Ativo', foto: '', senha: 'admin',
+      criadoEm: new Date().toISOString()
+    };
+    if (admIdx > -1) usuarios[admIdx] = adminObj;
+    else usuarios.unshift(adminObj);
+    localStorage.setItem('cf_usuarios', JSON.stringify(usuarios));
+    // Atualiza array em memória
+    if (typeof USUARIOS !== 'undefined') {
+      const mi = USUARIOS.findIndex(u => u.email === 'admin');
+      if (mi > -1) USUARIOS[mi] = adminObj; else USUARIOS.unshift(adminObj);
+    }
+    alert('Admin redefinido! Use:\n  E-mail: admin\n  Senha: admin');
+  } catch(e) {
+    alert('Erro ao redefinir: ' + e.message);
+  }
+}
+
+// ── Suporte a Enter na tela de login ────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+  ['login-email', 'login-pass'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+  });
+});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  FECHAMENTO MENSAL — MÓDULO COMPLETO
