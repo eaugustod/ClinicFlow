@@ -451,6 +451,158 @@ a { text-decoration: none; color: inherit; }
   display: block;
 }
 
+/* ═══════════════════════════════════════
+   ESPAÇO CONECTA — SALAS
+═══════════════════════════════════════ */
+#page-conecta-agenda,
+#page-conecta-profissionais {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+#page-conecta-agenda.active,
+#page-conecta-profissionais.active { display: flex; }
+
+#page-conecta-fechamento {
+  display: none;
+  overflow-y: auto;
+  padding: 24px;
+}
+#page-conecta-fechamento.active { display: block; }
+
+.conecta-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px; flex-shrink: 0;
+}
+.conecta-badge {
+  background: rgba(96,165,250,0.15);
+  color: var(--info);
+  border: 1px solid rgba(96,165,250,0.3);
+  border-radius: 99px;
+  font-size: 11px; font-weight: 600; padding: 3px 10px;
+  letter-spacing: 0.3px;
+}
+.sala-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.sala-card:hover { border-color: var(--border-mid); box-shadow: var(--shadow-sm); }
+
+.sala-slot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+  border: 1px solid transparent;
+  font-size: 13px;
+}
+.sala-slot:hover { background: var(--bg-overlay); }
+.sala-slot.ocupado {
+  background: rgba(79,142,247,0.08);
+  border-color: rgba(79,142,247,0.2);
+}
+.sala-slot.minha {
+  background: rgba(52,211,153,0.1);
+  border-color: rgba(52,211,153,0.3);
+}
+.sala-slot.livre { color: var(--text-muted); }
+
+.conecta-cal-grid {
+  display: grid;
+  grid-template-columns: 64px repeat(7,1fr);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-size: 12px;
+}
+.conecta-cal-grid .ch {
+  background: var(--bg-raised);
+  padding: 8px 4px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.conecta-cal-grid .ch.hoje { color: var(--accent); }
+.conecta-cal-grid .time-lbl {
+  padding: 4px 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: right;
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+.conecta-cal-grid .day-cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  min-height: 34px;
+  padding: 2px;
+  position: relative;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.conecta-cal-grid .day-cell:hover { background: var(--bg-overlay); }
+.conecta-cal-grid .day-cell.ocupado { background: rgba(79,142,247,0.07); cursor: default; }
+.conecta-cal-grid .day-cell.minha { background: rgba(52,211,153,0.1); cursor: pointer; }
+.day-cell-tag {
+  font-size: 10px; font-weight: 600;
+  border-radius: 3px; padding: 1px 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.day-cell-tag.azul { background: rgba(79,142,247,0.2); color: var(--accent); }
+.day-cell-tag.verde { background: rgba(52,211,153,0.2); color: var(--success); }
+.loc-prof-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
+  transition: border-color var(--transition);
+}
+.loc-prof-card:hover { border-color: var(--border-mid); }
+.loc-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: rgba(96,165,250,0.15);
+  color: var(--info);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px; flex-shrink: 0;
+}
+.loc-fech-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.loc-fech-card .fech-total {
+  font-size: 22px; font-weight: 700; color: var(--success);
+}
+.loc-fech-row {
+  display: grid; grid-template-columns: 80px 1fr 80px 80px 100px;
+  gap: 6px; align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.loc-fech-row:nth-child(even) { background: var(--bg-raised); }
+.loc-fech-row.header { font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+.sala-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 500;
+}
+.sala-pill.sala1 { background: rgba(79,142,247,0.15); color: var(--accent); }
+.sala-pill.sala2 { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.sala-pill.sala3 { background: rgba(52,211,153,0.15); color: var(--success); }
+.sala-pill.sala4 { background: rgba(251,191,36,0.15); color: var(--warning); }
+
 /* Pacientes — layout flex com header fixo e tabela com scroll */
 #page-pacientes {
   display: none;
@@ -1553,6 +1705,24 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           Lotes TISS
         </div>
       </div>
+      <!-- ESPAÇO CONECTA NAV -->
+      <div class="nav-section" id="nav-conecta-section">
+        <div class="nav-section-label" style="color:var(--info);opacity:0.85">🏢 Espaço Conecta</div>
+        <div class="nav-item" onclick="gotoPage('conecta-agenda',this)" id="nav-conecta-agenda">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zm-7-7h5v5h-5z"/></svg>
+          Agendamento de Salas
+        </div>
+        <div class="nav-item" onclick="gotoPage('conecta-profissionais',this)" id="nav-conecta-prof">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.51 15.5 0 12.36 0c-1.7 0-3.21.94-4.07 2.37L7 4H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM11.5 16H9v-2.5H6.5v-2H9V9h2.5v2.5H14v2h-2.5V16zM18 9.5c-.83 0-1.5-.67-1.5-1.5S17.17 6.5 18 6.5s1.5.67 1.5 1.5S18.83 9.5 18 9.5z"/></svg>
+          Profissionais Locatários
+        </div>
+        <div class="nav-item" onclick="gotoPage('conecta-fechamento',this)" id="nav-conecta-fech">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+          Fechamento de Locação
+        </div>
+      </div>
+      <!-- /ESPAÇO CONECTA NAV -->
+
       <div class="nav-section" id="nav-config-section">
         <div class="nav-section-label">Sistema</div>
         <div class="nav-item" onclick="gotoPage('importar',this)">
@@ -2895,6 +3065,74 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
       </div>
     </div>
 
+    <!-- ══ ESPAÇO CONECTA: Agendamento de Salas ══ -->
+    <div class="page" id="page-conecta-agenda">
+      <div class="conecta-header" style="flex-shrink:0">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Agendamento de Salas</h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Espaço Conecta — reserve sua sala</p>
+        </div>
+        <span class="conecta-badge">&#127970; Espaço Conecta</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="form-select" id="cs-sala-filtro" style="width:150px;padding:6px 10px;font-size:13px" onchange="conectaRenderAgenda()">
+            <option value="">Todas as salas</option>
+          </select>
+          <button class="btn-sm btn-secondary" onclick="conectaChangeWeek(-1)">&#8249; Anterior</button>
+          <div id="cs-week-label" style="font-size:13px;font-weight:600;min-width:200px;text-align:center"></div>
+          <button class="btn-sm btn-secondary" onclick="conectaChangeWeek(1)">Próxima &#8250;</button>
+          <button class="btn-sm btn-secondary" onclick="conectaGotoToday()">Hoje</button>
+          <button class="btn-sm btn-secondary" onclick="abrirGestaoSalas()" id="btn-gerir-salas">&#9881; Gerenciar Salas</button>
+          <button class="btn-sm btn-accent" onclick="abrirModalNovaReserva()" id="btn-nova-reserva">+ Nova Reserva</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;min-height:0">
+        <div id="cs-agenda-container" style="display:flex;flex-direction:column;gap:20px;padding-bottom:20px"></div>
+      </div>
+    </div>
+
+    <!-- ══ ESPAÇO CONECTA: Profissionais Locatários ══ -->
+    <div class="page" id="page-conecta-profissionais">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-shrink:0">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Profissionais Locatários</h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Cadastro exclusivo para aluguel de salas — Espaço Conecta</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="conecta-badge">&#127970; Espaço Conecta</span>
+          <button class="btn-sm btn-accent" onclick="abrirModalNovoLocatario()">+ Novo Locatário</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;min-height:0">
+        <div id="loc-profs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px"></div>
+      </div>
+    </div>
+
+    <!-- ══ ESPAÇO CONECTA: Fechamento de Locação ══ -->
+    <div class="page" id="page-conecta-fechamento" style="overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-shrink:0">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Fechamento de Locação de Salas</h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Controle financeiro mensal — Espaço Conecta</p>
+        </div>
+        <span class="conecta-badge">&#127970; Espaço Conecta</span>
+      </div>
+      <div class="table-card" style="padding:18px 20px;margin-bottom:20px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;font-weight:500">Competência:</div>
+          <input class="form-input" type="month" id="loc-fech-mes" style="width:180px">
+          <button class="btn-sm btn-accent" onclick="calcularFechamentoLocacao()">Calcular Fechamento</button>
+          <button class="btn-sm btn-secondary" onclick="emitirRelatorioLocacao()" id="btn-emitir-loc" style="display:none">Emitir Relatório PDF</button>
+        </div>
+      </div>
+      <div id="loc-fech-kpis" style="display:none;margin-bottom:20px"></div>
+      <div id="loc-fech-cards"></div>
+      <div id="loc-fech-empty" style="text-align:center;padding:60px 20px;color:var(--text-muted)">
+        <div style="font-size:40px;margin-bottom:12px;opacity:.3">&#128197;</div>
+        <div style="font-size:16px;font-weight:500;margin-bottom:8px">Nenhum fechamento calculado</div>
+        <div style="font-size:13px">Selecione o mês e clique em <strong>Calcular</strong>.</div>
+      </div>
+    </div>
+
   </div><!-- end main -->
 </div><!-- end app -->
 
@@ -2973,6 +3211,10 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
   </div>
 </div>
 
+  </div><!-- end main -->
+</div><!-- end app -->
+
+<!-- Modal Novo Agendamento (com abas + SADT integrada) -->
 <div class="modal-overlay" id="modal-agendamento">
   <div class="modal" style="max-width:720px">
     <div class="modal-header" style="padding-bottom:0">
@@ -4642,6 +4884,17 @@ let CLINICA = {
   logo: '',  // base64 da imagem
 };
 
+// ── Espaço Conecta — dados globais (declarados aqui para ficarem disponíveis para todos os scripts) ──
+let SALAS_CONECTA = [];
+let LOCATARIOS    = [];
+let RESERVAS_SALAS = [];
+let CS_WEEK_OFFSET = 0;
+let RESERVA_ATUAL_ID = null;
+
+// ── Declaração antecipada de USUARIOS (definido completamente no módulo Usuários mais abaixo) ──
+// Evita ReferenceError se algo acessar antes do módulo ser parseado
+var USUARIOS = [];
+
 const PROFISSIONAIS = [];
 
 const PACIENTES = [
@@ -4871,6 +5124,23 @@ function _finalizarLogin(user) {
     document.getElementById('nav-fatur-section').style.display  = 'none';
   }
 
+ // Espaço Conecta: profissional só vê Agendamento de Salas; financeiro (admin) vê tudo
+  const navConecta = document.getElementById('nav-conecta-section');
+  if (navConecta) {
+    const navFech = document.getElementById('nav-conecta-fech');
+    if (role === 'prof') {
+      if (navFech) navFech.style.display = 'none';
+    } else if (role === 'recepcao') {
+      if (navFech) navFech.style.display = 'none';
+    }
+  }
+  // Botão Gerenciar Salas: só admin
+  setTimeout(() => {
+    const btnGerirSalas = document.getElementById('btn-gerir-salas');
+    if (btnGerirSalas) btnGerirSalas.style.display = (role === 'admin') ? '' : 'none';
+  }, 200);
+  // Expõe currentUser globalmente como CURRENT_USER também
+  window.CURRENT_USER = currentUser;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('active');
 
@@ -4882,17 +5152,25 @@ function _finalizarLogin(user) {
 function doLogout() {
   document.getElementById('app').classList.remove('active');
   document.getElementById('login-screen').style.display = 'flex';
-  ['nav-admin-section','nav-config-section','nav-fatur-section'].forEach(id => document.getElementById(id).style.display='');
+  ['nav-admin-section','nav-config-section','nav-fatur-section'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display='';
+  });
+  // Resetar visibilidade Espaço Conecta
+  const navFech = document.getElementById('nav-conecta-fech');
+  if (navFech) navFech.style.display = '';
+  window.CURRENT_USER = null;
 }
 
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações' };
+const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
 function gotoPage(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  const pageEl = document.getElementById('page-' + page);
+  if (!pageEl) { console.warn('Página não encontrada: page-' + page); return; }
+  pageEl.classList.add('active');
   if (el) el.classList.add('active');
   document.getElementById('topbar-title').textContent = pageTitles[page] || page;
   if (page === 'config')    try { initConfigPage(); } catch(e) {}
@@ -4902,6 +5180,9 @@ function gotoPage(page, el) {
   if (page === 'historico') try { renderHistPacList(); } catch(e) {}
   if (page === 'dashboard') try { renderDashboard(); } catch(e) {}
   if (page === 'relatorios') try { renderRelatorios(); } catch(e) {}
+  // Espaço Conecta
+  if (page === 'conecta-agenda')        try { conectaRenderAgenda(); } catch(e) {}
+  if (page === 'conecta-profissionais') try { conectaRenderLocatarios(); } catch(e) {}
 }
 
 // ═══════════════════════════════════════
@@ -5594,6 +5875,11 @@ function initApp() {
   const _profInc = document.getElementById('prof-data-inc'); if(_profInc) _profInc.valueAsDate = new Date();
   const _agData = document.getElementById('ag-data'); if(_agData) _agData.valueAsDate = currentDate;
   const _sadt = document.getElementById('sadt-data-solic'); if(_sadt) _sadt.valueAsDate = new Date();
+  // Espaço Conecta
+  try { conectaInitSalas(); } catch(e) {}
+  // Preenche mês atual no fechamento de locação
+  const _locMes = document.getElementById('loc-fech-mes');
+  if (_locMes && !_locMes.value) _locMes.value = new Date().toISOString().slice(0,7);
 }
 
 // ═══════════════════════════════════════
@@ -15255,7 +15541,1211 @@ function emitirRelatorioFechamento() {
   }
 }
 
-console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
+<!-- ═══════════════════ ESPAÇO CONECTA — MODAIS ═══════════════════ -->
+
+<!-- Modal: Nova Reserva de Sala -->
+<div class="modal-overlay" id="modal-nova-reserva">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Nova Reserva de Sala</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Espaço Conecta — Agendamento</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-nova-reserva')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Sala</label>
+          <select class="form-select" id="res-sala"></select>
+        </div>
+        <div class="form-group">
+          <label>Profissional Locatário</label>
+          <select class="form-select" id="res-prof" onchange="conectaCalcFim()"></select>
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Data</label>
+          <input class="form-input" type="date" id="res-data">
+        </div>
+        <div class="form-group">
+          <label>Recorrência</label>
+          <select class="form-select" id="res-recorrencia" onchange="conectaToggleRecorrencia()">
+            <option value="unica">Reserva única</option>
+            <option value="semanal">Semanal (mesmo dia)</option>
+            <option value="quinzenal">Quinzenal</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label>Horário início</label>
+          <input class="form-input" type="time" id="res-hora-ini" value="08:00" onchange="conectaCalcFim()">
+        </div>
+        <div class="form-group">
+          <label>Duração</label>
+          <select class="form-select" id="res-duracao" onchange="conectaCalcFim()">
+            <option value="60">1 hora</option>
+            <option value="90">1h30</option>
+            <option value="120">2 horas</option>
+            <option value="180">3 horas</option>
+            <option value="240">4 horas</option>
+            <option value="480">Dia inteiro (8h)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Horário fim</label>
+          <input class="form-input" type="time" id="res-hora-fim" value="09:00" readonly style="background:var(--bg-overlay);color:var(--text-muted)">
+        </div>
+      </div>
+      <div class="form-group" id="res-recorr-ate-wrap" style="display:none">
+        <label>Repetir até</label>
+        <input class="form-input" type="date" id="res-recorr-ate">
+      </div>
+      <div class="form-group">
+        <label>Observações</label>
+        <textarea class="form-input" id="res-obs" rows="2" placeholder="Tipo de atendimento, número de pacientes..."></textarea>
+      </div>
+      <!-- Preview valor estimado -->
+      <div id="res-valor-preview" style="background:var(--bg-raised);border-radius:var(--radius-md);padding:12px 14px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px;font-weight:600">Valor estimado da reserva</div>
+        <div id="res-valor-calc" style="font-size:20px;font-weight:700;color:var(--success)">R$ 0,00</div>
+        <div id="res-valor-detalhe" style="font-size:12px;color:var(--text-secondary);margin-top:2px"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-nova-reserva')">Cancelar</button>
+      <button class="btn-sm btn-accent" onclick="salvarReserva()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Confirmar Reserva
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Novo Profissional Locatário -->
+<div class="modal-overlay" id="modal-novo-locatario">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="loc-modal-title">Novo Profissional Locatário</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Espaço Conecta — Cadastro de Locatário</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-novo-locatario')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="loc-edit-id">
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Nome completo *</label>
+          <input class="form-input" id="loc-nome" placeholder="Dr(a). Nome Completo">
+        </div>
+        <div class="form-group">
+          <label>Especialidade</label>
+          <input class="form-input" id="loc-esp" placeholder="Ex: Psicologia, Fisioterapia">
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Telefone / WhatsApp</label>
+          <input class="form-input" id="loc-tel" placeholder="(11) 99999-9999">
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input class="form-input" type="email" id="loc-email" placeholder="email@exemplo.com">
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>CPF</label>
+          <input class="form-input" id="loc-cpf" placeholder="000.000.000-00">
+        </div>
+        <div class="form-group">
+          <label>Conselho / Registro</label>
+          <input class="form-input" id="loc-conselho" placeholder="CRP 06/12345">
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:16px 0;padding-top:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">💰 Valores de Locação (para fechamento mensal)</div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label>Valor/hora (R$)</label>
+            <input class="form-input" type="number" id="loc-valor-hora" placeholder="0,00" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Valor meio período (R$)</label>
+            <input class="form-input" type="number" id="loc-valor-meio" placeholder="0,00" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Valor dia inteiro (R$)</label>
+            <input class="form-input" type="number" id="loc-valor-dia" placeholder="0,00" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Sala preferencial</label>
+          <select class="form-select" id="loc-sala-pref">
+            <option value="">Sem preferência</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Status</label>
+          <select class="form-select" id="loc-status">
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observações</label>
+          <input class="form-input" id="loc-obs" placeholder="Observações gerais">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-novo-locatario')">Cancelar</button>
+      <button class="btn-sm btn-accent" onclick="salvarLocatario()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Detalhes da Reserva -->
+<div class="modal-overlay" id="modal-reserva-detalhe">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">Detalhes da Reserva</div>
+      <button class="modal-close" onclick="closeModal('modal-reserva-detalhe')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body" id="reserva-detalhe-body"></div>
+    <div class="modal-footer" id="reserva-detalhe-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-reserva-detalhe')">Fechar</button>
+      <button class="btn-sm btn-secondary" style="color:var(--danger);border-color:rgba(248,113,113,0.3)" id="btn-cancelar-reserva" onclick="cancelarReservaAtual()">
+        Cancelar Reserva
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Gestão de Salas do Espaço Conecta -->
+<div class="modal-overlay" id="modal-gestao-salas">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Gerenciar Salas</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Espaço Conecta — cadastro e configuração de salas</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-gestao-salas')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <!-- Lista de salas existentes -->
+      <div id="salas-list-modal" style="margin-bottom:20px"></div>
+      <!-- Formulário nova sala -->
+      <div style="background:var(--bg-raised);border-radius:var(--radius-md);padding:16px;border:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text-secondary)">
+          <span id="sala-form-title">➕ Adicionar nova sala</span>
+        </div>
+        <input type="hidden" id="sala-edit-id">
+        <div class="form-row cols-2">
+          <div class="form-group">
+            <label>Nome da sala *</label>
+            <input class="form-input" id="sala-nome" placeholder="Ex: Sala 1, Sala Azul...">
+          </div>
+          <div class="form-group">
+            <label>Capacidade (pessoas)</label>
+            <input class="form-input" type="number" id="sala-cap" min="1" value="2">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Descrição / Recursos</label>
+          <input class="form-input" id="sala-desc" placeholder="Ex: ar-condicionado, divã, mesa redonda...">
+        </div>
+        <div class="form-group">
+          <label>Cor de identificação</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--radius-sm);border:2px solid transparent;transition:border-color .15s" id="cor-sala1-lbl">
+              <input type="radio" name="sala-cor" value="sala1" id="cor-sala1" checked style="display:none">
+              <span style="width:14px;height:14px;border-radius:50%;background:var(--accent)"></span>
+              <span style="font-size:12px">Azul</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--radius-sm);border:2px solid transparent;transition:border-color .15s" id="cor-sala2-lbl">
+              <input type="radio" name="sala-cor" value="sala2" id="cor-sala2" style="display:none">
+              <span style="width:14px;height:14px;border-radius:50%;background:#a78bfa"></span>
+              <span style="font-size:12px">Roxo</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--radius-sm);border:2px solid transparent;transition:border-color .15s" id="cor-sala3-lbl">
+              <input type="radio" name="sala-cor" value="sala3" id="cor-sala3" style="display:none">
+              <span style="width:14px;height:14px;border-radius:50%;background:var(--success)"></span>
+              <span style="font-size:12px">Verde</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--radius-sm);border:2px solid transparent;transition:border-color .15s" id="cor-sala4-lbl">
+              <input type="radio" name="sala-cor" value="sala4" id="cor-sala4" style="display:none">
+              <span style="width:14px;height:14px;border-radius:50%;background:var(--warning)"></span>
+              <span style="font-size:12px">Amarelo</span>
+            </label>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn-sm btn-secondary" onclick="limparFormSala()">Limpar</button>
+          <button class="btn-sm btn-accent" onclick="salvarSala()">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            Salvar Sala
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar Cancelamento em Lote (recorrente) -->
+<div class="modal-overlay" id="modal-cancelar-lote">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Cancelar Reserva</div>
+      <button class="modal-close" onclick="closeModal('modal-cancelar-lote')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;margin-bottom:16px">Esta reserva faz parte de uma série recorrente. O que deseja cancelar?</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn-sm btn-secondary" style="justify-content:flex-start;padding:10px 14px" onclick="cancelarReserva('unica')">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+          Apenas esta data
+        </button>
+        <button class="btn-sm btn-secondary" style="justify-content:flex-start;padding:10px 14px;color:var(--warning)" onclick="cancelarReserva('futuras')">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+          Esta e as próximas
+        </button>
+        <button class="btn-sm btn-secondary" style="justify-content:flex-start;padding:10px 14px;color:var(--danger)" onclick="cancelarReserva('todas')">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          Cancelar todas da série
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-cancelar-lote')">Voltar</button>
+    </div>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  ESPAÇO CONECTA — Módulo de Locação de Salas
+//  (variáveis globais declaradas no script principal)
+// ═══════════════════════════════════════════════════════════════════
+
+// Cores das salas
+const SALA_CORES = ['sala1','sala2','sala3','sala4'];
+
+function conectaInitSalas() {
+  // Salas padrão (Espaço Conecta) — podem ser customizadas via configuração
+  if (SALAS_CONECTA.length === 0) {
+    SALAS_CONECTA = [
+      { id: 's1', nome: 'Sala 1', descricao: 'Sala individual — ar-condicionado, divã', capacidade: 2, cor: 'sala1' },
+      { id: 's2', nome: 'Sala 2', descricao: 'Sala individual — mesa redonda, 4 cadeiras', capacidade: 4, cor: 'sala2' },
+      { id: 's3', nome: 'Sala 3', descricao: 'Sala em grupo — até 10 pessoas', capacidade: 10, cor: 'sala3' },
+    ];
+  }
+
+  // Locatários demo
+  if (LOCATARIOS.length === 0) {
+    LOCATARIOS = [
+      { id: 'l1', nome: 'Dra. Ana Martins', esp: 'Psicologia', tel: '(11) 98765-0001', email: 'ana@clinica.com', cpf: '111.222.333-44', conselho: 'CRP 06/111222', valorHora: 50, valorMeio: 180, valorDia: 320, salaPref: 's1', status: 'ativo', obs: '' },
+      { id: 'l2', nome: 'Dr. Carlos Ramos', esp: 'Psiquiatria', tel: '(11) 98765-0002', email: 'carlos@clinica.com', cpf: '222.333.444-55', conselho: 'CRM 12345/SP', valorHora: 80, valorMeio: 280, valorDia: 500, salaPref: 's2', status: 'ativo', obs: '' },
+      { id: 'l3', nome: 'Dra. Sofia Lima', esp: 'Neuropsicologia', tel: '(11) 98765-0003', email: 'sofia@clinica.com', cpf: '333.444.555-66', conselho: 'CRP 06/222333', valorHora: 65, valorMeio: 220, valorDia: 380, salaPref: '', status: 'ativo', obs: 'Atende grupos às quintas' },
+    ];
+  }
+
+  // Reservas demo (semana atual)
+  if (RESERVAS_SALAS.length === 0) {
+    const hoje = new Date();
+    const seg = new Date(hoje);
+    seg.setDate(hoje.getDate() - hoje.getDay() + 1);
+    const fmt = d => d.toISOString().slice(0,10);
+
+    const d0 = new Date(seg); d0.setDate(seg.getDate() + 0);
+    const d1 = new Date(seg); d1.setDate(seg.getDate() + 1);
+    const d2 = new Date(seg); d2.setDate(seg.getDate() + 2);
+    const d3 = new Date(seg); d3.setDate(seg.getDate() + 3);
+
+    RESERVAS_SALAS = [
+      { id: 'r1', salaId: 's1', locId: 'l1', data: fmt(d0), horaIni: '08:00', horaFim: '10:00', durMin: 120, status: 'confirmado', obs: '', recorrencia: 'unica' },
+      { id: 'r2', salaId: 's1', locId: 'l2', data: fmt(d0), horaIni: '14:00', horaFim: '16:00', durMin: 120, status: 'confirmado', obs: '', recorrencia: 'unica' },
+      { id: 'r3', salaId: 's2', locId: 'l3', data: fmt(d1), horaIni: '09:00', horaFim: '12:00', durMin: 180, status: 'confirmado', obs: 'Grupo terapêutico', recorrencia: 'semanal' },
+      { id: 'r4', salaId: 's1', locId: 'l1', data: fmt(d2), horaIni: '08:00', horaFim: '10:00', durMin: 120, status: 'confirmado', obs: '', recorrencia: 'semanal' },
+      { id: 'r5', salaId: 's3', locId: 'l2', data: fmt(d3), horaIni: '13:00', horaFim: '17:00', durMin: 240, status: 'confirmado', obs: 'Capacitação', recorrencia: 'unica' },
+    ];
+  }
+
+  // Popular select de salas
+  const sel = document.getElementById('cs-sala-filtro');
+  if (sel) {
+    sel.innerHTML = '<option value="">Todas as salas</option>';
+    SALAS_CONECTA.forEach(s => {
+      sel.innerHTML += `<option value="${s.id}">${s.nome}</option>`;
+    });
+  }
+
+  conectaRenderAgenda();
+  conectaRenderLocatarios();
+}
+
+// ── Cálculo da semana de referência ─────────────────────────────
+function conectaGetWeekDates() {
+  const today = new Date();
+  today.setDate(today.getDate() + CS_WEEK_OFFSET * 7);
+  const day = today.getDay(); // 0=dom
+  const mon = new Date(today);
+  mon.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function conectaChangeWeek(dir) { CS_WEEK_OFFSET += dir; conectaRenderAgenda(); }
+function conectaGotoToday() { CS_WEEK_OFFSET = 0; conectaRenderAgenda(); }
+
+// ── Renderiza grade semanal de salas ─────────────────────────────
+function conectaRenderAgenda() {
+  const days = conectaGetWeekDates();
+  const filtroSala = document.getElementById('cs-sala-filtro')?.value || '';
+  const salasFiltradas = filtroSala ? SALAS_CONECTA.filter(s => s.id === filtroSala) : SALAS_CONECTA;
+
+  // Label da semana
+  const lblEl = document.getElementById('cs-week-label');
+  if (lblEl) {
+    const ini = days[0].toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
+    const fim = days[6].toLocaleDateString('pt-BR', {day:'2-digit',month:'short',year:'numeric'});
+    lblEl.textContent = `${ini} — ${fim}`;
+  }
+
+  const container = document.getElementById('cs-agenda-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const HORAS = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+
+  salasFiltradas.forEach(sala => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sala-card';
+
+    // Header da sala
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg-raised)';
+    header.innerHTML = `
+      <span class="sala-pill ${sala.cor}">🚪 ${sala.nome}</span>
+      <span style="font-size:12px;color:var(--text-muted)">${sala.descricao}</span>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted)">👥 Cap. ${sala.capacidade} pessoas</span>
+      <button class="btn-sm btn-accent" style="padding:4px 10px;font-size:12px" onclick="abrirModalNovaReserva('${sala.id}')">+ Reservar</button>
+    `;
+    wrap.appendChild(header);
+
+    // Grade semanal
+    const gridWrap = document.createElement('div');
+    gridWrap.style.cssText = 'overflow-x:auto;padding:0';
+
+    const grid = document.createElement('div');
+    grid.className = 'conecta-cal-grid';
+    grid.style.minWidth = '700px';
+
+    // Header: coluna de hora + 7 dias
+    const todayISO = new Date().toISOString().slice(0,10);
+    grid.innerHTML = `<div class="ch">Hora</div>` +
+      days.map(d => {
+        const iso = d.toISOString().slice(0,10);
+        const isHoje = iso === todayISO;
+        const label = d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+        return `<div class="ch ${isHoje?'hoje':''}">${label}</div>`;
+      }).join('');
+
+    // Linhas de hora
+    HORAS.forEach(hora => {
+      grid.innerHTML += `<div class="time-lbl">${hora}</div>`;
+      days.forEach(d => {
+        const iso = d.toISOString().slice(0,10);
+        // Reservas nesta sala/hora/dia
+        const reservas = RESERVAS_SALAS.filter(r =>
+          r.salaId === sala.id &&
+          r.data === iso &&
+          r.status !== 'cancelado' &&
+          r.horaIni <= hora && r.horaFim > hora
+        );
+        const isCurrUser = false; // em produção verificaria o usuário logado
+        let cellClass = 'day-cell';
+        let cellContent = '';
+
+        if (reservas.length > 0) {
+          const res = reservas[0];
+          const loc = LOCATARIOS.find(l => l.id === res.locId);
+          cellClass += ' ocupado';
+          cellContent = `<div class="day-cell-tag azul" title="${loc?.nome||''} — ${res.horaIni}-${res.horaFim}" style="cursor:pointer" onclick="verReserva('${res.id}')">${loc?.nome?.split(' ')[0]||'—'}</div>`;
+        }
+
+        grid.innerHTML += `<div class="${cellClass}" onclick="cellClique('${sala.id}','${iso}','${hora}')" style="${reservas.length?'cursor:default':''}">${cellContent}</div>`;
+      });
+    });
+
+    gridWrap.appendChild(grid);
+    wrap.appendChild(gridWrap);
+    container.appendChild(wrap);
+  });
+}
+
+function cellClique(salaId, dataISO, hora) {
+  // Se a célula está livre, abre modal de nova reserva pré-preenchida
+  const reservada = RESERVAS_SALAS.some(r =>
+    r.salaId === salaId && r.data === dataISO && r.status !== 'cancelado' &&
+    r.horaIni <= hora && r.horaFim > hora
+  );
+  if (reservada) return;
+  abrirModalNovaReserva(salaId, dataISO, hora);
+}
+
+function verReserva(resId) {
+  const res = RESERVAS_SALAS.find(r => r.id === resId);
+  if (!res) return;
+  RESERVA_ATUAL_ID = resId;
+  const sala = SALAS_CONECTA.find(s => s.id === res.salaId);
+  const loc  = LOCATARIOS.find(l => l.id === res.locId);
+  const dur  = res.durMin;
+  const horas = Math.floor(dur/60);
+  const mins  = dur % 60;
+  const durStr = horas > 0 ? (mins > 0 ? `${horas}h${mins}min` : `${horas}h`) : `${mins}min`;
+  const valorCalc = conectaCalcValor(loc, dur);
+  const dataFmt = new Date(res.data + 'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  document.getElementById('reserva-detalhe-body').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--bg-raised);border-radius:var(--radius-md)">
+        <div class="loc-avatar">${loc?.nome?.charAt(0)||'?'}</div>
+        <div>
+          <div style="font-size:15px;font-weight:600">${loc?.nome||'Locatário'}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${loc?.esp||''}</div>
+        </div>
+        <span class="sala-pill ${sala?.cor||'sala1'}" style="margin-left:auto">${sala?.nome||'Sala'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px 14px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.3px">Data</div>
+          <div style="font-size:14px;font-weight:500">${dataFmt}</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px 14px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.3px">Horário</div>
+          <div style="font-size:14px;font-weight:500">${res.horaIni} – ${res.horaFim} (${durStr})</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px 14px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.3px">Recorrência</div>
+          <div style="font-size:14px;font-weight:500">${{unica:'Única',semanal:'Semanal',quinzenal:'Quinzenal'}[res.recorrencia]||'Única'}</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px 14px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.3px">Valor estimado</div>
+          <div style="font-size:18px;font-weight:700;color:var(--success)">${brlFmt(valorCalc)}</div>
+        </div>
+      </div>
+      ${res.obs ? `<div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px 14px"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.3px">Observações</div><div style="font-size:13px">${res.obs}</div></div>` : ''}
+    </div>
+  `;
+
+  // Esconde o botão de cancelar se não for admin/recepcao
+  const btnCancel = document.getElementById('btn-cancelar-reserva');
+  if (btnCancel) {
+    const role = (typeof currentUser !== 'undefined' && currentUser?.role) || '';
+    btnCancel.style.display = (role === 'admin' || role === 'recepcao') ? '' : 'none';
+  }
+
+  openModal('modal-reserva-detalhe');
+}
+
+function cancelarReservaAtual() {
+  if (!RESERVA_ATUAL_ID) return;
+  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  if (!res) return;
+  // Se recorrente, oferecer opção de cancelar série
+  if (res.recorrencia && res.recorrencia !== 'unica') {
+    closeModal('modal-reserva-detalhe');
+    openModal('modal-cancelar-lote');
+  } else {
+    if (!confirm('Deseja cancelar esta reserva?')) return;
+    res.status = 'cancelado';
+    closeModal('modal-reserva-detalhe');
+    conectaRenderAgenda();
+    showToast('Reserva cancelada', 'success');
+  }
+}
+
+function cancelarReserva(escopo) {
+  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  if (!res) { closeModal('modal-cancelar-lote'); return; }
+  if (escopo === 'unica') {
+    res.status = 'cancelado';
+    showToast('Reserva cancelada', 'success');
+  } else if (escopo === 'futuras') {
+    RESERVAS_SALAS.forEach(r => {
+      if (r.salaId === res.salaId && r.locId === res.locId &&
+          r.horaIni === res.horaIni && r.recorrencia === res.recorrencia &&
+          r.data >= res.data && r.status !== 'cancelado') r.status = 'cancelado';
+    });
+    showToast('Esta e as próximas reservas da série foram canceladas', 'success');
+  } else if (escopo === 'todas') {
+    RESERVAS_SALAS.forEach(r => {
+      if (r.salaId === res.salaId && r.locId === res.locId &&
+          r.horaIni === res.horaIni && r.recorrencia === res.recorrencia) r.status = 'cancelado';
+    });
+    showToast('Todas as reservas da série foram canceladas', 'success');
+  }
+  closeModal('modal-cancelar-lote');
+  conectaRenderAgenda();
+}
+
+// ── Gestão de Salas ──────────────────────────────────────────────
+function abrirGestaoSalas() {
+  renderSalasModal();
+  limparFormSala();
+  openModal('modal-gestao-salas');
+}
+
+function renderSalasModal() {
+  const el = document.getElementById('salas-list-modal');
+  if (!el) return;
+  if (SALAS_CONECTA.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">Nenhuma sala cadastrada.</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Salas cadastradas</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${SALAS_CONECTA.map(s => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-raised);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span class="sala-pill ${s.cor}" style="font-size:12px">🚪 ${s.nome}</span>
+          <span style="font-size:12px;color:var(--text-muted);flex:1">${s.descricao || '—'} · Cap. ${s.capacidade}</span>
+          <div style="display:flex;gap:4px">
+            <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px" onclick="editarSala('${s.id}')">Editar</button>
+            <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px;color:var(--danger)" onclick="excluirSala('${s.id}')">Excluir</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function editarSala(salaId) {
+  const s = SALAS_CONECTA.find(x => x.id === salaId);
+  if (!s) return;
+  document.getElementById('sala-edit-id').value = s.id;
+  document.getElementById('sala-nome').value = s.nome;
+  document.getElementById('sala-cap').value = s.capacidade;
+  document.getElementById('sala-desc').value = s.descricao || '';
+  document.getElementById('sala-form-title').textContent = '✏️ Editando: ' + s.nome;
+  const radio = document.getElementById('cor-' + s.cor);
+  if (radio) radio.checked = true;
+  atualizarCorLabels();
+}
+
+function limparFormSala() {
+  document.getElementById('sala-edit-id').value = '';
+  document.getElementById('sala-nome').value = '';
+  document.getElementById('sala-cap').value = '2';
+  document.getElementById('sala-desc').value = '';
+  document.getElementById('sala-form-title').textContent = '➕ Adicionar nova sala';
+  const r = document.getElementById('cor-sala1');
+  if (r) r.checked = true;
+  atualizarCorLabels();
+}
+
+function atualizarCorLabels() {
+  ['sala1','sala2','sala3','sala4'].forEach(c => {
+    const lbl   = document.getElementById('cor-' + c + '-lbl');
+    const radio = document.getElementById('cor-' + c);
+    if (lbl && radio) {
+      lbl.style.borderColor = radio.checked ? 'var(--accent)' : 'transparent';
+      lbl.style.background  = radio.checked ? 'var(--accent-soft)' : '';
+    }
+  });
+}
+
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.name === 'sala-cor') atualizarCorLabels();
+});
+
+function salvarSala() {
+  const nome = document.getElementById('sala-nome')?.value?.trim();
+  if (!nome) { showToast('Nome da sala é obrigatório', 'error'); return; }
+  const cap    = parseInt(document.getElementById('sala-cap')?.value) || 2;
+  const desc   = document.getElementById('sala-desc')?.value || '';
+  const cor    = document.querySelector('input[name="sala-cor"]:checked')?.value || 'sala1';
+  const editId = document.getElementById('sala-edit-id')?.value;
+
+  if (editId) {
+    const idx = SALAS_CONECTA.findIndex(s => s.id === editId);
+    if (idx >= 0) SALAS_CONECTA[idx] = { ...SALAS_CONECTA[idx], nome, capacidade: cap, descricao: desc, cor };
+  } else {
+    SALAS_CONECTA.push({ id: 's' + Date.now(), nome, capacidade: cap, descricao: desc, cor });
+  }
+  // Atualizar select filtro agenda
+  const selFiltro = document.getElementById('cs-sala-filtro');
+  if (selFiltro) {
+    selFiltro.innerHTML = '<option value="">Todas as salas</option>' +
+      SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+  }
+  renderSalasModal();
+  limparFormSala();
+  conectaRenderAgenda();
+  showToast('Sala salva!', 'success');
+}
+
+function excluirSala(salaId) {
+  const sala = SALAS_CONECTA.find(s => s.id === salaId);
+  if (!sala) return;
+  const temReservas = RESERVAS_SALAS.some(r => r.salaId === salaId && r.status !== 'cancelado');
+  if (temReservas) { showToast('Não é possível excluir sala com reservas ativas', 'error'); return; }
+  if (!confirm(`Excluir a sala "${sala.nome}"?`)) return;
+  SALAS_CONECTA = SALAS_CONECTA.filter(s => s.id !== salaId);
+  renderSalasModal();
+  conectaRenderAgenda();
+  showToast('Sala excluída', 'success');
+}
+
+// ── Modal: Nova Reserva ──────────────────────────────────────────
+function abrirModalNovaReserva(salaId, dataISO, horaIni) {
+  // Popular selects
+  const selSala = document.getElementById('res-sala');
+  const selProf = document.getElementById('res-prof');
+  if (!selSala || !selProf) return;
+
+  selSala.innerHTML = SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+  if (salaId) selSala.value = salaId;
+
+  selProf.innerHTML = '<option value="">Selecione...</option>' +
+    LOCATARIOS.filter(l => l.status === 'ativo').map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+
+  // Data
+  const resData = document.getElementById('res-data');
+  if (resData) {
+    resData.value = dataISO || new Date().toISOString().slice(0,10);
+  }
+  // Hora
+  if (horaIni) document.getElementById('res-hora-ini').value = horaIni;
+
+  document.getElementById('res-duracao').value = '60';
+  document.getElementById('res-recorrencia').value = 'unica';
+  document.getElementById('res-obs').value = '';
+  conectaToggleRecorrencia();
+  conectaCalcFim();
+  openModal('modal-nova-reserva');
+}
+
+function conectaToggleRecorrencia() {
+  const v = document.getElementById('res-recorrencia')?.value;
+  const el = document.getElementById('res-recorr-ate-wrap');
+  if (el) el.style.display = (v !== 'unica') ? '' : 'none';
+}
+
+function conectaCalcFim() {
+  const ini = document.getElementById('res-hora-ini')?.value || '08:00';
+  const dur = parseInt(document.getElementById('res-duracao')?.value || '60');
+  const [h, m] = ini.split(':').map(Number);
+  const totalMin = h * 60 + m + dur;
+  const hFim = String(Math.floor(totalMin / 60) % 24).padStart(2,'0');
+  const mFim = String(totalMin % 60).padStart(2,'0');
+  const el = document.getElementById('res-hora-fim');
+  if (el) el.value = `${hFim}:${mFim}`;
+
+  // Preview de valor
+  const locId = document.getElementById('res-prof')?.value;
+  const loc = LOCATARIOS.find(l => l.id === locId);
+  const valor = conectaCalcValor(loc, dur);
+  const el2 = document.getElementById('res-valor-calc');
+  const el3 = document.getElementById('res-valor-detalhe');
+  if (el2) el2.textContent = brlFmt(valor);
+  if (el3) {
+    if (!loc) {
+      el3.textContent = 'Selecione o profissional para calcular o valor';
+    } else if (dur >= 480 && loc.valorDia) {
+      el3.textContent = `Tarifa dia inteiro — ${(dur/60).toFixed(0)}h`;
+    } else if (dur >= 210 && loc.valorMeio) {
+      el3.textContent = `Tarifa meio período — ${(dur/60).toFixed(1)}h`;
+    } else {
+      el3.textContent = `${(dur/60).toFixed(1)}h × ${brlFmt(loc.valorHora)}/h`;
+    }
+  }
+}
+
+// Calcula valor baseado na duração e nas tabelas do locatário
+function conectaCalcValor(loc, durMin) {
+  if (!loc) return 0;
+  if (durMin >= 480 && loc.valorDia) return loc.valorDia;
+  if (durMin >= 210 && loc.valorMeio) return loc.valorMeio;
+  return (durMin / 60) * (loc.valorHora || 0);
+}
+
+function salvarReserva() {
+  const salaId  = document.getElementById('res-sala')?.value;
+  const locId   = document.getElementById('res-prof')?.value;
+  const data    = document.getElementById('res-data')?.value;
+  const horaIni = document.getElementById('res-hora-ini')?.value;
+  const horaFim = document.getElementById('res-hora-fim')?.value;
+  const dur     = parseInt(document.getElementById('res-duracao')?.value || '60');
+  const recorr  = document.getElementById('res-recorrencia')?.value || 'unica';
+  const recorrAte = document.getElementById('res-recorr-ate')?.value || '';
+  const obs     = document.getElementById('res-obs')?.value || '';
+
+  if (!salaId || !locId || !data || !horaIni) {
+    showToast('Preencha todos os campos obrigatórios', 'error');
+    return;
+  }
+
+  // Gerar lista de datas conforme recorrência
+  const datas = [data];
+  if (recorr !== 'unica' && recorrAte && recorrAte > data) {
+    const intervalo = recorr === 'semanal' ? 7 : 14;
+    let d = new Date(data + 'T12:00:00');
+    const ate = new Date(recorrAte + 'T12:00:00');
+    while (true) {
+      d.setDate(d.getDate() + intervalo);
+      if (d > ate) break;
+      datas.push(d.toISOString().slice(0,10));
+    }
+  }
+
+  let adicionadas = 0, conflitos = 0;
+  datas.forEach(dt => {
+    const conflito = RESERVAS_SALAS.some(r =>
+      r.salaId === salaId && r.data === dt && r.status !== 'cancelado' &&
+      !(horaFim <= r.horaIni || horaIni >= r.horaFim)
+    );
+    if (conflito) { conflitos++; return; }
+    RESERVAS_SALAS.push({
+      id: 'r' + Date.now() + '_' + adicionadas,
+      salaId, locId, data: dt, horaIni, horaFim, durMin: dur,
+      status: 'confirmado', obs, recorrencia: recorr
+    });
+    adicionadas++;
+  });
+
+  closeModal('modal-nova-reserva');
+  conectaRenderAgenda();
+  if (adicionadas > 0 && conflitos === 0) {
+    showToast(`${adicionadas} reserva${adicionadas>1?'s':''} confirmada${adicionadas>1?'s':''}!`, 'success');
+  } else if (adicionadas > 0 && conflitos > 0) {
+    showToast(`${adicionadas} reserva${adicionadas>1?'s':''} confirmada${adicionadas>1?'s':''}. ${conflitos} conflito${conflitos>1?'s':''} ignorado${conflitos>1?'s':''}.`, 'success');
+  } else {
+    showToast('Conflito de horário — nenhuma reserva criada', 'error');
+  }
+}
+
+// ── Profissionais Locatários ─────────────────────────────────────
+function conectaRenderLocatarios() {
+  const grid = document.getElementById('loc-profs-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  if (LOCATARIOS.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-muted)">
+      <div style="font-size:15px;font-weight:500">Nenhum profissional locatário cadastrado</div>
+      <div style="font-size:13px;margin-top:6px">Clique em "Novo Locatário" para começar.</div>
+    </div>`;
+    return;
+  }
+
+  LOCATARIOS.forEach(loc => {
+    const reservasMes = RESERVAS_SALAS.filter(r => {
+      const now = new Date();
+      const mes = now.toISOString().slice(0,7);
+      return r.locId === loc.id && r.data.startsWith(mes) && r.status !== 'cancelado';
+    });
+    const horasMes = reservasMes.reduce((a,r) => a + r.durMin/60, 0);
+    const valorMes = reservasMes.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
+    const salaPref = SALAS_CONECTA.find(s => s.id === loc.salaPref);
+
+    const card = document.createElement('div');
+    card.className = 'loc-prof-card';
+    card.style.flexDirection = 'column';
+    card.style.alignItems = 'stretch';
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div class="loc-avatar">${loc.nome.charAt(0)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${loc.nome}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${loc.esp || '—'}</div>
+        </div>
+        <span class="role-badge ${loc.status === 'ativo' ? 'recepcao' : 'prof'}">${loc.status}</span>
+        <button class="btn-sm btn-secondary" style="padding:4px 10px;font-size:12px" onclick="editarLocatario('${loc.id}')">Editar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:8px 10px;text-align:center">
+          <div style="font-size:16px;font-weight:700;color:var(--info)">${brlFmt(loc.valorHora)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">por hora</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:8px 10px;text-align:center">
+          <div style="font-size:16px;font-weight:700;color:var(--warning)">${horasMes.toFixed(1)}h</div>
+          <div style="font-size:10px;color:var(--text-muted)">este mês</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:8px 10px;text-align:center">
+          <div style="font-size:16px;font-weight:700;color:var(--success)">${brlFmt(valorMes)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">a faturar</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted)">
+        ${loc.tel ? `<span>📞 ${loc.tel}</span>` : ''}
+        ${salaPref ? `<span>🚪 ${salaPref.nome} (preferencial)</span>` : ''}
+        ${loc.conselho ? `<span>🪪 ${loc.conselho}</span>` : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function abrirModalNovoLocatario() {
+  document.getElementById('loc-modal-title').textContent = 'Novo Profissional Locatário';
+  document.getElementById('loc-edit-id').value = '';
+  ['loc-nome','loc-esp','loc-tel','loc-email','loc-cpf','loc-conselho','loc-obs'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['loc-valor-hora','loc-valor-meio','loc-valor-dia'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('loc-status').value = 'ativo';
+
+  // Popular select de sala preferencial
+  const sel = document.getElementById('loc-sala-pref');
+  if (sel) {
+    sel.innerHTML = '<option value="">Sem preferência</option>' +
+      SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+  }
+
+  openModal('modal-novo-locatario');
+}
+
+function editarLocatario(locId) {
+  const loc = LOCATARIOS.find(l => l.id === locId);
+  if (!loc) return;
+  document.getElementById('loc-modal-title').textContent = 'Editar Profissional Locatário';
+  document.getElementById('loc-edit-id').value = loc.id;
+  document.getElementById('loc-nome').value = loc.nome || '';
+  document.getElementById('loc-esp').value = loc.esp || '';
+  document.getElementById('loc-tel').value = loc.tel || '';
+  document.getElementById('loc-email').value = loc.email || '';
+  document.getElementById('loc-cpf').value = loc.cpf || '';
+  document.getElementById('loc-conselho').value = loc.conselho || '';
+  document.getElementById('loc-obs').value = loc.obs || '';
+  document.getElementById('loc-valor-hora').value = loc.valorHora || '';
+  document.getElementById('loc-valor-meio').value = loc.valorMeio || '';
+  document.getElementById('loc-valor-dia').value = loc.valorDia || '';
+  document.getElementById('loc-status').value = loc.status || 'ativo';
+
+  const sel = document.getElementById('loc-sala-pref');
+  if (sel) {
+    sel.innerHTML = '<option value="">Sem preferência</option>' +
+      SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+    sel.value = loc.salaPref || '';
+  }
+
+  openModal('modal-novo-locatario');
+}
+
+function salvarLocatario() {
+  const nome = document.getElementById('loc-nome')?.value?.trim();
+  if (!nome) {
+    if (typeof showToast === 'function') showToast('Nome é obrigatório', 'error');
+    return;
+  }
+  const editId = document.getElementById('loc-edit-id')?.value;
+
+  const dados = {
+    nome,
+    esp:        document.getElementById('loc-esp')?.value || '',
+    tel:        document.getElementById('loc-tel')?.value || '',
+    email:      document.getElementById('loc-email')?.value || '',
+    cpf:        document.getElementById('loc-cpf')?.value || '',
+    conselho:   document.getElementById('loc-conselho')?.value || '',
+    obs:        document.getElementById('loc-obs')?.value || '',
+    valorHora:  parseFloat(document.getElementById('loc-valor-hora')?.value) || 0,
+    valorMeio:  parseFloat(document.getElementById('loc-valor-meio')?.value) || 0,
+    valorDia:   parseFloat(document.getElementById('loc-valor-dia')?.value) || 0,
+    salaPref:   document.getElementById('loc-sala-pref')?.value || '',
+    status:     document.getElementById('loc-status')?.value || 'ativo',
+  };
+
+  if (editId) {
+    const idx = LOCATARIOS.findIndex(l => l.id === editId);
+    if (idx >= 0) LOCATARIOS[idx] = { ...LOCATARIOS[idx], ...dados };
+  } else {
+    LOCATARIOS.push({ id: 'l' + Date.now(), ...dados });
+  }
+
+  closeModal('modal-novo-locatario');
+  conectaRenderLocatarios();
+  if (typeof showToast === 'function') showToast('Locatário salvo com sucesso!', 'success');
+}
+
+// ── Fechamento de Locação ────────────────────────────────────────
+function calcularFechamentoLocacao() {
+  const mesVal = document.getElementById('loc-fech-mes')?.value;
+  if (!mesVal) { if (typeof showToast === 'function') showToast('Selecione o mês', 'error'); return; }
+
+  const [ano, mes] = mesVal.split('-').map(Number);
+  const ISO_PRIM = `${ano}-${String(mes).padStart(2,'0')}-01`;
+  const ISO_ULT  = new Date(ano, mes, 0).toISOString().slice(0,10);
+
+  const reservasMes = RESERVAS_SALAS.filter(r =>
+    r.status !== 'cancelado' && r.data >= ISO_PRIM && r.data <= ISO_ULT
+  );
+
+  // KPIs
+  const totalReservas = reservasMes.length;
+  const totalHoras = reservasMes.reduce((a,r) => a + r.durMin/60, 0);
+  let totalValor = 0;
+  LOCATARIOS.forEach(loc => {
+    const resLoc = reservasMes.filter(r => r.locId === loc.id);
+    totalValor += resLoc.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
+  });
+
+  const kpisEl = document.getElementById('loc-fech-kpis');
+  if (kpisEl) {
+    kpisEl.style.display = 'grid';
+    kpisEl.style.gridTemplateColumns = 'repeat(3,1fr)';
+    kpisEl.style.gap = '14px';
+    kpisEl.innerHTML = `
+      <div class="table-card" style="padding:16px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--info)">${totalReservas}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Reservas no mês</div>
+      </div>
+      <div class="table-card" style="padding:16px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--warning)">${totalHoras.toFixed(1)}h</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Total de horas locadas</div>
+      </div>
+      <div class="table-card" style="padding:16px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--success)">${brlFmt(totalValor)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Total a faturar</div>
+      </div>
+    `;
+  }
+
+  // Cards por profissional
+  const cardsEl = document.getElementById('loc-fech-cards');
+  const emptyEl = document.getElementById('loc-fech-empty');
+  if (!cardsEl) return;
+  cardsEl.innerHTML = '';
+
+  const locComReservas = LOCATARIOS.filter(loc =>
+    reservasMes.some(r => r.locId === loc.id)
+  );
+
+  if (locComReservas.length === 0) {
+    if (emptyEl) emptyEl.style.display = '';
+  } else {
+    if (emptyEl) emptyEl.style.display = 'none';
+    const mesLabel = new Date(ano, mes-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+
+    locComReservas.forEach(loc => {
+      const resLoc = reservasMes.filter(r => r.locId === loc.id);
+      const horasTot = resLoc.reduce((a,r) => a + r.durMin/60, 0);
+      const valorTot = resLoc.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
+
+      // Detalhe por sala
+      const porSala = {};
+      resLoc.forEach(r => {
+        if (!porSala[r.salaId]) porSala[r.salaId] = { count:0, horas:0, valor:0 };
+        porSala[r.salaId].count++;
+        porSala[r.salaId].horas += r.durMin/60;
+        porSala[r.salaId].valor += conectaCalcValor(loc, r.durMin);
+      });
+
+      const salaRows = Object.entries(porSala).map(([sId, d]) => {
+        const sala = SALAS_CONECTA.find(s => s.id === sId);
+        return `<div class="loc-fech-row">
+          <span class="sala-pill ${sala?.cor||'sala1'}" style="font-size:11px;padding:2px 8px">${sala?.nome||sId}</span>
+          <span style="color:var(--text-secondary)">${d.count} reserva${d.count>1?'s':''}</span>
+          <span style="text-align:center">${d.horas.toFixed(1)}h</span>
+          <span style="text-align:right;font-weight:500;color:var(--success)">${brlFmt(d.valor)}</span>
+          <span></span>
+        </div>`;
+      }).join('');
+
+      const detalhes = resLoc.map(r => {
+        const sala = SALAS_CONECTA.find(s => s.id === r.salaId);
+        const dt = new Date(r.data+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+        const val = conectaCalcValor(loc, r.durMin);
+        return `<div class="loc-fech-row">
+          <span style="font-family:var(--font-mono);font-size:11px">${dt}</span>
+          <span style="color:var(--text-secondary)">${r.horaIni}–${r.horaFim} ${r.obs?'('+r.obs+')':''}</span>
+          <span class="sala-pill ${sala?.cor||'sala1'}" style="font-size:10px;padding:1px 6px;justify-self:center">${sala?.nome||r.salaId}</span>
+          <span style="text-align:right">${(r.durMin/60).toFixed(1)}h</span>
+          <span style="text-align:right;font-weight:600;color:var(--success)">${brlFmt(val)}</span>
+        </div>`;
+      }).join('');
+
+      const card = document.createElement('div');
+      card.className = 'loc-fech-card';
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div class="loc-avatar">${loc.nome.charAt(0)}</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:600">${loc.nome}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${loc.esp||''} · ${loc.conselho||''}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="fech-total">${brlFmt(valorTot)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${horasTot.toFixed(1)}h · ${resLoc.length} reserva${resLoc.length>1?'s':''}</div>
+          </div>
+        </div>
+
+        <!-- Sumário por sala -->
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Por sala</div>
+        <div class="loc-fech-row header">
+          <span>Sala</span><span>Reservas</span><span style="text-align:center">Horas</span><span style="text-align:right">Valor</span><span></span>
+        </div>
+        ${salaRows}
+
+        <!-- Detalhe de todas as reservas -->
+        <div style="margin-top:14px;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Detalhe das reservas</div>
+        <div class="loc-fech-row header">
+          <span>Data</span><span>Horário / Obs.</span><span style="text-align:center">Sala</span><span style="text-align:right">Horas</span><span style="text-align:right">Valor</span>
+        </div>
+        ${detalhes}
+
+        <!-- Tabela de valores -->
+        <div style="margin-top:14px;padding:10px 14px;background:var(--bg-raised);border-radius:var(--radius-sm);font-size:12px;display:flex;gap:20px;flex-wrap:wrap">
+          <span style="color:var(--text-muted)">Valores cadastrados:</span>
+          <span>Hora: <strong>${brlFmt(loc.valorHora)}</strong></span>
+          <span>Meio período: <strong>${brlFmt(loc.valorMeio)}</strong></span>
+          <span>Dia inteiro: <strong>${brlFmt(loc.valorDia)}</strong></span>
+        </div>
+      `;
+      cardsEl.appendChild(card);
+    });
+  }
+
+  const btnEmitir = document.getElementById('btn-emitir-loc');
+  if (btnEmitir) btnEmitir.style.display = '';
+  if (typeof showToast === 'function') showToast('Fechamento de locação calculado!', 'success');
+}
+
+// ── Relatório PDF Locação ────────────────────────────────────────
+function emitirRelatorioLocacao() {
+  const mesVal = document.getElementById('loc-fech-mes')?.value;
+  if (!mesVal) { if (typeof showToast === 'function') showToast('Calcule o fechamento primeiro', 'error'); return; }
+
+  const [ano, mes] = mesVal.split('-').map(Number);
+  const ISO_PRIM = `${ano}-${String(mes).padStart(2,'0')}-01`;
+  const ISO_ULT  = new Date(ano, mes, 0).toISOString().slice(0,10);
+  const mesLabel = new Date(ano, mes-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const mesLabCap = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+  const dataEmis = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const clinNome = (typeof CLINICA !== 'undefined' && CLINICA?.nome) ? CLINICA.nome : 'ClinicFlow';
+
+  const reservasMes = RESERVAS_SALAS.filter(r =>
+    r.status !== 'cancelado' && r.data >= ISO_PRIM && r.data <= ISO_ULT
+  );
+
+  let totalValor = 0;
+  const rows = LOCATARIOS
+    .filter(loc => reservasMes.some(r => r.locId === loc.id))
+    .map(loc => {
+      const resLoc = reservasMes.filter(r => r.locId === loc.id);
+      const horas = resLoc.reduce((a,r) => a + r.durMin/60, 0);
+      const valor = resLoc.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
+      totalValor += valor;
+      const fmt = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      return `<tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0">${loc.nome}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0">${loc.esp||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${resLoc.length}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${horas.toFixed(1)}h</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right">${fmt(loc.valorHora)}/h</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#16a34a">${fmt(valor)}</td>
+      </tr>`;
+    }).join('');
+
+  const fmtBrl = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Fechamento Locação de Salas — ${mesLabCap}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #1e293b; background: #fff; padding: 18mm 15mm; }
+  .header { text-align: center; margin-bottom: 18px; border-bottom: 2px solid #1e3a6e; padding-bottom: 12px; }
+  .header h1 { font-size: 16pt; color: #1e3a6e; margin-bottom: 2px; }
+  .header h2 { font-size: 12pt; color: #0e7490; margin-bottom: 4px; }
+  .header p  { font-size: 10pt; color: #475569; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 8.5pt; color: #64748b; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  thead tr { background: #1e3a6e; color: #fff; }
+  thead th { padding: 8px 10px; text-align: left; font-weight: 600; }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  .tfoot tr { background: #e8f0fe !important; font-weight: 700; }
+  .tfoot td { padding: 10px 10px; border-top: 2px solid #1e3a6e; font-size: 10pt; }
+  .footer { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 8pt; color: #94a3b8; text-align: center; }
+  @media print { body { padding: 10mm 12mm; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>${clinNome}</h1>
+  <h2>🏢 Espaço Conecta</h2>
+  <p>Fechamento de Locação de Salas — <strong>${mesLabCap}</strong></p>
+</div>
+<div class="meta">
+  <span>Emitido em: ${dataEmis}</span>
+  <span>Competência: <strong>${mesLabCap}</strong></span>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>Profissional Locatário</th>
+      <th>Especialidade</th>
+      <th style="text-align:center">Reservas</th>
+      <th style="text-align:center">Horas</th>
+      <th style="text-align:right">Valor/h</th>
+      <th style="text-align:right">Total a Cobrar</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+  <tfoot class="tfoot">
+    <tr>
+      <td colspan="2"><strong>TOTAL GERAL</strong></td>
+      <td colspan="3" style="text-align:center;font-size:8.5pt;color:#475569">— — —</td>
+      <td style="text-align:right;color:#16a34a;font-size:11pt"><strong>${fmtBrl(totalValor)}</strong></td>
+    </tr>
+  </tfoot>
+</table>
+<div class="footer">
+  Documento gerado automaticamente pelo ClinicFlow · Espaço Conecta · Apenas reservas com status "Confirmado"
+</div>
+<script>window.onload = function(){ window.print(); };<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (win) { win.document.write(html); win.document.close(); }
+  else {
+    const blob = new Blob([html], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `locacao_salas_${mesVal}.html`;
+    a.click();
+    if (typeof showToast === 'function') showToast('Arquivo baixado — abra no navegador e use Ctrl+P para salvar PDF','success');
+  }
+}
+
+// Helper BRL — usa a função global brlFmt já existente no sistema
+// (definida em ~linha 14594)
+
+// Esconde botão "Nova Reserva" para perfil financeiro (só pode ver)
+document.addEventListener('DOMContentLoaded', function() {
+  // Reavaliar visibilidade baseada no papel do usuário
+  const origGotoPage = typeof gotoPage === 'function' ? gotoPage : null;
+});
+
+console.log('[ClinicFlow] Módulo Espaço Conecta — Locação de Salas carregado ✓');
 </script>
 
 </body>
