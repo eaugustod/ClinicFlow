@@ -1595,6 +1595,53 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
   cursor: not-allowed;
 }
 
+
+/* ═══════════════════════════════════════
+   PERFIS DE ACESSO PERSONALIZADOS
+═══════════════════════════════════════ */
+.perfis-grid { display:grid; grid-template-columns:300px 1fr; gap:20px; height:calc(100vh - 180px); min-height:400px; }
+.perfis-lista-col { display:flex; flex-direction:column; gap:0; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; }
+.perfis-lista-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.perfis-lista-body { overflow-y:auto; flex:1; }
+.perfil-item { display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; border-bottom:1px solid var(--border-light); transition:background .15s; user-select:none; }
+.perfil-item:last-child { border-bottom:none; }
+.perfil-item:hover { background:var(--bg-raised); }
+.perfil-item.active { background:rgba(99,102,241,.08); border-left:3px solid var(--accent); padding-left:13px; }
+.perfil-item-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.perfil-item-name { font-size:13px; font-weight:500; color:var(--text-primary); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.perfil-item-badge { font-size:10px; background:var(--bg-raised); color:var(--text-muted); padding:2px 7px; border-radius:10px; border:1px solid var(--border); flex-shrink:0; }
+.perfil-item-lock { font-size:12px; color:var(--text-muted); flex-shrink:0; opacity:.55; }
+.perfis-editor-col { display:flex; flex-direction:column; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; }
+.perfis-editor-header { padding:16px 20px; border-bottom:1px solid var(--border); flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.perfis-editor-body { flex:1; overflow-y:auto; padding:20px; }
+.modulos-section-label { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin:18px 0 10px; }
+.modulos-section-label:first-child { margin-top:0; }
+.modulos-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px,1fr)); gap:10px; }
+.modulo-card { background:var(--bg-raised); border:1.5px solid var(--border); border-radius:var(--radius-md); overflow:hidden; transition:border-color .15s,box-shadow .15s; }
+.modulo-card.enabled { border-color:rgba(99,102,241,.4); box-shadow:0 0 0 1px rgba(99,102,241,.1); }
+.modulo-card-header { display:flex; align-items:center; gap:10px; padding:11px 13px; cursor:pointer; }
+.modulo-card-icon { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:14px; }
+.modulo-card-info { flex:1; min-width:0; }
+.modulo-card-title { font-size:13px; font-weight:500; color:var(--text-primary); }
+.modulo-card-desc { font-size:11px; color:var(--text-muted); margin-top:1px; }
+.modulo-toggle { position:relative; width:36px; height:20px; flex-shrink:0; }
+.modulo-toggle input { opacity:0; width:0; height:0; position:absolute; }
+.modulo-toggle-slider { position:absolute; inset:0; background:var(--bg-overlay); border-radius:10px; cursor:pointer; transition:background .2s; border:1px solid var(--border-mid); }
+.modulo-toggle input:checked + .modulo-toggle-slider { background:var(--accent); border-color:var(--accent); }
+.modulo-toggle-slider::before { content:''; position:absolute; width:14px; height:14px; left:2px; top:2px; background:#fff; border-radius:50%; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.modulo-toggle input:checked + .modulo-toggle-slider::before { transform:translateX(16px); }
+.modulo-sub-perms { padding:0 13px 10px; border-top:1px solid var(--border-light); display:none; }
+.modulo-card.enabled .modulo-sub-perms { display:block; }
+.sub-perm-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; color:var(--text-secondary); cursor:pointer; }
+.sub-perm-row:hover { color:var(--text-primary); }
+.sub-perm-row input[type=checkbox] { width:13px; height:13px; cursor:pointer; flex-shrink:0; accent-color:var(--accent); }
+.perfis-editor-footer { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:10px; align-items:center; flex-shrink:0; background:var(--bg-card); }
+.perfil-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:var(--text-muted); font-size:13px; }
+.perfil-color-picker { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.perfil-color-opt { width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:border-color .15s,transform .15s; }
+.perfil-color-opt:hover { transform:scale(1.15); }
+.perfil-color-opt.selected { border-color:var(--text-primary); transform:scale(1.1); }
+
 </style>
 </head>
 <body>
@@ -1609,7 +1656,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
       <div class="login-logo-text">Clinic<span>Flow</span></div>
     </div>
     <div class="login-title">Entrar no sistema</div>
-    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.36</div>
+    <div class="login-subtitle">Gestão clínica integrada &mdash; v 2026.0.37</div>
     <div class="form-group">
       <label class="form-label">E-mail</label>
       <input class="form-input" type="email" id="login-email" placeholder="seu@email.com" autocomplete="username">
@@ -1621,7 +1668,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     <div id="login-error" style="display:none;color:var(--danger);font-size:13px;margin-bottom:8px;padding:8px 12px;background:rgba(248,113,113,0.1);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.2)"></div>
     <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
     <div style="text-align:center;margin-top:14px;margin-bottom:2px;">
-      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.36</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:0.3px;">v 2026.0.37</span>
     </div>
     <div style="text-align:center;margin-top:10px">
       <button onclick="resetAdminLocal()" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;text-decoration:underline;opacity:.6" title="Use apenas se não conseguir entrar como admin">
@@ -1750,6 +1797,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <div class="nav-item" id="nav-usuarios-item" onclick="gotoPage('usuarios',this)">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
           Usuários &amp; Acesso
+        </div>
+        <div class="nav-item" id="nav-perfis-item" onclick="gotoPage('perfis',this)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z"/></svg>
+          Perfis de Acesso
         </div>
       </div>
     </nav>
@@ -3016,6 +3067,50 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
       </div>
     </div>
 
+
+    <!-- ══════════════════════════════════════
+         PERFIS DE ACESSO
+    ══════════════════════════════════════ -->
+    <div class="page" id="page-perfis">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Perfis de Acesso</h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Crie perfis personalizados e defina quais módulos cada perfil pode acessar</p>
+        </div>
+        <button class="btn-sm btn-accent" onclick="abrirNovoPerfil()">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Novo Perfil
+        </button>
+      </div>
+
+      <div class="perfis-grid">
+        <!-- Lista de perfis -->
+        <div class="perfis-lista-col">
+          <div class="perfis-lista-header">
+            <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Perfis</span>
+            <span id="perfis-count-badge" style="font-size:11px;background:var(--bg-raised);color:var(--text-muted);padding:2px 8px;border-radius:10px;border:1px solid var(--border)">0</span>
+          </div>
+          <div class="perfis-lista-body" id="perfis-lista-body">
+            <div class="perfil-empty-state">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:36px;height:36px;opacity:.25"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+              <span>Nenhum perfil criado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editor de permissões -->
+        <div class="perfis-editor-col" id="perfis-editor-col">
+          <div id="perfis-editor-content">
+            <div class="perfil-empty-state" style="height:100%">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:48px;height:48px;opacity:.18"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+              <span style="font-size:14px;font-weight:500">Selecione um perfil</span>
+              <span style="font-size:12px">ou crie um novo para definir permissões</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══════════════════════════════════════
          FECHAMENTO MENSAL
     ══════════════════════════════════════ -->
@@ -3778,6 +3873,16 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
                 <option value="recepcao">📋 Recepção</option>
                 <option value="prof">🩺 Profissional</option>
               </select>
+            </div>
+            <div class="form-group" id="usr-perfil-custom-wrap">
+              <label style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--text-secondary);margin-bottom:6px;font-weight:500">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;color:var(--accent)"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                Perfil personalizado de acesso
+              </label>
+              <select class="form-select" id="usr-perfil-custom">
+                <option value="">— Usar permissões padrão do tipo —</option>
+              </select>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Substitui as permissões padrão pelo perfil selecionado</div>
             </div>
           </div>
         </div>
@@ -4897,9 +5002,7 @@ let RESERVAS_SALAS = [];
 let CS_WEEK_OFFSET = 0;
 let RESERVA_ATUAL_ID = null;
 
-// ── Declaração antecipada de USUARIOS (definido completamente no módulo Usuários mais abaixo) ──
-// Evita ReferenceError se algo acessar antes do módulo ser parseado
-var USUARIOS = [];
+// USUARIOS é declarado e inicializado no módulo Usuários & Acesso (script block abaixo)
 
 const PROFISSIONAIS = [];
 
@@ -5129,6 +5232,8 @@ function _finalizarLogin(user) {
     document.getElementById('nav-config-section').style.display = 'none';
     document.getElementById('nav-fatur-section').style.display  = 'none';
   }
+  // Aplica permissões de perfil personalizado se existir
+  _aplicarPermissoesDePerfil(user);
 
  // Espaço Conecta: profissional só vê Agendamento de Salas; financeiro (admin) vê tudo
   const navConecta = document.getElementById('nav-conecta-section');
@@ -5154,12 +5259,24 @@ function _finalizarLogin(user) {
   if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Entrar'; }
 
   initApp();
+
+  // Carrega dados do Supabase após o login (preenche agenda, pacientes, etc.)
+  setTimeout(() => {
+    if (typeof window.loadFromSupabase === 'function') {
+      window.loadFromSupabase();
+    }
+  }, 100);
 }
 function doLogout() {
   document.getElementById('app').classList.remove('active');
   document.getElementById('login-screen').style.display = 'flex';
   ['nav-admin-section','nav-config-section','nav-fatur-section'].forEach(id => {
     const el = document.getElementById(id); if(el) el.style.display='';
+  });
+  // Restaura todos os itens de menu ocultados por perfil
+  document.querySelectorAll('.nav-item[data-perfil-hidden]').forEach(el => {
+    el.style.display = '';
+    el.removeAttribute('data-perfil-hidden');
   });
   // Resetar visibilidade Espaço Conecta
   const navFech = document.getElementById('nav-conecta-fech');
@@ -5170,7 +5287,7 @@ function doLogout() {
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
+const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', perfis:'Perfis de Acesso', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
 function gotoPage(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5180,6 +5297,7 @@ function gotoPage(page, el) {
   if (el) el.classList.add('active');
   document.getElementById('topbar-title').textContent = pageTitles[page] || page;
   if (page === 'config')    try { initConfigPage(); } catch(e) {}
+  if (page === 'perfis')    try { renderPerfisLista(); } catch(e) { console.warn(e); }
   if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
   if (page === 'senhas')    try { renderSenhas(); } catch(e) {}
   if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
@@ -5216,6 +5334,8 @@ function refreshUI(opts = {}) {
   safe('renderEsperaTable');
   safe('buildProfFilters');
   safe('populateSelects');
+  // Carrega perfis de acesso persistidos
+  if (typeof _carregarPerfisLocal === 'function') _carregarPerfisLocal();
   // Carrega bloqueios persistidos
   if (typeof _carregarBloqueiosLocal === 'function') _carregarBloqueiosLocal();
   safe('renderAgenda');
@@ -14513,6 +14633,7 @@ function salvarUsuario() {
       u.tel = tel; u.nasc = nasc; u.perfil = perfil; u.status = status;
       u.foto = foto;
       u.profId = profIdVal;
+      if (perfilCustomId) u.perfilId = perfilCustomId; else delete u.perfilId;
       if (senha) u.senha = senha;
       // Persiste update individual no Supabase
       _upsertUsuarioSupabase(u);
@@ -14524,6 +14645,7 @@ function salvarUsuario() {
       nome, email, cpf, rg, tel, nasc, perfil, status, foto,
       senha: senha,
       profId: profIdVal,
+      ...(perfilCustomId ? { perfilId: perfilCustomId } : {}),
       criadoEm: new Date().toISOString()
     };
     USUARIOS.push(novoUsuario);
@@ -14849,6 +14971,448 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MÓDULO: PERFIS DE ACESSO PERSONALIZADOS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Mapa de todos os módulos/itens de menu disponíveis no sistema
+const MODULOS_SISTEMA = [
+  {
+    secao: 'Principal',
+    itens: [
+      { id:'dashboard',    label:'Dashboard',            desc:'Visão geral e indicadores',       icon:'📊', navPage:'dashboard' },
+      { id:'agenda',       label:'Agenda',               desc:'Agendamentos e calendário',        icon:'📅', navPage:'agenda' },
+      { id:'chat',         label:'Chat com Pacientes',   desc:'Mensagens e comunicação',          icon:'💬', navItem:'nav-chat-item' },
+    ]
+  },
+  {
+    secao: 'Cadastros',
+    navSection: 'nav-admin-section',
+    itens: [
+      { id:'pacientes',       label:'Pacientes',          desc:'Cadastro e prontuário',            icon:'👥', navPage:'pacientes' },
+      { id:'profissionais',   label:'Profissionais',      desc:'Cadastro de profissionais',        icon:'👨‍⚕️', navPage:'profissionais' },
+      { id:'planos',          label:'Planos de Saúde',    desc:'Convênios e operadoras',           icon:'💳', navPage:'planos' },
+      { id:'procedimentos',   label:'Tabela de Preços',   desc:'Procedimentos e valores',          icon:'📋', navPage:'procedimentos' },
+      { id:'espera',          label:'Lista de Espera',    desc:'Fila de espera de pacientes',      icon:'⏳', navPage:'espera' },
+      { id:'historico',       label:'Histórico Paciente', desc:'Histórico de atendimentos',        icon:'🔄', navPage:'historico' },
+    ]
+  },
+  {
+    secao: 'Faturamento',
+    navSection: 'nav-fatur-section',
+    itens: [
+      { id:'tiss',     label:'Guias SADT',            desc:'Emissão e gestão de guias',        icon:'📄', navPage:'tiss' },
+      { id:'senhas',   label:'Senhas / Autorizações', desc:'Controle de autorizações',         icon:'🔐', navPage:'senhas' },
+      { id:'lotes',    label:'Lotes TISS',            desc:'Envio de lotes ao convênio',       icon:'📦', navPage:'lotes' },
+    ]
+  },
+  {
+    secao: 'Espaço Conecta',
+    navSection: 'nav-conecta-section',
+    itens: [
+      { id:'conecta-agenda',        label:'Agendamento de Salas',      desc:'Reserva de salas e espaços',   icon:'🏢', navPage:'conecta-agenda' },
+      { id:'conecta-profissionais', label:'Profissionais Locatários',  desc:'Gestão de locatários',         icon:'👤', navPage:'conecta-profissionais' },
+      { id:'conecta-fechamento',    label:'Fechamento de Locação',     desc:'Relatórios e fechamentos',     icon:'💰', navPage:'conecta-fechamento' },
+    ]
+  },
+  {
+    secao: 'Sistema',
+    navSection: 'nav-config-section',
+    itens: [
+      { id:'importar',   label:'Importar Agenda',   desc:'Importação de dados externos',     icon:'📥', navPage:'importar' },
+      { id:'relatorios', label:'Relatórios',         desc:'Relatórios e análises',            icon:'📈', navPage:'relatorios' },
+      { id:'fechamento', label:'Fechamento Mensal',  desc:'Fechamento financeiro mensal',     icon:'💵', navPage:'fechamento' },
+      { id:'config',     label:'Configurações',      desc:'Configurações do sistema',         icon:'⚙️',  navPage:'config' },
+      { id:'usuarios',   label:'Usuários & Acesso',  desc:'Gestão de usuários',               icon:'👥', navPage:'usuarios' },
+      { id:'perfis',     label:'Perfis de Acesso',   desc:'Perfis e permissões',              icon:'🛡️',  navPage:'perfis' },
+    ]
+  },
+];
+
+// Sub-permissões por módulo (ações que podem ser liberadas/bloqueadas individualmente)
+const SUB_PERMS = {
+  pacientes:     [ { id:'criar',    label:'Criar / Editar pacientes'    }, { id:'excluir', label:'Excluir pacientes'        }, { id:'prontuario', label:'Ver prontuário completo' } ],
+  agenda:        [ { id:'criar',    label:'Criar agendamentos'          }, { id:'editar',  label:'Editar agendamentos'       }, { id:'excluir',    label:'Excluir agendamentos'    }, { id:'bloquear', label:'Bloquear agenda' } ],
+  profissionais: [ { id:'criar',    label:'Criar / Editar profissionais'}, { id:'excluir', label:'Excluir profissionais'     } ],
+  tiss:          [ { id:'criar',    label:'Criar guias SADT'            }, { id:'assinar', label:'Assinar / Autorizar guias'  }, { id:'excluir',    label:'Excluir guias'           } ],
+  relatorios:    [ { id:'financeiro', label:'Relatórios financeiros'    }, { id:'exportar', label:'Exportar dados'           } ],
+  usuarios:      [ { id:'criar',    label:'Criar usuários'              }, { id:'editar',  label:'Editar usuários'           }, { id:'excluir',    label:'Excluir usuários'        } ],
+};
+
+// Cores disponíveis para perfis
+const PERFIL_CORES = ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#64748b'];
+
+// Storage
+let PERFIS_ACESSO = [];
+let _perfilEditandoId = null;
+let _perfilSelecionadoId = null;
+
+function _salvarPerfisLocal() {
+  try { localStorage.setItem('cf_perfis_acesso', JSON.stringify(PERFIS_ACESSO)); } catch(e) {}
+}
+function _carregarPerfisLocal() {
+  try {
+    const raw = localStorage.getItem('cf_perfis_acesso');
+    if (raw) { PERFIS_ACESSO = JSON.parse(raw); }
+  } catch(e) {}
+  // Garante os 3 perfis base (não editáveis)
+  _garantirPerfisBase();
+}
+
+function _garantirPerfisBase() {
+  const BASE = [
+    {
+      id: '__admin__', nome: 'Administrador', cor: '#6366f1', bloqueado: true,
+      desc: 'Acesso total ao sistema — não pode ser alterado',
+      modulos: MODULOS_SISTEMA.flatMap(s => s.itens.map(i => i.id)),
+      subPerms: Object.fromEntries(Object.entries(SUB_PERMS).map(([k,v]) => [k, v.map(p => p.id)])),
+    },
+    {
+      id: '__recepcao__', nome: 'Recepção (padrão)', cor: '#10b981', bloqueado: true,
+      desc: 'Agenda, pacientes e cadastros básicos',
+      modulos: ['dashboard','agenda','chat','pacientes','planos','espera','senhas'],
+      subPerms: { pacientes:['criar'], agenda:['criar','editar'] },
+    },
+    {
+      id: '__prof__', nome: 'Profissional (padrão)', cor: '#f59e0b', bloqueado: true,
+      desc: 'Agenda própria, prontuário e guias',
+      modulos: ['dashboard','agenda','historico','tiss','chat'],
+      subPerms: { agenda:['criar'], tiss:['criar'], pacientes:['prontuario'] },
+    },
+  ];
+  BASE.forEach(base => {
+    if (!PERFIS_ACESSO.find(p => p.id === base.id)) {
+      PERFIS_ACESSO.unshift(base);
+    }
+  });
+}
+
+// ── Render da lista de perfis ─────────────────────────────────────────────
+function renderPerfisLista() {
+  _carregarPerfisLocal();
+  const el = document.getElementById('perfis-lista-body');
+  const badge = document.getElementById('perfis-count-badge');
+  if (!el) return;
+  if (badge) badge.textContent = PERFIS_ACESSO.length;
+
+  el.innerHTML = PERFIS_ACESSO.map(p => {
+    const usersCount = (typeof USUARIOS !== 'undefined' ? USUARIOS : []).filter(u => u.perfilId === p.id || (p.id === '__admin__' && u.perfil === 'admin') || (p.id === '__recepcao__' && u.perfil === 'recepcao' && !u.perfilId) || (p.id === '__prof__' && u.perfil === 'prof' && !u.perfilId)).length;
+    const isActive = p.id === _perfilSelecionadoId;
+    return `<div class="perfil-item${isActive ? ' active' : ''}" onclick="selecionarPerfil('${p.id}')">
+      <span class="perfil-item-dot" style="background:${p.cor||'#6366f1'}"></span>
+      <div style="flex:1;min-width:0">
+        <div class="perfil-item-name">${p.nome}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.desc||'Perfil personalizado'}</div>
+      </div>
+      <span class="perfil-item-badge">${usersCount} usr</span>
+      ${p.bloqueado ? '<span class="perfil-item-lock" title="Perfil base — não editável">🔒</span>' : ''}
+    </div>`;
+  }).join('') || '<div class="perfil-empty-state"><span>Nenhum perfil</span></div>';
+
+  if (_perfilSelecionadoId) {
+    renderPerfisEditor(_perfilSelecionadoId);
+  }
+}
+
+function selecionarPerfil(id) {
+  _perfilSelecionadoId = id;
+  renderPerfisLista();
+}
+
+// ── Editor de permissões ──────────────────────────────────────────────────
+function renderPerfisEditor(perfilId) {
+  const col = document.getElementById('perfis-editor-content');
+  if (!col) return;
+  const perfil = PERFIS_ACESSO.find(p => p.id === perfilId);
+  if (!perfil) return;
+
+  const isBloqueado = !!perfil.bloqueado;
+  const modulosAtivos = new Set(perfil.modulos || []);
+  const subPermsAtivos = perfil.subPerms || {};
+
+  const lockBadge = isBloqueado ? '<span style="font-size:10px;background:rgba(248,113,113,.1);color:#f87171;padding:2px 8px;border-radius:10px;border:1px solid rgba(248,113,113,.25)">🔒 Somente leitura</span>' : '';
+  const editBtns = isBloqueado ? '' : '<div style="display:flex;gap:8px">'
+    + '<button class="btn-sm btn-secondary" onclick="editarNomePerfil(\'' + perfilId + '\')" style="padding:6px 12px">'
+    + '<svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Renomear</button>'
+    + '<button class="btn-sm" style="padding:6px 12px;background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25)" onclick="excluirPerfil(\'' + perfilId + '\')">'
+    + '<svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Excluir</button>'
+    + '</div>';
+  let html = '<div class="perfis-editor-header">'
+    + '<div>'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
+    + '<span style="width:14px;height:14px;border-radius:50%;background:' + (perfil.cor||'#6366f1') + ';display:inline-block;flex-shrink:0"></span>'
+    + '<span style="font-size:16px;font-weight:600;color:var(--text-primary)">' + perfil.nome + '</span>'
+    + lockBadge
+    + '</div>'
+    + '<div style="font-size:12px;color:var(--text-muted)">' + (perfil.desc||'') + '</div>'
+    + '</div>'
+    + editBtns
+    + '</div>'
+    + '<div class="perfis-editor-body" id="perfis-editor-body">';
+
+  MODULOS_SISTEMA.forEach(secao => {
+    html += `<div class="modulos-section-label">${secao.secao}</div><div class="modulos-grid">`;
+    secao.itens.forEach(item => {
+      const ativo = modulosAtivos.has(item.id);
+      const subs = SUB_PERMS[item.id] || [];
+      const subAtivos = new Set(subPermsAtivos[item.id] || []);
+      const disabledAttr = isBloqueado ? 'disabled' : '';
+      const toggleId = `toggle-mod-${perfilId.replace(/[^a-z0-9]/gi,'_')}-${item.id}`;
+      const clickHandler = isBloqueado ? '' : "toggleModulo('" + perfilId + "','" + item.id + "')";
+      html += '<div class="modulo-card' + (ativo ? ' enabled' : '') + '" id="mcard-' + perfilId.replace(/[^a-z0-9]/gi,'_') + '-' + item.id + '">'
+        + '<div class="modulo-card-header" onclick="' + clickHandler + '">'
+        + '<div class="modulo-card-icon" style="background:' + (ativo ? 'rgba(99,102,241,.12)' : 'var(--bg-overlay)') + '">' + item.icon + '</div>'
+        + '<div class="modulo-card-info">'
+        + '<div class="modulo-card-title">' + item.label + '</div>'
+        + '<div class="modulo-card-desc">' + item.desc + '</div>'
+        + '</div>'
+        + '<label class="modulo-toggle" onclick="event.stopPropagation()">'
+        + '<input type="checkbox" id="' + toggleId + '" ' + (ativo ? 'checked' : '') + ' ' + disabledAttr
+        + ' onchange="' + clickHandler + '">'
+        + '<span class="modulo-toggle-slider"></span>'
+        + '</label>'
+        + '</div>';
+      if (subs.length && ativo) {
+        html += `<div class="modulo-sub-perms">`;
+        subs.forEach(sp => {
+          const spAtivo = subAtivos.has(sp.id);
+          const subChange = isBloqueado ? '' : "toggleSubPerm('" + perfilId + "','" + item.id + "','" + sp.id + "',this.checked)";
+        html += '<label class="sub-perm-row">'
+          + '<input type="checkbox" ' + (spAtivo ? 'checked' : '') + ' ' + disabledAttr + ' onchange="' + subChange + '">'
+          + sp.label
+          + '</label>';
+        });
+        html += `</div>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  if (!isBloqueado) {
+    html += '<div class="perfis-editor-footer">'
+      + '<button class="btn-sm btn-accent" onclick="salvarPermissoesPerfil(\'' + perfilId + '\')">'
+      + '<svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>'
+      + 'Salvar permissões</button>'
+      + '<span style="font-size:12px;color:var(--text-muted)" id="perfis-save-hint"></span>'
+      + '</div>';
+  }
+
+  col.innerHTML = html;
+}
+
+// ── Toggle módulo ────────────────────────────────────────────────────────
+function toggleModulo(perfilId, moduloId) {
+  const perfil = PERFIS_ACESSO.find(p => p.id === perfilId);
+  if (!perfil || perfil.bloqueado) return;
+  if (!perfil.modulos) perfil.modulos = [];
+  const idx = perfil.modulos.indexOf(moduloId);
+  if (idx > -1) {
+    perfil.modulos.splice(idx, 1);
+    // Remove sub-perms
+    if (perfil.subPerms) delete perfil.subPerms[moduloId];
+  } else {
+    perfil.modulos.push(moduloId);
+    // Ativa todas as sub-perms por padrão
+    const subs = SUB_PERMS[moduloId];
+    if (subs) {
+      if (!perfil.subPerms) perfil.subPerms = {};
+      perfil.subPerms[moduloId] = subs.map(s => s.id);
+    }
+  }
+  renderPerfisEditor(perfilId);
+}
+
+// ── Toggle sub-permissão ─────────────────────────────────────────────────
+function toggleSubPerm(perfilId, moduloId, permId, checked) {
+  const perfil = PERFIS_ACESSO.find(p => p.id === perfilId);
+  if (!perfil || perfil.bloqueado) return;
+  if (!perfil.subPerms) perfil.subPerms = {};
+  if (!perfil.subPerms[moduloId]) perfil.subPerms[moduloId] = [];
+  if (checked) {
+    if (!perfil.subPerms[moduloId].includes(permId)) perfil.subPerms[moduloId].push(permId);
+  } else {
+    perfil.subPerms[moduloId] = perfil.subPerms[moduloId].filter(p => p !== permId);
+  }
+}
+
+// ── Salvar permissões ────────────────────────────────────────────────────
+function salvarPermissoesPerfil(perfilId) {
+  _salvarPerfisLocal();
+  const hint = document.getElementById('perfis-save-hint');
+  if (hint) { hint.textContent = '✓ Salvo!'; setTimeout(() => { hint.textContent = ''; }, 2500); }
+  showToast('Permissões do perfil salvas!', 'success');
+  renderPerfisLista();
+  _sincronizarPerfisSupabase();
+}
+
+// ── Novo perfil ──────────────────────────────────────────────────────────
+function abrirNovoPerfil() {
+  const nome = prompt('Nome do novo perfil:');
+  if (!nome || !nome.trim()) return;
+  const desc = prompt('Descrição curta (opcional):') || '';
+  const cor  = PERFIL_CORES[Math.floor(Math.random() * PERFIL_CORES.length)];
+  const id   = 'prf_' + Date.now();
+  PERFIS_ACESSO.push({
+    id, nome: nome.trim(), desc: desc.trim(), cor,
+    bloqueado: false,
+    modulos: ['dashboard', 'agenda'],
+    subPerms: { agenda: ['criar','editar'] },
+  });
+  _salvarPerfisLocal();
+  _perfilSelecionadoId = id;
+  renderPerfisLista();
+  showToast('Perfil "' + nome.trim() + '" criado! Configure os módulos ao lado.', 'success');
+}
+
+// ── Renomear perfil ──────────────────────────────────────────────────────
+function editarNomePerfil(perfilId) {
+  const perfil = PERFIS_ACESSO.find(p => p.id === perfilId);
+  if (!perfil || perfil.bloqueado) return;
+  const novoNome = prompt('Novo nome do perfil:', perfil.nome);
+  if (!novoNome || !novoNome.trim()) return;
+  const novaDesc = prompt('Nova descrição:', perfil.desc || '');
+  perfil.nome = novoNome.trim();
+  perfil.desc = (novaDesc || '').trim();
+  _salvarPerfisLocal();
+  renderPerfisLista();
+}
+
+// ── Excluir perfil ───────────────────────────────────────────────────────
+function excluirPerfil(perfilId) {
+  const perfil = PERFIS_ACESSO.find(p => p.id === perfilId);
+  if (!perfil || perfil.bloqueado) { showToast('Perfis base não podem ser excluídos.', 'error'); return; }
+  const usersVinc = (typeof USUARIOS !== 'undefined' ? USUARIOS : []).filter(u => u.perfilId === perfilId);
+  if (usersVinc.length) {
+    if (!confirm(`Este perfil está vinculado a ${usersVinc.length} usuário(s). Ao excluir, eles perderão as permissões personalizadas.
+
+Deseja continuar?`)) return;
+    usersVinc.forEach(u => { delete u.perfilId; });
+    if (typeof salvarUsuariosLocal === 'function') salvarUsuariosLocal();
+  }
+  if (!confirm(`Excluir o perfil "${perfil.nome}"? Esta ação não pode ser desfeita.`)) return;
+  const idx = PERFIS_ACESSO.findIndex(p => p.id === perfilId);
+  PERFIS_ACESSO.splice(idx, 1);
+  _salvarPerfisLocal();
+  _perfilSelecionadoId = null;
+  renderPerfisLista();
+  // Reseta o editor
+  const col = document.getElementById('perfis-editor-content');
+  if (col) col.innerHTML = `<div class="perfil-empty-state" style="height:100%"><svg viewBox="0 0 24 24" fill="currentColor" style="width:48px;height:48px;opacity:.18"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg><span style="font-size:14px;font-weight:500">Selecione um perfil</span></div>`;
+  showToast('Perfil excluído.', 'success');
+}
+
+// ── Aplicar permissões ao fazer login ────────────────────────────────────
+function _aplicarPermissoesDePerfil(user) {
+  if (!user) return;
+  _carregarPerfisLocal();
+
+  // Descobre qual perfil usar
+  let perfil = null;
+  if (user.perfilId) {
+    perfil = PERFIS_ACESSO.find(p => p.id === user.perfilId);
+  }
+  // Fallback para perfis base conforme role
+  if (!perfil) {
+    const baseId = { admin:'__admin__', recepcao:'__recepcao__', prof:'__prof__' }[user.role];
+    if (baseId) perfil = PERFIS_ACESSO.find(p => p.id === baseId);
+  }
+  if (!perfil) return; // admin sem perfil: acesso total (já tratado em _finalizarLogin)
+
+  const modulosAtivos = new Set(perfil.modulos || []);
+
+  // Oculta itens de nav que não estão no perfil
+  MODULOS_SISTEMA.forEach(secao => {
+    // Verifica se todos os itens da seção estão desabilitados
+    const algumAtivo = secao.itens.some(item => modulosAtivos.has(item.id));
+    if (secao.navSection) {
+      const secEl = document.getElementById(secao.navSection);
+      if (secEl && !algumAtivo) { secEl.style.display = 'none'; }
+    }
+    secao.itens.forEach(item => {
+      if (!modulosAtivos.has(item.id)) {
+        // Esconde pelo navPage (busca nav-item com onclick contendo o page)
+        const navEls = document.querySelectorAll(`.nav-item[onclick*="'${item.navPage}'"]`);
+        navEls.forEach(el => { el.style.display = 'none'; el.setAttribute('data-perfil-hidden', '1'); });
+        if (item.navItem) {
+          const el2 = document.getElementById(item.navItem);
+          if (el2) { el2.style.display = 'none'; el2.setAttribute('data-perfil-hidden', '1'); }
+        }
+      }
+    });
+  });
+
+  // Salva permissões de módulo no currentUser para consultas posteriores
+  user.modulosPermitidos = Array.from(modulosAtivos);
+  user.subPerms = perfil.subPerms || {};
+  window.CURRENT_USER = user;
+}
+
+// Verifica se o usuário atual tem permissão de sub-ação
+function temPermissao(modulo, acao) {
+  const cu = window.CURRENT_USER;
+  if (!cu) return false;
+  if (cu.role === 'admin' && (!cu.perfilId || cu.perfilId === '__admin__')) return true;
+  if (!cu.modulosPermitidos || !cu.modulosPermitidos.includes(modulo)) return false;
+  if (!acao) return true;
+  const subs = (cu.subPerms || {})[modulo] || [];
+  return subs.includes(acao);
+}
+window.temPermissao = temPermissao;
+
+// ── Sync Supabase (opcional) ─────────────────────────────────────────────
+async function _sincronizarPerfisSupabase() {
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (!sb) return;
+  try {
+    await sb.from('perfis_acesso').upsert(
+      PERFIS_ACESSO.filter(p => !p.bloqueado).map(p => ({
+        id: p.id, nome: p.nome, desc: p.desc, cor: p.cor,
+        modulos: JSON.stringify(p.modulos || []),
+        sub_perms: JSON.stringify(p.subPerms || {}),
+      }))
+    );
+  } catch(e) { console.warn('[ClinicFlow Perfis] Supabase sync falhou:', e); }
+}
+
+async function _carregarPerfisSupabase(sb) {
+  try {
+    const { data, error } = await sb.from('perfis_acesso').select('*').limit(200);
+    if (error || !data) return;
+    data.forEach(row => {
+      const existing = PERFIS_ACESSO.find(p => p.id === row.id);
+      const obj = {
+        id: row.id, nome: row.nome, desc: row.desc || '', cor: row.cor || '#6366f1',
+        bloqueado: false,
+        modulos: typeof row.modulos === 'string' ? JSON.parse(row.modulos) : (row.modulos || []),
+        subPerms: typeof row.sub_perms === 'string' ? JSON.parse(row.sub_perms) : (row.sub_perms || {}),
+      };
+      if (existing) Object.assign(existing, obj);
+      else PERFIS_ACESSO.push(obj);
+    });
+    _salvarPerfisLocal();
+  } catch(e) { console.warn('[ClinicFlow Perfis] Falha ao carregar do Supabase:', e); }
+}
+window._carregarPerfisSupabase = _carregarPerfisSupabase;
+window._carregarPerfisLocal    = _carregarPerfisLocal;
+
+
+// ── Helper: popula o select de perfil personalizado no modal usuário ─────
+function _popularSelectPerfilCustom(perfilIdAtual) {
+  if (typeof _carregarPerfisLocal === 'function') _carregarPerfisLocal();
+  const sel = document.getElementById('usr-perfil-custom');
+  if (!sel) return;
+  const perfisCustom = (typeof PERFIS_ACESSO !== 'undefined' ? PERFIS_ACESSO : []).filter(p => !p.bloqueado);
+  sel.innerHTML = '<option value="">— Usar permissões padrão do tipo —</option>' +
+    perfisCustom.map(p =>
+      `<option value="${p.id}" ${perfilIdAtual === p.id ? 'selected' : ''}>${p.nome}</option>`
+    ).join('');
+}
+
+console.log('[ClinicFlow] Módulo Perfis de Acesso carregado ✓');
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  BLOQUEIO DE AGENDA
@@ -15546,6 +16110,7 @@ function emitirRelatorioFechamento() {
     showToast('Arquivo baixado — abra no navegador e use Ctrl+P para imprimir/salvar como PDF','success');
   }
 }
+</script>
 
 <!-- ═══════════════════ ESPAÇO CONECTA — MODAIS ═══════════════════ -->
 
