@@ -6378,10 +6378,7 @@ function buildApptCard(appt, cor) {
   }
 
   // ── CARD INDIVIDUAL (comportamento original) ─────────────────────────────
-  const hasGuia  = !!appt.guia;
-  const guiaIcon = hasGuia
-    ? '<span title="Guia SADT gerada" style="color:#34d399;font-size:10px;margin-left:4px">✓ Guia</span>'
-    : (plano !== 'Particular' ? '<span style="color:var(--warning);font-size:10px;margin-left:4px">⚠ s/ guia</span>' : '');
+  // hasGuia e guiaIcon já declarados acima (antes do bloco de grupo)
 
   let actionsHTML = '';
   if (appt.status === 'agendado') {
