@@ -1516,6 +1516,129 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
   border:2px solid #1e3a6e;display:inline-block;
   padding:1px 5px;margin-right:6px;letter-spacing:1px;
 }
+
+/* ═══════════════════════════════════════
+   AGENDAMENTO DE GRUPO
+═══════════════════════════════════════ */
+.grupo-toggle-row {
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  background:var(--bg-raised);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  cursor:pointer;
+  transition:all var(--transition);
+  margin-bottom:12px;
+  user-select:none;
+}
+.grupo-toggle-row:hover { border-color:var(--border-mid); background:var(--bg-overlay); }
+.grupo-toggle-row.active { border-color:rgba(167,139,250,0.5); background:rgba(167,139,250,0.08); }
+.grupo-toggle-icon {
+  width:32px;height:32px;border-radius:var(--radius-sm);
+  background:rgba(167,139,250,0.15);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.grupo-toggle-icon svg { width:16px;height:16px;color:#a78bfa; }
+.grupo-toggle-text { flex:1; }
+.grupo-toggle-label { font-size:13px;font-weight:500;color:var(--text-primary); }
+.grupo-toggle-sub { font-size:11px;color:var(--text-muted);margin-top:1px; }
+.grupo-toggle-switch {
+  width:34px;height:18px;border-radius:99px;
+  background:var(--bg-overlay);border:1px solid var(--border-mid);
+  position:relative;transition:all var(--transition);
+  flex-shrink:0;
+}
+.grupo-toggle-switch.on { background:rgba(167,139,250,0.6);border-color:#a78bfa; }
+.grupo-toggle-knob {
+  width:12px;height:12px;border-radius:50%;
+  background:#fff;position:absolute;
+  top:2px;left:2px;transition:all var(--transition);
+}
+.grupo-toggle-switch.on .grupo-toggle-knob { left:18px; }
+
+.grupo-pacientes-panel {
+  display:none;
+  border:1px solid rgba(167,139,250,0.3);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+  margin-bottom:12px;
+}
+.grupo-pacientes-panel.visible { display:block; }
+.grupo-panel-header {
+  padding:10px 14px;
+  background:rgba(167,139,250,0.08);
+  border-bottom:1px solid rgba(167,139,250,0.2);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.grupo-panel-title { font-size:12px;font-weight:600;color:#a78bfa;display:flex;align-items:center;gap:6px; }
+.grupo-pac-count { font-size:10px;padding:1px 7px;border-radius:99px;background:rgba(167,139,250,0.2);color:#a78bfa; }
+.grupo-add-row {
+  padding:10px 12px;
+  border-bottom:1px solid var(--border);
+  display:flex;gap:8px;align-items:center;
+}
+.grupo-pac-input {
+  flex:1;padding:7px 12px;
+  background:var(--bg-raised);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  color:var(--text-primary);font-size:13px;
+  outline:none;
+  transition:border-color var(--transition);
+}
+.grupo-pac-input:focus { border-color:rgba(167,139,250,0.6); }
+.btn-grupo-add {
+  padding:7px 12px;
+  background:rgba(167,139,250,0.2);
+  color:#a78bfa;
+  border:1px solid rgba(167,139,250,0.35);
+  border-radius:var(--radius-sm);
+  font-size:12px;font-weight:500;
+  display:flex;align-items:center;gap:5px;
+  transition:all var(--transition);
+  flex-shrink:0;
+}
+.btn-grupo-add:hover { background:rgba(167,139,250,0.3); }
+.grupo-pac-list { max-height:180px;overflow-y:auto; }
+.grupo-pac-item {
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;
+  border-bottom:1px solid var(--border);
+  transition:background var(--transition);
+}
+.grupo-pac-item:last-child { border-bottom:none; }
+.grupo-pac-item:hover { background:var(--bg-raised); }
+.grupo-pac-avatar {
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(167,139,250,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:#a78bfa;
+  flex-shrink:0;
+}
+.grupo-pac-nome { font-size:13px;font-weight:500;flex:1; }
+.grupo-pac-plano { font-size:11px;color:var(--text-muted); }
+.grupo-pac-remove {
+  width:22px;height:22px;border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-muted);
+  transition:all var(--transition);
+}
+.grupo-pac-remove:hover { background:rgba(248,113,113,0.15);color:var(--danger); }
+.grupo-empty {
+  padding:20px;text-align:center;
+  font-size:12px;color:var(--text-muted);
+}
+
+/* Appt card grupo */
+.appt-card.grupo-card { border-left-color:#a78bfa !important; }
+.grupo-badge {
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:9px;font-weight:600;padding:1px 5px;
+  background:rgba(167,139,250,0.2);color:#a78bfa;
+  border-radius:99px;margin-left:4px;
+  vertical-align:middle;
+}
 .sadt-header-top {
   display:flex;align-items:center;margin-bottom:3px;
 }
@@ -1644,10 +1767,97 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 /* Scroll fix — perfis editor content */
 #perfis-editor-content { display:flex; flex-direction:column; height:100%; min-height:0; }
 
-
+/* ── TOOLTIP GRUPO ─────────────────────────────── */
+#grupo-tooltip {
+  position:fixed;
+  z-index:9999;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(4px);
+  transition:opacity 0.15s ease, transform 0.15s ease;
+}
+#grupo-tooltip.visible {
+  opacity:1;
+  transform:translateY(0);
+}
+.grupo-tooltip-inner {
+  background:var(--bg-surface, #1e2433);
+  border:1px solid rgba(167,139,250,0.35);
+  border-radius:10px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45);
+  min-width:220px;
+  max-width:300px;
+  overflow:hidden;
+}
+.grupo-tooltip-header {
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px 8px;
+  border-bottom:1px solid rgba(167,139,250,0.18);
+  background:rgba(167,139,250,0.08);
+}
+.grupo-tooltip-icon {
+  width:26px;height:26px;border-radius:7px;
+  background:rgba(167,139,250,0.2);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.grupo-tooltip-title {
+  font-size:12px;font-weight:700;
+  color:#a78bfa;letter-spacing:.3px;
+}
+.grupo-tooltip-sub {
+  font-size:10px;color:var(--text-muted,#6b7280);margin-top:1px;
+}
+.grupo-tooltip-list {
+  padding:6px 0;
+}
+.grupo-tooltip-item {
+  display:flex;align-items:center;gap:9px;
+  padding:6px 12px;
+  transition:background .12s;
+}
+.grupo-tooltip-item:hover { background:rgba(255,255,255,0.04); }
+.grupo-tooltip-avatar {
+  width:26px;height:26px;border-radius:50%;
+  background:rgba(167,139,250,0.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#a78bfa;
+  flex-shrink:0;
+}
+.grupo-tooltip-nome {
+  font-size:12px;font-weight:500;
+  color:var(--text-primary,#f1f5f9);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.grupo-tooltip-plano {
+  font-size:10px;color:var(--text-muted,#6b7280);
+}
+.grupo-tooltip-footer {
+  padding:6px 12px 8px;
+  border-top:1px solid rgba(167,139,250,0.12);
+  font-size:10px;color:var(--text-muted,#6b7280);
+  text-align:center;
+}
 </style>
 </head>
 <body>
+
+<!-- Tooltip Sessão em Grupo -->
+<div id="grupo-tooltip">
+  <div class="grupo-tooltip-inner">
+    <div class="grupo-tooltip-header">
+      <div class="grupo-tooltip-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;color:#a78bfa"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.95v2h6v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
+      <div>
+        <div class="grupo-tooltip-title">Sessão em Grupo</div>
+        <div class="grupo-tooltip-sub" id="grupo-tooltip-sub"></div>
+      </div>
+    </div>
+    <div class="grupo-tooltip-list" id="grupo-tooltip-list"></div>
+    <div class="grupo-tooltip-footer">Clique para abrir o agendamento</div>
+  </div>
+</div>
 
 <!-- ═══════════════════ LOGIN ═══════════════════ -->
 <div id="login-screen">
@@ -1667,6 +1877,14 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
     <div class="form-group">
       <label class="form-label">Senha</label>
       <input class="form-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Perfil (demo)</label>
+      <select class="form-select" id="login-role">
+        <option value="admin">Administrador</option>
+        <option value="recepcao">Recepcionista</option>
+        <option value="prof">Profissional</option>
+      </select>
     </div>
     <div id="login-error" style="display:none;color:var(--danger);font-size:13px;margin-bottom:8px;padding:8px 12px;background:rgba(248,113,113,0.1);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.2)"></div>
     <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
@@ -3226,6 +3444,7 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
           <input class="form-input" type="month" id="loc-fech-mes" style="width:180px">
           <button class="btn-sm btn-accent" onclick="calcularFechamentoLocacao()">Calcular Fechamento</button>
           <button class="btn-sm btn-secondary" onclick="emitirRelatorioLocacao()" id="btn-emitir-loc" style="display:none">Emitir Relatório PDF</button>
+          <button class="btn-sm btn-secondary" onclick="confirmarFechamentoMes()" id="btn-confirmar-loc" style="display:none;color:var(--success);border-color:rgba(52,211,153,0.4)">&#10003; Salvar no Banco</button>
         </div>
       </div>
       <div id="loc-fech-kpis" style="display:none;margin-bottom:20px"></div>
@@ -3406,8 +3625,48 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
           </div>
         </div>
 
-        <!-- Paciente -->
-        <div class="form-row">
+        <!-- Toggle Agendamento de Grupo -->
+        <div class="grupo-toggle-row" id="grupo-toggle-row" onclick="toggleGrupoMode()">
+          <div class="grupo-toggle-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.95v2h6v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div class="grupo-toggle-text">
+            <div class="grupo-toggle-label">Agendamento de Grupo</div>
+            <div class="grupo-toggle-sub" id="grupo-toggle-sub">Clique para adicionar múltiplos pacientes neste horário</div>
+          </div>
+          <div class="grupo-toggle-switch" id="grupo-switch">
+            <div class="grupo-toggle-knob"></div>
+          </div>
+        </div>
+
+        <!-- Painel de pacientes do grupo -->
+        <div class="grupo-pacientes-panel" id="grupo-pacientes-panel">
+          <div class="grupo-panel-header">
+            <div class="grupo-panel-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.95v2h6v-2c0-2.66-5.33-4-8-4z"/></svg>
+              Pacientes do grupo
+              <span class="grupo-pac-count" id="grupo-count">0</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted)">Cada paciente terá um agendamento individual vinculado</div>
+          </div>
+          <div class="grupo-add-row">
+            <input class="grupo-pac-input" id="grupo-pac-input" list="grupo-pac-datalist"
+              placeholder="Buscar e adicionar paciente ao grupo..."
+              oninput="grupoFilterPacientes(this.value)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();grupoAdicionarPaciente();}">
+            <datalist id="grupo-pac-datalist"></datalist>
+            <button class="btn-grupo-add" onclick="grupoAdicionarPaciente()">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              Adicionar
+            </button>
+          </div>
+          <div class="grupo-pac-list" id="grupo-pac-list">
+            <div class="grupo-empty" id="grupo-empty">Nenhum paciente adicionado ao grupo ainda</div>
+          </div>
+        </div>
+
+        <!-- Paciente (individual — oculto no modo grupo) -->
+        <div class="form-row" id="ag-paciente-row">
           <div class="form-group">
             <label>Paciente</label>
             <input class="form-input" placeholder="Buscar paciente..." list="pacientes-list" id="ag-paciente" oninput="onPacienteChange(this.value)">
@@ -6044,6 +6303,7 @@ function renderDayView() {
       const appt      = appts.find(a => a.hora === h);
       const bloqueio  = getBloqueioDoSlot(p.id, currentISO, h);
       const dropAttrs = bloqueio
+      const appt = slotsMap[h];
         ? `data-prof-id="${p.id}" data-hora="${h}"`
         : `ondragover="agendaDayDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDayDrop(event,${p.id},'${h}')" data-prof-id="${p.id}" data-hora="${h}"`;
       const clickAttr = bloqueio
@@ -6074,6 +6334,55 @@ function buildApptCard(appt, cor) {
   const statusLabel  = (appt.status === 'atendido' || appt.status === 'desmarcado' || appt.status === 'chegou')
     ? '<span style="font-size:10px;font-weight:600;color:' + statusColors[appt.status] + ';margin-left:4px">[' + statusLabels[appt.status] + ']</span>'
     : '';
+
+  // ── CARD DE GRUPO ────────────────────────────────────────────────────────
+  if (appt.isGrupo && appt.groupId) {
+    const currentISO = appt.dataISO;
+    const membros = APPOINTMENTS.filter(a => a.groupId === appt.groupId && a.dataISO === currentISO);
+    const total   = membros.length;
+
+    let actionsGrupo = '';
+    if (appt.status === 'agendado') {
+      actionsGrupo = '<div class="appt-actions">' +
+        '<button class="appt-action-btn btn-confirmar" onclick="event.stopPropagation();grupoUpdateStatus(\'' + appt.groupId + '\',\'' + currentISO + '\',\'confirmado\')">Confirmar todos</button>' +
+        '<button class="appt-action-btn btn-desmarcar" onclick="event.stopPropagation();grupoUpdateStatus(\'' + appt.groupId + '\',\'' + currentISO + '\',\'desmarcado\')">Desmarcar</button>' +
+        '</div>';
+    } else if (appt.status === 'confirmado') {
+      actionsGrupo = '<div class="appt-actions">' +
+        '<button class="appt-action-btn btn-em-espera" onclick="event.stopPropagation();grupoUpdateStatus(\'' + appt.groupId + '\',\'' + currentISO + '\',\'chegou\')">Em Espera</button>' +
+        '<button class="appt-action-btn btn-atendido" onclick="event.stopPropagation();grupoUpdateStatus(\'' + appt.groupId + '\',\'' + currentISO + '\',\'atendido\')">Atendido</button>' +
+        '</div>';
+    } else if (appt.status === 'chegou') {
+      actionsGrupo = '<div class="appt-actions">' +
+        '<button class="appt-action-btn btn-atendido" onclick="event.stopPropagation();grupoUpdateStatus(\'' + appt.groupId + '\',\'' + currentISO + '\',\'atendido\')">Atendido</button>' +
+        '</div>';
+    }
+
+    return '<div class="appt-card ' + sc + ' grupo-card"' +
+      ' data-appt-id="' + appt.id + '"' +
+      ' data-group-id="' + appt.groupId + '"' +
+      ' style="height:' + h + 'px;top:2px;position:relative"' +
+      ' onclick="event.stopPropagation();openAppt(' + appt.id + ')"' +
+      ' onmouseenter="grupoTooltipShow(event,\'' + appt.groupId + '\',\'' + currentISO + '\')"' +
+      ' onmouseleave="grupoTooltipHide()">' +
+      '<div class="appt-patient" style="display:flex;align-items:center;gap:5px">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;flex-shrink:0;color:#a78bfa"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.95v2h6v-2c0-2.66-5.33-4-8-4z"/></svg>' +
+        '<strong>Sessão em Grupo</strong>' +
+        statusLabel +
+      '</div>' +
+      '<div class="appt-plan" style="display:flex;align-items:center;gap:4px">' +
+        '<span style="color:#a78bfa;font-weight:600">' + total + ' paciente' + (total !== 1 ? 's' : '') + '</span>' +
+        '<span style="color:var(--text-muted)">· ' + appt.hora + '</span>' +
+      '</div>' +
+      actionsGrupo +
+      '</div>';
+  }
+
+  // ── CARD INDIVIDUAL (comportamento original) ─────────────────────────────
+  const hasGuia  = !!appt.guia;
+  const guiaIcon = hasGuia
+    ? '<span title="Guia SADT gerada" style="color:#34d399;font-size:10px;margin-left:4px">✓ Guia</span>'
+    : (plano !== 'Particular' ? '<span style="color:var(--warning);font-size:10px;margin-left:4px">⚠ s/ guia</span>' : '');
 
   let actionsHTML = '';
   if (appt.status === 'agendado') {
@@ -9815,6 +10124,8 @@ function openNovoAgendamento(profId, hora, paciente) {
     agCalcFim();
   }
   if (paciente) onPacienteChange(paciente);
+  // Reset grupo state
+  if (typeof grupoResetState === 'function') grupoResetState();
   switchAgTab('dados', document.getElementById('tab-dados'));
   openModal('modal-agendamento');
 }
@@ -9827,6 +10138,12 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 //  SAVE
 // ═══════════════════════════════════════
 function salvarAgendamento() {
+  // Redireciona para salvamento em grupo se modo grupo estiver ativo e for novo agendamento
+  if (typeof _grupoMode !== 'undefined' && _grupoMode && !currentApptId) {
+    salvarAgendamentoGrupo();
+    return;
+  }
+  // Quando edita agendamento de grupo existente, usa o paciente do campo individual
   const pac = (document.getElementById('ag-paciente').value || '').trim();
   if (!pac) { showToast('Informe o nome do paciente','error'); return; }
 
@@ -9891,7 +10208,252 @@ function salvarAgendamento() {
   }
 
   closeModal('modal-agendamento');
+  grupoResetState();
   renderDayView();
+  try { updateNavBadges(); } catch(e) {}
+}
+
+// ═══════════════════════════════════════
+//  AGENDAMENTO DE GRUPO
+// ═══════════════════════════════════════
+let _grupoMode      = false;
+let _grupoPacientes = []; // [{nome, plano, planoId, carteirinha}]
+let _grupoId        = null;
+
+function toggleGrupoMode() {
+  _grupoMode = !_grupoMode;
+  const sw     = document.getElementById('grupo-switch');
+  const panel  = document.getElementById('grupo-pacientes-panel');
+  const row    = document.getElementById('grupo-toggle-row');
+  const pacRow = document.getElementById('ag-paciente-row');
+  const sub    = document.getElementById('grupo-toggle-sub');
+  if (_grupoMode) {
+    sw?.classList.add('on');
+    panel?.classList.add('visible');
+    row?.classList.add('active');
+    if (pacRow) pacRow.style.display = 'none';
+    if (sub) sub.textContent = 'Modo grupo ativado — adicione os pacientes abaixo';
+    grupoPopulateDatalist();
+  } else {
+    sw?.classList.remove('on');
+    panel?.classList.remove('visible');
+    row?.classList.remove('active');
+    if (pacRow) pacRow.style.display = '';
+    if (sub) sub.textContent = 'Clique para adicionar múltiplos pacientes neste horário';
+  }
+}
+
+function grupoResetState() {
+  _grupoMode      = false;
+  _grupoPacientes = [];
+  _grupoId        = null;
+  const sw     = document.getElementById('grupo-switch');
+  const panel  = document.getElementById('grupo-pacientes-panel');
+  const row    = document.getElementById('grupo-toggle-row');
+  const pacRow = document.getElementById('ag-paciente-row');
+  const sub    = document.getElementById('grupo-toggle-sub');
+  sw?.classList.remove('on');
+  panel?.classList.remove('visible');
+  row?.classList.remove('active');
+  if (pacRow) pacRow.style.display = '';
+  if (sub) sub.textContent = 'Clique para adicionar múltiplos pacientes neste horário';
+  const inp = document.getElementById('grupo-pac-input');
+  if (inp) inp.value = '';
+  grupoRenderLista();
+}
+
+function grupoPopulateDatalist() {
+  const dl = document.getElementById('grupo-pac-datalist');
+  if (!dl) return;
+  const jaAdicionados = new Set(_grupoPacientes.map(p => p.nome.toLowerCase()));
+  dl.innerHTML = PACIENTES
+    .filter(p => !jaAdicionados.has(p.nome.toLowerCase()))
+    .map(p => `<option value="${p.nome}">`)
+    .join('');
+}
+
+function grupoAdicionarPaciente() {
+  const inp  = document.getElementById('grupo-pac-input');
+  const nome = (inp?.value || '').trim();
+  if (!nome) { showToast('Informe o nome do paciente','error'); return; }
+  if (_grupoPacientes.some(p => p.nome.toLowerCase() === nome.toLowerCase())) {
+    showToast('Paciente já adicionado ao grupo','error');
+    if (inp) inp.value = '';
+    return;
+  }
+  const pac      = PACIENTES.find(p => p.nome.toLowerCase() === nome.toLowerCase());
+  const planoObj = pac ? PLANOS.find(pl => pl.id === pac.planoId) : null;
+  _grupoPacientes.push({
+    nome:        pac ? pac.nome : nome,
+    plano:       planoObj?.nome || 'Particular',
+    planoId:     pac?.planoId || 5,
+    carteirinha: pac?.carteirinha || '',
+  });
+  if (inp) inp.value = '';
+  grupoRenderLista();
+  grupoPopulateDatalist();
+}
+
+function grupoRemoverPaciente(idx) {
+  _grupoPacientes.splice(idx, 1);
+  grupoRenderLista();
+  grupoPopulateDatalist();
+}
+
+function grupoRenderLista() {
+  const list  = document.getElementById('grupo-pac-list');
+  const count = document.getElementById('grupo-count');
+  if (!list) return;
+  if (count) count.textContent = _grupoPacientes.length;
+  if (_grupoPacientes.length === 0) {
+    list.innerHTML = '<div class="grupo-empty">Nenhum paciente adicionado ao grupo ainda</div>';
+    return;
+  }
+  list.innerHTML = _grupoPacientes.map((p, i) => {
+    const initials = p.nome.split(' ').slice(0,2).map(w => w[0] || '').join('').toUpperCase();
+    return `<div class="grupo-pac-item">
+      <div class="grupo-pac-avatar">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div class="grupo-pac-nome">${p.nome}</div>
+        <div class="grupo-pac-plano">${p.plano}</div>
+      </div>
+      <button class="grupo-pac-remove" onclick="grupoRemoverPaciente(${i})" title="Remover">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function grupoGerarId() {
+  return 'grp_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+}
+
+// ── Tooltip hover do card de grupo ──────────────────────────────────────────
+let _tooltipTimer = null;
+
+function grupoTooltipShow(event, groupId, dataISO) {
+  clearTimeout(_tooltipTimer);
+  _tooltipTimer = setTimeout(() => {
+    const membros = APPOINTMENTS.filter(a => a.groupId === groupId && a.dataISO === dataISO);
+    if (!membros.length) return;
+
+    const sub  = document.getElementById('grupo-tooltip-sub');
+    const list = document.getElementById('grupo-tooltip-list');
+    const tip  = document.getElementById('grupo-tooltip');
+    if (!tip || !sub || !list) return;
+
+    sub.textContent = membros.length + ' paciente' + (membros.length !== 1 ? 's' : '') + ' · ' + membros[0].hora;
+
+    list.innerHTML = membros.map(m => {
+      const initials = m.paciente.split(' ').slice(0,2).map(w => w[0]||'').join('').toUpperCase();
+      const statusColors = { agendado:'#60a5fa', confirmado:'#a78bfa', atendido:'#34d399', desmarcado:'#f87171', chegou:'#facc15' };
+      const statusLabels = { agendado:'Agendado', confirmado:'Confirmado', atendido:'Atendido', desmarcado:'Desmarcado', chegou:'Em Espera' };
+      const dot = '<span style="width:6px;height:6px;border-radius:50%;background:' + (statusColors[m.status]||'#888') + ';display:inline-block;flex-shrink:0"></span>';
+      return '<div class="grupo-tooltip-item">' +
+        '<div class="grupo-tooltip-avatar">' + initials + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="grupo-tooltip-nome">' + m.paciente + '</div>' +
+          '<div class="grupo-tooltip-plano" style="display:flex;align-items:center;gap:4px">' + dot + m.plano + ' · ' + (statusLabels[m.status]||m.status) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    // Posiciona o tooltip perto do cursor
+    tip.style.display = 'block';
+    const tw = tip.offsetWidth  || 260;
+    const th = tip.offsetHeight || 200;
+    let x = event.clientX + 14;
+    let y = event.clientY + 10;
+    if (x + tw > window.innerWidth  - 10) x = event.clientX - tw - 10;
+    if (y + th > window.innerHeight - 10) y = event.clientY - th - 10;
+    tip.style.left = x + 'px';
+    tip.style.top  = y + 'px';
+
+    requestAnimationFrame(() => tip.classList.add('visible'));
+  }, 180);
+}
+
+function grupoTooltipHide() {
+  clearTimeout(_tooltipTimer);
+  const tip = document.getElementById('grupo-tooltip');
+  if (!tip) return;
+  tip.classList.remove('visible');
+  setTimeout(() => { tip.style.display = 'none'; }, 160);
+}
+
+// Move tooltip junto com o mouse enquanto hover
+document.addEventListener('mousemove', e => {
+  const tip = document.getElementById('grupo-tooltip');
+  if (!tip || !tip.classList.contains('visible')) return;
+  const tw = tip.offsetWidth  || 260;
+  const th = tip.offsetHeight || 200;
+  let x = e.clientX + 14;
+  let y = e.clientY + 10;
+  if (x + tw > window.innerWidth  - 10) x = e.clientX - tw - 10;
+  if (y + th > window.innerHeight - 10) y = e.clientY - th - 10;
+  tip.style.left = x + 'px';
+  tip.style.top  = y + 'px';
+});
+
+// Atualiza status de todos os membros do grupo de uma vez
+function grupoUpdateStatus(groupId, dataISO, novoStatus) {
+  const membros = APPOINTMENTS.filter(a => a.groupId === groupId && a.dataISO === dataISO);
+  membros.forEach(a => { a.status = novoStatus; });
+  renderDayView();
+  const labels = { confirmado:'Confirmados', atendido:'Atendidos', desmarcado:'Desmarcados', chegou:'Em espera' };
+  showToast(membros.length + ' pacientes ' + (labels[novoStatus] || novoStatus), 'success');
+}
+
+function salvarAgendamentoGrupo() {
+  if (_grupoPacientes.length < 2) {
+    showToast('Adicione ao menos 2 pacientes para um agendamento de grupo','error');
+    return;
+  }
+  const horaIni    = document.getElementById('ag-hora-ini').value;
+  const horaFim    = document.getElementById('ag-hora-fim').value;
+  const durMin     = calcDurMin(horaIni, horaFim);
+  const modalidade = document.querySelector('input[name="ag-modalidade"]:checked')?.value || 'presencial';
+  const meetLink   = document.getElementById('ag-meet-link')?.value || '';
+  const novoStatus = document.getElementById('ag-status').value;
+  const obs        = document.getElementById('ag-obs')?.value || '';
+  const profId     = parseInt(document.getElementById('ag-profissional').value);
+  const dataISO    = document.getElementById('ag-data')?.value || '';
+  const tipoAg     = document.getElementById('ag-tipo')?.value || 'sessao';
+  if (!profId) { showToast('Selecione o profissional','error'); return; }
+  if (!dataISO) { showToast('Informe a data','error'); return; }
+  const groupId = _grupoId || grupoGerarId();
+  _grupoId = groupId;
+  _grupoPacientes.forEach(p => {
+    const planoObj = PLANOS.find(pl => pl.id === p.planoId);
+    const nextId   = Math.max(0, ...APPOINTMENTS.map(a=>a.id)) + 1;
+    APPOINTMENTS.push({
+      id:          nextId,
+      profId,
+      paciente:    p.nome,
+      plano:       planoObj?.nome || p.plano || 'Particular',
+      planoId:     p.planoId,
+      hora:        horaIni,
+      horaFim,
+      durMin,
+      modalidade,
+      meetLink,
+      status:      novoStatus,
+      obs,
+      carteirinha: p.carteirinha || '',
+      guia:        null,
+      waSent:      false,
+      dataISO,
+      tipo:        tipoAg,
+      isGrupo:     true,
+      groupId,
+      grupoSize:   _grupoPacientes.length,
+    });
+  });
+  showToast(`Grupo agendado! ${_grupoPacientes.length} pacientes adicionados.`, 'success');
+  closeModal('modal-agendamento');
+  grupoResetState();
+  renderDayView();
+  try { updateNavBadges(); } catch(e) {}
 }
 
 function calcDurMin(ini, fim) {
@@ -13954,6 +14516,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Override salvarAgendamento ────────────────────────────────────────────
   window.salvarAgendamento = async function () {
+    // Redireciona para salvamento em grupo se modo grupo estiver ativo e for novo agendamento
+    if (typeof _grupoMode !== 'undefined' && _grupoMode && !currentApptId) {
+      salvarAgendamentoGrupo();
+      return;
+    }
     const pac = (document.getElementById('ag-paciente').value || '').trim();
     if (!pac) { showToast('Informe o nome do paciente', 'error'); return; }
     const horaIni = document.getElementById('ag-hora-ini').value;
@@ -14437,6 +15004,326 @@ document.addEventListener('DOMContentLoaded', function() {
   window._cfGetDb = getDb; // expõe getDb para impConfirmar e outros módulos
   window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
+
+
+  // ════════════════════════════════════════════════════════════════
+  //  ESPAÇO CONECTA — Integração Supabase
+  // ════════════════════════════════════════════════════════════════
+
+  // Mappers: JS ↔ DB
+  const cMap = {
+    salaToDb:  s => ({ nome: s.nome, descricao: s.descricao||null, capacidade: s.capacidade||2, cor: s.cor||'sala1', ativo: s.ativo!==false }),
+    dbToSala:  r => ({ id: r.id, nome: r.nome, descricao: r.descricao||'', capacidade: r.capacidade||2, cor: r.cor||'sala1', ativo: r.ativo!==false }),
+    locToDb:   l => ({ nome: l.nome, especialidade: l.esp||null, telefone: l.tel||null, email: l.email||null, cpf: l.cpf||null, conselho: l.conselho||null, valor_hora: l.valorHora||0, valor_meio: l.valorMeio||0, valor_dia: l.valorDia||0, sala_pref_id: l.salaPref||null, status: l.status||'ativo', obs: l.obs||null }),
+    dbToLoc:   r => ({ id: r.id, nome: r.nome, esp: r.especialidade||'', tel: r.telefone||'', email: r.email||'', cpf: r.cpf||'', conselho: r.conselho||'', valorHora: r.valor_hora||0, valorMeio: r.valor_meio||0, valorDia: r.valor_dia||0, salaPref: r.sala_pref_id||'', status: r.status||'ativo', obs: r.obs||'' }),
+    resToDb:   r => ({ sala_id: r.salaId, locatario_id: r.locId, data: r.data, hora_ini: r.horaIni, hora_fim: r.horaFim, dur_min: r.durMin||60, recorrencia: r.recorrencia||'unica', serie_id: r.serieId||null, status: r.status||'confirmado', obs: r.obs||null, valor_cobrado: r.valorCobrado||null }),
+    dbToRes:   r => ({ id: r.id, salaId: r.sala_id, locId: r.locatario_id, data: r.data, horaIni: r.hora_ini?.slice(0,5)||'', horaFim: r.hora_fim?.slice(0,5)||'', durMin: r.dur_min||60, recorrencia: r.recorrencia||'unica', serieId: r.serie_id||null, status: r.status||'confirmado', obs: r.obs||'', valorCobrado: r.valor_cobrado||null }),
+    fechToDb:  f => ({ competencia: f.competencia, locatario_id: f.locatarioId, total_reservas: f.totalReservas||0, total_horas: f.totalHoras||0, total_valor: f.totalValor||0, status: f.status||'emitido', emitido_em: f.emitidoEm||new Date().toISOString(), detalhes: f.detalhes||null }),
+  };
+
+  // ── Carregar dados do Conecta do Supabase ─────────────────────
+  async function loadConecta(sb) {
+    try {
+      const [salas, locs, reservas] = await Promise.all([
+        sb.from('salas_conecta').select('*').eq('ativo', true).order('nome'),
+        sb.from('locatarios').select('*').order('nome'),
+        sb.from('reservas_salas').select('*').order('data').limit(5000),
+      ]);
+      if (salas.data?.length) {
+        SALAS_CONECTA.length = 0;
+        salas.data.forEach(r => SALAS_CONECTA.push(cMap.dbToSala(r)));
+      }
+      if (locs.data?.length) {
+        LOCATARIOS.length = 0;
+        locs.data.forEach(r => LOCATARIOS.push(cMap.dbToLoc(r)));
+      }
+      if (reservas.data?.length) {
+        RESERVAS_SALAS.length = 0;
+        reservas.data.forEach(r => RESERVAS_SALAS.push(cMap.dbToRes(r)));
+      }
+      // Atualiza selects de salas
+      try {
+        const sel = document.getElementById('cs-sala-filtro');
+        if (sel) {
+          sel.innerHTML = '<option value="">Todas as salas</option>' +
+            SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+        }
+        if (typeof conectaRenderAgenda    === 'function') conectaRenderAgenda();
+        if (typeof conectaRenderLocatarios === 'function') conectaRenderLocatarios();
+      } catch(_e) {}
+      console.log(`[Conecta] ${SALAS_CONECTA.length} salas, ${LOCATARIOS.length} locatários, ${RESERVAS_SALAS.length} reservas carregados ✓`);
+    } catch(e) {
+      console.error('[Conecta] Erro ao carregar:', e.message);
+    }
+  }
+
+  // Garante que o loadConecta é chamado após o loadFromSupabase principal
+  const _origLoad = window.loadFromSupabase;
+  window.loadFromSupabase = async function () {
+    await _origLoad();
+    const sb = getDb();
+    if (sb) await loadConecta(sb);
+  };
+
+  // ── Override salvarSala ───────────────────────────────────────
+  window.salvarSala = async function () {
+    const nome = document.getElementById('sala-nome')?.value?.trim();
+    if (!nome) { showToast('Nome da sala é obrigatório', 'error'); return; }
+    const cap    = parseInt(document.getElementById('sala-cap')?.value) || 2;
+    const desc   = document.getElementById('sala-desc')?.value || '';
+    const cor    = document.querySelector('input[name="sala-cor"]:checked')?.value || 'sala1';
+    const editId = document.getElementById('sala-edit-id')?.value;
+    const dados  = { nome, descricao: desc, capacidade: cap, cor, ativo: true };
+    const sb = getDb();
+
+    if (editId) {
+      const numId = isNaN(editId) ? editId : Number(editId);
+      if (sb) {
+        const { error } = await sb.from('salas_conecta').update(cMap.salaToDb(dados)).eq('id', numId);
+        if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
+      }
+      const idx = SALAS_CONECTA.findIndex(s => String(s.id) === String(editId));
+      if (idx >= 0) SALAS_CONECTA[idx] = { ...SALAS_CONECTA[idx], ...dados };
+    } else {
+      if (sb) {
+        const { data, error } = await sb.from('salas_conecta').insert([cMap.salaToDb(dados)]).select().single();
+        if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
+        dados.id = data.id;
+      } else { dados.id = 's' + Date.now(); }
+      SALAS_CONECTA.push(dados);
+    }
+
+    const sel = document.getElementById('cs-sala-filtro');
+    if (sel) {
+      sel.innerHTML = '<option value="">Todas as salas</option>' +
+        SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+    }
+    if (typeof renderSalasModal === 'function') renderSalasModal();
+    if (typeof limparFormSala   === 'function') limparFormSala();
+    if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
+    showToast('Sala salva!', 'success');
+  };
+
+  // ── Override excluirSala ──────────────────────────────────────
+  window.excluirSala = async function (salaId) {
+    const sala = SALAS_CONECTA.find(s => String(s.id) === String(salaId));
+    if (!sala) return;
+    const temReservas = RESERVAS_SALAS.some(r => String(r.salaId) === String(salaId) && r.status !== 'cancelado');
+    if (temReservas) { showToast('Não é possível excluir sala com reservas ativas', 'error'); return; }
+    if (!confirm(`Excluir a sala "${sala.nome}"?`)) return;
+    const sb = getDb();
+    if (sb) {
+      // Soft-delete: marca como inativo
+      const { error } = await sb.from('salas_conecta').update({ ativo: false }).eq('id', salaId);
+      if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+    }
+    SALAS_CONECTA = SALAS_CONECTA.filter(s => String(s.id) !== String(salaId));
+    if (typeof renderSalasModal    === 'function') renderSalasModal();
+    if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
+    showToast('Sala removida', 'success');
+  };
+
+  // ── Override salvarLocatario ──────────────────────────────────
+  window.salvarLocatario = async function () {
+    const nome = document.getElementById('loc-nome')?.value?.trim();
+    if (!nome) { showToast('Nome é obrigatório', 'error'); return; }
+    const editId = document.getElementById('loc-edit-id')?.value;
+    const dados = {
+      nome,
+      esp:       document.getElementById('loc-esp')?.value || '',
+      tel:       document.getElementById('loc-tel')?.value || '',
+      email:     document.getElementById('loc-email')?.value || '',
+      cpf:       document.getElementById('loc-cpf')?.value || '',
+      conselho:  document.getElementById('loc-conselho')?.value || '',
+      obs:       document.getElementById('loc-obs')?.value || '',
+      valorHora: parseFloat(document.getElementById('loc-valor-hora')?.value) || 0,
+      valorMeio: parseFloat(document.getElementById('loc-valor-meio')?.value) || 0,
+      valorDia:  parseFloat(document.getElementById('loc-valor-dia')?.value) || 0,
+      salaPref:  document.getElementById('loc-sala-pref')?.value || null,
+      status:    document.getElementById('loc-status')?.value || 'ativo',
+    };
+    const sb = getDb();
+    if (editId) {
+      const numId = isNaN(editId) ? editId : Number(editId);
+      if (sb) {
+        const { error } = await sb.from('locatarios').update(cMap.locToDb(dados)).eq('id', numId);
+        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+      }
+      const idx = LOCATARIOS.findIndex(l => String(l.id) === String(editId));
+      if (idx >= 0) LOCATARIOS[idx] = { ...LOCATARIOS[idx], ...dados };
+      showToast('Locatário atualizado!', 'success');
+    } else {
+      if (sb) {
+        const { data, error } = await sb.from('locatarios').insert([cMap.locToDb(dados)]).select().single();
+        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+        dados.id = data.id;
+      } else { dados.id = 'l' + Date.now(); }
+      LOCATARIOS.push(dados);
+      showToast('Locatário cadastrado!', 'success');
+    }
+    closeModal('modal-novo-locatario');
+    if (typeof conectaRenderLocatarios === 'function') conectaRenderLocatarios();
+  };
+
+  // ── Override salvarReserva ────────────────────────────────────
+  window.salvarReserva = async function () {
+    const salaId  = document.getElementById('res-sala')?.value;
+    const locId   = document.getElementById('res-prof')?.value;
+    const data    = document.getElementById('res-data')?.value;
+    const horaIni = document.getElementById('res-hora-ini')?.value;
+    const horaFim = document.getElementById('res-hora-fim')?.value;
+    const dur     = parseInt(document.getElementById('res-duracao')?.value || '60');
+    const recorr  = document.getElementById('res-recorrencia')?.value || 'unica';
+    const recorrAte = document.getElementById('res-recorr-ate')?.value || '';
+    const obs     = document.getElementById('res-obs')?.value || '';
+
+    if (!salaId || !locId || !data || !horaIni) {
+      showToast('Preencha todos os campos obrigatórios', 'error'); return;
+    }
+
+    const loc = LOCATARIOS.find(l => String(l.id) === String(locId));
+    const valorCobrado = typeof conectaCalcValor === 'function' ? conectaCalcValor(loc, dur) : 0;
+
+    // Gerar datas recorrentes
+    const datas = [data];
+    const serieId = (recorr !== 'unica' && recorrAte && recorrAte > data)
+      ? crypto.randomUUID()
+      : null;
+
+    if (serieId) {
+      const intervalo = recorr === 'semanal' ? 7 : 14;
+      let d = new Date(data + 'T12:00:00');
+      const ate = new Date(recorrAte + 'T12:00:00');
+      while (true) {
+        d.setDate(d.getDate() + intervalo);
+        if (d > ate) break;
+        datas.push(d.toISOString().slice(0, 10));
+      }
+    }
+
+    const sb = getDb();
+    let adicionadas = 0, conflitos = 0;
+
+    for (const dt of datas) {
+      // Verificar conflito em memória
+      const conflito = RESERVAS_SALAS.some(r =>
+        String(r.salaId) === String(salaId) && r.data === dt &&
+        r.status !== 'cancelado' &&
+        !(horaFim <= r.horaIni || horaIni >= r.horaFim)
+      );
+      if (conflito) { conflitos++; continue; }
+
+      const novaRes = {
+        salaId, locId, data: dt, horaIni, horaFim, durMin: dur,
+        recorrencia: recorr, serieId, status: 'confirmado', obs, valorCobrado
+      };
+
+      if (sb) {
+        const { data: dbRow, error } = await sb.from('reservas_salas')
+          .insert([cMap.resToDb(novaRes)]).select().single();
+        if (error) { conflitos++; console.error('[Reserva INSERT]', error.message); continue; }
+        novaRes.id = dbRow.id;
+      } else {
+        novaRes.id = 'r' + Date.now() + '_' + adicionadas;
+      }
+      RESERVAS_SALAS.push(novaRes);
+      adicionadas++;
+    }
+
+    closeModal('modal-nova-reserva');
+    if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
+
+    if (adicionadas > 0 && conflitos === 0) {
+      showToast(`${adicionadas} reserva${adicionadas > 1 ? 's' : ''} confirmada${adicionadas > 1 ? 's' : ''}!`, 'success');
+    } else if (adicionadas > 0) {
+      showToast(`${adicionadas} confirmada${adicionadas>1?'s':''}. ${conflitos} conflito${conflitos>1?'s':''} ignorado${conflitos>1?'s':''}.`, 'success');
+    } else {
+      showToast('Conflito de horário — nenhuma reserva criada', 'error');
+    }
+  };
+
+  // ── Override cancelarReserva ──────────────────────────────────
+  window.cancelarReserva = async function (escopo) {
+    const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
+    if (!res) { closeModal('modal-cancelar-lote'); return; }
+    const sb = getDb();
+
+    const marcarCancelado = async (r) => {
+      r.status = 'cancelado';
+      if (sb) await sb.from('reservas_salas').update({ status: 'cancelado' }).eq('id', r.id);
+    };
+
+    if (escopo === 'unica') {
+      await marcarCancelado(res);
+      showToast('Reserva cancelada', 'success');
+    } else if (escopo === 'futuras') {
+      const alvo = RESERVAS_SALAS.filter(r =>
+        r.serieId && r.serieId === res.serieId && r.data >= res.data && r.status !== 'cancelado'
+      );
+      for (const r of alvo) await marcarCancelado(r);
+      showToast(`${alvo.length} reserva(s) da série canceladas`, 'success');
+    } else {
+      const alvo = RESERVAS_SALAS.filter(r => r.serieId && r.serieId === res.serieId);
+      for (const r of alvo) await marcarCancelado(r);
+      showToast('Toda a série cancelada', 'success');
+    }
+
+    closeModal('modal-cancelar-lote');
+    if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
+  };
+
+  window.cancelarReservaAtual = function () {
+    if (!RESERVA_ATUAL_ID) return;
+    const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
+    if (!res) return;
+    if (res.serieId) {
+      closeModal('modal-reserva-detalhe');
+      openModal('modal-cancelar-lote');
+    } else {
+      if (!confirm('Deseja cancelar esta reserva?')) return;
+      window.cancelarReserva('unica');
+      closeModal('modal-reserva-detalhe');
+    }
+  };
+
+  // ── Override calcularFechamentoLocacao + salvar no DB ─────────
+  const _origCalcFech = window.calcularFechamentoLocacao;
+  window.calcularFechamentoLocacao = function () {
+    if (typeof _origCalcFech === 'function') _origCalcFech();
+  };
+
+  window.confirmarFechamento = async function (competencia) {
+    const sb = getDb();
+    if (!sb) { showToast('Supabase não conectado — fechamento salvo apenas localmente', 'success'); return; }
+    const [ano, mes] = competencia.split('-').map(Number);
+    const ISO_PRIM = `${ano}-${String(mes).padStart(2,'0')}-01`;
+    const ISO_ULT  = new Date(ano, mes, 0).toISOString().slice(0,10);
+    const reservasMes = RESERVAS_SALAS.filter(r =>
+      r.status !== 'cancelado' && r.data >= ISO_PRIM && r.data <= ISO_ULT
+    );
+    const locComRes = LOCATARIOS.filter(l => reservasMes.some(r => String(r.locId) === String(l.id)));
+
+    for (const loc of locComRes) {
+      const resLoc = reservasMes.filter(r => String(r.locId) === String(loc.id));
+      const totalHoras  = resLoc.reduce((a, r) => a + r.durMin / 60, 0);
+      const totalValor  = resLoc.reduce((a, r) => a + (typeof conectaCalcValor === 'function' ? conectaCalcValor(loc, r.durMin) : 0), 0);
+      const detalhes = resLoc.map(r => ({
+        id: r.id, data: r.data, horaIni: r.horaIni, horaFim: r.horaFim,
+        durMin: r.durMin, salaId: r.salaId, obs: r.obs
+      }));
+      const payload = cMap.fechToDb({
+        competencia, locatarioId: loc.id,
+        totalReservas: resLoc.length, totalHoras, totalValor,
+        status: 'emitido', emitidoEm: new Date().toISOString(), detalhes
+      });
+      const { error } = await sb.from('fechamentos_locacao')
+        .upsert(payload, { onConflict: 'competencia,locatario_id' });
+      if (error) console.error('[Fechamento UPSERT]', error.message);
+    }
+    showToast('Fechamento registrado no banco de dados!', 'success');
+  };
+
+  console.log('[ClinicFlow Supabase] Módulo Espaço Conecta integrado ✓');
 })();
 </script>
 
@@ -17197,7 +18084,20 @@ function calcularFechamentoLocacao() {
 
   const btnEmitir = document.getElementById('btn-emitir-loc');
   if (btnEmitir) btnEmitir.style.display = '';
+  const btnConfirmar = document.getElementById('btn-confirmar-loc');
+  if (btnConfirmar) btnConfirmar.style.display = '';
   if (typeof showToast === 'function') showToast('Fechamento de locação calculado!', 'success');
+}
+
+function confirmarFechamentoMes() {
+  const mesVal = document.getElementById('loc-fech-mes')?.value;
+  if (!mesVal) { showToast('Calcule o fechamento primeiro', 'error'); return; }
+  if (!confirm(`Deseja registrar o fechamento de ${mesVal} no banco de dados? Esta ação pode ser refeita calculando novamente.`)) return;
+  if (typeof window.confirmarFechamento === 'function') {
+    window.confirmarFechamento(mesVal);
+  } else {
+    showToast('Supabase não conectado — fechamento apenas local', 'success');
+  }
 }
 
 // ── Relatório PDF Locação ────────────────────────────────────────
