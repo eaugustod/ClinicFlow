@@ -6303,7 +6303,6 @@ function renderDayView() {
       const appt      = appts.find(a => a.hora === h);
       const bloqueio  = getBloqueioDoSlot(p.id, currentISO, h);
       const dropAttrs = bloqueio
-      const appt = slotsMap[h];
         ? `data-prof-id="${p.id}" data-hora="${h}"`
         : `ondragover="agendaDayDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDayDrop(event,${p.id},'${h}')" data-prof-id="${p.id}" data-hora="${h}"`;
       const clickAttr = bloqueio
