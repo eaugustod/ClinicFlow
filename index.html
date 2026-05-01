@@ -5626,7 +5626,7 @@ function doLogout() {
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', perfis:'Perfis de Acesso', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
+const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', perfis:'Perfis de Acesso', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', fechamento:'Fechamento Mensal', usuarios:'Usuários & Acesso', perfis:'Perfis de Acesso', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
 function gotoPage(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5638,6 +5638,7 @@ function gotoPage(page, el) {
   if (page === 'config')    try { initConfigPage(); } catch(e) {}
   if (page === 'conecta-fechamento') try { renderHistoricoFechamentos(); } catch(e) {}
   if (page === 'perfis')    try { renderPerfisLista(); } catch(e) { console.warn(e); }
+  if (page === 'usuarios')  try { renderUsuarios(); } catch(e) { console.warn(e); }
   if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
   if (page === 'senhas')    try { renderSenhas(); } catch(e) {}
   if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
@@ -16260,17 +16261,28 @@ const _origGotoPage = window.gotoPage;
 window.gotoPage = function(page, el) {
   _origGotoPage && _origGotoPage(page, el);
   if (page === 'usuarios') {
-    renderUsuarios();
-    // Tenta recarregar do Supabase em segundo plano
+    try { renderUsuarios(); } catch(e) { console.warn('[gotoPage usuarios]', e); }
     try { if (typeof carregarUsuariosSupabase === 'function') carregarUsuariosSupabase(); } catch(_e) {}
   }
+  if (page === 'perfis') {
+    try { renderPerfisLista(); } catch(e) { console.warn('[gotoPage perfis]', e); }
+  }
   if (page === 'fechamento') {
-    // Inicializa mês atual se não preenchido
     const mesInput = document.getElementById('fech-mes');
     if (mesInput && !mesInput.value) {
       const now = new Date();
       mesInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2,'0');
     }
+    try { if (typeof renderFechamento === 'function') renderFechamento(); } catch(_e) {}
+  }
+  if (page === 'conecta-agenda') {
+    try { conectaRenderAgenda(); } catch(e) { console.warn('[gotoPage conecta-agenda]', e); }
+  }
+  if (page === 'conecta-profissionais') {
+    try { conectaRenderLocatarios(); } catch(e) { console.warn('[gotoPage conecta-profissionais]', e); }
+  }
+  if (page === 'conecta-fechamento') {
+    try { renderHistoricoFechamentos(); } catch(e) { console.warn('[gotoPage conecta-fechamento]', e); }
   }
 };
 
@@ -16411,10 +16423,16 @@ function _garantirPerfisBase() {
     },
   ];
   BASE.forEach(base => {
-    if (!PERFIS_ACESSO.find(p => p.id === base.id)) {
+    const idx = PERFIS_ACESSO.findIndex(p => p.id === base.id);
+    if (idx === -1) {
       PERFIS_ACESSO.unshift(base);
+    } else {
+      // Sempre atualiza perfis base para garantir que novos módulos sejam incluídos
+      PERFIS_ACESSO[idx] = { ...PERFIS_ACESSO[idx], ...base };
     }
   });
+  // Persiste atualização
+  try { localStorage.setItem('cf_perfis_acesso', JSON.stringify(PERFIS_ACESSO)); } catch(e) {}
 }
 
 // ── Render da lista de perfis ─────────────────────────────────────────────
@@ -16638,6 +16656,14 @@ function _aplicarPermissoesDePerfil(user) {
   if (!user) return;
   _carregarPerfisLocal();
 
+  // Admin sem perfil customizado: acesso total, não aplica restrições
+  if (user.role === 'admin' && (!user.perfilId || user.perfilId === '__admin__')) {
+    user.modulosPermitidos = MODULOS_SISTEMA.flatMap(s => s.itens.map(i => i.id));
+    user.subPerms = Object.fromEntries(Object.entries(SUB_PERMS).map(([k,v]) => [k, v.map(p => p.id)]));
+    window.CURRENT_USER = user;
+    return;
+  }
+
   // Descobre qual perfil usar
   let perfil = null;
   if (user.perfilId) {
@@ -16648,7 +16674,7 @@ function _aplicarPermissoesDePerfil(user) {
     const baseId = { admin:'__admin__', recepcao:'__recepcao__', prof:'__prof__' }[user.role];
     if (baseId) perfil = PERFIS_ACESSO.find(p => p.id === baseId);
   }
-  if (!perfil) return; // admin sem perfil: acesso total (já tratado em _finalizarLogin)
+  if (!perfil) return; // sem perfil definido: não restringe
 
   const modulosAtivos = new Set(perfil.modulos || []);
 
