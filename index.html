@@ -11455,14 +11455,21 @@ async function salvarCanalNotif() {
     return;
   }
   try {
-    if (typeof salvarConfigNoDB === 'function') {
-      await salvarConfigNoDB();
-      showToast('Canal "' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + '" salvo no banco de dados ✓', 'success');
+    const fn = window.salvarConfigNoDB || (typeof salvarConfigNoDB === 'function' ? salvarConfigNoDB : null);
+    if (fn) {
+      await fn();
     } else {
-      const { error } = await sb.from('clinica').update({ canal_notif: canal }).eq('id', 1);
-      if (error) throw error;
-      showToast('Canal "' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + '" salvo no banco de dados ✓', 'success');
+      // Fallback direto na tabela correta
+      const { data } = await sb.from('config_clinica').select('id').limit(1);
+      if (data && data.length > 0) {
+        const { error } = await sb.from('config_clinica').update({ dados: CLINICA }).eq('id', data[0].id);
+        if (error) throw error;
+      } else {
+        const { error } = await sb.from('config_clinica').insert([{ dados: CLINICA }]);
+        if (error) throw error;
+      }
     }
+    showToast('Canal "' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + '" salvo no banco de dados ✓', 'success');
   } catch(e) {
     showToast('Erro ao salvar no banco: ' + (e.message || e), 'error');
     console.error('[salvarCanalNotif]', e);
@@ -15316,7 +15323,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   window.loadFromSupabase = loadFromSupabase;
-  window._cf = getDb; // expõe getDb para impConfirmar e outros módulos
+  window._cf = getDb;
+  window.salvarConfigNoDB = salvarConfigNoDB;
   window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 
