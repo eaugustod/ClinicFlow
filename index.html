@@ -18707,11 +18707,11 @@ function _buildChatPanelHTML(snap) {
     + '<title>Chat com Pacientes \u2014 ' + clinNome + '<\/title>\n'
     + '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">\n'
     // Supabase SDK + config — escapados corretamente
-    + '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><' + '\/script>\n'
-    + '<'+'script>\\n'
+    + '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>\n'
+    + '<script>\n'
     + 'var SB_URL=typeof window.__SB_URL__!=="undefined"?window.__SB_URL__:"https://ezkfnbrlqnruymhhfeei.supabase.co";\n'
     + 'var SB_KEY=typeof window.__SB_KEY__!=="undefined"?window.__SB_KEY__:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6a2ZuYnJscW5ydXltaGhmZWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg1MzAsImV4cCI6MjA5MDgwNDUzMH0.llrWSk5Kz-UvTPWY5fpeO7QD-aFaobcvAP9FxH8PhB4";\n'
-    + '<' + '\/script>\n'
+    + '<\/script>\n'
     + '<style>\n' + css + '\n<\/style>\n<\/head>\n<body>\n'
     // BODY
     + '<div class="wrap">\n'
@@ -18751,7 +18751,7 @@ function _buildChatPanelHTML(snap) {
     + '  <\/div>\n'
     + '<\/div>\n'
     + '<div class="toast" id="toast"><\/div>\n'
-    + '<'+'script>\\n' + js + '\n<' + '\/script>\n'
+    + '<script>\n' + js + '\n<\/script>\n'
     + '<\/body>\n<\/html>';
 
   return html;
