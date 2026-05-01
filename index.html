@@ -3037,6 +3037,35 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           </div>
         </div>
 
+        <!-- Canal de Notificações -->
+        <div class="table-card" style="padding:24px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+            <svg viewBox="0 0 24 24" fill="var(--accent)" style="width:18px;height:18px"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+            <div>
+              <div style="font-size:14px;font-weight:600">Canal de notificações ao paciente</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Escolha como o sistema enviará confirmações e lembretes automaticamente ao agendar</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+            <div id="cfg-canal-whatsapp" onclick="setCanalNotif('whatsapp')" style="padding:14px;border-radius:var(--radius-md);border:2px solid var(--accent);background:var(--accent-soft);cursor:pointer;transition:all var(--transition)">
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:7px">
+                <svg viewBox="0 0 24 24" fill="#25d366" style="width:16px;height:16px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.562-1.368C8.2 23.504 10.06 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.88 0-3.63-.49-5.15-1.345L2.5 21.5l.87-4.23A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                WhatsApp
+              </div>
+              <div style="font-size:11px;color:var(--text-secondary)">Envia via WhatsApp (link wa.me ou Evolution API). Requer telefone cadastrado no paciente.</div>
+              <div style="margin-top:8px"><span id="cfg-canal-wa-badge" class="chip green" style="font-size:10px">Ativo</span></div>
+            </div>
+            <div id="cfg-canal-chat" onclick="setCanalNotif('chat')" style="padding:14px;border-radius:var(--radius-md);border:1px solid var(--border);cursor:pointer;transition:all var(--transition)">
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:7px">
+                <svg viewBox="0 0 24 24" fill="var(--accent)" style="width:16px;height:16px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                Chat com Paciente
+              </div>
+              <div style="font-size:11px;color:var(--text-secondary)">Envia mensagem automática pelo chat interno do sistema. Requer Supabase conectado.</div>
+              <div style="margin-top:8px"><span id="cfg-canal-chat-badge" class="chip gray" style="font-size:10px">Requer Supabase</span></div>
+            </div>
+          </div>
+        </div>
+
         <!-- WhatsApp -->
         <div class="table-card" style="padding:24px;margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -11025,13 +11054,72 @@ async function gerarMeetLink() {
 
 // ── Config state ─────────────────────────────────────────────────────────────
 let WA_CONFIG = {
-  method:      'link',    // 'link' | 'api'
+  method:      'link',        // 'link' | 'api'
+  canal:       'whatsapp',    // 'whatsapp' | 'chat'
   evoUrl:      '',
   evoKey:      '',
   evoInstance: 'clinica',
   evoPhone:    '',
   connected:   false,
 };
+
+// ── Notificação automática ao agendar ─────────────────────────────────────────
+async function enviarNotifAgendamento(dados) {
+  const tpl = WA_TEMPLATES.find(t => t.padrao) || WA_TEMPLATES[0];
+  const prof = PROFISSIONAIS.find(p => p.id === dados.profId);
+  const pac  = PACIENTES.find(p => p.nome === dados.paciente);
+  const dateObj = dados.dataISO ? new Date(dados.dataISO + 'T12:00') : new Date();
+  const dateStr = dateObj.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const msg = tpl.texto
+    .replace(/\{nome\}/g,      dados.paciente)
+    .replace(/\{data\}/g,      dateStr)
+    .replace(/\{hora\}/g,      dados.hora || '')
+    .replace(/\{terapeuta\}/g, prof?.nome || '')
+    .replace(/\{clinica\}/g,   CLINICA?.nome || 'Clínica');
+
+  if (WA_CONFIG.canal === 'chat') {
+    // Enviar pelo chat interno via Supabase
+    const sb = getDb();
+    if (!sb) { showToast('Supabase não conectado para enviar notificação', 'error'); return; }
+    try {
+      let pacId = null;
+      const { data: pacData } = await sb.from('pacientes').select('id').eq('nome', dados.paciente).single();
+      if (pacData) { pacId = pacData.id; }
+      else {
+        const { data: newPac } = await sb.from('pacientes').insert({ nome: dados.paciente }).select('id').single();
+        pacId = newPac?.id || null;
+      }
+      if (!pacId) { showToast('Paciente não encontrado para notificação', 'error'); return; }
+      let conversaId = null;
+      const { data: convData } = await sb.from('conversas').select('id').eq('paciente_id', pacId).eq('status', 'ativa').single();
+      if (convData) { conversaId = convData.id; }
+      else {
+        const { data: newConv } = await sb.from('conversas').insert({ paciente_id: pacId, status: 'ativa' }).select('id').single();
+        conversaId = newConv?.id || null;
+      }
+      if (!conversaId) { showToast('Erro ao criar conversa para notificação', 'error'); return; }
+      await sb.from('mensagens').insert({ conversa_id: conversaId, tipo_remetente: 'sistema', conteudo: '\uD83D\uDCC5 ' + msg, lida: false });
+      await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', conversaId);
+      showToast('Notificação enviada pelo Chat com Paciente ✓', 'success');
+    } catch(e) {
+      showToast('Erro ao enviar via chat: ' + e.message, 'error');
+    }
+  } else {
+    const tel = (pac?.tel || '').replace(/\D/g, '');
+    if (!tel) { showToast('Paciente sem telefone — notificação WhatsApp não enviada', 'error'); return; }
+    const telFull = tel.startsWith('55') ? tel : '55' + tel;
+    waCurrentApptId = dados.id;
+    if (WA_CONFIG.method === 'api' && WA_CONFIG.connected) {
+      waEnviarPelaAPI(telFull, msg);
+      showToast('Confirmação enviada via WhatsApp ✓', 'success');
+    } else {
+      window.open('https://wa.me/' + telFull + '?text=' + encodeURIComponent(msg), '_blank');
+      registrarEnvio(telFull, msg, 'link');
+    }
+    const appt = APPOINTMENTS.find(a => a.id === dados.id);
+    if (appt) appt.waSent = true;
+  }
+}
 
 let WA_TEMPLATES = [
   {
@@ -11252,6 +11340,28 @@ function renderWaLog() {
 }
 
 // ── Config functions ──────────────────────────────────────────────────────────
+function setCanalNotif(canal) {
+  WA_CONFIG.canal = canal;
+  localStorage.setItem('cf_notif_canal', canal);
+  const waCard   = document.getElementById('cfg-canal-whatsapp');
+  const chatCard = document.getElementById('cfg-canal-chat');
+  const waBadge  = document.getElementById('cfg-canal-wa-badge');
+  const chatBadge= document.getElementById('cfg-canal-chat-badge');
+  if (canal === 'chat') {
+    if (chatCard) { chatCard.style.border = '2px solid var(--accent)'; chatCard.style.background = 'var(--accent-soft)'; }
+    if (waCard)   { waCard.style.border = '1px solid var(--border)'; waCard.style.background = ''; }
+    if (chatBadge){ chatBadge.className = 'chip green'; chatBadge.textContent = 'Ativo'; }
+    if (waBadge)  { waBadge.className = 'chip gray'; waBadge.textContent = 'Inativo'; }
+    showToast('Canal alterado para Chat com Paciente ✓', 'success');
+  } else {
+    if (waCard)   { waCard.style.border = '2px solid var(--accent)'; waCard.style.background = 'var(--accent-soft)'; }
+    if (chatCard) { chatCard.style.border = '1px solid var(--border)'; chatCard.style.background = ''; }
+    if (waBadge)  { waBadge.className = 'chip green'; waBadge.textContent = 'Ativo'; }
+    if (chatBadge){ chatBadge.className = 'chip gray'; chatBadge.textContent = 'Requer Supabase'; }
+    showToast('Canal alterado para WhatsApp ✓', 'success');
+  }
+}
+
 function setWaMethod(method) {
   WA_CONFIG.method = method;
   const linkCard = document.getElementById('cfg-wa-method-link');
@@ -11490,6 +11600,21 @@ function salvarTemplates() {
 function initWAConfig() {
   renderConfigTemplates();
   renderWaLog();
+  // Restaura canal salvo
+  const savedCanal = localStorage.getItem('cf_notif_canal');
+  if (savedCanal) {
+    WA_CONFIG.canal = savedCanal;
+    const waCard   = document.getElementById('cfg-canal-whatsapp');
+    const chatCard = document.getElementById('cfg-canal-chat');
+    const waBadge  = document.getElementById('cfg-canal-wa-badge');
+    const chatBadge= document.getElementById('cfg-canal-chat-badge');
+    if (savedCanal === 'chat') {
+      if (chatCard) { chatCard.style.border = '2px solid var(--accent)'; chatCard.style.background = 'var(--accent-soft)'; }
+      if (waCard)   { waCard.style.border = '1px solid var(--border)'; waCard.style.background = ''; }
+      if (chatBadge){ chatBadge.className = 'chip green'; chatBadge.textContent = 'Ativo'; }
+      if (waBadge)  { waBadge.className = 'chip gray'; waBadge.textContent = 'Inativo'; }
+    }
+  }
 }
 
 // Bulk send confirmation to all today's patients
@@ -14669,6 +14794,8 @@ document.addEventListener('DOMContentLoaded', function() {
       APPOINTMENTS.push(dados);
       try { updateNavBadges(); } catch(e) {}
       showToast('Agendamento criado!', 'success');
+      // Envio automático de notificação pelo canal configurado
+      try { enviarNotifAgendamento(dados); } catch(e) { console.error('[Notif]', e); }
     }
     closeModal('modal-agendamento'); refreshUI();
   };
