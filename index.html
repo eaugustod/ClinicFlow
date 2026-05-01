@@ -5411,7 +5411,11 @@ async function doLogin() {
 
   if (cfgUrl && cfgKey && window.supabase) {
     try {
-      const _sbLogin = window.supabase.createClient(cfgUrl, cfgKey);
+      // Reutiliza singleton global — nunca cria novo GoTrueClient
+      const _sbLogin = window.__cfSb
+        || (window._cfGetOrCreateClient
+            ? window._cfGetOrCreateClient(cfgUrl, cfgKey)
+            : window.supabase.createClient(cfgUrl, cfgKey));
 
       const { data: rows, error } = await _sbLogin
         .from('usuarios')
@@ -13861,11 +13865,14 @@ async function _impConfirmarExecutar() {
   try {
     // 1) Cliente já inicializado pelo patch (mais eficiente — reutiliza conexão existente)
     if (window._cfGetDb) sb = window._cfGetDb();
-    // 2) Cria novo cliente direto do localStorage (fallback se _cfGetDb não retornar nada)
+    // 2) Fallback: usa singleton global (nunca cria segundo GoTrueClient)
     if (!sb) {
       const _url = localStorage.getItem('cf_supa_url');
       const _key = localStorage.getItem('cf_supa_key');
-      if (_url && _key && window.supabase) sb = window.supabase.createClient(_url, _key);
+      if (_url && _key) {
+        sb = window.__cfSb
+          || (window._cfGetOrCreateClient ? window._cfGetOrCreateClient(_url, _key) : null);
+      }
     }
   } catch(e) { console.error('[Import] Erro ao obter cliente Supabase:', e); }
 
@@ -14270,10 +14277,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function getDb() {
     if (_sb) return _sb;
+    if (window.__cfSb) { _sb = window.__cfSb; return _sb; }
     const url = localStorage.getItem('cf_supa_url');
     const key = localStorage.getItem('cf_supa_key');
-    if (url && key && window.supabase) {
-      _sb = window.supabase.createClient(url, key);
+    if (url && key && window._cfGetOrCreateClient) {
+      _sb = window._cfGetOrCreateClient(url, key);
     }
     return _sb;
   }
@@ -14991,7 +14999,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btn) { btn.disabled = true; btn.textContent = 'Conectando...'; }
     if (statusEl) { statusEl.style.display = 'flex'; statusEl.innerHTML = '<span style="color:var(--warning)">⏳ Testando conexão...</span>'; }
     try {
-      const testClient = window.supabase.createClient(url, key);
+      const testClient = window._cfGetOrCreateClient ? window._cfGetOrCreateClient(url, key) : window.supabase.createClient(url, key);
       const { error } = await testClient.from('pacientes').select('count').limit(1);
       if (error && error.code !== 'PGRST116' && error.code !== '42P01') throw error;
       localStorage.setItem('cf_supa_url', url);
@@ -15030,13 +15038,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const url = localStorage.getItem('cf_supa_url');
     const key = localStorage.getItem('cf_supa_key');
     if (url && key && window.supabase) {
-      _sb = window.supabase.createClient(url, key);
+           _sb = window._cfGetOrCreateClient ? window._cfGetOrCreateClient(url, key) : window.supabase.createClient(url, key);
       console.log('[ClinicFlow Supabase] Cliente inicializado automaticamente ✓');
     }
   });
 
   window.loadFromSupabase = loadFromSupabase;
-  window._cfGetDb = getDb; // expõe getDb para impConfirmar e outros módulos
+  window._cf = getDb; // expõe getDb para impConfirmar e outros módulos
   window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 
