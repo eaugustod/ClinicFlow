@@ -3454,6 +3454,17 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
         <div style="font-size:16px;font-weight:500;margin-bottom:8px">Nenhum fechamento calculado</div>
         <div style="font-size:13px">Selecione o mês e clique em <strong>Calcular</strong>.</div>
       </div>
+
+      <!-- Histórico de fechamentos confirmados -->
+      <div style="margin-top:32px">
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;color:var(--accent)"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+          Fechamentos Confirmados
+        </div>
+        <div id="loc-fech-historico">
+          <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Nenhum fechamento confirmado ainda</div>
+        </div>
+      </div>
     </div>
 
   </div><!-- end main -->
@@ -5260,9 +5271,34 @@ let CLINICA = {
 };
 
 // ── Espaço Conecta — dados globais (declarados aqui para ficarem disponíveis para todos os scripts) ──
-let SALAS_CONECTA = [];
-let LOCATARIOS    = [];
-let RESERVAS_SALAS = [];
+let SALAS_CONECTA      = [];
+let LOCATARIOS         = [];
+let RESERVAS_SALAS     = [];
+let FECHAMENTOS_CONECTA = [];
+
+// ── Persistência local do Espaço Conecta ─────────────────────────────────
+function _conectaSalvarLocal() {
+  try {
+    localStorage.setItem('cf_conecta_salas',     JSON.stringify(SALAS_CONECTA));
+    localStorage.setItem('cf_conecta_locs',      JSON.stringify(LOCATARIOS));
+    localStorage.setItem('cf_conecta_reservas',  JSON.stringify(RESERVAS_SALAS));
+    localStorage.setItem('cf_conecta_fechamentos', JSON.stringify(FECHAMENTOS_CONECTA));
+  } catch(e) { console.warn('[Conecta] Erro ao salvar local:', e); }
+}
+function _conectaCarregarLocal() {
+  try {
+    const s = localStorage.getItem('cf_conecta_salas');
+    const l = localStorage.getItem('cf_conecta_locs');
+    const r = localStorage.getItem('cf_conecta_reservas');
+    const f = localStorage.getItem('cf_conecta_fechamentos');
+    if (s) { SALAS_CONECTA.length = 0;       JSON.parse(s).forEach(x => SALAS_CONECTA.push(x)); }
+    if (l) { LOCATARIOS.length = 0;           JSON.parse(l).forEach(x => LOCATARIOS.push(x)); }
+    if (r) { RESERVAS_SALAS.length = 0;       JSON.parse(r).forEach(x => RESERVAS_SALAS.push(x)); }
+    if (f) { FECHAMENTOS_CONECTA.length = 0;  JSON.parse(f).forEach(x => FECHAMENTOS_CONECTA.push(x)); }
+  } catch(e) { console.warn('[Conecta] Erro ao carregar local:', e); }
+}
+window._conectaSalvarLocal  = _conectaSalvarLocal;
+window._conectaCarregarLocal = _conectaCarregarLocal;
 let CS_WEEK_OFFSET = 0;
 let RESERVA_ATUAL_ID = null;
 
@@ -5561,6 +5597,7 @@ function gotoPage(page, el) {
   if (el) el.classList.add('active');
   document.getElementById('topbar-title').textContent = pageTitles[page] || page;
   if (page === 'config')    try { initConfigPage(); } catch(e) {}
+  if (page === 'conecta-fechamento') try { renderHistoricoFechamentos(); } catch(e) {}
   if (page === 'perfis')    try { renderPerfisLista(); } catch(e) { console.warn(e); }
   if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
   if (page === 'senhas')    try { renderSenhas(); } catch(e) {}
@@ -5602,6 +5639,8 @@ function refreshUI(opts = {}) {
   if (typeof _carregarPerfisLocal === 'function') _carregarPerfisLocal();
   // Carrega bloqueios persistidos
   if (typeof _carregarBloqueiosLocal === 'function') _carregarBloqueiosLocal();
+  // Carrega dados do Espaço Conecta do localStorage
+  if (typeof _conectaCarregarLocal === 'function') _conectaCarregarLocal();
   safe('renderAgenda');
   safe('renderRelatorios');
   safe('renderSidebarLogo');
@@ -15015,6 +15054,7 @@ document.addEventListener('DOMContentLoaded', function() {
     resToDb:   r => ({ sala_id: r.salaId, locatario_id: r.locId, data: r.data, hora_ini: r.horaIni, hora_fim: r.horaFim, dur_min: r.durMin||60, recorrencia: r.recorrencia||'unica', serie_id: r.serieId||null, status: r.status||'confirmado', obs: r.obs||null, valor_cobrado: r.valorCobrado||null }),
     dbToRes:   r => ({ id: r.id, salaId: r.sala_id, locId: r.locatario_id, data: r.data, horaIni: r.hora_ini?.slice(0,5)||'', horaFim: r.hora_fim?.slice(0,5)||'', durMin: r.dur_min||60, recorrencia: r.recorrencia||'unica', serieId: r.serie_id||null, status: r.status||'confirmado', obs: r.obs||'', valorCobrado: r.valor_cobrado||null }),
     fechToDb:  f => ({ competencia: f.competencia, locatario_id: f.locatarioId, total_reservas: f.totalReservas||0, total_horas: f.totalHoras||0, total_valor: f.totalValor||0, status: f.status||'emitido', emitido_em: f.emitidoEm||new Date().toISOString(), detalhes: f.detalhes||null }),
+    dbToFech:  r => ({ id: r.id, competencia: r.competencia, locatarioId: r.locatario_id, totalReservas: r.total_reservas||0, totalHoras: r.total_horas||0, totalValor: r.total_valor||0, status: r.status||'emitido', emitidoEm: r.emitido_em||'', detalhes: typeof r.detalhes === 'string' ? JSON.parse(r.detalhes||'[]') : (r.detalhes||[]) }),
   };
 
   // ── Carregar dados do Conecta do Supabase ─────────────────────
@@ -15042,10 +15082,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     try {
-      const [salas, locs, reservas] = await Promise.all([
+      const [salas, locs, reservas, fechamentos] = await Promise.all([
         safeQuery(sb.from('salas_conecta').select('*').eq('ativo', true).order('nome'), 'salas_conecta'),
         safeQuery(sb.from('locatarios').select('*').order('nome'), 'locatarios'),
         safeQuery(sb.from('reservas_salas').select('*').order('data').limit(5000), 'reservas_salas'),
+        safeQuery(sb.from('fechamentos_locacao').select('*').order('competencia', {ascending:false}).limit(500), 'fechamentos_locacao'),
       ]);
       if (salas?.data?.length) {
         SALAS_CONECTA.length = 0;
@@ -15059,19 +15100,28 @@ document.addEventListener('DOMContentLoaded', function() {
         RESERVAS_SALAS.length = 0;
         reservas.data.forEach(r => RESERVAS_SALAS.push(cMap.dbToRes(r)));
       }
-      // Atualiza selects de salas
+      if (fechamentos?.data?.length) {
+        FECHAMENTOS_CONECTA.length = 0;
+        fechamentos.data.forEach(r => FECHAMENTOS_CONECTA.push(cMap.dbToFech(r)));
+      }
+      // Persiste cópia local
+      if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
+      // Atualiza selects de salas e re-renderiza
       try {
         const sel = document.getElementById('cs-sala-filtro');
         if (sel) {
           sel.innerHTML = '<option value="">Todas as salas</option>' +
             SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
         }
-        if (typeof conectaRenderAgenda    === 'function') conectaRenderAgenda();
-        if (typeof conectaRenderLocatarios === 'function') conectaRenderLocatarios();
+        if (typeof conectaRenderAgenda      === 'function') conectaRenderAgenda();
+        if (typeof conectaRenderLocatarios  === 'function') conectaRenderLocatarios();
+        if (typeof renderHistoricoFechamentos === 'function') renderHistoricoFechamentos();
       } catch(_e) {}
-      console.log(`[Conecta] ${SALAS_CONECTA.length} salas, ${LOCATARIOS.length} locatários, ${RESERVAS_SALAS.length} reservas carregados ✓`);
+      console.log(`[Conecta] ${SALAS_CONECTA.length} salas, ${LOCATARIOS.length} locatários, ${RESERVAS_SALAS.length} reservas, ${FECHAMENTOS_CONECTA.length} fechamentos carregados ✓`);
     } catch(e) {
       console.error('[Conecta] Erro ao carregar:', e.message);
+      // Fallback: tenta carregar do localStorage
+      if (typeof _conectaCarregarLocal === 'function') _conectaCarregarLocal();
     }
   }
 
@@ -15116,8 +15166,9 @@ document.addEventListener('DOMContentLoaded', function() {
       sel.innerHTML = '<option value="">Todas as salas</option>' +
         SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
     }
-    if (typeof renderSalasModal === 'function') renderSalasModal();
-    if (typeof limparFormSala   === 'function') limparFormSala();
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
+    if (typeof renderSalasModal    === 'function') renderSalasModal();
+    if (typeof limparFormSala      === 'function') limparFormSala();
     if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
     showToast('Sala salva!', 'success');
   };
@@ -15136,6 +15187,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (error) { showToast('Erro: ' + error.message, 'error'); return; }
     }
     SALAS_CONECTA = SALAS_CONECTA.filter(s => String(s.id) !== String(salaId));
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
     if (typeof renderSalasModal    === 'function') renderSalasModal();
     if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
     showToast('Sala removida', 'success');
@@ -15179,8 +15231,28 @@ document.addEventListener('DOMContentLoaded', function() {
       LOCATARIOS.push(dados);
       showToast('Locatário cadastrado!', 'success');
     }
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
     closeModal('modal-novo-locatario');
     if (typeof conectaRenderLocatarios === 'function') conectaRenderLocatarios();
+  };
+
+  // ── Override excluirLocatario ─────────────────────────────────
+  window.excluirLocatario = async function (locId) {
+    const loc = LOCATARIOS.find(l => String(l.id) === String(locId));
+    if (!loc) return;
+    const temReservas = RESERVAS_SALAS.some(r => String(r.locId) === String(locId) && r.status !== 'cancelado');
+    if (temReservas) { showToast('Não é possível excluir locatário com reservas ativas', 'error'); return; }
+    if (!confirm(`Excluir o locatário "${loc.nome}"? Esta ação não pode ser desfeita.`)) return;
+    const sb = getDb();
+    if (sb) {
+      const { error } = await sb.from('locatarios').delete().eq('id', isNaN(locId) ? locId : Number(locId));
+      if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
+    }
+    const idx = LOCATARIOS.findIndex(l => String(l.id) === String(locId));
+    if (idx >= 0) LOCATARIOS.splice(idx, 1);
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
+    if (typeof conectaRenderLocatarios === 'function') conectaRenderLocatarios();
+    showToast('Locatário removido', 'success');
   };
 
   // ── Override salvarReserva ────────────────────────────────────
@@ -15248,6 +15320,7 @@ document.addEventListener('DOMContentLoaded', function() {
       adicionadas++;
     }
 
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
     closeModal('modal-nova-reserva');
     if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
 
@@ -15286,6 +15359,7 @@ document.addEventListener('DOMContentLoaded', function() {
       showToast('Toda a série cancelada', 'success');
     }
 
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
     closeModal('modal-cancelar-lote');
     if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
   };
@@ -15312,7 +15386,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window.confirmarFechamento = async function (competencia) {
     const sb = getDb();
-    if (!sb) { showToast('Supabase não conectado — fechamento salvo apenas localmente', 'success'); return; }
     const [ano, mes] = competencia.split('-').map(Number);
     const ISO_PRIM = `${ano}-${String(mes).padStart(2,'0')}-01`;
     const ISO_ULT  = new Date(ano, mes, 0).toISOString().slice(0,10);
@@ -15320,27 +15393,54 @@ document.addEventListener('DOMContentLoaded', function() {
       r.status !== 'cancelado' && r.data >= ISO_PRIM && r.data <= ISO_ULT
     );
     const locComRes = LOCATARIOS.filter(l => reservasMes.some(r => String(r.locId) === String(l.id)));
+    if (!locComRes.length) { showToast('Nenhum locatário com reservas neste período', 'error'); return; }
 
+    let salvos = 0;
     for (const loc of locComRes) {
-      const resLoc = reservasMes.filter(r => String(r.locId) === String(loc.id));
-      const totalHoras  = resLoc.reduce((a, r) => a + r.durMin / 60, 0);
-      const totalValor  = resLoc.reduce((a, r) => a + (typeof conectaCalcValor === 'function' ? conectaCalcValor(loc, r.durMin) : 0), 0);
-      const detalhes = resLoc.map(r => ({
+      const resLoc     = reservasMes.filter(r => String(r.locId) === String(loc.id));
+      const totalHoras = resLoc.reduce((a, r) => a + r.durMin / 60, 0);
+      const totalValor = resLoc.reduce((a, r) => a + (typeof conectaCalcValor === 'function' ? conectaCalcValor(loc, r.durMin) : 0), 0);
+      const detalhes   = resLoc.map(r => ({
         id: r.id, data: r.data, horaIni: r.horaIni, horaFim: r.horaFim,
         durMin: r.durMin, salaId: r.salaId, obs: r.obs
       }));
-      const payload = cMap.fechToDb({
+      const fechObj = {
         competencia, locatarioId: loc.id,
         totalReservas: resLoc.length, totalHoras, totalValor,
         status: 'emitido', emitidoEm: new Date().toISOString(), detalhes
-      });
-      const { error } = await sb.from('fechamentos_locacao')
-        .upsert(payload, { onConflict: 'competencia,locatario_id' });
-      if (error) console.error('[Fechamento UPSERT]', error.message);
+      };
+
+      // Atualiza array em memória (upsert local)
+      const existIdx = FECHAMENTOS_CONECTA.findIndex(f =>
+        f.competencia === competencia && String(f.locatarioId) === String(loc.id)
+      );
+      if (existIdx >= 0) {
+        FECHAMENTOS_CONECTA[existIdx] = { ...FECHAMENTOS_CONECTA[existIdx], ...fechObj };
+      } else {
+        FECHAMENTOS_CONECTA.push({ id: 'fech_' + Date.now() + '_' + salvos, ...fechObj });
+      }
+
+      // Persiste no Supabase se disponível
+      if (sb) {
+        const payload = cMap.fechToDb(fechObj);
+        const { error } = await sb.from('fechamentos_locacao')
+          .upsert(payload, { onConflict: 'competencia,locatario_id' });
+        if (error) console.error('[Fechamento UPSERT]', error.message);
+      }
+      salvos++;
     }
-    showToast('Fechamento registrado no banco de dados!', 'success');
+
+    // Persiste localmente sempre
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
+
+    // Atualiza historico se visível
+    if (typeof renderHistoricoFechamentos === 'function') renderHistoricoFechamentos();
+
+    const destino = sb ? 'banco de dados e localmente' : 'localmente (Supabase não conectado)';
+    showToast(`Fechamento de ${salvos} locatário(s) registrado ${destino}!`, 'success');
   };
 
+  window._loadConectaSupabase = loadConecta;
   console.log('[ClinicFlow Supabase] Módulo Espaço Conecta integrado ✓');
 })();
 </script>
@@ -18119,6 +18219,50 @@ function confirmarFechamentoMes() {
   } else {
     showToast('Supabase não conectado — fechamento apenas local', 'success');
   }
+}
+
+// ── Histórico de Fechamentos Confirmados ────────────────────────
+function renderHistoricoFechamentos() {
+  const el = document.getElementById('loc-fech-historico');
+  if (!el) return;
+  if (!FECHAMENTOS_CONECTA.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Nenhum fechamento confirmado ainda</div>';
+    return;
+  }
+  // Agrupa por competência
+  const porComp = {};
+  FECHAMENTOS_CONECTA.forEach(f => {
+    if (!porComp[f.competencia]) porComp[f.competencia] = [];
+    porComp[f.competencia].push(f);
+  });
+  const compOrdenadas = Object.keys(porComp).sort((a,b) => b.localeCompare(a));
+
+  el.innerHTML = compOrdenadas.map(comp => {
+    const itens = porComp[comp];
+    const totalValor = itens.reduce((a,f) => a + (f.totalValor||0), 0);
+    const totalHoras = itens.reduce((a,f) => a + (f.totalHoras||0), 0);
+    const [ano, mes] = comp.split('-').map(Number);
+    const label = new Date(ano, mes-1, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    const rows = itens.map(f => {
+      const loc = LOCATARIOS.find(l => String(l.id) === String(f.locatarioId));
+      return `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border-light);font-size:12px">
+        <span style="font-weight:500;color:var(--text-primary)">${loc?.nome || 'Locatário #' + f.locatarioId}</span>
+        <span style="color:var(--text-muted)">${f.totalReservas} reserva${f.totalReservas>1?'s':''}</span>
+        <span style="color:var(--text-secondary)">${(f.totalHoras||0).toFixed(1)}h</span>
+        <span style="font-weight:600;color:var(--success)">${brlFmt(f.totalValor||0)}</span>
+      </div>`;
+    }).join('');
+    return `<div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-primary);text-transform:capitalize">${label}</span>
+        <div style="display:flex;gap:16px;font-size:12px">
+          <span style="color:var(--text-muted)">${totalHoras.toFixed(1)}h</span>
+          <span style="font-weight:700;color:var(--success)">${brlFmt(totalValor)}</span>
+        </div>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
 }
 
 // ── Relatório PDF Locação ────────────────────────────────────────
