@@ -15096,21 +15096,22 @@ document.addEventListener('DOMContentLoaded', function() {
         safeQuery(sb.from('reservas_salas').select('*').order('data').limit(5000), 'reservas_salas'),
         safeQuery(sb.from('fechamentos_locacao').select('*').order('competencia', {ascending:false}).limit(500), 'fechamentos_locacao'),
       ]);
-      if (salas?.data?.length) {
+      // Sempre limpa e recarrega do banco — não mantém dados demo se Supabase respondeu
+      if (salas !== null) {
         SALAS_CONECTA.length = 0;
-        salas.data.forEach(r => SALAS_CONECTA.push(cMap.dbToSala(r)));
+        (salas?.data || []).forEach(r => SALAS_CONECTA.push(cMap.dbToSala(r)));
       }
-      if (locs?.data?.length) {
+      if (locs !== null) {
         LOCATARIOS.length = 0;
-        locs.data.forEach(r => LOCATARIOS.push(cMap.dbToLoc(r)));
+        (locs?.data || []).forEach(r => LOCATARIOS.push(cMap.dbToLoc(r)));
       }
-      if (reservas?.data?.length) {
+      if (reservas !== null) {
         RESERVAS_SALAS.length = 0;
-        reservas.data.forEach(r => RESERVAS_SALAS.push(cMap.dbToRes(r)));
+        (reservas?.data || []).forEach(r => RESERVAS_SALAS.push(cMap.dbToRes(r)));
       }
-      if (fechamentos?.data?.length) {
+      if (fechamentos !== null) {
         FECHAMENTOS_CONECTA.length = 0;
-        fechamentos.data.forEach(r => FECHAMENTOS_CONECTA.push(cMap.dbToFech(r)));
+        (fechamentos?.data || []).forEach(r => FECHAMENTOS_CONECTA.push(cMap.dbToFech(r)));
       }
       // Persiste cópia local
       if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
@@ -17429,8 +17430,14 @@ function emitirRelatorioFechamento() {
 const SALA_CORES = ['sala1','sala2','sala3','sala4'];
 
 function conectaInitSalas() {
-  // Salas padrão (Espaço Conecta) — podem ser customizadas via configuração
-  if (SALAS_CONECTA.length === 0) {
+  // Verifica se Supabase está configurado — se sim, não injeta dados demo,
+  // pois o loadConecta irá carregar os dados reais do banco.
+  const _sbUrl = localStorage.getItem('cf_supa_url') || '';
+  const _sbKey = localStorage.getItem('cf_supa_key') || '';
+  const _temSupabase = !!(_sbUrl && _sbKey);
+
+  // Salas padrão (Espaço Conecta) — apenas se não há Supabase configurado
+  if (SALAS_CONECTA.length === 0 && !_temSupabase) {
     SALAS_CONECTA = [
       { id: 's1', nome: 'Sala 1', descricao: 'Sala individual — ar-condicionado, divã', capacidade: 2, cor: 'sala1' },
       { id: 's2', nome: 'Sala 2', descricao: 'Sala individual — mesa redonda, 4 cadeiras', capacidade: 4, cor: 'sala2' },
@@ -17438,8 +17445,8 @@ function conectaInitSalas() {
     ];
   }
 
-  // Locatários demo
-  if (LOCATARIOS.length === 0) {
+  // Locatários demo — apenas se não há Supabase configurado
+  if (LOCATARIOS.length === 0 && !_temSupabase) {
     LOCATARIOS = [
       { id: 'l1', nome: 'Dra. Ana Martins', esp: 'Psicologia', tel: '(11) 98765-0001', email: 'ana@clinica.com', cpf: '111.222.333-44', conselho: 'CRP 06/111222', valorHora: 50, valorMeio: 180, valorDia: 320, salaPref: 's1', status: 'ativo', obs: '' },
       { id: 'l2', nome: 'Dr. Carlos Ramos', esp: 'Psiquiatria', tel: '(11) 98765-0002', email: 'carlos@clinica.com', cpf: '222.333.444-55', conselho: 'CRM 12345/SP', valorHora: 80, valorMeio: 280, valorDia: 500, salaPref: 's2', status: 'ativo', obs: '' },
@@ -17447,8 +17454,8 @@ function conectaInitSalas() {
     ];
   }
 
-  // Reservas demo (semana atual)
-  if (RESERVAS_SALAS.length === 0) {
+  // Reservas demo (semana atual) — apenas se não há Supabase configurado
+  if (RESERVAS_SALAS.length === 0 && !_temSupabase) {
     const hoje = new Date();
     const seg = new Date(hoje);
     seg.setDate(hoje.getDate() - hoje.getDay() + 1);
