@@ -18626,7 +18626,12 @@ function _buildChatPanelHTML(snap) {
     '  if(!sb||!meta||!meta.conversaId)return;',
     '  realtimeSub=sb.channel("clinic-"+meta.conversaId)',
     '    .on("postgres_changes",{event:"INSERT",schema:"public",table:"mensagens",filter:"conversa_id=eq."+meta.conversaId},function(p){appendBubble(p.new);})',
-    '    .on("system",{},function(p){var d=document.getElementById("conn-dot");if(d)d.style.background=p.status==="SUBSCRIBED"?"var(--success)":"var(--warn)";})',
+    '    .subscribe((status)=>{',
+    '    var d=document.getElementById("conn-dot");',
+    '    if(d){',
+    ' d.style.background = status==="SUBSCRIBED" ? "var(--success)" : "var(--warn)";',
+    '}',
+    '});',
     '    .subscribe();',
     '}',
 
@@ -18664,7 +18669,7 @@ function _buildChatPanelHTML(snap) {
     '  var meta=PAC_META[currentPac];',
     '  if(!sb||!meta||!meta.conversaId){showToast("Configure o Supabase para enviar mensagens");return;}',
     '  input.disabled=true;',
-    '  var res=await sb.from("mensagens").insert({conversa_id:meta.conversaId,remetente_id:meta.pacienteId,tipo_remetente:"clinica",conteudo:text,lida:false});',
+    '  var res=await sb.from("mensagens").insert({conversa_id:meta.conversaId,remetente_id:-1,tipo_remetente:"clinica",conteudo:text,lida:false});',
     '  if(res.error)showToast("Erro: "+res.error.message);',
     '  else{await sb.from("conversas").update({ultima_mensagem_em:new Date().toISOString()}).eq("id",meta.conversaId);input.value="";input.style.height="auto";showToast("Enviado");}',
     '  input.disabled=false;',
@@ -18681,7 +18686,7 @@ function _buildChatPanelHTML(snap) {
     '  if(sb&&meta&&meta.pacienteId){',
     '    var ag=quando==="Agora"?new Date():quando.includes("8h")?new Date(new Date().setHours(new Date().getDate()+1,8,0,0,0)):new Date(new Date().setHours(new Date().getDate()+1,9,0,0,0));',
     '    await sb.from("notificacoes").insert({paciente_id:meta.pacienteId,titulo:tipo==="lembrete"?"Lembrete de consulta":tipo==="confirmar"?"Confirmação":tipo==="resultado"?"Resultado disponível":"Mensagem da clínica",corpo:msg,tipo:tipo,enviada:quando==="Agora",agendada_para:ag.toISOString()});',
-    '    if(quando==="Agora"&&meta.conversaId){await sb.from("mensagens").insert({conversa_id:meta.conversaId,remetente_id:meta.pacienteId,tipo_remetente:"sistema",conteudo:"🔔 "+msg,lida:false});}',
+    '    if(quando==="Agora"&&meta.conversaId){await sb.from("mensagens").insert({conversa_id:meta.conversaId,remetente_id:-1,tipo_remetente:"sistema",conteudo:"🔔 "+msg,lida:false});}',
     '  }',
     '  showToast("Lembrete enviado para "+currentPac,"success");',
     '}',
@@ -18709,8 +18714,8 @@ function _buildChatPanelHTML(snap) {
     // Supabase SDK + config — escapados corretamente
     + '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><' + '\/script>\n'
     + '<'+'script>\\n'
-    + 'var SB_URL=typeof window.__SB_URL__!=="undefined"?window.__SB_URL__:"https://SEU_PROJETO.supabase.co";\n'
-    + 'var SB_KEY=typeof window.__SB_KEY__!=="undefined"?window.__SB_KEY__:"SUA_ANON_KEY";\n'
+    + 'var SB_URL=typeof window.__SB_URL__!=="undefined"?window.__SB_URL__:"https://ezkfnbrlqnruymhhfeei.supabase.co";\n'
+    + 'var SB_KEY=typeof window.__SB_KEY__!=="undefined"?window.__SB_KEY__:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6a2ZuYnJscW5ydXltaGhmZWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg1MzAsImV4cCI6MjA5MDgwNDUzMH0.llrWSk5Kz-UvTPWY5fpeO7QD-aFaobcvAP9FxH8PhB4";\n'
     + '<' + '\/script>\n'
     + '<style>\n' + css + '\n<\/style>\n<\/head>\n<body>\n'
     // BODY
