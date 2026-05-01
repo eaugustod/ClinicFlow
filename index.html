@@ -18426,6 +18426,7 @@ function abrirPainelChat() {
     geradoEm     : new Date().toISOString(),
   };
 
+  
   const html = _buildChatPanelHTML(snapshot);
   const blob  = new Blob([html], { type: 'text/html' });
   const url   = URL.createObjectURL(blob);
@@ -18621,19 +18622,29 @@ function _buildChatPanelHTML(snap) {
 
     // subscribeRT
     'function subscribeRT(){',
-    '  if(realtimeSub&&sb)sb.removeChannel(realtimeSub);',
-    '  var meta=PAC_META[currentPac];',
-    '  if(!sb||!meta||!meta.conversaId)return;',
-    '  realtimeSub=sb.channel("clinic-"+meta.conversaId)',
-    '    .on("postgres_changes",{event:"INSERT",schema:"public",table:"mensagens",filter:"conversa_id=eq."+meta.conversaId},function(p){appendBubble(p.new);})',
-    '    .subscribe((status)=>{',
-    '    var d=document.getElementById("conn-dot");',
-    '    if(d){',
-    ' d.style.background = status==="SUBSCRIBED" ? "var(--success)" : "var(--warn)";',
-    '}',
+  'if(realtimeSub && sb) sb.removeChannel(realtimeSub);',
+
+  'var meta = PAC_META[currentPac];',
+  'if(!sb || !meta || !meta.conversaId) return;',
+
+  'realtimeSub = sb.channel("clinic-"+meta.conversaId)',
+   ' .on("postgres_changes", {',
+   '   event: "INSERT",',
+   '   schema: "public",',
+   '   table: "mensagens",',
+   '   filter: "conversa_id=eq."+meta.conversaId',
+   ' }, function(payload){',
+   '   appendBubble(payload.new);',
+   ' })',
+   ' .subscribe((status)=>{',
+     ' var d = document.getElementById("conn-dot");',
+      'if(d){',
+       ' d.style.background = status==="SUBSCRIBED"',
+       '   ? "var(--success)"',
+      '    : "var(--warn)";',
+     ' }',
     '});',
-    '    .subscribe();',
-    '}',
+'}',
 
     // appendBubble
     'function appendBubble(m){',
@@ -18684,7 +18695,12 @@ function _buildChatPanelHTML(snap) {
     '  var quando=document.getElementById("notif-quando").value;',
     '  if(!msg){showToast("Escreva a mensagem");return;}',
     '  if(sb&&meta&&meta.pacienteId){',
-    '    var ag=quando==="Agora"?new Date():quando.includes("8h")?new Date(new Date().setHours(new Date().getDate()+1,8,0,0,0)):new Date(new Date().setHours(new Date().getDate()+1,9,0,0,0));',
+    '    var ag=quando==="Agora"?new Date():quando.includes("8h")?new Date(',
+     'var d = new Date();d.setDate(d.getDate() + 1);',
+     'd.setHours(8,0,0,0);):new Date(',
+     'var d = new Date();',
+'d.setDate(d.getDate() + 1);',
+'d.setHours(9,0,0,0););',
     '    await sb.from("notificacoes").insert({paciente_id:meta.pacienteId,titulo:tipo==="lembrete"?"Lembrete de consulta":tipo==="confirmar"?"Confirmação":tipo==="resultado"?"Resultado disponível":"Mensagem da clínica",corpo:msg,tipo:tipo,enviada:quando==="Agora",agendada_para:ag.toISOString()});',
     '    if(quando==="Agora"&&meta.conversaId){await sb.from("mensagens").insert({conversa_id:meta.conversaId,remetente_id:-1,tipo_remetente:"sistema",conteudo:"🔔 "+msg,lida:false});}',
     '  }',
