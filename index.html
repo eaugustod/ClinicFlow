@@ -3493,7 +3493,7 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
             <input class="form-input" id="blq-motivo" placeholder="Ex: Férias, Curso...">
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="form-group" style="margin:0">
             <label class="form-label">Data início</label>
             <input class="form-input" type="date" id="blq-data-ini">
@@ -3502,6 +3502,8 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
             <label class="form-label">Data fim</label>
             <input class="form-input" type="date" id="blq-data-fim">
           </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px" id="blq-horas-row">
           <div class="form-group" style="margin:0">
             <label class="form-label">Hora início</label>
             <select class="form-select" id="blq-hora-ini">
@@ -6377,8 +6379,7 @@ function buildApptCard(appt, cor) {
       '</div>';
   }
 
-  // ── CARD INDIVIDUAL (comportamento original) ─────────────────────────────
-  // hasGuia e guiaIcon já declarados acima (antes do bloco de grupo)
+  // ── CARD INDIVIDUAL (hasGuia e guiaIcon já declarados no topo da função) ──
 
   let actionsHTML = '';
   if (appt.status === 'agendado') {
@@ -12168,10 +12169,9 @@ async function evoImpConfirmar() {
   const btn = document.getElementById('evo-imp-btn-confirmar');
   if (btn) { btn.disabled=true; btn.textContent='Importando...'; }
 
-  const sb = (window._cfGetDb ? window._cfGetDb() : null) || (() => {
-    const u=localStorage.getItem('cf_supa_url'), k=localStorage.getItem('cf_supa_key');
-    return (u&&k&&window.supabase) ? window.supabase.createClient(u,k) : null;
-  })();
+  // Reutiliza singleton para evitar múltiplos GoTrueClient
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (!sb) { console.warn('[Import] Supabase não inicializado.'); }
 
   let importados=0, dbErrors=0;
 
@@ -15019,21 +15019,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Carregar dados do Conecta do Supabase ─────────────────────
   async function loadConecta(sb) {
+    // Helper: retorna null se a tabela não existir (404/PGRST) em vez de lançar erro
+    async function safeQuery(query, label) {
+      try {
+        const res = await query;
+        if (res.error) {
+          const code = res.error?.code || '';
+          const msg  = res.error?.message || '';
+          // Tabela não existe no Supabase → ignora silenciosamente
+          if (code === 'PGRST116' || code === '42P01' || msg.includes('does not exist') || res.status === 404) {
+            console.info('[ClinicFlow Conecta] Tabela "' + label + '" não encontrada — módulo desativado.');
+            return null;
+          }
+          console.warn('[ClinicFlow Conecta] Erro ao carregar ' + label + ':', res.error.message);
+          return null;
+        }
+        return res;
+      } catch(e) {
+        console.warn('[ClinicFlow Conecta] Exceção ao carregar ' + label + ':', e.message);
+        return null;
+      }
+    }
+
     try {
       const [salas, locs, reservas] = await Promise.all([
-        sb.from('salas_conecta').select('*').eq('ativo', true).order('nome'),
-        sb.from('locatarios').select('*').order('nome'),
-        sb.from('reservas_salas').select('*').order('data').limit(5000),
+        safeQuery(sb.from('salas_conecta').select('*').eq('ativo', true).order('nome'), 'salas_conecta'),
+        safeQuery(sb.from('locatarios').select('*').order('nome'), 'locatarios'),
+        safeQuery(sb.from('reservas_salas').select('*').order('data').limit(5000), 'reservas_salas'),
       ]);
-      if (salas.data?.length) {
+      if (salas?.data?.length) {
         SALAS_CONECTA.length = 0;
         salas.data.forEach(r => SALAS_CONECTA.push(cMap.dbToSala(r)));
       }
-      if (locs.data?.length) {
+      if (locs?.data?.length) {
         LOCATARIOS.length = 0;
         locs.data.forEach(r => LOCATARIOS.push(cMap.dbToLoc(r)));
       }
-      if (reservas.data?.length) {
+      if (reservas?.data?.length) {
         RESERVAS_SALAS.length = 0;
         reservas.data.forEach(r => RESERVAS_SALAS.push(cMap.dbToRes(r)));
       }
@@ -16368,6 +16390,9 @@ function blqToggleDiaTodo(cb) {
   const dis = cb.checked;
   document.getElementById('blq-hora-ini').disabled = dis;
   document.getElementById('blq-hora-fim').disabled = dis;
+  // Mostra/oculta a linha de horas visualmente
+  const horaRow = document.getElementById('blq-horas-row');
+  if (horaRow) horaRow.style.opacity = dis ? '0.35' : '1';
   if (dis) {
     document.getElementById('blq-hora-ini').value = '';
     document.getElementById('blq-hora-fim').value = '';
