@@ -15143,7 +15143,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // ── Override salvarSala ───────────────────────────────────────
-  window.salvarSala = async function () {
+  window._salvarSalaSupabase = window.salvarSala = async function () {
     const nome = document.getElementById('sala-nome')?.value?.trim();
     if (!nome) { showToast('Nome da sala é obrigatório', 'error'); return; }
     const cap    = parseInt(document.getElementById('sala-cap')?.value) || 2;
@@ -15183,7 +15183,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // ── Override excluirSala ──────────────────────────────────────
-  window.excluirSala = async function (salaId) {
+  window._excluirSalaSupabase = window.excluirSala = async function (salaId) {
     const sala = SALAS_CONECTA.find(s => String(s.id) === String(salaId));
     if (!sala) return;
     const temReservas = RESERVAS_SALAS.some(r => String(r.salaId) === String(salaId) && r.status !== 'cancelado');
@@ -15203,7 +15203,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // ── Override salvarLocatario ──────────────────────────────────
-  window.salvarLocatario = async function () {
+  window._salvarLocatarioSupabase = window.salvarLocatario = async function () {
     const nome = document.getElementById('loc-nome')?.value?.trim();
     if (!nome) { showToast('Nome é obrigatório', 'error'); return; }
     const editId = document.getElementById('loc-edit-id')?.value;
@@ -15265,7 +15265,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // ── Override salvarReserva ────────────────────────────────────
-  window.salvarReserva = async function () {
+  window._salvarReservaSupabase = window.salvarReserva = async function () {
     const salaId  = document.getElementById('res-sala')?.value;
     const locId   = document.getElementById('res-prof')?.value;
     const data    = document.getElementById('res-data')?.value;
@@ -15343,7 +15343,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // ── Override cancelarReserva ──────────────────────────────────
-  window.cancelarReserva = async function (escopo) {
+  window._cancelarReservaSupabase = window.cancelarReserva = async function (escopo) {
     const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
     if (!res) { closeModal('modal-cancelar-lote'); return; }
     const sb = getDb();
@@ -17675,7 +17675,8 @@ function cancelarReservaAtual() {
   }
 }
 
-function cancelarReserva(escopo) {
+async function cancelarReserva(escopo) {
+  if (window._cancelarReservaSupabase) { return window._cancelarReservaSupabase(escopo); }
   const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
   if (!res) { closeModal('modal-cancelar-lote'); return; }
   if (escopo === 'unica') {
@@ -17769,7 +17770,8 @@ document.addEventListener('change', function(e) {
   if (e.target && e.target.name === 'sala-cor') atualizarCorLabels();
 });
 
-function salvarSala() {
+async function salvarSala() {
+  if (window._salvarSalaSupabase) { return window._salvarSalaSupabase(); }
   const nome = document.getElementById('sala-nome')?.value?.trim();
   if (!nome) { showToast('Nome da sala é obrigatório', 'error'); return; }
   const cap    = parseInt(document.getElementById('sala-cap')?.value) || 2;
@@ -17795,7 +17797,8 @@ function salvarSala() {
   showToast('Sala salva!', 'success');
 }
 
-function excluirSala(salaId) {
+async function excluirSala(salaId) {
+  if (window._excluirSalaSupabase) { return window._excluirSalaSupabase(salaId); }
   const sala = SALAS_CONECTA.find(s => s.id === salaId);
   if (!sala) return;
   const temReservas = RESERVAS_SALAS.some(r => r.salaId === salaId && r.status !== 'cancelado');
@@ -17880,7 +17883,10 @@ function conectaCalcValor(loc, durMin) {
   return (durMin / 60) * (loc.valorHora || 0);
 }
 
-function salvarReserva() {
+async function salvarReserva() {
+  // Delega para o override com Supabase se disponível (definido no módulo de integração)
+  if (window._salvarReservaSupabase) { return window._salvarReservaSupabase(); }
+
   const salaId  = document.getElementById('res-sala')?.value;
   const locId   = document.getElementById('res-prof')?.value;
   const data    = document.getElementById('res-data')?.value;
@@ -18045,7 +18051,10 @@ function editarLocatario(locId) {
   openModal('modal-novo-locatario');
 }
 
-function salvarLocatario() {
+async function salvarLocatario() {
+  // Delega para o override com Supabase se disponível (definido no módulo de integração)
+  if (window._salvarLocatarioSupabase) { return window._salvarLocatarioSupabase(); }
+
   const nome = document.getElementById('loc-nome')?.value?.trim();
   if (!nome) {
     if (typeof showToast === 'function') showToast('Nome é obrigatório', 'error');
