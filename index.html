@@ -11064,10 +11064,25 @@ let WA_CONFIG = {
 };
 
 // ── Notificação automática ao agendar ─────────────────────────────────────────
-async function enviarNotifAgendamento(dados) {
+// Notificação automática — canal WhatsApp: abre o modal já preenchido (sincrono, sem popup-blocker)
+// canal Chat: envia via Supabase de forma assíncrona
+function enviarNotifAgendamento(dados) {
+  if (WA_CONFIG.canal === 'chat') {
+    _enviarNotifChat(dados);   // async internamente
+  } else {
+    // WhatsApp — abre o modal padrão já preenchido, 1 clique para enviar
+    // Usa setTimeout(0) para rodar após fechar o modal de agendamento
+    setTimeout(() => {
+      if (typeof abrirModalWA === 'function' && dados.id != null) {
+        abrirModalWA(dados.id);
+      }
+    }, 300);
+  }
+}
+
+async function _enviarNotifChat(dados) {
   const tpl = WA_TEMPLATES.find(t => t.padrao) || WA_TEMPLATES[0];
   const prof = PROFISSIONAIS.find(p => p.id === dados.profId);
-  const pac  = PACIENTES.find(p => p.nome === dados.paciente);
   const dateObj = dados.dataISO ? new Date(dados.dataISO + 'T12:00') : new Date();
   const dateStr = dateObj.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   const msg = tpl.texto
@@ -11077,47 +11092,30 @@ async function enviarNotifAgendamento(dados) {
     .replace(/\{terapeuta\}/g, prof?.nome || '')
     .replace(/\{clinica\}/g,   CLINICA?.nome || 'Clínica');
 
-  if (WA_CONFIG.canal === 'chat') {
-    // Enviar pelo chat interno via Supabase
-    const sb = getDb();
-    if (!sb) { showToast('Supabase não conectado para enviar notificação', 'error'); return; }
-    try {
-      let pacId = null;
-      const { data: pacData } = await sb.from('pacientes').select('id').eq('nome', dados.paciente).single();
-      if (pacData) { pacId = pacData.id; }
-      else {
-        const { data: newPac } = await sb.from('pacientes').insert({ nome: dados.paciente }).select('id').single();
-        pacId = newPac?.id || null;
-      }
-      if (!pacId) { showToast('Paciente não encontrado para notificação', 'error'); return; }
-      let conversaId = null;
-      const { data: convData } = await sb.from('conversas').select('id').eq('paciente_id', pacId).eq('status', 'ativa').single();
-      if (convData) { conversaId = convData.id; }
-      else {
-        const { data: newConv } = await sb.from('conversas').insert({ paciente_id: pacId, status: 'ativa' }).select('id').single();
-        conversaId = newConv?.id || null;
-      }
-      if (!conversaId) { showToast('Erro ao criar conversa para notificação', 'error'); return; }
-      await sb.from('mensagens').insert({ conversa_id: conversaId, tipo_remetente: 'sistema', conteudo: '\uD83D\uDCC5 ' + msg, lida: false });
-      await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', conversaId);
-      showToast('Notificação enviada pelo Chat com Paciente ✓', 'success');
-    } catch(e) {
-      showToast('Erro ao enviar via chat: ' + e.message, 'error');
+  const sb = getDb();
+  if (!sb) { showToast('Supabase não conectado para enviar notificação', 'error'); return; }
+  try {
+    let pacId = null;
+    const { data: pacData } = await sb.from('pacientes').select('id').eq('nome', dados.paciente).single();
+    if (pacData) { pacId = pacData.id; }
+    else {
+      const { data: newPac } = await sb.from('pacientes').insert({ nome: dados.paciente }).select('id').single();
+      pacId = newPac?.id || null;
     }
-  } else {
-    const tel = (pac?.tel || '').replace(/\D/g, '');
-    if (!tel) { showToast('Paciente sem telefone — notificação WhatsApp não enviada', 'error'); return; }
-    const telFull = tel.startsWith('55') ? tel : '55' + tel;
-    waCurrentApptId = dados.id;
-    if (WA_CONFIG.method === 'api' && WA_CONFIG.connected) {
-      waEnviarPelaAPI(telFull, msg);
-      showToast('Confirmação enviada via WhatsApp ✓', 'success');
-    } else {
-      window.open('https://wa.me/' + telFull + '?text=' + encodeURIComponent(msg), '_blank');
-      registrarEnvio(telFull, msg, 'link');
+    if (!pacId) { showToast('Paciente não encontrado para notificação', 'error'); return; }
+    let conversaId = null;
+    const { data: convData } = await sb.from('conversas').select('id').eq('paciente_id', pacId).eq('status', 'ativa').single();
+    if (convData) { conversaId = convData.id; }
+    else {
+      const { data: newConv } = await sb.from('conversas').insert({ paciente_id: pacId, status: 'ativa' }).select('id').single();
+      conversaId = newConv?.id || null;
     }
-    const appt = APPOINTMENTS.find(a => a.id === dados.id);
-    if (appt) appt.waSent = true;
+    if (!conversaId) { showToast('Erro ao criar conversa para notificação', 'error'); return; }
+    await sb.from('mensagens').insert({ conversa_id: conversaId, tipo_remetente: 'sistema', conteudo: '📅 ' + msg, lida: false });
+    await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', conversaId);
+    showToast('Notificação enviada pelo Chat com Paciente ✓', 'success');
+  } catch(e) {
+    showToast('Erro ao enviar via chat: ' + e.message, 'error');
   }
 }
 
@@ -14795,7 +14793,7 @@ document.addEventListener('DOMContentLoaded', function() {
       try { updateNavBadges(); } catch(e) {}
       showToast('Agendamento criado!', 'success');
       // Envio automático de notificação pelo canal configurado
-      try { enviarNotifAgendamento(dados); } catch(e) { console.error('[Notif]', e); }
+      enviarNotifAgendamento(dados);
     }
     closeModal('modal-agendamento'); refreshUI();
   };
