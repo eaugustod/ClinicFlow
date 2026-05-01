@@ -7401,6 +7401,14 @@ function excluirHistorico(id) {
 }
 function excluirAgendamento(id) {
   if (!confirm('Excluir este agendamento permanentemente?')) return;
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (sb) {
+    // Cancela notificações pendentes vinculadas
+    sb.from('notificacoes').delete().eq('agendamento_id', id).eq('enviada', false).then(() => {});
+    sb.from('agendamentos').delete().eq('id', id).then(({error}) => {
+      if (error) console.error('[Excluir Agendamento]', error.message);
+    });
+  }
   const idx = APPOINTMENTS.findIndex(a=>a.id===id);
   if (idx>-1) { APPOINTMENTS.splice(idx,1); closeModal('modal-agendamento'); renderDayView(); showToast('Agendamento excluído.','error'); }
 }
@@ -7435,11 +7443,14 @@ function excluirAgendamentoComGuia() {
       GUIAS.splice(guiaIdx, 1);
       renderGuiasList();
     }
-    // Remove agendamento do Supabase
+    // Remove agendamento do Supabase + cancela notificações pendentes
     const _sb = window._cfGetDb ? window._cfGetDb() : null;
-    if (_sb) _sb.from('agendamentos').delete().eq('id', currentApptId).then(({error}) => {
-      if (error) console.error('[Excluir Agendamento]', error.message);
-    });
+    if (_sb) {
+      _sb.from('notificacoes').delete().eq('agendamento_id', currentApptId).eq('enviada', false).then(() => {});
+      _sb.from('agendamentos').delete().eq('id', currentApptId).then(({error}) => {
+        if (error) console.error('[Excluir Agendamento]', error.message);
+      });
+    }
   }
   const idx = APPOINTMENTS.findIndex(a => a.id === currentApptId);
   if (idx > -1) APPOINTMENTS.splice(idx, 1);
@@ -11121,8 +11132,9 @@ function _montarMsgAgendamento(dados) {
 }
 
 // ── Ao criar agendamento via canal Chat:
-//    1) Grava na tabela notificacoes (agendada_para = 24h antes)
-//    2) Envia confirmação imediata no chat
+//    1) Grava na tabela notificacoes (agendada_para = 24h antes, mínimo 2h no futuro)
+//    2) Grava confirmação de agendamento com agendada_para = agora + 2h (não imediata)
+//       para que exclusões/alterações dentro das 2h cancelem antes de enviar
 async function _enviarNotifChat(dados) {
   const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
   if (!sb) { showToast('Supabase não conectado para enviar notificação', 'error'); return; }
@@ -11131,69 +11143,82 @@ async function _enviarNotifChat(dados) {
     const ids = await _obterConversaId(sb, dados.paciente);
     if (!ids) { showToast('Paciente não encontrado para notificação', 'error'); return; }
 
-    // Calcula agendada_para = 24h antes do agendamento
-    const dataHoraAppt = new Date((dados.dataISO || new Date().toISOString().slice(0,10)) + 'T' + (dados.hora || '08:00') + ':00');
-    const agendadaPara = new Date(dataHoraAppt.getTime() - 24 * 60 * 60 * 1000);
-    const agendadaISO  = agendadaPara.toISOString();
+    const agora = new Date();
+    // Calcula agendada_para do lembrete = 24h antes do agendamento
+    const dataHoraAppt = new Date((dados.dataISO || agora.toISOString().slice(0,10)) + 'T' + (dados.hora || '08:00') + ':00');
+    const agendadaLembrete = new Date(dataHoraAppt.getTime() - 24 * 60 * 60 * 1000);
 
-    // 1) Grava na tabela notificacoes
+    // Confirmação: enviada no mínimo 2h depois de criar (janela de cancelamento/alteração)
+    const agendadaConfirmacao = new Date(agora.getTime() + 2 * 60 * 60 * 1000);
+
+    // 1) Grava lembrete de 24h antes (vinculado ao agendamento para poder cancelar)
     await sb.from('notificacoes').insert({
-      paciente_id:  ids.pacId,
-      titulo:       'Lembrete de consulta',
-      corpo:        msg,
-      tipo:         'lembrete',
-      enviada:      false,
-      agendada_para: agendadaISO,
+      paciente_id:    ids.pacId,
+      agendamento_id: dados.id || null,
+      titulo:         'Lembrete de consulta',
+      corpo:          msg,
+      tipo:           'lembrete',
+      enviada:        false,
+      agendada_para:  agendadaLembrete.toISOString(),
     });
 
-    // 2) Envia confirmação imediata no chat (aviso de agendamento)
-    const tplConf = WA_TEMPLATES.find(t => t.padrao) || WA_TEMPLATES[0];
+    // 2) Grava confirmação de agendamento — será enviada após 2h (não imediata)
     const prof    = PROFISSIONAIS.find(p => p.id === dados.profId);
     const dateStr = dados.dataISO ? new Date(dados.dataISO + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' }) : '';
     const confirmMsg = '✅ Consulta agendada!\n\n📅 ' + dateStr + ' às ' + (dados.hora || '') + '\n👩‍⚕️ ' + (prof?.nome || '') + '\n\nVocê receberá um lembrete 24h antes. Até lá!';
-    await sb.from('mensagens').insert({ conversa_id: ids.conversaId, tipo_remetente: 'sistema', conteudo: confirmMsg, lida: false });
-    await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', ids.conversaId);
+    await sb.from('notificacoes').insert({
+      paciente_id:    ids.pacId,
+      agendamento_id: dados.id || null,
+      conversa_id:    ids.conversaId,
+      titulo:         'Confirmação de agendamento',
+      corpo:          confirmMsg,
+      tipo:           'confirmacao',
+      enviada:        false,
+      agendada_para:  agendadaConfirmacao.toISOString(),
+    });
 
-    showToast('Confirmação enviada no chat + lembrete agendado para 24h antes ✓', 'success');
+    showToast('Notificações agendadas: confirmação em 2h + lembrete 24h antes ✓', 'success');
   } catch(e) {
-    showToast('Erro ao enviar via chat: ' + e.message, 'error');
+    showToast('Erro ao agendar notificação via chat: ' + e.message, 'error');
   }
 }
 
-// ── Verificador periódico: dispara lembretes 24h antes ────────────────────────
+// ── Verificador periódico: dispara lembretes e confirmações pendentes ──────────
 // Roda a cada 30 minutos enquanto o sistema estiver aberto
 async function verificarNotificacoesPendentes() {
   if (WA_CONFIG.canal !== 'chat') return;
   const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
   if (!sb) return;
   try {
-    const agora   = new Date();
-    const limite  = new Date(agora.getTime() + 5 * 60 * 1000); // janela: até 5min no futuro
+    const agora = new Date();
     const { data: pendentes } = await sb
       .from('notificacoes')
       .select('*')
       .eq('enviada', false)
-      .lte('agendada_para', limite.toISOString())
-      .lte('agendada_para', new Date(agora.getTime() + 30 * 60 * 1000).toISOString());
+      .lte('agendada_para', agora.toISOString());
 
     if (!pendentes || !pendentes.length) return;
 
     for (const notif of pendentes) {
       try {
-        const ids = await _obterConversaId(sb, null, notif.paciente_id);
-        // Busca conversa diretamente pelo paciente_id
-        const { data: conv } = await sb.from('conversas').select('id').eq('paciente_id', notif.paciente_id).eq('status', 'ativa').single();
-        if (conv) {
+        // Usa conversa_id salvo na notificação (confirmacoes) ou busca pela conversa ativa do paciente (lembretes)
+        let conversaId = notif.conversa_id || null;
+        if (!conversaId) {
+          const { data: conv } = await sb.from('conversas').select('id').eq('paciente_id', notif.paciente_id).eq('status', 'ativa').single();
+          conversaId = conv?.id || null;
+        }
+        if (conversaId) {
+          const prefixo = notif.tipo === 'confirmacao' ? '✅ ' : '🔔 ';
           await sb.from('mensagens').insert({
-            conversa_id:    conv.id,
+            conversa_id:    conversaId,
             tipo_remetente: 'sistema',
-            conteudo:       '🔔 ' + notif.corpo,
+            conteudo:       prefixo + notif.corpo,
             lida:           false,
           });
-          await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', conv.id);
+          await sb.from('conversas').update({ ultima_mensagem_em: agora.toISOString() }).eq('id', conversaId);
         }
-        // Marca como enviada
-        await sb.from('notificacoes').update({ enviada: true, enviada_em: new Date().toISOString() }).eq('id', notif.id);
+        // Marca como enviada independente de ter conversa (evita loop)
+        await sb.from('notificacoes').update({ enviada: true, enviada_em: agora.toISOString() }).eq('id', notif.id);
       } catch(e2) {
         console.warn('[Notif] Erro ao processar notif id=' + notif.id, e2);
       }
@@ -15263,7 +15288,12 @@ document.addEventListener('DOMContentLoaded', function() {
   };
   window.excluirAgendamento = async function (id) {
     if (!confirm('Excluir este agendamento permanentemente?')) return;
-    const sb = getDb(); if (sb) await sb.from('agendamentos').delete().eq('id', id);
+    const sb = getDb();
+    if (sb) {
+      // Cancela notificações pendentes vinculadas ao agendamento
+      await sb.from('notificacoes').delete().eq('agendamento_id', id).eq('enviada', false);
+      await sb.from('agendamentos').delete().eq('id', id);
+    }
     const i = APPOINTMENTS.findIndex(a => a.id === id); if (i > -1) APPOINTMENTS.splice(i, 1);
     closeModal('modal-agendamento'); refreshUI(); showToast('Agendamento excluído.', 'error');
   };
@@ -15324,6 +15354,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window.loadFromSupabase = loadFromSupabase;
   window._cf = getDb;
+  window._cfGetDb = getDb;         // alias usado por sincronizarDados, excluirAgendamento etc.
+  window.getDb = getDb;            // alias directo para módulos WA e Notif
   window.salvarConfigNoDB = salvarConfigNoDB;
   window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
