@@ -5296,7 +5296,8 @@ let CLINICA = {
   email: '',
   codPrestador: '0001234',
   cnes: '',
-  logo: '',  // base64 da imagem
+  logo: '',         // base64 da imagem
+  canalNotif: 'whatsapp', // 'whatsapp' | 'chat'
 };
 
 // ── Espaço Conecta — dados globais (declarados aqui para ficarem disponíveis para todos os scripts) ──
@@ -11080,44 +11081,132 @@ function enviarNotifAgendamento(dados) {
   }
 }
 
-async function _enviarNotifChat(dados) {
+// ── Helper: busca ou cria paciente + conversa no Supabase ────────────────────
+async function _obterConversaId(sb, nomePaciente) {
+  let pacId = null;
+  const { data: pacData } = await sb.from('pacientes').select('id').eq('nome', nomePaciente).single();
+  if (pacData) { pacId = pacData.id; }
+  else {
+    const { data: newPac } = await sb.from('pacientes').insert({ nome: nomePaciente }).select('id').single();
+    pacId = newPac?.id || null;
+  }
+  if (!pacId) return null;
+  let conversaId = null;
+  const { data: convData } = await sb.from('conversas').select('id').eq('paciente_id', pacId).eq('status', 'ativa').single();
+  if (convData) { conversaId = convData.id; }
+  else {
+    const { data: newConv } = await sb.from('conversas').insert({ paciente_id: pacId, status: 'ativa' }).select('id').single();
+    conversaId = newConv?.id || null;
+  }
+  return { pacId, conversaId };
+}
+
+// ── Monta texto da mensagem a partir do template padrão ───────────────────────
+function _montarMsgAgendamento(dados) {
   const tpl = WA_TEMPLATES.find(t => t.padrao) || WA_TEMPLATES[0];
   const prof = PROFISSIONAIS.find(p => p.id === dados.profId);
   const dateObj = dados.dataISO ? new Date(dados.dataISO + 'T12:00') : new Date();
   const dateStr = dateObj.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  const msg = tpl.texto
+  return tpl.texto
     .replace(/\{nome\}/g,      dados.paciente)
     .replace(/\{data\}/g,      dateStr)
     .replace(/\{hora\}/g,      dados.hora || '')
     .replace(/\{terapeuta\}/g, prof?.nome || '')
     .replace(/\{clinica\}/g,   CLINICA?.nome || 'Clínica');
+}
 
+// ── Ao criar agendamento via canal Chat:
+//    1) Grava na tabela notificacoes (agendada_para = 24h antes)
+//    2) Envia confirmação imediata no chat
+async function _enviarNotifChat(dados) {
   const sb = getDb();
   if (!sb) { showToast('Supabase não conectado para enviar notificação', 'error'); return; }
+  const msg = _montarMsgAgendamento(dados);
   try {
-    let pacId = null;
-    const { data: pacData } = await sb.from('pacientes').select('id').eq('nome', dados.paciente).single();
-    if (pacData) { pacId = pacData.id; }
-    else {
-      const { data: newPac } = await sb.from('pacientes').insert({ nome: dados.paciente }).select('id').single();
-      pacId = newPac?.id || null;
-    }
-    if (!pacId) { showToast('Paciente não encontrado para notificação', 'error'); return; }
-    let conversaId = null;
-    const { data: convData } = await sb.from('conversas').select('id').eq('paciente_id', pacId).eq('status', 'ativa').single();
-    if (convData) { conversaId = convData.id; }
-    else {
-      const { data: newConv } = await sb.from('conversas').insert({ paciente_id: pacId, status: 'ativa' }).select('id').single();
-      conversaId = newConv?.id || null;
-    }
-    if (!conversaId) { showToast('Erro ao criar conversa para notificação', 'error'); return; }
-    await sb.from('mensagens').insert({ conversa_id: conversaId, tipo_remetente: 'sistema', conteudo: '📅 ' + msg, lida: false });
-    await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', conversaId);
-    showToast('Notificação enviada pelo Chat com Paciente ✓', 'success');
+    const ids = await _obterConversaId(sb, dados.paciente);
+    if (!ids) { showToast('Paciente não encontrado para notificação', 'error'); return; }
+
+    // Calcula agendada_para = 24h antes do agendamento
+    const dataHoraAppt = new Date((dados.dataISO || new Date().toISOString().slice(0,10)) + 'T' + (dados.hora || '08:00') + ':00');
+    const agendadaPara = new Date(dataHoraAppt.getTime() - 24 * 60 * 60 * 1000);
+    const agendadaISO  = agendadaPara.toISOString();
+
+    // 1) Grava na tabela notificacoes
+    await sb.from('notificacoes').insert({
+      paciente_id:  ids.pacId,
+      titulo:       'Lembrete de consulta',
+      corpo:        msg,
+      tipo:         'lembrete',
+      enviada:      false,
+      agendada_para: agendadaISO,
+    });
+
+    // 2) Envia confirmação imediata no chat (aviso de agendamento)
+    const tplConf = WA_TEMPLATES.find(t => t.padrao) || WA_TEMPLATES[0];
+    const prof    = PROFISSIONAIS.find(p => p.id === dados.profId);
+    const dateStr = dados.dataISO ? new Date(dados.dataISO + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' }) : '';
+    const confirmMsg = '✅ Consulta agendada!\n\n📅 ' + dateStr + ' às ' + (dados.hora || '') + '\n👩‍⚕️ ' + (prof?.nome || '') + '\n\nVocê receberá um lembrete 24h antes. Até lá!';
+    await sb.from('mensagens').insert({ conversa_id: ids.conversaId, tipo_remetente: 'sistema', conteudo: confirmMsg, lida: false });
+    await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', ids.conversaId);
+
+    showToast('Confirmação enviada no chat + lembrete agendado para 24h antes ✓', 'success');
   } catch(e) {
     showToast('Erro ao enviar via chat: ' + e.message, 'error');
   }
 }
+
+// ── Verificador periódico: dispara lembretes 24h antes ────────────────────────
+// Roda a cada 30 minutos enquanto o sistema estiver aberto
+async function verificarNotificacoesPendentes() {
+  if (WA_CONFIG.canal !== 'chat') return;
+  const sb = getDb();
+  if (!sb) return;
+  try {
+    const agora   = new Date();
+    const limite  = new Date(agora.getTime() + 5 * 60 * 1000); // janela: até 5min no futuro
+    const { data: pendentes } = await sb
+      .from('notificacoes')
+      .select('*')
+      .eq('enviada', false)
+      .lte('agendada_para', limite.toISOString())
+      .lte('agendada_para', new Date(agora.getTime() + 30 * 60 * 1000).toISOString());
+
+    if (!pendentes || !pendentes.length) return;
+
+    for (const notif of pendentes) {
+      try {
+        const ids = await _obterConversaId(sb, null, notif.paciente_id);
+        // Busca conversa diretamente pelo paciente_id
+        const { data: conv } = await sb.from('conversas').select('id').eq('paciente_id', notif.paciente_id).eq('status', 'ativa').single();
+        if (conv) {
+          await sb.from('mensagens').insert({
+            conversa_id:    conv.id,
+            tipo_remetente: 'sistema',
+            conteudo:       '🔔 ' + notif.corpo,
+            lida:           false,
+          });
+          await sb.from('conversas').update({ ultima_mensagem_em: new Date().toISOString() }).eq('id', conv.id);
+        }
+        // Marca como enviada
+        await sb.from('notificacoes').update({ enviada: true, enviada_em: new Date().toISOString() }).eq('id', notif.id);
+      } catch(e2) {
+        console.warn('[Notif] Erro ao processar notif id=' + notif.id, e2);
+      }
+    }
+  } catch(e) {
+    console.warn('[Notif] Erro ao verificar notificações:', e);
+  }
+}
+
+// Inicia o verificador periódico (a cada 30 minutos)
+(function _iniciarVerificadorNotif() {
+  // Primeira verificação após 1 minuto do carregamento (dá tempo do Supabase conectar)
+  setTimeout(function _primeiraVerif() {
+    verificarNotificacoesPendentes();
+    // A partir daí, a cada 30 minutos
+    setInterval(verificarNotificacoesPendentes, 30 * 60 * 1000);
+  }, 60 * 1000);
+})();
 
 let WA_TEMPLATES = [
   {
@@ -11340,23 +11429,31 @@ function renderWaLog() {
 // ── Config functions ──────────────────────────────────────────────────────────
 function setCanalNotif(canal) {
   WA_CONFIG.canal = canal;
+  CLINICA.canalNotif = canal;
+  // Persiste no banco de dados (se conectado) e no localStorage como fallback
   localStorage.setItem('cf_notif_canal', canal);
-  const waCard   = document.getElementById('cfg-canal-whatsapp');
-  const chatCard = document.getElementById('cfg-canal-chat');
-  const waBadge  = document.getElementById('cfg-canal-wa-badge');
-  const chatBadge= document.getElementById('cfg-canal-chat-badge');
+  if (typeof salvarConfigNoDB === 'function') {
+    salvarConfigNoDB().catch(e => console.warn('[setCanalNotif]', e));
+  }
+  _atualizarUICanalNotif(canal);
+  showToast('Canal alterado para ' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + ' ✓', 'success');
+}
+
+function _atualizarUICanalNotif(canal) {
+  const waCard    = document.getElementById('cfg-canal-whatsapp');
+  const chatCard  = document.getElementById('cfg-canal-chat');
+  const waBadge   = document.getElementById('cfg-canal-wa-badge');
+  const chatBadge = document.getElementById('cfg-canal-chat-badge');
   if (canal === 'chat') {
-    if (chatCard) { chatCard.style.border = '2px solid var(--accent)'; chatCard.style.background = 'var(--accent-soft)'; }
-    if (waCard)   { waCard.style.border = '1px solid var(--border)'; waCard.style.background = ''; }
-    if (chatBadge){ chatBadge.className = 'chip green'; chatBadge.textContent = 'Ativo'; }
-    if (waBadge)  { waBadge.className = 'chip gray'; waBadge.textContent = 'Inativo'; }
-    showToast('Canal alterado para Chat com Paciente ✓', 'success');
+    if (chatCard)  { chatCard.style.border  = '2px solid var(--accent)'; chatCard.style.background  = 'var(--accent-soft)'; }
+    if (waCard)    { waCard.style.border    = '1px solid var(--border)'; waCard.style.background    = ''; }
+    if (chatBadge) { chatBadge.className = 'chip green'; chatBadge.textContent = 'Ativo'; }
+    if (waBadge)   { waBadge.className   = 'chip gray';  waBadge.textContent  = 'Inativo'; }
   } else {
-    if (waCard)   { waCard.style.border = '2px solid var(--accent)'; waCard.style.background = 'var(--accent-soft)'; }
-    if (chatCard) { chatCard.style.border = '1px solid var(--border)'; chatCard.style.background = ''; }
-    if (waBadge)  { waBadge.className = 'chip green'; waBadge.textContent = 'Ativo'; }
-    if (chatBadge){ chatBadge.className = 'chip gray'; chatBadge.textContent = 'Requer Supabase'; }
-    showToast('Canal alterado para WhatsApp ✓', 'success');
+    if (waCard)    { waCard.style.border    = '2px solid var(--accent)'; waCard.style.background    = 'var(--accent-soft)'; }
+    if (chatCard)  { chatCard.style.border  = '1px solid var(--border)'; chatCard.style.background  = ''; }
+    if (waBadge)   { waBadge.className   = 'chip green'; waBadge.textContent  = 'Ativo'; }
+    if (chatBadge) { chatBadge.className = 'chip gray';  chatBadge.textContent = 'Requer Supabase'; }
   }
 }
 
@@ -11517,6 +11614,11 @@ function initConfigPage() {
     const preview = document.getElementById('cfg-logo-preview');
     if (preview) preview.innerHTML = '<img src="'+CLINICA.logo+'" style="width:100%;height:100%;object-fit:contain;padding:4px">';
   }
+  // Restaura UI do canal de notificações a partir de CLINICA (ou fallback localStorage)
+  const canal = CLINICA.canalNotif || localStorage.getItem('cf_notif_canal') || 'whatsapp';
+  WA_CONFIG.canal = canal;
+  if (typeof _atualizarUICanalNotif === 'function') _atualizarUICanalNotif(canal);
+  if (typeof initWAConfig === 'function') initWAConfig();
 }
 
 // ── Templates management ──────────────────────────────────────────────────────
@@ -11598,21 +11700,10 @@ function salvarTemplates() {
 function initWAConfig() {
   renderConfigTemplates();
   renderWaLog();
-  // Restaura canal salvo
-  const savedCanal = localStorage.getItem('cf_notif_canal');
-  if (savedCanal) {
-    WA_CONFIG.canal = savedCanal;
-    const waCard   = document.getElementById('cfg-canal-whatsapp');
-    const chatCard = document.getElementById('cfg-canal-chat');
-    const waBadge  = document.getElementById('cfg-canal-wa-badge');
-    const chatBadge= document.getElementById('cfg-canal-chat-badge');
-    if (savedCanal === 'chat') {
-      if (chatCard) { chatCard.style.border = '2px solid var(--accent)'; chatCard.style.background = 'var(--accent-soft)'; }
-      if (waCard)   { waCard.style.border = '1px solid var(--border)'; waCard.style.background = ''; }
-      if (chatBadge){ chatBadge.className = 'chip green'; chatBadge.textContent = 'Ativo'; }
-      if (waBadge)  { waBadge.className = 'chip gray'; waBadge.textContent = 'Inativo'; }
-    }
-  }
+  // Restaura canal: prioridade DB (CLINICA.canalNotif) > localStorage > padrão 'whatsapp'
+  const canal = CLINICA.canalNotif || localStorage.getItem('cf_notif_canal') || 'whatsapp';
+  WA_CONFIG.canal = canal;
+  _atualizarUICanalNotif(canal);
 }
 
 // Bulk send confirmation to all today's patients
@@ -14487,7 +14578,14 @@ document.addEventListener('DOMContentLoaded', function() {
       rep(SENHAS_PLANO, se.data,    map.dbToSenha);
       rep(LISTA_ESPERA, esp.data,   map.dbToEspera);
       rep(HISTORICO,    hist,       map.dbToHist);
-      if (cfg.data && cfg.data.length > 0) Object.assign(CLINICA, cfg.data[0].dados || {});
+      if (cfg.data && cfg.data.length > 0) {
+        Object.assign(CLINICA, cfg.data[0].dados || {});
+        // Sincroniza canal de notificação carregado do banco
+        if (CLINICA.canalNotif) {
+          WA_CONFIG.canal = CLINICA.canalNotif;
+          localStorage.setItem('cf_notif_canal', CLINICA.canalNotif);
+        }
+      }
 
       // Carrega usuários do Supabase (merge com localStorage)
       try { await carregarUsuariosSupabase(); } catch(_eu) {}
@@ -15025,6 +15123,7 @@ document.addEventListener('DOMContentLoaded', function() {
     CLINICA.email        = document.getElementById('cfg-email-clinica')?.value.trim() || CLINICA.email;
     CLINICA.codPrestador = document.getElementById('cfg-cod-prestador')?.value.trim() || CLINICA.codPrestador;
     CLINICA.cnes         = document.getElementById('cfg-cnes')?.value.trim()          || CLINICA.cnes;
+    // Canal de notificação já está em CLINICA.canalNotif (atualizado por setCanalNotif)
     try { renderSidebarLogo(); } catch(e) {}
     await salvarConfigNoDB();
     showToast('Configurações salvas com sucesso!', 'success');
