@@ -3064,7 +3064,12 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
               <div style="margin-top:8px"><span id="cfg-canal-chat-badge" class="chip gray" style="font-size:10px">Requer Supabase</span></div>
             </div>
           </div>
-        </div>
+          <div style="margin-top:12px;display:flex;justify-content:flex-end">
+            <button class="btn-sm btn-accent" onclick="salvarCanalNotif()" style="display:flex;align-items:center;gap:6px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/></svg>
+              Salvar canal no banco de dados
+            </button>
+          </div>
 
         <!-- WhatsApp -->
         <div class="table-card" style="padding:24px;margin-bottom:16px">
@@ -11119,7 +11124,7 @@ function _montarMsgAgendamento(dados) {
 //    1) Grava na tabela notificacoes (agendada_para = 24h antes)
 //    2) Envia confirmação imediata no chat
 async function _enviarNotifChat(dados) {
-  const sb = getDb();
+  const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
   if (!sb) { showToast('Supabase não conectado para enviar notificação', 'error'); return; }
   const msg = _montarMsgAgendamento(dados);
   try {
@@ -11159,7 +11164,7 @@ async function _enviarNotifChat(dados) {
 // Roda a cada 30 minutos enquanto o sistema estiver aberto
 async function verificarNotificacoesPendentes() {
   if (WA_CONFIG.canal !== 'chat') return;
-  const sb = getDb();
+  const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
   if (!sb) return;
   try {
     const agora   = new Date();
@@ -11437,6 +11442,31 @@ function setCanalNotif(canal) {
   }
   _atualizarUICanalNotif(canal);
   showToast('Canal alterado para ' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + ' ✓', 'success');
+}
+
+async function salvarCanalNotif() {
+  const canal = WA_CONFIG.canal || CLINICA.canalNotif || 'whatsapp';
+  localStorage.setItem('cf_notif_canal', canal);
+  CLINICA.canalNotif = canal;
+
+  const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
+  if (!sb) {
+    showToast('Supabase não conectado — canal salvo apenas localmente', 'warning');
+    return;
+  }
+  try {
+    if (typeof salvarConfigNoDB === 'function') {
+      await salvarConfigNoDB();
+      showToast('Canal "' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + '" salvo no banco de dados ✓', 'success');
+    } else {
+      const { error } = await sb.from('clinica').update({ canal_notif: canal }).eq('id', 1);
+      if (error) throw error;
+      showToast('Canal "' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + '" salvo no banco de dados ✓', 'success');
+    }
+  } catch(e) {
+    showToast('Erro ao salvar no banco: ' + (e.message || e), 'error');
+    console.error('[salvarCanalNotif]', e);
+  }
 }
 
 function _atualizarUICanalNotif(canal) {
@@ -14484,6 +14514,21 @@ document.addEventListener('DOMContentLoaded', function() {
 //  SUPABASE INTEGRATION — ClinicFlow
 //  Patch integrado inline (não precisa de supabase_patch.js externo)
 // ═══════════════════════════════════════════════════════════════════════
+
+// ── Singleton global: evita múltiplos GoTrueClient no mesmo contexto ─────────
+// Deve ser definido ANTES da IIFE para que getDb() e outros módulos possam usar
+;(function _definirSingletonSupabase() {
+  let _cachedClient = null;
+  window._cfGetOrCreateClient = function(url, key) {
+    if (_cachedClient) return _cachedClient;
+    if (window.__cfSb) { _cachedClient = window.__cfSb; return _cachedClient; }
+    if (!window.supabase || !url || !key) return null;
+    _cachedClient = window.supabase.createClient(url, key);
+    window.__cfSb = _cachedClient;
+    return _cachedClient;
+  };
+})();
+
 (function () {
   'use strict';
 
@@ -14499,6 +14544,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     return _sb;
   }
+
+  // Expõe getDb globalmente para módulos externos (WA, Notif, etc.)
+  window.getDb = getDb;
 
   const map = {
     pacToDb: p => ({ nome:p.nome, nasc:p.nasc||null, cpf:p.cpf||null, tel:p.tel||null, email:p.email||null, end:p.end||null, plano_id:p.planoId||5, plano:p.plano||'Particular', carteirinha:p.carteirinha||null, sexo:p.sexo||null, status:p.status||'Ativo', obs:p.obs||null, ultima:p.ultima||null, est_civil:p.estCivil||null, profissao:p.profissao||null, titular:p.titular||null, foto:p.foto||null }),
