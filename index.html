@@ -559,6 +559,10 @@ a { text-decoration: none; color: inherit; }
 }
 .day-cell-tag.azul { background: rgba(79,142,247,0.2); color: var(--accent); }
 .day-cell-tag.verde { background: rgba(52,211,153,0.2); color: var(--success); }
+.day-cell-tag.roxo { background: rgba(167,139,250,0.2); color: #a78bfa; }
+.day-cell-tag.amarelo { background: rgba(251,191,36,0.2); color: var(--warning); }
+.day-cell-tag.vermelho { background: rgba(248,113,113,0.2); color: var(--danger); }
+.day-cell-tag.esmeralda { background: rgba(52,211,153,0.15); color: #34d399; }
 .loc-prof-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -602,6 +606,8 @@ a { text-decoration: none; color: inherit; }
 .sala-pill.sala2 { background: rgba(167,139,250,0.15); color: #a78bfa; }
 .sala-pill.sala3 { background: rgba(52,211,153,0.15); color: var(--success); }
 .sala-pill.sala4 { background: rgba(251,191,36,0.15); color: var(--warning); }
+.sala-pill.sala5 { background: rgba(248,113,113,0.15); color: var(--danger); }
+.sala-pill.sala6 { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
 
 /* Pacientes — layout flex com header fixo e tabela com scroll */
 #page-pacientes {
@@ -15801,6 +15807,47 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
   };
 
+  // ── Override excluirReserva (exclusão permanente) ─────────────
+  window._excluirReservaSupabase = window.excluirReserva = async function (escopo) {
+    const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
+    if (!res) { closeModal('modal-excluir-lote'); return; }
+    const sb = getDb();
+
+    const deletarReserva = async (r) => {
+      if (sb) {
+        const { error } = await sb.from('reservas_salas').delete().eq('id', r.id);
+        if (error) { console.error('[Excluir Reserva]', error.message); return false; }
+      }
+      const idx = RESERVAS_SALAS.findIndex(x => String(x.id) === String(r.id));
+      if (idx >= 0) RESERVAS_SALAS.splice(idx, 1);
+      return true;
+    };
+
+    let excluidas = 0;
+
+    if (escopo === 'unica') {
+      if (await deletarReserva(res)) excluidas = 1;
+      showToast('Reserva excluída permanentemente', 'success');
+    } else if (escopo === 'futuras') {
+      const alvo = RESERVAS_SALAS.filter(r =>
+        r.serieId && r.serieId === res.serieId && r.data >= res.data
+      ).map(r => ({...r})); // snapshot antes de deletar
+      for (const r of alvo) { if (await deletarReserva(r)) excluidas++; }
+      showToast(`${excluidas} reserva(s) da série excluídas`, 'success');
+    } else if (escopo === 'todas') {
+      const alvo = RESERVAS_SALAS.filter(r =>
+        r.serieId && r.serieId === res.serieId
+      ).map(r => ({...r})); // snapshot antes de deletar
+      for (const r of alvo) { if (await deletarReserva(r)) excluidas++; }
+      showToast(`Toda a série excluída (${excluidas} reservas)`, 'success');
+    }
+
+    if (typeof _conectaSalvarLocal === 'function') _conectaSalvarLocal();
+    closeModal('modal-excluir-lote');
+    closeModal('modal-reserva-detalhe');
+    if (typeof conectaRenderAgenda === 'function') conectaRenderAgenda();
+  };
+
   window.cancelarReservaAtual = function () {
     if (!RESERVA_ATUAL_ID) return;
     const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
@@ -17808,7 +17855,12 @@ function emitirRelatorioFechamento() {
     <div class="modal-footer" id="reserva-detalhe-footer">
       <button class="btn-sm btn-secondary" onclick="closeModal('modal-reserva-detalhe')">Fechar</button>
       <button class="btn-sm btn-secondary" style="color:var(--danger);border-color:rgba(248,113,113,0.3)" id="btn-cancelar-reserva" onclick="cancelarReservaAtual()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg>
         Cancelar Reserva
+      </button>
+      <button class="btn-sm" style="background:rgba(248,113,113,0.12);color:var(--danger);border:1px solid rgba(248,113,113,0.35)" id="btn-excluir-reserva" onclick="excluirReservaAtual()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        Excluir
       </button>
     </div>
   </div>
@@ -17849,7 +17901,7 @@ function emitirRelatorioFechamento() {
         </div>
         <div class="form-group">
           <label>Cor de identificação</label>
-          <div style="display:flex;gap:8px;margin-top:4px">
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--radius-sm);border:2px solid transparent;transition:border-color .15s" id="cor-sala1-lbl">
               <input type="radio" name="sala-cor" value="sala1" id="cor-sala1" checked style="display:none">
               <span style="width:14px;height:14px;border-radius:50%;background:var(--accent)"></span>
@@ -17870,6 +17922,16 @@ function emitirRelatorioFechamento() {
               <span style="width:14px;height:14px;border-radius:50%;background:var(--warning)"></span>
               <span style="font-size:12px">Amarelo</span>
             </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--radius-sm);border:2px solid transparent;transition:border-color .15s" id="cor-sala5-lbl">
+              <input type="radio" name="sala-cor" value="sala5" id="cor-sala5" style="display:none">
+              <span style="width:14px;height:14px;border-radius:50%;background:#f87171"></span>
+              <span style="font-size:12px">Vermelho</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--radius-sm);border:2px solid transparent;transition:border-color .15s" id="cor-sala6-lbl">
+              <input type="radio" name="sala-cor" value="sala6" id="cor-sala6" style="display:none">
+              <span style="width:14px;height:14px;border-radius:50%;background:#34d399"></span>
+              <span style="font-size:12px">Esmeralda</span>
+            </label>
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
@@ -17884,7 +17946,38 @@ function emitirRelatorioFechamento() {
   </div>
 </div>
 
-<!-- Modal: Confirmar Cancelamento em Lote (recorrente) -->
+<!-- Modal: Confirmar Exclusão Permanente em Lote (recorrente) -->
+<div class="modal-overlay" id="modal-excluir-lote">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Excluir Reserva</div>
+      <button class="modal-close" onclick="closeModal('modal-excluir-lote')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;margin-bottom:6px;color:var(--text-primary)">Esta reserva faz parte de uma série recorrente.</p>
+      <p style="font-size:12px;color:var(--danger);margin-bottom:16px">⚠ Esta ação é <strong>permanente</strong> e não pode ser desfeita.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn-sm btn-secondary" style="justify-content:flex-start;padding:10px 14px" onclick="excluirReserva('unica')">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+          Apenas esta data
+        </button>
+        <button class="btn-sm btn-secondary" style="justify-content:flex-start;padding:10px 14px;color:var(--warning)" onclick="excluirReserva('futuras')">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+          Esta e as próximas da série
+        </button>
+        <button class="btn-sm" style="justify-content:flex-start;padding:10px 14px;background:rgba(248,113,113,0.1);color:var(--danger);border:1px solid rgba(248,113,113,0.3)" onclick="excluirReserva('todas')">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          Excluir todas da série
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-excluir-lote')">Voltar</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="modal-cancelar-lote">
   <div class="modal" style="max-width:420px">
     <div class="modal-header">
@@ -17920,7 +18013,7 @@ function emitirRelatorioFechamento() {
 // ═══════════════════════════════════════════════════════════════════
 
 // Cores das salas
-const SALA_CORES = ['sala1','sala2','sala3','sala4'];
+const SALA_CORES = ['sala1','sala2','sala3','sala4','sala5','sala6'];
 
 function conectaInitSalas() {
   // Verifica se Supabase está configurado — se sim, não injeta dados demo,
@@ -18072,8 +18165,10 @@ function conectaRenderAgenda() {
         if (reservas.length > 0) {
           const res = reservas[0];
           const loc = LOCATARIOS.find(l => l.id === res.locId);
+          const corMap = { sala1:'azul', sala2:'roxo', sala3:'verde', sala4:'amarelo', sala5:'vermelho', sala6:'esmeralda' };
+          const tagCor = corMap[sala.cor] || 'azul';
           cellClass += ' ocupado';
-          cellContent = `<div class="day-cell-tag azul" title="${loc?.nome||''} — ${res.horaIni}-${res.horaFim}" style="cursor:pointer" onclick="verReserva('${res.id}')">${loc?.nome?.split(' ')[0]||'—'}</div>`;
+          cellContent = `<div class="day-cell-tag ${tagCor}" title="${loc?.nome||''} — ${res.horaIni}-${res.horaFim}" style="cursor:pointer" onclick="verReserva('${res.id}')">${loc?.nome?.split(' ')[0]||'—'}</div>`;
         }
 
         grid.innerHTML += `<div class="${cellClass}" onclick="cellClique('${sala.id}','${iso}','${hora}')" style="${reservas.length?'cursor:default':''}">${cellContent}</div>`;
@@ -18141,11 +18236,14 @@ function verReserva(resId) {
     </div>
   `;
 
-  // Esconde o botão de cancelar se não for admin/recepcao
+  // Esconde o botão de cancelar/excluir se não for admin/recepcao
   const btnCancel = document.getElementById('btn-cancelar-reserva');
-  if (btnCancel) {
+  const btnExcluir = document.getElementById('btn-excluir-reserva');
+  if (btnCancel || btnExcluir) {
     const role = (typeof currentUser !== 'undefined' && currentUser?.role) || '';
-    btnCancel.style.display = (role === 'admin' || role === 'recepcao') ? '' : 'none';
+    const podeGerenciar = (role === 'admin' || role === 'recepcao');
+    if (btnCancel)  btnCancel.style.display  = podeGerenciar ? '' : 'none';
+    if (btnExcluir) btnExcluir.style.display = podeGerenciar ? '' : 'none';
   }
 
   openModal('modal-reserva-detalhe');
@@ -18193,8 +18291,56 @@ async function cancelarReserva(escopo) {
   conectaRenderAgenda();
 }
 
-// ── Gestão de Salas ──────────────────────────────────────────────
-function abrirGestaoSalas() {
+// ── Exclusão permanente de reserva ──────────────────────────────
+function excluirReservaAtual() {
+  if (!RESERVA_ATUAL_ID) return;
+  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  if (!res) return;
+  // Se recorrente, mostra modal de escopo de exclusão
+  if (res.recorrencia && res.recorrencia !== 'unica' && res.serieId) {
+    closeModal('modal-reserva-detalhe');
+    openModal('modal-excluir-lote');
+  } else {
+    if (!confirm('Excluir permanentemente esta reserva? Esta ação não pode ser desfeita.')) return;
+    excluirReserva('unica');
+  }
+}
+
+async function excluirReserva(escopo) {
+  // Delega para o Supabase se disponível
+  if (window._excluirReservaSupabase) { return window._excluirReservaSupabase(escopo); }
+
+  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  if (!res) { closeModal('modal-excluir-lote'); return; }
+
+  if (escopo === 'unica') {
+    const idx = RESERVAS_SALAS.findIndex(r => r.id === RESERVA_ATUAL_ID);
+    if (idx >= 0) RESERVAS_SALAS.splice(idx, 1);
+    showToast('Reserva excluída', 'success');
+  } else if (escopo === 'futuras') {
+    const alvo = RESERVAS_SALAS.filter(r =>
+      r.serieId && r.serieId === res.serieId && r.data >= res.data
+    );
+    alvo.forEach(r => {
+      const i = RESERVAS_SALAS.findIndex(x => x.id === r.id);
+      if (i >= 0) RESERVAS_SALAS.splice(i, 1);
+    });
+    showToast(`${alvo.length} reserva(s) da série excluídas`, 'success');
+  } else if (escopo === 'todas') {
+    const alvo = RESERVAS_SALAS.filter(r => r.serieId && r.serieId === res.serieId);
+    alvo.forEach(r => {
+      const i = RESERVAS_SALAS.findIndex(x => x.id === r.id);
+      if (i >= 0) RESERVAS_SALAS.splice(i, 1);
+    });
+    showToast('Toda a série excluída', 'success');
+  }
+
+  closeModal('modal-excluir-lote');
+  closeModal('modal-reserva-detalhe');
+  conectaRenderAgenda();
+}
+
+
   renderSalasModal();
   limparFormSala();
   openModal('modal-gestao-salas');
@@ -18249,7 +18395,7 @@ function limparFormSala() {
 }
 
 function atualizarCorLabels() {
-  ['sala1','sala2','sala3','sala4'].forEach(c => {
+  ['sala1','sala2','sala3','sala4','sala5','sala6'].forEach(c => {
     const lbl   = document.getElementById('cor-' + c + '-lbl');
     const radio = document.getElementById('cor-' + c);
     if (lbl && radio) {
