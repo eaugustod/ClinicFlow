@@ -8238,22 +8238,36 @@ function previewGuiasAutomaticas() {
 
     // ═════════════════════════════════════════════════════════════════════
     // GERAÇÃO DAS DATAS POR SEMANA
-    // Regras:
-    //   • 1ª guia da 1ª semana = proxUtil(max(dataAut, data_agendamento))
-    //   • Se há 2 guias (60 min): guia2 = guia1 + 2 dias úteis
-    //   • Semanas seguintes: ancora no dia do agendamento da semana
-    //     - guia1 = dia do agendamento (ou mesmo dow projetado)
-    //     - guia2 = guia1 - 2 dias úteis (2 dias antes)
-    //   • Se não há agendamento: projeta o mesmo dow do 1º agendamento
-    //     (ou segunda, se não houver nenhum), dentro do range dataIni-dataFim
-    //   • Limita ao total restante de guias
+    // Regras (por dia da semana do 1º agendamento do mês):
+    //   Seg (1): guia1=Seg, guia2=Qua (+2 dias corridos)
+    //   Ter (2): guia1=Ter, guia2=Qui (+2 dias corridos)
+    //   Qua (3): guia1=Qua, guia2=Sex (+2 dias corridos)
+    //   Qui (4): guia1=Qui, guia2=Ter da MESMA semana (-2 dias corridos)
+    //   Sex (5): guia1=Sex, guia2=Qua da MESMA semana (-2 dias corridos)
+    //
+    //   30 min → apenas 1 guia (guia1)
+    //   60 min → 2 guias (guia1 + guia2)
+    //
+    //   Todas as datas devem estar dentro de [dataIniReal, dataFimReal]
+    //   guia1 nunca pode ser anterior a dataIniReal (data inicial da autorização)
+    //   guia2 nunca pode ser anterior a dataIniReal
+    //   Nenhuma guia pode ser posterior a dataFimReal
     // ═════════════════════════════════════════════════════════════════════
 
-    // Descobre o dow base (dia da semana do agendamento recorrente)
+    // Descobre o dow base (dia da semana do 1º agendamento do mês)
+    // Usa o primeiro agendamento do mês como referência fixa
     let dowBase = appts.length
       ? new Date(appts[0].dataISO + 'T12:00:00').getDay()
       : 4; // default quinta
-    if (dowBase === 0 || dowBase === 6) dowBase = 4;
+    if (dowBase === 0 || dowBase === 6) dowBase = 4; // Não gera em fim de semana
+
+    // Calcula o offset (em dias corridos) para a 2ª guia baseado no dia âncora
+    // Seg(1)→+2(Qua), Ter(2)→+2(Qui), Qua(3)→+2(Sex), Qui(4)→-2(Ter), Sex(5)→-2(Qua)
+    const offsetG2 = (dow) => {
+      if (dow === 4) return -2; // Qui → Ter (mesma semana, recua 2 dias corridos)
+      if (dow === 5) return -2; // Sex → Qua (mesma semana, recua 2 dias corridos)
+      return 2;                 // Seg/Ter/Qua → avança 2 dias corridos
+    };
 
     // Monta mapa de agendamentos por semana (chave = ISO da segunda daquela semana)
     const apptPorSemana = {};
@@ -8272,54 +8286,49 @@ function previewGuiasAutomaticas() {
     segIni.setDate(dataIniReal.getDate() - (dowIni - 1));
 
     let guiasRestantes = restantes;
-    let primeiraSemana  = true;
 
     let semAtual = new Date(segIni);
     while (semAtual <= dataFimReal && guiasRestantes > 0) {
-      const wKey     = dateToISO(semAtual);
-      const apptSem  = apptPorSemana[wKey] || null;
+      const wKey    = dateToISO(semAtual);
+      const apptSem = apptPorSemana[wKey] || null;
 
-      // Dia âncora desta semana
+      // Dia âncora desta semana = dia do agendamento (se existe) ou projeção do dowBase
       let diaAncora;
       if (apptSem) {
         diaAncora = new Date(apptSem.dataISO + 'T12:00:00');
       } else {
-        // Projeta o mesmo dow base nesta semana
+        // Projeta o mesmo dow base nesta semana (semAtual é sempre uma segunda)
         diaAncora = new Date(semAtual);
         diaAncora.setDate(semAtual.getDate() + (dowBase - 1));
       }
 
-      // Âncora fora do intervalo válido → skip
-      if (diaAncora > dataFimReal) { semAtual = addDays(semAtual, 7); continue; }
+      // Âncora antes do início da autorização → pula esta semana
+      if (diaAncora < dataIniReal) { semAtual = addDays(semAtual, 7); continue; }
+      // Âncora após o fim da autorização → encerra
+      if (diaAncora > dataFimReal) break;
 
-      let g1, g2ISO = null;
+      // guia1 = dia âncora (deve estar dentro do intervalo)
+      const g1 = diaAncora;
+      let g2ISO = null;
 
-      if (primeiraSemana) {
-        // 1ª semana: guia1 = proxUtil(max(dataIniReal, diaAncora))
-        const base1 = dataIniReal > diaAncora ? dataIniReal : diaAncora;
-        g1 = proxUtil(base1);
-        if (is60 && guiasRestantes > 1) {
-          // guia2 = guia1 + 2 dias úteis (avança)
-          const g2 = addDiasUteis(g1, 2);
-          if (g2 <= dataFimReal) g2ISO = dateToISO(g2);
-        }
-        primeiraSemana = false;
-      } else {
-        // Semanas seguintes: guia1 = dia do agendamento; guia2 = guia1 - 2 dias úteis (recua)
-        g1 = proxUtil(diaAncora);
-        if (is60 && guiasRestantes > 1) {
-          // Recua 2 dias úteis (terça se agend. é quinta, qua se agend. é sexta, etc.)
-          let g2 = new Date(diaAncora);
-          let recuados = 0;
-          while (recuados < 2) {
-            g2 = addDays(g2, -1);
-            if (g2.getDay() !== 0 && g2.getDay() !== 6 && !isFeriado(dateToISO(g2))) recuados++;
-          }
-          if (g2 >= dataIniReal && g2 <= dataFimReal && g2 >= D_PRIM) g2ISO = dateToISO(g2);
+      if (is60 && guiasRestantes > 1) {
+        // guia2 = diaAncora + offset (pode ser negativo = mesma semana, antes)
+        const offset = offsetG2(diaAncora.getDay());
+        const g2 = addDays(diaAncora, offset);
+        // guia2 deve estar dentro do intervalo de autorização e não ser fim de semana
+        if (
+          g2 >= dataIniReal &&
+          g2 <= dataFimReal &&
+          g2 >= D_PRIM &&
+          g2.getDay() !== 0 &&
+          g2.getDay() !== 6 &&
+          !isFeriado(dateToISO(g2))
+        ) {
+          g2ISO = dateToISO(g2);
         }
       }
 
-      if (!g1 || g1 > dataFimReal || g1 < D_PRIM) { semAtual = addDays(semAtual, 7); continue; }
+      if (g1 > dataFimReal || g1 < dataIniReal) { semAtual = addDays(semAtual, 7); continue; }
       const g1ISO = dateToISO(g1);
 
       // ── Checa duplicatas ──────────────────────────────────────────────
