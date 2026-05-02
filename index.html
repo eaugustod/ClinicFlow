@@ -315,12 +315,7 @@ a { text-decoration: none; color: inherit; }
 
 /* Page content */
 .page { display: none; flex: 1; overflow-y: auto; padding: 24px; animation: fadeIn 0.2s ease; }
-.page.active {
-  display: block;
-  height: calc(100vh - 56px); /* 56px = topbar height */
-  overflow-y: auto;
-  box-sizing: border-box;
-}
+.page.active { display: block; }
 
 /* Dashboard — flex column para controlar scroll interno dos boxes */
 #page-dashboard {
@@ -331,9 +326,6 @@ a { text-decoration: none; color: inherit; }
 }
 #page-dashboard.active {
   display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
 }
 
 /* Guias SADT — flex column, scroll isolado na listagem */
@@ -345,9 +337,6 @@ a { text-decoration: none; color: inherit; }
 }
 #page-tiss.active {
   display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
 }
 #page-tiss #guias-list {
   flex: 1;
@@ -365,9 +354,6 @@ a { text-decoration: none; color: inherit; }
 }
 #page-senhas.active {
   display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
 }
 #page-senhas .senhas-table-wrap {
   flex: 1;
@@ -382,11 +368,7 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-profissionais.active { display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
-}
+#page-profissionais.active { display: flex; }
 #page-profissionais .table-card {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
 }
@@ -401,11 +383,7 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-planos.active { display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
-}
+#page-planos.active { display: flex; }
 #page-planos .planos-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
 #page-planos .plan-grid-wrap { flex: 1; overflow-y: auto; min-height: 0; }
 
@@ -416,11 +394,7 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-procedimentos.active { display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
-}
+#page-procedimentos.active { display: flex; }
 #page-procedimentos .table-card {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
 }
@@ -435,11 +409,7 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-espera.active { display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
-}
+#page-espera.active { display: flex; }
 #page-espera .espera-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
 #page-espera .espera-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
 #page-espera .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
@@ -455,11 +425,7 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-lotes.active { display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
-}
+#page-lotes.active { display: flex; }
 #page-lotes .lotes-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
 #page-lotes .lotes-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
 #page-lotes .lotes-table-wrap .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
@@ -473,13 +439,17 @@ a { text-decoration: none; color: inherit; }
 }
 #page-relatorios.active {
   display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
 }
 
-/* Fechamento Mensal — scroll simples, já coberto pela regra geral */
-#page-fechamento { display: none; padding: 24px; }
+/* Fechamento Mensal */
+#page-fechamento {
+  display: none;
+  overflow-y: auto;
+  padding: 24px;
+} 
+#page-fechamento.active {
+  display: block;
+}
 
 /* ═══════════════════════════════════════
    ESPAÇO CONECTA — SALAS
@@ -491,8 +461,15 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-/* conecta-fechamento — scroll simples */
-#page-conecta-fechamento { display: none; padding: 24px; }
+#page-conecta-agenda.active,
+#page-conecta-profissionais.active { display: flex; }
+
+#page-conecta-fechamento {
+  display: none;
+  overflow-y: auto;
+  padding: 24px;
+}
+#page-conecta-fechamento.active { display: block; }
 
 .conecta-header {
   display: flex; align-items: center; gap: 12px;
@@ -635,9 +612,6 @@ a { text-decoration: none; color: inherit; }
 }
 #page-pacientes.active {
   display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
 }
 #page-pacientes .table-card {
   flex: 1;
@@ -670,9 +644,6 @@ a { text-decoration: none; color: inherit; }
 }
 #page-agenda.active {
   display: flex;
-  height: calc(100vh - 56px);
-  box-sizing: border-box;
-  overflow: hidden;
 }
 #page-agenda .agenda-toolbar {
   flex-shrink: 0;
@@ -3066,40 +3037,6 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           </div>
         </div>
 
-        <!-- Canal de Notificações -->
-        <div class="table-card" style="padding:24px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-            <svg viewBox="0 0 24 24" fill="var(--accent)" style="width:18px;height:18px"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
-            <div>
-              <div style="font-size:14px;font-weight:600">Canal de notificações ao paciente</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Escolha como o sistema enviará confirmações e lembretes automaticamente ao agendar</div>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
-            <div id="cfg-canal-whatsapp" onclick="setCanalNotif('whatsapp')" style="padding:14px;border-radius:var(--radius-md);border:2px solid var(--accent);background:var(--accent-soft);cursor:pointer;transition:all var(--transition)">
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:7px">
-                <svg viewBox="0 0 24 24" fill="#25d366" style="width:16px;height:16px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.025.506 3.93 1.395 5.6L0 24l6.562-1.368C8.2 23.504 10.06 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.88 0-3.63-.49-5.15-1.345L2.5 21.5l.87-4.23A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                WhatsApp
-              </div>
-              <div style="font-size:11px;color:var(--text-secondary)">Envia via WhatsApp (link wa.me ou Evolution API). Requer telefone cadastrado no paciente.</div>
-              <div style="margin-top:8px"><span id="cfg-canal-wa-badge" class="chip green" style="font-size:10px">Ativo</span></div>
-            </div>
-            <div id="cfg-canal-chat" onclick="setCanalNotif('chat')" style="padding:14px;border-radius:var(--radius-md);border:1px solid var(--border);cursor:pointer;transition:all var(--transition)">
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:7px">
-                <svg viewBox="0 0 24 24" fill="var(--accent)" style="width:16px;height:16px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
-                Chat com Paciente
-              </div>
-              <div style="font-size:11px;color:var(--text-secondary)">Envia mensagem automática pelo chat interno do sistema. Requer Supabase conectado.</div>
-              <div style="margin-top:8px"><span id="cfg-canal-chat-badge" class="chip gray" style="font-size:10px">Requer Supabase</span></div>
-            </div>
-          </div>
-          <div style="margin-top:12px;display:flex;justify-content:flex-end">
-            <button class="btn-sm btn-accent" onclick="salvarCanalNotif()" style="display:flex;align-items:center;gap:6px">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/></svg>
-              Salvar canal no banco de dados
-            </button>
-          </div>
-
         <!-- WhatsApp -->
         <div class="table-card" style="padding:24px;margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -5330,8 +5267,7 @@ let CLINICA = {
   email: '',
   codPrestador: '0001234',
   cnes: '',
-  logo: '',         // base64 da imagem
-  canalNotif: 'whatsapp', // 'whatsapp' | 'chat'
+  logo: '',  // base64 da imagem
 };
 
 // ── Espaço Conecta — dados globais (declarados aqui para ficarem disponíveis para todos os scripts) ──
@@ -5518,19 +5454,12 @@ async function doLogin() {
       }
 
       // Login bem-sucedido via Supabase
-      // Normaliza o campo perfil para os valores internos ('admin','recepcao','prof')
-      const _perfilRaw = (usuario.perfil || '').toLowerCase().trim();
-      const _roleNorm  = _perfilRaw === 'admin' || _perfilRaw === 'administrador' ? 'admin'
-                       : _perfilRaw === 'recepcao' || _perfilRaw === 'recepção' ? 'recepcao'
-                       : _perfilRaw === 'prof' || _perfilRaw === 'profissional' ? 'prof'
-                       : _perfilRaw || 'recepcao';
       _finalizarLogin({
         nome:     usuario.nome     || emailInput,
-        role:     _roleNorm,
+        role:     usuario.perfil   || 'recepcao',
         initials: (usuario.nome || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
         foto:     usuario.foto     || '',
         id:       usuario.id,
-        perfilId: usuario.perfil_id || usuario.perfilId || null,
       });
       return;
 
@@ -5607,13 +5536,6 @@ function _finalizarLogin(user) {
     document.getElementById('nav-config-section').style.display = 'none';
     document.getElementById('nav-fatur-section').style.display  = 'none';
   }
-  // Garante que admin sempre vê Usuários e Perfis
-  if (role === 'admin') {
-    const uEl = document.getElementById('nav-usuarios-item');
-    const pEl = document.getElementById('nav-perfis-item');
-    if (uEl) { uEl.style.display = ''; uEl.removeAttribute('data-perfil-hidden'); }
-    if (pEl) { pEl.style.display = ''; pEl.removeAttribute('data-perfil-hidden'); }
-  }
   // Aplica permissões de perfil personalizado se existir
   _aplicarPermissoesDePerfil(user);
 
@@ -5669,7 +5591,7 @@ function doLogout() {
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', perfis:'Perfis de Acesso', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', fechamento:'Fechamento Mensal', usuarios:'Usuários & Acesso', perfis:'Perfis de Acesso', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
+const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', perfis:'Perfis de Acesso', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
 function gotoPage(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5681,7 +5603,6 @@ function gotoPage(page, el) {
   if (page === 'config')    try { initConfigPage(); } catch(e) {}
   if (page === 'conecta-fechamento') try { renderHistoricoFechamentos(); } catch(e) {}
   if (page === 'perfis')    try { renderPerfisLista(); } catch(e) { console.warn(e); }
-  if (page === 'usuarios')  try { renderUsuarios(); } catch(e) { console.warn(e); }
   if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
   if (page === 'senhas')    try { renderSenhas(); } catch(e) {}
   if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
@@ -7444,92 +7365,31 @@ function excluirHistorico(id) {
   });
 }
 function excluirAgendamento(id) {
-  const appt = APPOINTMENTS.find(a => a.id === id);
-  if (!appt) return;
-
-  let idsParaExcluir = [id];
-
-  if (appt.isGrupo && appt.groupId) {
-    const membros = APPOINTMENTS.filter(a => a.groupId === appt.groupId && a.dataISO === appt.dataISO);
-    if (membros.length > 1) {
-      const resp = confirm(
-        'Este agendamento faz parte de um grupo com ' + membros.length + ' pacientes.\n\n' +
-        'Clique OK para excluir TODOS os ' + membros.length + ' agendamentos do grupo.\n' +
-        'Clique Cancelar para cancelar a operação.'
-      );
-      if (!resp) return;
-      idsParaExcluir = membros.map(a => a.id);
-    } else {
-      if (!confirm('Excluir este agendamento permanentemente?')) return;
-    }
-  } else {
-    if (!confirm('Excluir este agendamento permanentemente?')) return;
-  }
-
-  const sb = window._cfGetDb ? window._cfGetDb() : null;
-  if (sb) {
-    idsParaExcluir.forEach(eid => {
-      sb.from('notificacoes').delete().eq('agendamento_id', eid).eq('enviada', false).then(() => {});
-    });
-    sb.from('agendamentos').delete().in('id', idsParaExcluir).then(({error}) => {
-      if (error) console.error('[Excluir Agendamento]', error.message);
-    });
-  }
-
-  idsParaExcluir.forEach(eid => {
-    const idx = APPOINTMENTS.findIndex(a => a.id === eid);
-    if (idx > -1) APPOINTMENTS.splice(idx, 1);
-  });
-
-  closeModal('modal-agendamento');
-  renderDayView();
-  showToast(
-    idsParaExcluir.length > 1
-      ? idsParaExcluir.length + ' agendamentos do grupo excluídos.'
-      : 'Agendamento excluído.',
-    'error'
-  );
+  if (!confirm('Excluir este agendamento permanentemente?')) return;
+  const idx = APPOINTMENTS.findIndex(a=>a.id===id);
+  if (idx>-1) { APPOINTMENTS.splice(idx,1); closeModal('modal-agendamento'); renderDayView(); showToast('Agendamento excluído.','error'); }
 }
 
 function excluirAgendamentoComGuia() {
   if (!currentApptId) return;
+  if (!confirm('Excluir este agendamento? Se houver guia SADT vinculada, ela também será excluída.')) return;
   const appt = APPOINTMENTS.find(a => a.id === currentApptId);
-  if (!appt) return;
-
-  let idsParaExcluir = [currentApptId];
-
-  if (appt.isGrupo && appt.groupId) {
-    const membros = APPOINTMENTS.filter(a => a.groupId === appt.groupId && a.dataISO === appt.dataISO);
-    if (membros.length > 1) {
-      const resp = confirm(
-        'Este agendamento faz parte de um grupo com ' + membros.length + ' pacientes.\n\n' +
-        'Clique OK para excluir TODOS os ' + membros.length + ' agendamentos do grupo (guias vinculadas também serão excluídas).\n' +
-        'Clique Cancelar para cancelar a operação.'
-      );
-      if (!resp) return;
-      idsParaExcluir = membros.map(a => a.id);
-    } else {
-      if (!confirm('Excluir este agendamento? Se houver guia SADT vinculada, ela também será excluída.')) return;
-    }
-  } else {
-    if (!confirm('Excluir este agendamento? Se houver guia SADT vinculada, ela também será excluída.')) return;
-  }
-
-  const _sb = window._cfGetDb ? window._cfGetDb() : null;
-  const apptsList = idsParaExcluir.map(eid => APPOINTMENTS.find(a => a.id === eid)).filter(Boolean);
-
-  // Remove guias e reverte senhas para cada membro do grupo
-  apptsList.forEach(a => {
-    const guiaIdx = GUIAS.findIndex(g => g.pac === a.paciente && g.data === a.dataISO);
+  // Remove guia vinculada por paciente + data
+  if (appt) {
+    const guiaIdx = GUIAS.findIndex(g =>
+      g.pac === appt.paciente && g.data === appt.dataISO
+    );
     if (guiaIdx > -1) {
       const guia = GUIAS[guiaIdx];
+      const _sb = window._cfGetDb ? window._cfGetDb() : null;
       if (_sb) {
         _sb.from('guias_sadt').delete().eq('id', guia.id).then(({error}) => {
           if (error) console.error('[Excluir Guia]', error.message);
         });
+        // Reverte qtdUsada na senha
         const senhaRev = SENHAS_PLANO.find(s =>
-          s.planoId === a.planoId &&
-          s.paciente.toLowerCase() === a.paciente.toLowerCase() && s.qtdUsada > 0
+          s.planoId === appt.planoId &&
+          s.paciente.toLowerCase() === appt.paciente.toLowerCase() && s.qtdUsada > 0
         );
         if (senhaRev) {
           senhaRev.qtdUsada = Math.max(0, senhaRev.qtdUsada - 1);
@@ -7538,36 +7398,20 @@ function excluirAgendamentoComGuia() {
         }
       }
       GUIAS.splice(guiaIdx, 1);
+      renderGuiasList();
     }
-  });
-
-  if (_sb) {
-    // Cancela notificações de todos em paralelo
-    idsParaExcluir.forEach(eid => {
-      _sb.from('notificacoes').delete().eq('agendamento_id', eid).eq('enviada', false).then(() => {});
-    });
-    // Exclui todos os agendamentos do grupo em uma única operação
-    _sb.from('agendamentos').delete().in('id', idsParaExcluir).then(({error}) => {
-      if (error) console.error('[Excluir Agendamento Grupo]', error.message);
+    // Remove agendamento do Supabase
+    const _sb = window._cfGetDb ? window._cfGetDb() : null;
+    if (_sb) _sb.from('agendamentos').delete().eq('id', currentApptId).then(({error}) => {
+      if (error) console.error('[Excluir Agendamento]', error.message);
     });
   }
-
-  // Remove da memória
-  idsParaExcluir.forEach(eid => {
-    const idx = APPOINTMENTS.findIndex(a => a.id === eid);
-    if (idx > -1) APPOINTMENTS.splice(idx, 1);
-  });
-
-  try { renderGuiasList(); } catch(e) {}
+  const idx = APPOINTMENTS.findIndex(a => a.id === currentApptId);
+  if (idx > -1) APPOINTMENTS.splice(idx, 1);
   closeModal('modal-agendamento');
   renderDayView();
   renderDashboard();
-  showToast(
-    idsParaExcluir.length > 1
-      ? idsParaExcluir.length + ' agendamentos do grupo excluídos.'
-      : 'Agendamento excluído.',
-    'error'
-  );
+  showToast('Agendamento excluído.', 'error');
 }
 const CAL_ICON  = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2z"/></svg>`;
 
@@ -11181,172 +11025,13 @@ async function gerarMeetLink() {
 
 // ── Config state ─────────────────────────────────────────────────────────────
 let WA_CONFIG = {
-  method:      'link',        // 'link' | 'api'
-  canal:       'whatsapp',    // 'whatsapp' | 'chat'
+  method:      'link',    // 'link' | 'api'
   evoUrl:      '',
   evoKey:      '',
   evoInstance: 'clinica',
   evoPhone:    '',
   connected:   false,
 };
-
-// ── Notificação automática ao agendar ─────────────────────────────────────────
-// Notificação automática — canal WhatsApp: abre o modal já preenchido (sincrono, sem popup-blocker)
-// canal Chat: envia via Supabase de forma assíncrona
-function enviarNotifAgendamento(dados) {
-  if (WA_CONFIG.canal === 'chat') {
-    _enviarNotifChat(dados);   // async internamente
-  } else {
-    // WhatsApp — abre o modal padrão já preenchido, 1 clique para enviar
-    // Usa setTimeout(0) para rodar após fechar o modal de agendamento
-    setTimeout(() => {
-      if (typeof abrirModalWA === 'function' && dados.id != null) {
-        abrirModalWA(dados.id);
-      }
-    }, 300);
-  }
-}
-
-// ── Helper: busca ou cria paciente + conversa no Supabase ────────────────────
-async function _obterConversaId(sb, nomePaciente) {
-  let pacId = null;
-  const { data: pacData } = await sb.from('pacientes').select('id').eq('nome', nomePaciente).single();
-  if (pacData) { pacId = pacData.id; }
-  else {
-    const { data: newPac } = await sb.from('pacientes').insert({ nome: nomePaciente }).select('id').single();
-    pacId = newPac?.id || null;
-  }
-  if (!pacId) return null;
-  let conversaId = null;
-  const { data: convData } = await sb.from('conversas').select('id').eq('paciente_id', pacId).eq('status', 'ativa').single();
-  if (convData) { conversaId = convData.id; }
-  else {
-    const { data: newConv } = await sb.from('conversas').insert({ paciente_id: pacId, status: 'ativa' }).select('id').single();
-    conversaId = newConv?.id || null;
-  }
-  return { pacId, conversaId };
-}
-
-// ── Monta texto da mensagem a partir do template padrão ───────────────────────
-function _montarMsgAgendamento(dados) {
-  const tpl = WA_TEMPLATES.find(t => t.padrao) || WA_TEMPLATES[0];
-  const prof = PROFISSIONAIS.find(p => p.id === dados.profId);
-  const dateObj = dados.dataISO ? new Date(dados.dataISO + 'T12:00') : new Date();
-  const dateStr = dateObj.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  return tpl.texto
-    .replace(/\{nome\}/g,      dados.paciente)
-    .replace(/\{data\}/g,      dateStr)
-    .replace(/\{hora\}/g,      dados.hora || '')
-    .replace(/\{terapeuta\}/g, prof?.nome || '')
-    .replace(/\{clinica\}/g,   CLINICA?.nome || 'Clínica');
-}
-
-// ── Ao criar agendamento via canal Chat:
-//    1) Grava na tabela notificacoes (agendada_para = 24h antes, mínimo 2h no futuro)
-//    2) Grava confirmação de agendamento com agendada_para = agora + 2h (não imediata)
-//       para que exclusões/alterações dentro das 2h cancelem antes de enviar
-async function _enviarNotifChat(dados) {
-  const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
-  if (!sb) { showToast('Supabase não conectado para enviar notificação', 'error'); return; }
-  const msg = _montarMsgAgendamento(dados);
-  try {
-    const ids = await _obterConversaId(sb, dados.paciente);
-    if (!ids) { showToast('Paciente não encontrado para notificação', 'error'); return; }
-
-    const agora = new Date();
-    // Calcula agendada_para do lembrete = 24h antes do agendamento
-    const dataHoraAppt = new Date((dados.dataISO || agora.toISOString().slice(0,10)) + 'T' + (dados.hora || '08:00') + ':00');
-    const agendadaLembrete = new Date(dataHoraAppt.getTime() - 24 * 60 * 60 * 1000);
-
-    // Confirmação: enviada no mínimo 2h depois de criar (janela de cancelamento/alteração)
-    const agendadaConfirmacao = new Date(agora.getTime() + 2 * 60 * 60 * 1000);
-
-    // 1) Grava lembrete de 24h antes (vinculado ao agendamento para poder cancelar)
-    await sb.from('notificacoes').insert({
-      paciente_id:    ids.pacId,
-      agendamento_id: dados.id || null,
-      titulo:         'Lembrete de consulta',
-      corpo:          msg,
-      tipo:           'lembrete',
-      enviada:        false,
-      agendada_para:  agendadaLembrete.toISOString(),
-    });
-
-    // 2) Grava confirmação de agendamento — será enviada após 2h (não imediata)
-    const prof    = PROFISSIONAIS.find(p => p.id === dados.profId);
-    const dateStr = dados.dataISO ? new Date(dados.dataISO + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' }) : '';
-    const confirmMsg = '✅ Consulta agendada!\n\n📅 ' + dateStr + ' às ' + (dados.hora || '') + '\n👩‍⚕️ ' + (prof?.nome || '') + '\n\nVocê receberá um lembrete 24h antes. Até lá!';
-    await sb.from('notificacoes').insert({
-      paciente_id:    ids.pacId,
-      agendamento_id: dados.id || null,
-      conversa_id:    ids.conversaId,
-      titulo:         'Confirmação de agendamento',
-      corpo:          confirmMsg,
-      tipo:           'confirmacao',
-      enviada:        false,
-      agendada_para:  agendadaConfirmacao.toISOString(),
-    });
-
-    showToast('Notificações agendadas: confirmação em 2h + lembrete 24h antes ✓', 'success');
-  } catch(e) {
-    showToast('Erro ao agendar notificação via chat: ' + e.message, 'error');
-  }
-}
-
-// ── Verificador periódico: dispara lembretes e confirmações pendentes ──────────
-// Roda a cada 30 minutos enquanto o sistema estiver aberto
-async function verificarNotificacoesPendentes() {
-  if (WA_CONFIG.canal !== 'chat') return;
-  const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
-  if (!sb) return;
-  try {
-    const agora = new Date();
-    const { data: pendentes } = await sb
-      .from('notificacoes')
-      .select('*')
-      .eq('enviada', false)
-      .lte('agendada_para', agora.toISOString());
-
-    if (!pendentes || !pendentes.length) return;
-
-    for (const notif of pendentes) {
-      try {
-        // Usa conversa_id salvo na notificação (confirmacoes) ou busca pela conversa ativa do paciente (lembretes)
-        let conversaId = notif.conversa_id || null;
-        if (!conversaId) {
-          const { data: conv } = await sb.from('conversas').select('id').eq('paciente_id', notif.paciente_id).eq('status', 'ativa').single();
-          conversaId = conv?.id || null;
-        }
-        if (conversaId) {
-          const prefixo = notif.tipo === 'confirmacao' ? '✅ ' : '🔔 ';
-          await sb.from('mensagens').insert({
-            conversa_id:    conversaId,
-            tipo_remetente: 'sistema',
-            conteudo:       prefixo + notif.corpo,
-            lida:           false,
-          });
-          await sb.from('conversas').update({ ultima_mensagem_em: agora.toISOString() }).eq('id', conversaId);
-        }
-        // Marca como enviada independente de ter conversa (evita loop)
-        await sb.from('notificacoes').update({ enviada: true, enviada_em: agora.toISOString() }).eq('id', notif.id);
-      } catch(e2) {
-        console.warn('[Notif] Erro ao processar notif id=' + notif.id, e2);
-      }
-    }
-  } catch(e) {
-    console.warn('[Notif] Erro ao verificar notificações:', e);
-  }
-}
-
-// Inicia o verificador periódico (a cada 30 minutos)
-(function _iniciarVerificadorNotif() {
-  // Primeira verificação após 1 minuto do carregamento (dá tempo do Supabase conectar)
-  setTimeout(function _primeiraVerif() {
-    verificarNotificacoesPendentes();
-    // A partir daí, a cada 30 minutos
-    setInterval(verificarNotificacoesPendentes, 30 * 60 * 1000);
-  }, 60 * 1000);
-})();
 
 let WA_TEMPLATES = [
   {
@@ -11567,68 +11252,6 @@ function renderWaLog() {
 }
 
 // ── Config functions ──────────────────────────────────────────────────────────
-function setCanalNotif(canal) {
-  WA_CONFIG.canal = canal;
-  CLINICA.canalNotif = canal;
-  // Persiste no banco de dados (se conectado) e no localStorage como fallback
-  localStorage.setItem('cf_notif_canal', canal);
-  if (typeof salvarConfigNoDB === 'function') {
-    salvarConfigNoDB().catch(e => console.warn('[setCanalNotif]', e));
-  }
-  _atualizarUICanalNotif(canal);
-  showToast('Canal alterado para ' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + ' ✓', 'success');
-}
-
-async function salvarCanalNotif() {
-  const canal = WA_CONFIG.canal || CLINICA.canalNotif || 'whatsapp';
-  localStorage.setItem('cf_notif_canal', canal);
-  CLINICA.canalNotif = canal;
-
-  const sb = (typeof getDb === 'function' ? getDb() : null) || (window.getDb ? window.getDb() : null);
-  if (!sb) {
-    showToast('Supabase não conectado — canal salvo apenas localmente', 'warning');
-    return;
-  }
-  try {
-    const fn = window.salvarConfigNoDB || (typeof salvarConfigNoDB === 'function' ? salvarConfigNoDB : null);
-    if (fn) {
-      await fn();
-    } else {
-      // Fallback direto na tabela correta
-      const { data } = await sb.from('config_clinica').select('id').limit(1);
-      if (data && data.length > 0) {
-        const { error } = await sb.from('config_clinica').update({ dados: CLINICA }).eq('id', data[0].id);
-        if (error) throw error;
-      } else {
-        const { error } = await sb.from('config_clinica').insert([{ dados: CLINICA }]);
-        if (error) throw error;
-      }
-    }
-    showToast('Canal "' + (canal === 'chat' ? 'Chat com Paciente' : 'WhatsApp') + '" salvo no banco de dados ✓', 'success');
-  } catch(e) {
-    showToast('Erro ao salvar no banco: ' + (e.message || e), 'error');
-    console.error('[salvarCanalNotif]', e);
-  }
-}
-
-function _atualizarUICanalNotif(canal) {
-  const waCard    = document.getElementById('cfg-canal-whatsapp');
-  const chatCard  = document.getElementById('cfg-canal-chat');
-  const waBadge   = document.getElementById('cfg-canal-wa-badge');
-  const chatBadge = document.getElementById('cfg-canal-chat-badge');
-  if (canal === 'chat') {
-    if (chatCard)  { chatCard.style.border  = '2px solid var(--accent)'; chatCard.style.background  = 'var(--accent-soft)'; }
-    if (waCard)    { waCard.style.border    = '1px solid var(--border)'; waCard.style.background    = ''; }
-    if (chatBadge) { chatBadge.className = 'chip green'; chatBadge.textContent = 'Ativo'; }
-    if (waBadge)   { waBadge.className   = 'chip gray';  waBadge.textContent  = 'Inativo'; }
-  } else {
-    if (waCard)    { waCard.style.border    = '2px solid var(--accent)'; waCard.style.background    = 'var(--accent-soft)'; }
-    if (chatCard)  { chatCard.style.border  = '1px solid var(--border)'; chatCard.style.background  = ''; }
-    if (waBadge)   { waBadge.className   = 'chip green'; waBadge.textContent  = 'Ativo'; }
-    if (chatBadge) { chatBadge.className = 'chip gray';  chatBadge.textContent = 'Requer Supabase'; }
-  }
-}
-
 function setWaMethod(method) {
   WA_CONFIG.method = method;
   const linkCard = document.getElementById('cfg-wa-method-link');
@@ -11786,11 +11409,6 @@ function initConfigPage() {
     const preview = document.getElementById('cfg-logo-preview');
     if (preview) preview.innerHTML = '<img src="'+CLINICA.logo+'" style="width:100%;height:100%;object-fit:contain;padding:4px">';
   }
-  // Restaura UI do canal de notificações a partir de CLINICA (ou fallback localStorage)
-  const canal = CLINICA.canalNotif || localStorage.getItem('cf_notif_canal') || 'whatsapp';
-  WA_CONFIG.canal = canal;
-  if (typeof _atualizarUICanalNotif === 'function') _atualizarUICanalNotif(canal);
-  if (typeof initWAConfig === 'function') initWAConfig();
 }
 
 // ── Templates management ──────────────────────────────────────────────────────
@@ -11872,10 +11490,6 @@ function salvarTemplates() {
 function initWAConfig() {
   renderConfigTemplates();
   renderWaLog();
-  // Restaura canal: prioridade DB (CLINICA.canalNotif) > localStorage > padrão 'whatsapp'
-  const canal = CLINICA.canalNotif || localStorage.getItem('cf_notif_canal') || 'whatsapp';
-  WA_CONFIG.canal = canal;
-  _atualizarUICanalNotif(canal);
 }
 
 // Bulk send confirmation to all today's patients
@@ -14656,21 +14270,6 @@ document.addEventListener('DOMContentLoaded', function() {
 //  SUPABASE INTEGRATION — ClinicFlow
 //  Patch integrado inline (não precisa de supabase_patch.js externo)
 // ═══════════════════════════════════════════════════════════════════════
-
-// ── Singleton global: evita múltiplos GoTrueClient no mesmo contexto ─────────
-// Deve ser definido ANTES da IIFE para que getDb() e outros módulos possam usar
-;(function _definirSingletonSupabase() {
-  let _cachedClient = null;
-  window._cfGetOrCreateClient = function(url, key) {
-    if (_cachedClient) return _cachedClient;
-    if (window.__cfSb) { _cachedClient = window.__cfSb; return _cachedClient; }
-    if (!window.supabase || !url || !key) return null;
-    _cachedClient = window.supabase.createClient(url, key);
-    window.__cfSb = _cachedClient;
-    return _cachedClient;
-  };
-})();
-
 (function () {
   'use strict';
 
@@ -14686,9 +14285,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     return _sb;
   }
-
-  // Expõe getDb globalmente para módulos externos (WA, Notif, etc.)
-  window.getDb = getDb;
 
   const map = {
     pacToDb: p => ({ nome:p.nome, nasc:p.nasc||null, cpf:p.cpf||null, tel:p.tel||null, email:p.email||null, end:p.end||null, plano_id:p.planoId||5, plano:p.plano||'Particular', carteirinha:p.carteirinha||null, sexo:p.sexo||null, status:p.status||'Ativo', obs:p.obs||null, ultima:p.ultima||null, est_civil:p.estCivil||null, profissao:p.profissao||null, titular:p.titular||null, foto:p.foto||null }),
@@ -14768,14 +14364,7 @@ document.addEventListener('DOMContentLoaded', function() {
       rep(SENHAS_PLANO, se.data,    map.dbToSenha);
       rep(LISTA_ESPERA, esp.data,   map.dbToEspera);
       rep(HISTORICO,    hist,       map.dbToHist);
-      if (cfg.data && cfg.data.length > 0) {
-        Object.assign(CLINICA, cfg.data[0].dados || {});
-        // Sincroniza canal de notificação carregado do banco
-        if (CLINICA.canalNotif) {
-          WA_CONFIG.canal = CLINICA.canalNotif;
-          localStorage.setItem('cf_notif_canal', CLINICA.canalNotif);
-        }
-      }
+      if (cfg.data && cfg.data.length > 0) Object.assign(CLINICA, cfg.data[0].dados || {});
 
       // Carrega usuários do Supabase (merge com localStorage)
       try { await carregarUsuariosSupabase(); } catch(_eu) {}
@@ -14804,24 +14393,6 @@ document.addEventListener('DOMContentLoaded', function() {
       showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
       // Atualiza avatar da sidebar com foto do usuário logado (se cadastrada)
       try { if (typeof atualizarAvatarSidebar === 'function') atualizarAvatarSidebar(); } catch(_e2) {}
-      // Re-renderiza a página ativa caso o usuário já esteja em um módulo que depende desses dados
-      try {
-        const activePage = document.querySelector('.page.active');
-        if (activePage) {
-          const pageId = activePage.id.replace('page-', '');
-          const reRenderMap = {
-            'usuarios':              () => { try { renderUsuarios(); } catch(e) {} },
-            'perfis':                () => { try { renderPerfisLista(); } catch(e) {} },
-            'fechamento':            () => { try { renderFechamento && renderFechamento(); } catch(e) {} },
-            'conecta-agenda':        () => { try { conectaRenderAgenda(); } catch(e) {} },
-            'conecta-profissionais': () => { try { conectaRenderLocatarios(); } catch(e) {} },
-            'conecta-fechamento':    () => { try { renderHistoricoFechamentos(); } catch(e) {} },
-            'relatorios':            () => { try { renderRelatorios(); } catch(e) {} },
-            'dashboard':             () => { try { renderDashboard(); } catch(e) {} },
-          };
-          if (reRenderMap[pageId]) reRenderMap[pageId]();
-        }
-      } catch(_re) {}
     } catch (e) {
       showToast('Erro ao carregar dados: ' + e.message, 'error');
       console.error('[ClinicFlow Supabase]', e);
@@ -15098,8 +14669,6 @@ document.addEventListener('DOMContentLoaded', function() {
       APPOINTMENTS.push(dados);
       try { updateNavBadges(); } catch(e) {}
       showToast('Agendamento criado!', 'success');
-      // Envio automático de notificação pelo canal configurado
-      enviarNotifAgendamento(dados);
     }
     closeModal('modal-agendamento'); refreshUI();
   };
@@ -15331,7 +14900,6 @@ document.addEventListener('DOMContentLoaded', function() {
     CLINICA.email        = document.getElementById('cfg-email-clinica')?.value.trim() || CLINICA.email;
     CLINICA.codPrestador = document.getElementById('cfg-cod-prestador')?.value.trim() || CLINICA.codPrestador;
     CLINICA.cnes         = document.getElementById('cfg-cnes')?.value.trim()          || CLINICA.cnes;
-    // Canal de notificação já está em CLINICA.canalNotif (atualizado por setCanalNotif)
     try { renderSidebarLogo(); } catch(e) {}
     await salvarConfigNoDB();
     showToast('Configurações salvas com sucesso!', 'success');
@@ -15415,49 +14983,10 @@ document.addEventListener('DOMContentLoaded', function() {
     showToast('Registro excluído.', 'error');
   };
   window.excluirAgendamento = async function (id) {
-    const appt = APPOINTMENTS.find(a => a.id === id);
-    if (!appt) return;
-
-    let idsParaExcluir = [id];
-
-    if (appt.isGrupo && appt.groupId) {
-      const membros = APPOINTMENTS.filter(a => a.groupId === appt.groupId && a.dataISO === appt.dataISO);
-      if (membros.length > 1) {
-        const resp = confirm(
-          'Este agendamento faz parte de um grupo com ' + membros.length + ' pacientes.\n\n' +
-          'Clique OK para excluir TODOS os ' + membros.length + ' agendamentos do grupo.\n' +
-          'Clique Cancelar para cancelar a operação.'
-        );
-        if (!resp) return;
-        idsParaExcluir = membros.map(a => a.id);
-      } else {
-        if (!confirm('Excluir este agendamento permanentemente?')) return;
-      }
-    } else {
-      if (!confirm('Excluir este agendamento permanentemente?')) return;
-    }
-
-    const sb = getDb();
-    if (sb) {
-      for (const eid of idsParaExcluir) {
-        await sb.from('notificacoes').delete().eq('agendamento_id', eid).eq('enviada', false);
-      }
-      await sb.from('agendamentos').delete().in('id', idsParaExcluir);
-    }
-
-    idsParaExcluir.forEach(eid => {
-      const i = APPOINTMENTS.findIndex(a => a.id === eid);
-      if (i > -1) APPOINTMENTS.splice(i, 1);
-    });
-
-    closeModal('modal-agendamento');
-    refreshUI();
-    showToast(
-      idsParaExcluir.length > 1
-        ? idsParaExcluir.length + ' agendamentos do grupo excluídos.'
-        : 'Agendamento excluído.',
-      'error'
-    );
+    if (!confirm('Excluir este agendamento permanentemente?')) return;
+    const sb = getDb(); if (sb) await sb.from('agendamentos').delete().eq('id', id);
+    const i = APPOINTMENTS.findIndex(a => a.id === id); if (i > -1) APPOINTMENTS.splice(i, 1);
+    closeModal('modal-agendamento'); refreshUI(); showToast('Agendamento excluído.', 'error');
   };
 
   // ── Função testarConexaoSupabase ──────────────────────────────────────────
@@ -15515,10 +15044,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   window.loadFromSupabase = loadFromSupabase;
-  window._cf = getDb;
-  window._cfGetDb = getDb;         // alias usado por sincronizarDados, excluirAgendamento etc.
-  window.getDb = getDb;            // alias directo para módulos WA e Notif
-  window.salvarConfigNoDB = salvarConfigNoDB;
+  window._cf = getDb; // expõe getDb para impConfirmar e outros módulos
   window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 
@@ -16210,8 +15736,7 @@ async function _upsertUsuarioSupabase(u) {
       id: u.id, nome: u.nome, email: u.email, cpf: u.cpf || null, rg: u.rg || null,
       telefone: u.tel || null, data_nascimento: u.nasc || null,
       perfil: u.perfil, status: u.status, foto: u.foto || null,
-      prof_id: u.profId || null, perfil_id: u.perfilId || null,
-      created_at: u.criadoEm || new Date().toISOString()
+      prof_id: u.profId || null, created_at: u.criadoEm || new Date().toISOString()
     };
     if (u.senha) payload.senha = u.senha;
     const { error } = await sb.from('usuarios').upsert([payload], { onConflict: 'id' });
@@ -16228,8 +15753,7 @@ async function sincronizarUsuarioSupabase() {
       id: u.id, nome: u.nome, email: u.email, cpf: u.cpf || null, rg: u.rg || null,
       telefone: u.tel || null, data_nascimento: u.nasc || null,
       perfil: u.perfil, status: u.status, foto: u.foto || null,
-      prof_id: u.profId || null, perfil_id: u.perfilId || null,
-      created_at: u.criadoEm || new Date().toISOString()
+      prof_id: u.profId || null, created_at: u.criadoEm || new Date().toISOString()
     }));
     const { error } = await sb.from('usuarios').upsert(payload, { onConflict: 'id' });
     if (error) console.error('[ClinicFlow] Erro ao sincronizar usuários:', error.message);
@@ -16244,23 +15768,15 @@ async function carregarUsuariosSupabase() {
     const { data, error } = await sb.from('usuarios').select('*').order('nome').limit(500);
     if (error || !data || !data.length) return;
     USUARIOS.length = 0;
-    data.forEach(r => {
-      const _pr = (r.perfil || '').toLowerCase().trim();
-      const _rn = _pr === 'admin' || _pr === 'administrador' ? 'admin'
-                : _pr === 'recepcao' || _pr === 'recepção' ? 'recepcao'
-                : _pr === 'prof' || _pr === 'profissional' ? 'prof'
-                : _pr || 'recepcao';
-      USUARIOS.push({
-        id: String(r.id),
-        nome: r.nome, email: r.email, cpf: r.cpf || '',
-        rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
-        perfil: _rn, status: r.status || 'Ativo',
-        foto: r.foto || '', senha: r.senha || '',
-        profId: r.prof_id || null,
-        perfilId: r.perfil_id || r.perfilId || null,
-        criadoEm: r.created_at || ''
-      });
-    });
+    data.forEach(r => USUARIOS.push({
+      id: String(r.id),        // sempre string para evitar mismatch numérico
+      nome: r.nome, email: r.email, cpf: r.cpf || '',
+      rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
+      perfil: r.perfil || 'admin', status: r.status || 'Ativo',
+      foto: r.foto || '', senha: r.senha || '',
+      profId: r.prof_id || null,
+      criadoEm: r.created_at || ''
+    }));
     salvarUsuariosLocal();
     renderUsuarios();
   } catch(e) { console.warn('[ClinicFlow] Tabela usuarios não encontrada, usando localStorage', e.message); }
@@ -16432,28 +15948,17 @@ const _origGotoPage = window.gotoPage;
 window.gotoPage = function(page, el) {
   _origGotoPage && _origGotoPage(page, el);
   if (page === 'usuarios') {
-    try { renderUsuarios(); } catch(e) { console.warn('[gotoPage usuarios]', e); }
+    renderUsuarios();
+    // Tenta recarregar do Supabase em segundo plano
     try { if (typeof carregarUsuariosSupabase === 'function') carregarUsuariosSupabase(); } catch(_e) {}
   }
-  if (page === 'perfis') {
-    try { renderPerfisLista(); } catch(e) { console.warn('[gotoPage perfis]', e); }
-  }
   if (page === 'fechamento') {
+    // Inicializa mês atual se não preenchido
     const mesInput = document.getElementById('fech-mes');
     if (mesInput && !mesInput.value) {
       const now = new Date();
       mesInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2,'0');
     }
-    try { if (typeof renderFechamento === 'function') renderFechamento(); } catch(_e) {}
-  }
-  if (page === 'conecta-agenda') {
-    try { conectaRenderAgenda(); } catch(e) { console.warn('[gotoPage conecta-agenda]', e); }
-  }
-  if (page === 'conecta-profissionais') {
-    try { conectaRenderLocatarios(); } catch(e) { console.warn('[gotoPage conecta-profissionais]', e); }
-  }
-  if (page === 'conecta-fechamento') {
-    try { renderHistoricoFechamentos(); } catch(e) { console.warn('[gotoPage conecta-fechamento]', e); }
   }
 };
 
@@ -16594,16 +16099,10 @@ function _garantirPerfisBase() {
     },
   ];
   BASE.forEach(base => {
-    const idx = PERFIS_ACESSO.findIndex(p => p.id === base.id);
-    if (idx === -1) {
+    if (!PERFIS_ACESSO.find(p => p.id === base.id)) {
       PERFIS_ACESSO.unshift(base);
-    } else {
-      // Sempre atualiza perfis base para garantir que novos módulos sejam incluídos
-      PERFIS_ACESSO[idx] = { ...PERFIS_ACESSO[idx], ...base };
     }
   });
-  // Persiste atualização
-  try { localStorage.setItem('cf_perfis_acesso', JSON.stringify(PERFIS_ACESSO)); } catch(e) {}
 }
 
 // ── Render da lista de perfis ─────────────────────────────────────────────
@@ -16825,34 +16324,7 @@ Deseja continuar?`)) return;
 // ── Aplicar permissões ao fazer login ────────────────────────────────────
 function _aplicarPermissoesDePerfil(user) {
   if (!user) return;
-
-  // Se MODULOS_SISTEMA ainda não foi definido (módulo de perfis carrega depois),
-  // agenda para executar assim que o DOM terminar de carregar
-  if (typeof MODULOS_SISTEMA === 'undefined') {
-    setTimeout(() => _aplicarPermissoesDePerfil(user), 300);
-    return;
-  }
-
-  try { _carregarPerfisLocal(); } catch(e) {}
-
-  // Admin sem perfil customizado: acesso total — garante itens visíveis e retorna
-  if (user.role === 'admin' && (!user.perfilId || user.perfilId === '__admin__')) {
-    try {
-      user.modulosPermitidos = MODULOS_SISTEMA.flatMap(s => s.itens.map(i => i.id));
-      user.subPerms = Object.fromEntries(Object.entries(SUB_PERMS).map(([k,v]) => [k, v.map(p => p.id)]));
-    } catch(e) {}
-    // Força visibilidade de todos os nav-sections e itens para admin
-    ['nav-admin-section','nav-config-section','nav-fatur-section','nav-conecta-section'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = '';
-    });
-    document.querySelectorAll('.nav-item[data-perfil-hidden]').forEach(el => {
-      el.style.display = '';
-      el.removeAttribute('data-perfil-hidden');
-    });
-    window.CURRENT_USER = user;
-    return;
-  }
+  _carregarPerfisLocal();
 
   // Descobre qual perfil usar
   let perfil = null;
@@ -16864,7 +16336,7 @@ function _aplicarPermissoesDePerfil(user) {
     const baseId = { admin:'__admin__', recepcao:'__recepcao__', prof:'__prof__' }[user.role];
     if (baseId) perfil = PERFIS_ACESSO.find(p => p.id === baseId);
   }
-  if (!perfil) return; // sem perfil definido: não restringe
+  if (!perfil) return; // admin sem perfil: acesso total (já tratado em _finalizarLogin)
 
   const modulosAtivos = new Set(perfil.modulos || []);
 
@@ -17172,15 +16644,7 @@ async function _syncBloqueioSupabase(bloqueio, op) {
 async function _carregarBloqueiosSupabase(sb) {
   try {
     const { data, error } = await sb.from('bloqueios_agenda').select('*').limit(5000);
-    // Tabela pode não existir ainda (código PGRST200/42P01) — ignora silenciosamente
-    if (error) {
-      if (error.code === 'PGRST200' || error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('not found')) {
-        _carregarBloqueiosLocal();
-        return;
-      }
-      throw error;
-    }
-    if (!data) return;
+    if (error || !data) return;
     BLOQUEIOS.length = 0;
     data.forEach(row => BLOQUEIOS.push({
       id:      row.id,
@@ -17194,10 +16658,7 @@ async function _carregarBloqueiosSupabase(sb) {
     }));
     _salvarBloqueiosLocal();
   } catch(e) {
-    // Silencia erros 404 da tabela opcional
-    if (!String(e.message || '').includes('404')) {
-      console.warn('[ClinicFlow Bloqueio] Falha ao carregar do Supabase:', e);
-    }
+    console.warn('[ClinicFlow Bloqueio] Falha ao carregar do Supabase:', e);
     _carregarBloqueiosLocal(); // fallback local
   }
 }
@@ -18965,7 +18426,6 @@ function abrirPainelChat() {
     geradoEm     : new Date().toISOString(),
   };
 
-  
   const html = _buildChatPanelHTML(snapshot);
   const blob  = new Blob([html], { type: 'text/html' });
   const url   = URL.createObjectURL(blob);
@@ -19165,8 +18625,9 @@ function _buildChatPanelHTML(snap) {
     '  var meta=PAC_META[currentPac];',
     '  if(!sb||!meta||!meta.conversaId)return;',
     '  realtimeSub=sb.channel("clinic-"+meta.conversaId)',
-    '    .on("postgres_changes",{event:"INSERT",schema:"public",table:"mensagens",filter:"conversa_id=eq."+meta.conversaId},function(payload){appendBubble(payload.new);})',
-    '    .subscribe(function(status){var d=document.getElementById("conn-dot");if(d){d.style.background=status==="SUBSCRIBED"?"var(--success)":"var(--warn)";}});',
+    '    .on("postgres_changes",{event:"INSERT",schema:"public",table:"mensagens",filter:"conversa_id=eq."+meta.conversaId},function(p){appendBubble(p.new);})',
+    '    .on("system",{},function(p){var d=document.getElementById("conn-dot");if(d)d.style.background=p.status==="SUBSCRIBED"?"var(--success)":"var(--warn)";})',
+    '    .subscribe();',
     '}',
 
     // appendBubble
@@ -19203,7 +18664,7 @@ function _buildChatPanelHTML(snap) {
     '  var meta=PAC_META[currentPac];',
     '  if(!sb||!meta||!meta.conversaId){showToast("Configure o Supabase para enviar mensagens");return;}',
     '  input.disabled=true;',
-    '  var res=await sb.from("mensagens").insert({conversa_id:meta.conversaId,tipo_remetente:"clinica",conteudo:text,lida:false});',
+    '  var res=await sb.from("mensagens").insert({conversa_id:meta.conversaId,remetente_id:meta.pacienteId,tipo_remetente:"clinica",conteudo:text,lida:false});',
     '  if(res.error)showToast("Erro: "+res.error.message);',
     '  else{await sb.from("conversas").update({ultima_mensagem_em:new Date().toISOString()}).eq("id",meta.conversaId);input.value="";input.style.height="auto";showToast("Enviado");}',
     '  input.disabled=false;',
@@ -19218,9 +18679,9 @@ function _buildChatPanelHTML(snap) {
     '  var quando=document.getElementById("notif-quando").value;',
     '  if(!msg){showToast("Escreva a mensagem");return;}',
     '  if(sb&&meta&&meta.pacienteId){',
-    '    var ag;if(quando==="Agora"){ag=new Date();}else if(quando.includes("8h")){ag=new Date();ag.setDate(ag.getDate()+1);ag.setHours(8,0,0,0);}else{ag=new Date();ag.setDate(ag.getDate()+1);ag.setHours(9,0,0,0);}',
+    '    var ag=quando==="Agora"?new Date():quando.includes("8h")?new Date(new Date().setHours(new Date().getDate()+1,8,0,0,0)):new Date(new Date().setHours(new Date().getDate()+1,9,0,0,0));',
     '    await sb.from("notificacoes").insert({paciente_id:meta.pacienteId,titulo:tipo==="lembrete"?"Lembrete de consulta":tipo==="confirmar"?"Confirmação":tipo==="resultado"?"Resultado disponível":"Mensagem da clínica",corpo:msg,tipo:tipo,enviada:quando==="Agora",agendada_para:ag.toISOString()});',
-    '    if(quando==="Agora"&&meta.conversaId){await sb.from("mensagens").insert({conversa_id:meta.conversaId,tipo_remetente:"sistema",conteudo:"🔔 "+msg,lida:false});}',
+    '    if(quando==="Agora"&&meta.conversaId){await sb.from("mensagens").insert({conversa_id:meta.conversaId,remetente_id:meta.pacienteId,tipo_remetente:"sistema",conteudo:"🔔 "+msg,lida:false});}',
     '  }',
     '  showToast("Lembrete enviado para "+currentPac,"success");',
     '}',
@@ -19246,11 +18707,11 @@ function _buildChatPanelHTML(snap) {
     + '<title>Chat com Pacientes \u2014 ' + clinNome + '<\/title>\n'
     + '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">\n'
     // Supabase SDK + config — escapados corretamente
-    + '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>\n'
-    + '<script>\n'
-    + 'var SB_URL=typeof window.__SB_URL__!=="undefined"?window.__SB_URL__:"https://ezkfnbrlqnruymhhfeei.supabase.co";\n'
-    + 'var SB_KEY=typeof window.__SB_KEY__!=="undefined"?window.__SB_KEY__:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6a2ZuYnJscW5ydXltaGhmZWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg1MzAsImV4cCI6MjA5MDgwNDUzMH0.llrWSk5Kz-UvTPWY5fpeO7QD-aFaobcvAP9FxH8PhB4";\n'
-    + '<\/script>\n'
+    + '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><' + '\/script>\n'
+    + '<'+'script>\\n'
+    + 'var SB_URL=typeof window.__SB_URL__!=="undefined"?window.__SB_URL__:"https://SEU_PROJETO.supabase.co";\n'
+    + 'var SB_KEY=typeof window.__SB_KEY__!=="undefined"?window.__SB_KEY__:"SUA_ANON_KEY";\n'
+    + '<' + '\/script>\n'
     + '<style>\n' + css + '\n<\/style>\n<\/head>\n<body>\n'
     // BODY
     + '<div class="wrap">\n'
@@ -19290,7 +18751,7 @@ function _buildChatPanelHTML(snap) {
     + '  <\/div>\n'
     + '<\/div>\n'
     + '<div class="toast" id="toast"><\/div>\n'
-    + '<script>\n' + js + '\n<\/script>\n'
+    + '<'+'script>\\n' + js + '\n<' + '\/script>\n'
     + '<\/body>\n<\/html>';
 
   return html;
