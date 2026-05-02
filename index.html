@@ -2771,6 +2771,29 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         </div>
 
       </div>
+
+      <!-- ═══════════ RELATÓRIO MENSAL DE ATENDIMENTOS ═══════════ -->
+      <div style="margin-top:20px;flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.2px">Atendimentos mensais por plano e paciente</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="form-select" id="rel-atend-mes" style="width:160px;padding:6px 10px;font-size:12px" onchange="renderRelAtendMensal()">
+            </select>
+            <button class="btn-sm btn-secondary" onclick="renderRelAtendMensal()" style="font-size:12px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              Atualizar
+            </button>
+            <button class="btn-sm btn-secondary" onclick="exportRelAtendMensal()" style="font-size:12px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Exportar CSV
+            </button>
+          </div>
+        </div>
+        <div id="rel-atend-mensal-wrap" style="overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--border)">
+          <div style="color:var(--text-muted);font-size:13px;padding:24px;text-align:center">Selecione um mês para visualizar.</div>
+        </div>
+      </div>
+
     </div>
 
     <!-- CONFIG -->
@@ -5715,7 +5738,7 @@ function gotoPage(page, el) {
   if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
   if (page === 'historico') try { renderHistPacList(); } catch(e) {}
   if (page === 'dashboard') try { renderDashboard(); } catch(e) {}
-  if (page === 'relatorios') try { renderRelatorios(); } catch(e) {}
+  if (page === 'relatorios') try { renderRelatorios(); initRelAtendMensalSelect(); renderRelAtendMensal(); } catch(e) {}
   // Espaço Conecta
   if (page === 'conecta-agenda')        try { conectaRenderAgenda(); } catch(e) {}
   if (page === 'conecta-profissionais') try { conectaRenderLocatarios(); } catch(e) {}
@@ -5754,6 +5777,7 @@ function refreshUI(opts = {}) {
   if (typeof _conectaCarregarLocal === 'function') _conectaCarregarLocal();
   safe('renderAgenda');
   safe('renderRelatorios');
+  try { initRelAtendMensalSelect(); } catch(e) {}
   safe('renderSidebarLogo');
 
   // Histórico do paciente: re-abre o que estava aberto
@@ -6397,6 +6421,261 @@ function renderRelatorios() {
     ).join('') + '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">' + total + ' agendamentos ' + label + '</div>'
     : '<div style="color:var(--text-muted);font-size:13px">Sem agendamentos no período</div>';
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RELATÓRIO MENSAL DE ATENDIMENTOS POR PLANO / PACIENTE
+// ═══════════════════════════════════════════════════════════════════
+function initRelAtendMensalSelect() {
+  const sel = document.getElementById('rel-atend-mes');
+  if (!sel) return;
+  // Coleta todos os meses com agendamentos
+  const meses = new Set();
+  APPOINTMENTS.forEach(a => { if (a.dataISO) meses.add(a.dataISO.slice(0,7)); });
+  GUIAS.forEach(g => { if (g.data) meses.add(g.data.slice(0,7)); });
+  const sorted = Array.from(meses).sort().reverse();
+  const mesAtual = new Date().toISOString().slice(0,7);
+  if (!sorted.includes(mesAtual)) sorted.unshift(mesAtual);
+  sel.innerHTML = sorted.map(m => {
+    const [y, mo] = m.split('-');
+    const label = new Date(+y, +mo-1, 1).toLocaleString('pt-BR', {month:'long', year:'numeric'});
+    return `<option value="${m}"${m===mesAtual?' selected':''}>${label.charAt(0).toUpperCase()+label.slice(1)}</option>`;
+  }).join('');
+}
+
+function renderRelAtendMensal() {
+  initRelAtendMensalSelect();
+  const wrap = document.getElementById('rel-atend-mensal-wrap');
+  if (!wrap) return;
+  const sel  = document.getElementById('rel-atend-mes');
+  const mes  = sel ? sel.value : new Date().toISOString().slice(0,7);
+  const [y, mo] = mes.split('-').map(Number);
+  const iniISO  = mes + '-01';
+  const fimISO  = new Date(y, mo, 0).toISOString().slice(0,10);
+
+  // ── Agendamentos do mês (todos os status com agendamento real) ──
+  const appts = APPOINTMENTS.filter(a =>
+    (a.dataISO||'') >= iniISO && (a.dataISO||'') <= fimISO
+  );
+
+  // ── Guias do mês ──
+  const guias = GUIAS.filter(g =>
+    (g.data||'') >= iniISO && (g.data||'') <= fimISO
+  );
+
+  if (!appts.length && !guias.length) {
+    wrap.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:24px;text-align:center">Nenhum registro encontrado para este mês.</div>';
+    return;
+  }
+
+  // ── Agrupa por plano → tipo de atendimento → paciente ──
+  // Tipo de atendimento = procDesc da guia ou "Particular" se não tiver guia
+  // Usa os agendamentos como base e cruza com guias pelo (pac + data)
+
+  const dadosPorPlano = {}; // { planoNome: { tipoAtend: { pacNome: { ag30, ag60, guias, valor } } } }
+
+  // Indexa guias por pac+data para lookup rápido
+  const guiaIdx = {};
+  guias.forEach(g => {
+    const k = (g.pac||'').toLowerCase().trim() + '|' + (g.data||'');
+    if (!guiaIdx[k]) guiaIdx[k] = [];
+    guiaIdx[k].push(g);
+  });
+
+  // Processa cada agendamento
+  appts.forEach(a => {
+    const planoNome = a.plano || 'Particular';
+    const pacNome   = a.paciente || '—';
+    const dur       = a.durMin || 30;
+    const kGl = pacNome.toLowerCase().trim() + '|' + (a.dataISO||'');
+    const guiasPac  = guiaIdx[kGl] || [];
+
+    // Tipo de atendimento: usa procDesc da primeira guia vinculada, ou status do agendamento para Particular
+    let tipoAtend = 'Particular';
+    if (guiasPac.length > 0) {
+      const procs = guiasPac[0].dados?.procs;
+      tipoAtend = (procs && procs[0]?.desc) ? procs[0].desc : (guiasPac[0].plano || planoNome);
+    } else if (planoNome !== 'Particular') {
+      tipoAtend = planoNome;
+    }
+
+    if (!dadosPorPlano[planoNome]) dadosPorPlano[planoNome] = {};
+    if (!dadosPorPlano[planoNome][tipoAtend]) dadosPorPlano[planoNome][tipoAtend] = {};
+    if (!dadosPorPlano[planoNome][tipoAtend][pacNome]) {
+      dadosPorPlano[planoNome][tipoAtend][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
+    }
+    const cell = dadosPorPlano[planoNome][tipoAtend][pacNome];
+    if (dur >= 60) cell.ag60++; else cell.ag30++;
+    // Soma guias já contabilizadas evitando duplicatas por dia
+    guiasPac.forEach(g => {
+      cell.nGuias++;
+      cell.valor += g.valor || 0;
+    });
+  });
+
+  // Pacientes só com guias (sem agendamento registrado) — garante que ninguém fique de fora
+  guias.forEach(g => {
+    const pacNome  = g.pac || '—';
+    const kGl = pacNome.toLowerCase().trim() + '|' + (g.data||'');
+    const temAppt  = appts.some(a =>
+      a.paciente.toLowerCase().trim() === pacNome.toLowerCase().trim() && a.dataISO === g.data
+    );
+    if (temAppt) return; // já processado acima
+    const planoNome  = g.plano || 'Particular';
+    const procs      = g.dados?.procs;
+    const tipoAtend  = (procs && procs[0]?.desc) ? procs[0].desc : planoNome;
+    if (!dadosPorPlano[planoNome]) dadosPorPlano[planoNome] = {};
+    if (!dadosPorPlano[planoNome][tipoAtend]) dadosPorPlano[planoNome][tipoAtend] = {};
+    if (!dadosPorPlano[planoNome][tipoAtend][pacNome]) {
+      dadosPorPlano[planoNome][tipoAtend][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
+    }
+    dadosPorPlano[planoNome][tipoAtend][pacNome].nGuias++;
+    dadosPorPlano[planoNome][tipoAtend][pacNome].valor += g.valor || 0;
+  });
+
+  // ── Renderiza ──
+  const brl = v => 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2});
+  const thStyle = 'padding:9px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg-raised)';
+  const tdStyle = 'padding:8px 14px;font-size:13px;border-bottom:1px solid var(--border-soft);vertical-align:middle';
+  const tdNum   = tdStyle + ';text-align:center';
+  const tdVal   = tdStyle + ';text-align:right;font-variant-numeric:tabular-nums';
+
+  let html = '<table style="width:100%;border-collapse:collapse">';
+  html += `<thead><tr>
+    <th style="${thStyle}">Plano</th>
+    <th style="${thStyle}">Tipo de Atendimento</th>
+    <th style="${thStyle}">Paciente</th>
+    <th style="${thStyle};text-align:center">Agend. 30 min</th>
+    <th style="${thStyle};text-align:center">Agend. 60 min</th>
+    <th style="${thStyle};text-align:center">Guias Geradas</th>
+    <th style="${thStyle};text-align:right">Valor Total</th>
+  </tr></thead><tbody>`;
+
+  let grandTotal30 = 0, grandTotal60 = 0, grandTotalGuias = 0, grandTotalValor = 0;
+  const planosSorted = Object.keys(dadosPorPlano).sort();
+
+  planosSorted.forEach(plano => {
+    const tipos = dadosPorPlano[plano];
+    const tiposSorted = Object.keys(tipos).sort();
+    let planoTotal30=0, planoTotal60=0, planoTotalGuias=0, planoTotalValor=0;
+    let planoFirstRow = true;
+
+    tiposSorted.forEach(tipo => {
+      const pacs = tipos[tipo];
+      const pacsSorted = Object.keys(pacs).sort();
+      let tipoTotal30=0, tipoTotal60=0, tipoTotalGuias=0, tipoTotalValor=0;
+      let tipoFirstRow = true;
+
+      pacsSorted.forEach(pac => {
+        const d = pacs[pac];
+        tipoTotal30    += d.ag30;   tipoTotal60     += d.ag60;
+        tipoTotalGuias += d.nGuias; tipoTotalValor  += d.valor;
+
+        html += `<tr>
+          <td style="${tdStyle};color:var(--text-muted);font-size:11px">${planoFirstRow && tipoFirstRow ? `<span style="font-weight:600;font-size:13px;color:var(--text-primary)">${plano}</span>` : ''}</td>
+          <td style="${tdStyle};color:var(--text-muted);font-size:11px">${tipoFirstRow ? `<span style="font-size:12px;color:var(--text-secondary)">${tipo}</span>` : ''}</td>
+          <td style="${tdStyle}">${pac}</td>
+          <td style="${tdNum}">${d.ag30 || '—'}</td>
+          <td style="${tdNum}">${d.ag60 || '—'}</td>
+          <td style="${tdNum}">${d.nGuias || '—'}</td>
+          <td style="${tdVal}">${d.valor > 0 ? brl(d.valor) : '—'}</td>
+        </tr>`;
+        planoFirstRow = false; tipoFirstRow = false;
+      });
+
+      // Subtotal por tipo de atendimento
+      html += `<tr style="background:var(--bg-overlay)">
+        <td style="${tdStyle}"></td>
+        <td style="${tdStyle};font-size:11px;color:var(--text-muted);padding-left:20px">Subtotal — ${tipo}</td>
+        <td style="${tdStyle}"></td>
+        <td style="${tdNum};font-weight:600">${tipoTotal30||'—'}</td>
+        <td style="${tdNum};font-weight:600">${tipoTotal60||'—'}</td>
+        <td style="${tdNum};font-weight:600">${tipoTotalGuias||'—'}</td>
+        <td style="${tdVal};font-weight:600">${tipoTotalValor>0?brl(tipoTotalValor):'—'}</td>
+      </tr>`;
+
+      planoTotal30+=tipoTotal30; planoTotal60+=tipoTotal60; planoTotalGuias+=tipoTotalGuias; planoTotalValor+=tipoTotalValor;
+    });
+
+    // Subtotal por plano
+    html += `<tr style="background:var(--accent-soft)">
+      <td style="${tdStyle};font-weight:700;color:var(--accent)" colspan="3">Total — ${plano}</td>
+      <td style="${tdNum};font-weight:700;color:var(--accent)">${planoTotal30||'—'}</td>
+      <td style="${tdNum};font-weight:700;color:var(--accent)">${planoTotal60||'—'}</td>
+      <td style="${tdNum};font-weight:700;color:var(--accent)">${planoTotalGuias||'—'}</td>
+      <td style="${tdVal};font-weight:700;color:var(--accent)">${planoTotalValor>0?brl(planoTotalValor):'—'}</td>
+    </tr>`;
+
+    grandTotal30+=planoTotal30; grandTotal60+=planoTotal60; grandTotalGuias+=planoTotalGuias; grandTotalValor+=planoTotalValor;
+  });
+
+  // Total geral
+  html += `<tr style="background:var(--bg-raised);border-top:2px solid var(--border-mid)">
+    <td style="${tdStyle};font-weight:700;font-size:13px" colspan="3">TOTAL GERAL</td>
+    <td style="${tdNum};font-weight:700;font-size:13px">${grandTotal30||'—'}</td>
+    <td style="${tdNum};font-weight:700;font-size:13px">${grandTotal60||'—'}</td>
+    <td style="${tdNum};font-weight:700;font-size:13px">${grandTotalGuias||'—'}</td>
+    <td style="${tdVal};font-weight:700;font-size:13px">${grandTotalValor>0?brl(grandTotalValor):'—'}</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function exportRelAtendMensal() {
+  const sel = document.getElementById('rel-atend-mes');
+  const mes  = sel ? sel.value : new Date().toISOString().slice(0,7);
+  const [y, mo] = mes.split('-').map(Number);
+  const iniISO = mes + '-01';
+  const fimISO = new Date(y, mo, 0).toISOString().slice(0,10);
+
+  const appts = APPOINTMENTS.filter(a => (a.dataISO||'') >= iniISO && (a.dataISO||'') <= fimISO);
+  const guias = GUIAS.filter(g => (g.data||'') >= iniISO && (g.data||'') <= fimISO);
+
+  const guiaIdx = {};
+  guias.forEach(g => {
+    const k = (g.pac||'').toLowerCase().trim() + '|' + (g.data||'');
+    if (!guiaIdx[k]) guiaIdx[k] = [];
+    guiaIdx[k].push(g);
+  });
+
+  const rows = [['Plano','Tipo de Atendimento','Paciente','Agend. 30min','Agend. 60min','Guias Geradas','Valor Total']];
+
+  const dadosPorPlano = {};
+  appts.forEach(a => {
+    const planoNome = a.plano || 'Particular';
+    const pacNome   = a.paciente || '—';
+    const dur       = a.durMin || 30;
+    const kGl = pacNome.toLowerCase().trim() + '|' + (a.dataISO||'');
+    const guiasPac  = guiaIdx[kGl] || [];
+    let tipoAtend = 'Particular';
+    if (guiasPac.length > 0) {
+      const procs = guiasPac[0].dados?.procs;
+      tipoAtend = (procs && procs[0]?.desc) ? procs[0].desc : (guiasPac[0].plano || planoNome);
+    } else if (planoNome !== 'Particular') { tipoAtend = planoNome; }
+    if (!dadosPorPlano[planoNome]) dadosPorPlano[planoNome] = {};
+    if (!dadosPorPlano[planoNome][tipoAtend]) dadosPorPlano[planoNome][tipoAtend] = {};
+    if (!dadosPorPlano[planoNome][tipoAtend][pacNome]) dadosPorPlano[planoNome][tipoAtend][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
+    const cell = dadosPorPlano[planoNome][tipoAtend][pacNome];
+    if (dur >= 60) cell.ag60++; else cell.ag30++;
+    guiasPac.forEach(g => { cell.nGuias++; cell.valor += g.valor||0; });
+  });
+
+  Object.keys(dadosPorPlano).sort().forEach(plano => {
+    Object.keys(dadosPorPlano[plano]).sort().forEach(tipo => {
+      Object.keys(dadosPorPlano[plano][tipo]).sort().forEach(pac => {
+        const d = dadosPorPlano[plano][tipo][pac];
+        rows.push([plano, tipo, pac, d.ag30, d.ag60, d.nGuias, d.valor.toFixed(2).replace('.',',')]);
+      });
+    });
+  });
+
+  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'atendimentos_' + mes + '.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function initApp() {
@@ -9503,7 +9782,9 @@ function gerarXMLLote(loteId) {
     '<ans:prestadorParaOperadora>' +
     '<ans:loteGuias>' +
     '<ans:numeroLote>'+esc(l.num)+'</ans:numeroLote>' +
+    '<ans:guiasTISS>' +
     xmlGuias +
+    '</ans:guiasTISS>' +
     '</ans:loteGuias>' +
     '</ans:prestadorParaOperadora>' +
     '<ans:epilogo><ans:hash></ans:hash></ans:epilogo>' +
