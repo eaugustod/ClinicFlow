@@ -8198,15 +8198,20 @@ function previewGuiasAutomaticas() {
     const plano = PLANOS.find(p => p.id === senha.planoId);
     if (!plano) return;
 
-    // ── Agendamentos do paciente no mês (ativos) ─────────────────────────
-    const appts = APPOINTMENTS.filter(a =>
+    // ── Agendamentos do paciente no mês (todos os status) ───────────────
+    // allAppts: usados para exibição correta na prévia (cancelado, desmarcado, atendido, etc.)
+    const allAppts = APPOINTMENTS.filter(a =>
       a.dataISO >= ISO_PRIM && a.dataISO <= ISO_ULT &&
-      !['cancelado','desmarcado'].includes(a.status) &&
       matchNome(a.paciente, senha.paciente)
     ).sort((a, b) => a.dataISO.localeCompare(b.dataISO));
 
+    // appts: apenas ativos, usados para calcular datas e duração
+    const appts = allAppts.filter(a =>
+      !['cancelado','desmarcado'].includes((a.status||'').toLowerCase())
+    );
+
     // Nome real do paciente (do agendamento se existir, senão da senha)
-    const pacNomeReal = appts.length ? appts[0].paciente : senha.paciente;
+    const pacNomeReal = allAppts.length ? allAppts[0].paciente : senha.paciente;
 
     // ── Limites ──────────────────────────────────────────────────────────
     const restantes = senha.qtdAutorizada - (senha.qtdUsada || 0);
@@ -8270,6 +8275,7 @@ function previewGuiasAutomaticas() {
     };
 
     // Monta mapa de agendamentos por semana (chave = ISO da segunda daquela semana)
+    // apptPorSemana: apenas ativos (usado para calcular datas)
     const apptPorSemana = {};
     appts.forEach(a => {
       const d   = new Date(a.dataISO + 'T12:00:00');
@@ -8278,6 +8284,17 @@ function previewGuiasAutomaticas() {
       seg.setDate(d.getDate() - (dow - 1));
       const k = dateToISO(seg);
       if (!apptPorSemana[k]) apptPorSemana[k] = a;
+    });
+
+    // allApptPorSemana: todos os status (usado só para exibição na prévia)
+    const allApptPorSemana = {};
+    allAppts.forEach(a => {
+      const d   = new Date(a.dataISO + 'T12:00:00');
+      const dow = d.getDay() === 0 ? 7 : d.getDay();
+      const seg = new Date(d);
+      seg.setDate(d.getDate() - (dow - 1));
+      const k = dateToISO(seg);
+      if (!allApptPorSemana[k]) allApptPorSemana[k] = a;
     });
 
     // Encontra a segunda da semana que contém dataIniReal
@@ -8345,6 +8362,7 @@ function previewGuiasAutomaticas() {
       _ggParsed.push({
         senha, plano, profExec, is60, pacNomeReal,
         appt: apptSem,
+        apptDisplay: allApptPorSemana[wKey] || apptSem || null,
         data1ISO: g1ISO,
         data2ISO: g2ISO,
         procCod, procDesc, procVal,
@@ -8397,9 +8415,16 @@ function renderPreviewGG() {
     const tipo   = r.is60
       ? '<span class="chip blue" style="font-size:9px">60 min · 2</span>'
       : '<span class="chip gray" style="font-size:9px">30 min · 1</span>';
-    const apptInf = r.appt
-      ? `<br><span style="font-size:10px;color:var(--text-muted)">Agend: ${fmtISO(r.appt.dataISO)} ${r.appt.hora||''}</span>`
-      : `<br><span style="font-size:10px;color:var(--warning)">sem agendamento</span>`;
+    const apptInf = (() => {
+      const a = r.apptDisplay;
+      if (!a) return `<br><span style="font-size:10px;color:var(--text-muted)">sem agendamento</span>`;
+      const st = (a.status || '').toLowerCase();
+      if (st === 'cancelado')
+        return `<br><span style="font-size:10px;color:var(--danger)">⊘ Cancelado: ${fmtISO(a.dataISO)} ${a.hora||''}</span>`;
+      if (st === 'desmarcado')
+        return `<br><span style="font-size:10px;color:var(--warning)">↩ Desmarcado: ${fmtISO(a.dataISO)} ${a.hora||''}</span>`;
+      return `<br><span style="font-size:10px;color:var(--text-muted)">Agend: ${fmtISO(a.dataISO)} ${a.hora||''}</span>`;
+    })();
 
     // Campos editáveis de data
     const inputD1 = isDup
