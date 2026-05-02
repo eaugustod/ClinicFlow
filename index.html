@@ -315,7 +315,7 @@ a { text-decoration: none; color: inherit; }
 
 /* Page content */
 .page { display: none; flex: 1; overflow-y: auto; padding: 24px; animation: fadeIn 0.2s ease; }
-.page.active { display: block; }
+.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
 
 /* Dashboard — flex column para controlar scroll interno dos boxes */
 #page-dashboard {
@@ -444,11 +444,12 @@ a { text-decoration: none; color: inherit; }
 /* Fechamento Mensal */
 #page-fechamento {
   display: none;
+  flex-direction: column;
   overflow-y: auto;
   padding: 24px;
 } 
 #page-fechamento.active {
-  display: block;
+  display: flex;
 }
 
 /* ═══════════════════════════════════════
@@ -466,10 +467,11 @@ a { text-decoration: none; color: inherit; }
 
 #page-conecta-fechamento {
   display: none;
+  flex-direction: column;
   overflow-y: auto;
   padding: 24px;
 }
-#page-conecta-fechamento.active { display: block; }
+#page-conecta-fechamento.active { display: flex; }
 
 .conecta-header {
   display: flex; align-items: center; gap: 12px;
