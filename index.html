@@ -315,7 +315,12 @@ a { text-decoration: none; color: inherit; }
 
 /* Page content */
 .page { display: none; flex: 1; overflow-y: auto; padding: 24px; animation: fadeIn 0.2s ease; }
-.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.page.active {
+  display: block;
+  height: calc(100vh - 56px); /* 56px = topbar height */
+  overflow-y: auto;
+  box-sizing: border-box;
+}
 
 /* Dashboard — flex column para controlar scroll interno dos boxes */
 #page-dashboard {
@@ -326,6 +331,9 @@ a { text-decoration: none; color: inherit; }
 }
 #page-dashboard.active {
   display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Guias SADT — flex column, scroll isolado na listagem */
@@ -337,6 +345,9 @@ a { text-decoration: none; color: inherit; }
 }
 #page-tiss.active {
   display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 #page-tiss #guias-list {
   flex: 1;
@@ -354,6 +365,9 @@ a { text-decoration: none; color: inherit; }
 }
 #page-senhas.active {
   display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 #page-senhas .senhas-table-wrap {
   flex: 1;
@@ -368,7 +382,11 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-profissionais.active { display: flex; }
+#page-profissionais.active { display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
 #page-profissionais .table-card {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
 }
@@ -383,7 +401,11 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-planos.active { display: flex; }
+#page-planos.active { display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
 #page-planos .planos-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
 #page-planos .plan-grid-wrap { flex: 1; overflow-y: auto; min-height: 0; }
 
@@ -394,7 +416,11 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-procedimentos.active { display: flex; }
+#page-procedimentos.active { display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
 #page-procedimentos .table-card {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
 }
@@ -409,7 +435,11 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-espera.active { display: flex; }
+#page-espera.active { display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
 #page-espera .espera-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
 #page-espera .espera-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
 #page-espera .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
@@ -425,7 +455,11 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-lotes.active { display: flex; }
+#page-lotes.active { display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
 #page-lotes .lotes-fixed-header { flex-shrink: 0; margin-bottom: 20px; }
 #page-lotes .lotes-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
 #page-lotes .lotes-table-wrap .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
@@ -439,18 +473,13 @@ a { text-decoration: none; color: inherit; }
 }
 #page-relatorios.active {
   display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-/* Fechamento Mensal */
-#page-fechamento {
-  display: none;
-  flex-direction: column;
-  overflow-y: auto;
-  padding: 24px;
-} 
-#page-fechamento.active {
-  display: flex;
-}
+/* Fechamento Mensal — scroll simples, já coberto pela regra geral */
+#page-fechamento { display: none; padding: 24px; }
 
 /* ═══════════════════════════════════════
    ESPAÇO CONECTA — SALAS
@@ -462,16 +491,8 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   padding: 24px;
 }
-#page-conecta-agenda.active,
-#page-conecta-profissionais.active { display: flex; }
-
-#page-conecta-fechamento {
-  display: none;
-  flex-direction: column;
-  overflow-y: auto;
-  padding: 24px;
-}
-#page-conecta-fechamento.active { display: flex; }
+/* conecta-fechamento — scroll simples */
+#page-conecta-fechamento { display: none; padding: 24px; }
 
 .conecta-header {
   display: flex; align-items: center; gap: 12px;
@@ -614,6 +635,9 @@ a { text-decoration: none; color: inherit; }
 }
 #page-pacientes.active {
   display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 #page-pacientes .table-card {
   flex: 1;
@@ -646,6 +670,9 @@ a { text-decoration: none; color: inherit; }
 }
 #page-agenda.active {
   display: flex;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 #page-agenda .agenda-toolbar {
   flex-shrink: 0;
@@ -14777,6 +14804,24 @@ document.addEventListener('DOMContentLoaded', function() {
       showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
       // Atualiza avatar da sidebar com foto do usuário logado (se cadastrada)
       try { if (typeof atualizarAvatarSidebar === 'function') atualizarAvatarSidebar(); } catch(_e2) {}
+      // Re-renderiza a página ativa caso o usuário já esteja em um módulo que depende desses dados
+      try {
+        const activePage = document.querySelector('.page.active');
+        if (activePage) {
+          const pageId = activePage.id.replace('page-', '');
+          const reRenderMap = {
+            'usuarios':              () => { try { renderUsuarios(); } catch(e) {} },
+            'perfis':                () => { try { renderPerfisLista(); } catch(e) {} },
+            'fechamento':            () => { try { renderFechamento && renderFechamento(); } catch(e) {} },
+            'conecta-agenda':        () => { try { conectaRenderAgenda(); } catch(e) {} },
+            'conecta-profissionais': () => { try { conectaRenderLocatarios(); } catch(e) {} },
+            'conecta-fechamento':    () => { try { renderHistoricoFechamentos(); } catch(e) {} },
+            'relatorios':            () => { try { renderRelatorios(); } catch(e) {} },
+            'dashboard':             () => { try { renderDashboard(); } catch(e) {} },
+          };
+          if (reRenderMap[pageId]) reRenderMap[pageId]();
+        }
+      } catch(_re) {}
     } catch (e) {
       showToast('Erro ao carregar dados: ' + e.message, 'error');
       console.error('[ClinicFlow Supabase]', e);
