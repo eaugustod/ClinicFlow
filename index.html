@@ -15680,7 +15680,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // ── Override excluirLocatario ─────────────────────────────────
-  window.excluirLocatario = async function (locId) {
+  window._excluirLocatarioSupabase = window.excluirLocatario = async function (locId) {
     const loc = LOCATARIOS.find(l => String(l.id) === String(locId));
     if (!loc) return;
     const temReservas = RESERVAS_SALAS.some(r => String(r.locId) === String(locId) && r.status !== 'cancelado');
@@ -18097,7 +18097,7 @@ function conectaGotoToday() { CS_WEEK_OFFSET = 0; conectaRenderAgenda(); }
 function conectaRenderAgenda() {
   const days = conectaGetWeekDates();
   const filtroSala = document.getElementById('cs-sala-filtro')?.value || '';
-  const salasFiltradas = filtroSala ? SALAS_CONECTA.filter(s => s.id === filtroSala) : SALAS_CONECTA;
+  const salasFiltradas = filtroSala ? SALAS_CONECTA.filter(s => String(s.id) === String(filtroSala)) : SALAS_CONECTA;
 
   // Label da semana
   const lblEl = document.getElementById('cs-week-label');
@@ -18153,7 +18153,7 @@ function conectaRenderAgenda() {
         const iso = d.toISOString().slice(0,10);
         // Reservas nesta sala/hora/dia
         const reservas = RESERVAS_SALAS.filter(r =>
-          r.salaId === sala.id &&
+          String(r.salaId) === String(sala.id) &&
           r.data === iso &&
           r.status !== 'cancelado' &&
           r.horaIni <= hora && r.horaFim > hora
@@ -18164,7 +18164,7 @@ function conectaRenderAgenda() {
 
         if (reservas.length > 0) {
           const res = reservas[0];
-          const loc = LOCATARIOS.find(l => l.id === res.locId);
+          const loc = LOCATARIOS.find(l => String(l.id) === String(res.locId));
           const corMap = { sala1:'azul', sala2:'roxo', sala3:'verde', sala4:'amarelo', sala5:'vermelho', sala6:'esmeralda' };
           const tagCor = corMap[sala.cor] || 'azul';
           cellClass += ' ocupado';
@@ -18182,9 +18182,8 @@ function conectaRenderAgenda() {
 }
 
 function cellClique(salaId, dataISO, hora) {
-  // Se a célula está livre, abre modal de nova reserva pré-preenchida
   const reservada = RESERVAS_SALAS.some(r =>
-    r.salaId === salaId && r.data === dataISO && r.status !== 'cancelado' &&
+    String(r.salaId) === String(salaId) && r.data === dataISO && r.status !== 'cancelado' &&
     r.horaIni <= hora && r.horaFim > hora
   );
   if (reservada) return;
@@ -18192,11 +18191,11 @@ function cellClique(salaId, dataISO, hora) {
 }
 
 function verReserva(resId) {
-  const res = RESERVAS_SALAS.find(r => r.id === resId);
+  const res = RESERVAS_SALAS.find(r => String(r.id) === String(resId));
   if (!res) return;
-  RESERVA_ATUAL_ID = resId;
-  const sala = SALAS_CONECTA.find(s => s.id === res.salaId);
-  const loc  = LOCATARIOS.find(l => l.id === res.locId);
+  RESERVA_ATUAL_ID = res.id; // usa o id original (pode ser número)
+  const sala = SALAS_CONECTA.find(s => String(s.id) === String(res.salaId));
+  const loc  = LOCATARIOS.find(l => String(l.id) === String(res.locId));
   const dur  = res.durMin;
   const horas = Math.floor(dur/60);
   const mins  = dur % 60;
@@ -18251,7 +18250,7 @@ function verReserva(resId) {
 
 function cancelarReservaAtual() {
   if (!RESERVA_ATUAL_ID) return;
-  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
   if (!res) return;
   // Se recorrente, oferecer opção de cancelar série
   if (res.recorrencia && res.recorrencia !== 'unica') {
@@ -18268,21 +18267,21 @@ function cancelarReservaAtual() {
 
 async function cancelarReserva(escopo) {
   if (window._cancelarReservaSupabase) { return window._cancelarReservaSupabase(escopo); }
-  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
   if (!res) { closeModal('modal-cancelar-lote'); return; }
   if (escopo === 'unica') {
     res.status = 'cancelado';
     showToast('Reserva cancelada', 'success');
   } else if (escopo === 'futuras') {
     RESERVAS_SALAS.forEach(r => {
-      if (r.salaId === res.salaId && r.locId === res.locId &&
+      if (String(r.salaId) === String(res.salaId) && String(r.locId) === String(res.locId) &&
           r.horaIni === res.horaIni && r.recorrencia === res.recorrencia &&
           r.data >= res.data && r.status !== 'cancelado') r.status = 'cancelado';
     });
     showToast('Esta e as próximas reservas da série foram canceladas', 'success');
   } else if (escopo === 'todas') {
     RESERVAS_SALAS.forEach(r => {
-      if (r.salaId === res.salaId && r.locId === res.locId &&
+      if (String(r.salaId) === String(res.salaId) && String(r.locId) === String(res.locId) &&
           r.horaIni === res.horaIni && r.recorrencia === res.recorrencia) r.status = 'cancelado';
     });
     showToast('Todas as reservas da série foram canceladas', 'success');
@@ -18294,7 +18293,7 @@ async function cancelarReserva(escopo) {
 // ── Exclusão permanente de reserva ──────────────────────────────
 function excluirReservaAtual() {
   if (!RESERVA_ATUAL_ID) return;
-  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
   if (!res) return;
   // Se recorrente, mostra modal de escopo de exclusão
   if (res.recorrencia && res.recorrencia !== 'unica' && res.serieId) {
@@ -18310,11 +18309,11 @@ async function excluirReserva(escopo) {
   // Delega para o Supabase se disponível
   if (window._excluirReservaSupabase) { return window._excluirReservaSupabase(escopo); }
 
-  const res = RESERVAS_SALAS.find(r => r.id === RESERVA_ATUAL_ID);
+  const res = RESERVAS_SALAS.find(r => String(r.id) === String(RESERVA_ATUAL_ID));
   if (!res) { closeModal('modal-excluir-lote'); return; }
 
   if (escopo === 'unica') {
-    const idx = RESERVAS_SALAS.findIndex(r => r.id === RESERVA_ATUAL_ID);
+    const idx = RESERVAS_SALAS.findIndex(r => String(r.id) === String(RESERVA_ATUAL_ID));
     if (idx >= 0) RESERVAS_SALAS.splice(idx, 1);
     showToast('Reserva excluída', 'success');
   } else if (escopo === 'futuras') {
@@ -18356,24 +18355,26 @@ function renderSalasModal() {
   }
   el.innerHTML = `
     <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Salas cadastradas</div>
-    <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="display:flex;flex-direction:column;gap:6px" id="salas-list-inner">
       ${SALAS_CONECTA.map(s => `
         <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-raised);border-radius:var(--radius-sm);border:1px solid var(--border)">
           <span class="sala-pill ${s.cor}" style="font-size:12px">🚪 ${s.nome}</span>
           <span style="font-size:12px;color:var(--text-muted);flex:1">${s.descricao || '—'} · Cap. ${s.capacidade}</span>
           <div style="display:flex;gap:4px">
-            <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px" onclick="editarSala('${s.id}')">Editar</button>
-            <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px;color:var(--danger)" onclick="excluirSala('${s.id}')">Excluir</button>
+            <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px" data-sala-id="${s.id}" onclick="_clkEditarSala(this)">Editar</button>
+            <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px;color:var(--danger)" data-sala-id="${s.id}" onclick="_clkExcluirSala(this)">Excluir</button>
           </div>
         </div>
       `).join('')}
     </div>
   `;
 }
+function _clkEditarSala(btn) { editarSala(btn.getAttribute('data-sala-id')); }
+function _clkExcluirSala(btn) { excluirSala(btn.getAttribute('data-sala-id')); }
 
 function editarSala(salaId) {
-  const s = SALAS_CONECTA.find(x => x.id === salaId);
-  if (!s) return;
+  const s = SALAS_CONECTA.find(x => String(x.id) === String(salaId));
+  if (!s) { console.warn('[editarSala] sala não encontrada, id=', salaId, 'disponíveis:', SALAS_CONECTA.map(x=>x.id)); return; }
   document.getElementById('sala-edit-id').value = s.id;
   document.getElementById('sala-nome').value = s.nome;
   document.getElementById('sala-cap').value = s.capacidade;
@@ -18420,12 +18421,11 @@ async function salvarSala() {
   const editId = document.getElementById('sala-edit-id')?.value;
 
   if (editId) {
-    const idx = SALAS_CONECTA.findIndex(s => s.id === editId);
+    const idx = SALAS_CONECTA.findIndex(s => String(s.id) === String(editId));
     if (idx >= 0) SALAS_CONECTA[idx] = { ...SALAS_CONECTA[idx], nome, capacidade: cap, descricao: desc, cor };
   } else {
     SALAS_CONECTA.push({ id: 's' + Date.now(), nome, capacidade: cap, descricao: desc, cor });
   }
-  // Atualizar select filtro agenda
   const selFiltro = document.getElementById('cs-sala-filtro');
   if (selFiltro) {
     selFiltro.innerHTML = '<option value="">Todas as salas</option>' +
@@ -18439,12 +18439,12 @@ async function salvarSala() {
 
 async function excluirSala(salaId) {
   if (window._excluirSalaSupabase) { return window._excluirSalaSupabase(salaId); }
-  const sala = SALAS_CONECTA.find(s => s.id === salaId);
+  const sala = SALAS_CONECTA.find(s => String(s.id) === String(salaId));
   if (!sala) return;
-  const temReservas = RESERVAS_SALAS.some(r => r.salaId === salaId && r.status !== 'cancelado');
+  const temReservas = RESERVAS_SALAS.some(r => String(r.salaId) === String(salaId) && r.status !== 'cancelado');
   if (temReservas) { showToast('Não é possível excluir sala com reservas ativas', 'error'); return; }
   if (!confirm(`Excluir a sala "${sala.nome}"?`)) return;
-  SALAS_CONECTA = SALAS_CONECTA.filter(s => s.id !== salaId);
+  SALAS_CONECTA = SALAS_CONECTA.filter(s => String(s.id) !== String(salaId));
   renderSalasModal();
   conectaRenderAgenda();
   showToast('Sala excluída', 'success');
@@ -18458,7 +18458,11 @@ function abrirModalNovaReserva(salaId, dataISO, horaIni) {
   if (!selSala || !selProf) return;
 
   selSala.innerHTML = SALAS_CONECTA.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
-  if (salaId) selSala.value = salaId;
+  if (salaId) {
+    // Encontra a option cujo value bate com salaId (tolerante a tipo número/string)
+    const opt = Array.from(selSala.options).find(o => String(o.value) === String(salaId));
+    if (opt) selSala.value = opt.value;
+  }
 
   selProf.innerHTML = '<option value="">Selecione...</option>' +
     LOCATARIOS.filter(l => l.status === 'ativo').map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
@@ -18599,11 +18603,11 @@ function conectaRenderLocatarios() {
     const reservasMes = RESERVAS_SALAS.filter(r => {
       const now = new Date();
       const mes = now.toISOString().slice(0,7);
-      return r.locId === loc.id && r.data.startsWith(mes) && r.status !== 'cancelado';
+      return String(r.locId) === String(loc.id) && r.data.startsWith(mes) && r.status !== 'cancelado';
     });
     const horasMes = reservasMes.reduce((a,r) => a + r.durMin/60, 0);
     const valorMes = reservasMes.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
-    const salaPref = SALAS_CONECTA.find(s => s.id === loc.salaPref);
+    const salaPref = SALAS_CONECTA.find(s => String(s.id) === String(loc.salaPref));
 
     const card = document.createElement('div');
     card.className = 'loc-prof-card';
@@ -18617,7 +18621,12 @@ function conectaRenderLocatarios() {
           <div style="font-size:12px;color:var(--text-muted)">${loc.esp || '—'}</div>
         </div>
         <span class="role-badge ${loc.status === 'ativo' ? 'recepcao' : 'prof'}">${loc.status}</span>
-        <button class="btn-sm btn-secondary" style="padding:4px 10px;font-size:12px" onclick="editarLocatario('${loc.id}')">Editar</button>
+        <div style="display:flex;gap:4px">
+          <button class="btn-sm btn-secondary" style="padding:4px 10px;font-size:12px"
+            data-loc-id="${loc.id}" onclick="_clkEditarLoc(this)">✏️ Editar</button>
+          <button class="btn-sm btn-secondary" style="padding:4px 10px;font-size:12px;color:var(--danger);border-color:rgba(248,113,113,0.3)"
+            data-loc-id="${loc.id}" onclick="_clkExcluirLoc(this)">🗑️</button>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:8px 10px;text-align:center">
@@ -18643,6 +18652,24 @@ function conectaRenderLocatarios() {
   });
 }
 
+// Helpers para evitar problema de tipo string vs número nos IDs vindos do Supabase
+function _clkEditarLoc(btn) { editarLocatario(btn.getAttribute('data-loc-id')); }
+function _clkExcluirLoc(btn) { excluirLocatario(btn.getAttribute('data-loc-id')); }
+
+async function excluirLocatario(locId) {
+  // Delega para o override Supabase se disponível
+  if (window._excluirLocatarioSupabase) { return window._excluirLocatarioSupabase(locId); }
+  const loc = LOCATARIOS.find(l => String(l.id) === String(locId));
+  if (!loc) return;
+  const temReservas = RESERVAS_SALAS.some(r => String(r.locId) === String(locId) && r.status !== 'cancelado');
+  if (temReservas) { showToast('Não é possível excluir locatário com reservas ativas', 'error'); return; }
+  if (!confirm(`Excluir o locatário "${loc.nome}"? Esta ação não pode ser desfeita.`)) return;
+  const idx = LOCATARIOS.findIndex(l => String(l.id) === String(locId));
+  if (idx >= 0) LOCATARIOS.splice(idx, 1);
+  conectaRenderLocatarios();
+  showToast('Locatário removido', 'success');
+}
+
 function abrirModalNovoLocatario() {
   document.getElementById('loc-modal-title').textContent = 'Novo Profissional Locatário';
   document.getElementById('loc-edit-id').value = '';
@@ -18665,8 +18692,8 @@ function abrirModalNovoLocatario() {
 }
 
 function editarLocatario(locId) {
-  const loc = LOCATARIOS.find(l => l.id === locId);
-  if (!loc) return;
+  const loc = LOCATARIOS.find(l => String(l.id) === String(locId));
+  if (!loc) { console.warn('[editarLocatario] locatário não encontrado, id=', locId, 'disponíveis:', LOCATARIOS.map(x=>x.id)); return; }
   document.getElementById('loc-modal-title').textContent = 'Editar Profissional Locatário';
   document.getElementById('loc-edit-id').value = loc.id;
   document.getElementById('loc-nome').value = loc.nome || '';
@@ -18718,7 +18745,7 @@ async function salvarLocatario() {
   };
 
   if (editId) {
-    const idx = LOCATARIOS.findIndex(l => l.id === editId);
+    const idx = LOCATARIOS.findIndex(l => String(l.id) === String(editId));
     if (idx >= 0) LOCATARIOS[idx] = { ...LOCATARIOS[idx], ...dados };
   } else {
     LOCATARIOS.push({ id: 'l' + Date.now(), ...dados });
@@ -18747,7 +18774,7 @@ function calcularFechamentoLocacao() {
   const totalHoras = reservasMes.reduce((a,r) => a + r.durMin/60, 0);
   let totalValor = 0;
   LOCATARIOS.forEach(loc => {
-    const resLoc = reservasMes.filter(r => r.locId === loc.id);
+    const resLoc = reservasMes.filter(r => String(r.locId) === String(loc.id));
     totalValor += resLoc.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
   });
 
@@ -18779,7 +18806,7 @@ function calcularFechamentoLocacao() {
   cardsEl.innerHTML = '';
 
   const locComReservas = LOCATARIOS.filter(loc =>
-    reservasMes.some(r => r.locId === loc.id)
+    reservasMes.some(r => String(r.locId) === String(loc.id))
   );
 
   if (locComReservas.length === 0) {
@@ -18789,7 +18816,7 @@ function calcularFechamentoLocacao() {
     const mesLabel = new Date(ano, mes-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 
     locComReservas.forEach(loc => {
-      const resLoc = reservasMes.filter(r => r.locId === loc.id);
+      const resLoc = reservasMes.filter(r => String(r.locId) === String(loc.id));
       const horasTot = resLoc.reduce((a,r) => a + r.durMin/60, 0);
       const valorTot = resLoc.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
 
@@ -18803,7 +18830,7 @@ function calcularFechamentoLocacao() {
       });
 
       const salaRows = Object.entries(porSala).map(([sId, d]) => {
-        const sala = SALAS_CONECTA.find(s => s.id === sId);
+        const sala = SALAS_CONECTA.find(s => String(s.id) === String(sId));
         return `<div class="loc-fech-row">
           <span class="sala-pill ${sala?.cor||'sala1'}" style="font-size:11px;padding:2px 8px">${sala?.nome||sId}</span>
           <span style="color:var(--text-secondary)">${d.count} reserva${d.count>1?'s':''}</span>
@@ -18814,7 +18841,7 @@ function calcularFechamentoLocacao() {
       }).join('');
 
       const detalhes = resLoc.map(r => {
-        const sala = SALAS_CONECTA.find(s => s.id === r.salaId);
+        const sala = SALAS_CONECTA.find(s => String(s.id) === String(r.salaId));
         const dt = new Date(r.data+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
         const val = conectaCalcValor(loc, r.durMin);
         return `<div class="loc-fech-row">
@@ -18948,9 +18975,9 @@ function emitirRelatorioLocacao() {
 
   let totalValor = 0;
   const rows = LOCATARIOS
-    .filter(loc => reservasMes.some(r => r.locId === loc.id))
+    .filter(loc => reservasMes.some(r => String(r.locId) === String(loc.id)))
     .map(loc => {
-      const resLoc = reservasMes.filter(r => r.locId === loc.id);
+      const resLoc = reservasMes.filter(r => String(r.locId) === String(loc.id));
       const horas = resLoc.reduce((a,r) => a + r.durMin/60, 0);
       const valor = resLoc.reduce((a,r) => a + conectaCalcValor(loc, r.durMin), 0);
       totalValor += valor;
