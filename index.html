@@ -5489,12 +5489,19 @@ async function doLogin() {
       }
 
       // Login bem-sucedido via Supabase
+      // Normaliza o campo perfil para os valores internos ('admin','recepcao','prof')
+      const _perfilRaw = (usuario.perfil || '').toLowerCase().trim();
+      const _roleNorm  = _perfilRaw === 'admin' || _perfilRaw === 'administrador' ? 'admin'
+                       : _perfilRaw === 'recepcao' || _perfilRaw === 'recepção' ? 'recepcao'
+                       : _perfilRaw === 'prof' || _perfilRaw === 'profissional' ? 'prof'
+                       : _perfilRaw || 'recepcao';
       _finalizarLogin({
         nome:     usuario.nome     || emailInput,
-        role:     usuario.perfil   || 'recepcao',
+        role:     _roleNorm,
         initials: (usuario.nome || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
         foto:     usuario.foto     || '',
         id:       usuario.id,
+        perfilId: usuario.perfil_id || usuario.perfilId || null,
       });
       return;
 
@@ -5570,6 +5577,13 @@ function _finalizarLogin(user) {
   if (role === 'recepcao') {
     document.getElementById('nav-config-section').style.display = 'none';
     document.getElementById('nav-fatur-section').style.display  = 'none';
+  }
+  // Garante que admin sempre vê Usuários e Perfis
+  if (role === 'admin') {
+    const uEl = document.getElementById('nav-usuarios-item');
+    const pEl = document.getElementById('nav-perfis-item');
+    if (uEl) { uEl.style.display = ''; uEl.removeAttribute('data-perfil-hidden'); }
+    if (pEl) { pEl.style.display = ''; pEl.removeAttribute('data-perfil-hidden'); }
   }
   // Aplica permissões de perfil personalizado se existir
   _aplicarPermissoesDePerfil(user);
@@ -16149,7 +16163,8 @@ async function _upsertUsuarioSupabase(u) {
       id: u.id, nome: u.nome, email: u.email, cpf: u.cpf || null, rg: u.rg || null,
       telefone: u.tel || null, data_nascimento: u.nasc || null,
       perfil: u.perfil, status: u.status, foto: u.foto || null,
-      prof_id: u.profId || null, created_at: u.criadoEm || new Date().toISOString()
+      prof_id: u.profId || null, perfil_id: u.perfilId || null,
+      created_at: u.criadoEm || new Date().toISOString()
     };
     if (u.senha) payload.senha = u.senha;
     const { error } = await sb.from('usuarios').upsert([payload], { onConflict: 'id' });
@@ -16166,7 +16181,8 @@ async function sincronizarUsuarioSupabase() {
       id: u.id, nome: u.nome, email: u.email, cpf: u.cpf || null, rg: u.rg || null,
       telefone: u.tel || null, data_nascimento: u.nasc || null,
       perfil: u.perfil, status: u.status, foto: u.foto || null,
-      prof_id: u.profId || null, created_at: u.criadoEm || new Date().toISOString()
+      prof_id: u.profId || null, perfil_id: u.perfilId || null,
+      created_at: u.criadoEm || new Date().toISOString()
     }));
     const { error } = await sb.from('usuarios').upsert(payload, { onConflict: 'id' });
     if (error) console.error('[ClinicFlow] Erro ao sincronizar usuários:', error.message);
@@ -16181,15 +16197,23 @@ async function carregarUsuariosSupabase() {
     const { data, error } = await sb.from('usuarios').select('*').order('nome').limit(500);
     if (error || !data || !data.length) return;
     USUARIOS.length = 0;
-    data.forEach(r => USUARIOS.push({
-      id: String(r.id),        // sempre string para evitar mismatch numérico
-      nome: r.nome, email: r.email, cpf: r.cpf || '',
-      rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
-      perfil: r.perfil || 'admin', status: r.status || 'Ativo',
-      foto: r.foto || '', senha: r.senha || '',
-      profId: r.prof_id || null,
-      criadoEm: r.created_at || ''
-    }));
+    data.forEach(r => {
+      const _pr = (r.perfil || '').toLowerCase().trim();
+      const _rn = _pr === 'admin' || _pr === 'administrador' ? 'admin'
+                : _pr === 'recepcao' || _pr === 'recepção' ? 'recepcao'
+                : _pr === 'prof' || _pr === 'profissional' ? 'prof'
+                : _pr || 'recepcao';
+      USUARIOS.push({
+        id: String(r.id),
+        nome: r.nome, email: r.email, cpf: r.cpf || '',
+        rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
+        perfil: _rn, status: r.status || 'Ativo',
+        foto: r.foto || '', senha: r.senha || '',
+        profId: r.prof_id || null,
+        perfilId: r.perfil_id || r.perfilId || null,
+        criadoEm: r.created_at || ''
+      });
+    });
     salvarUsuariosLocal();
     renderUsuarios();
   } catch(e) { console.warn('[ClinicFlow] Tabela usuarios não encontrada, usando localStorage', e.message); }
