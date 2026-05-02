@@ -5394,10 +5394,6 @@ function quickLogin(role) {
 }
 
 async function doLogin() {
-  const emailInput = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
-  const senhaInput = (document.getElementById('login-pass')?.value || '');
-  const errEl      = document.getElementById('login-error');
-  const btnEl      = document.getElementById('btn-login');
 
   errEl.style.display = 'none';
   errEl.textContent   = '';
@@ -5515,6 +5511,9 @@ async function doLogin() {
   btnEl.disabled      = false;
   btnEl.textContent   = 'Entrar';
 }
+// Garante acesso global independente de escopo ou ordem de carregamento
+window.doLogin = doLogin;
+window.quickLogin = quickLogin;
 
 function _finalizarLogin(user) {
   currentUser = user;
