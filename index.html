@@ -5460,18 +5460,19 @@ async function doLogin() {
       }
 
       // Login bem-sucedido via Supabase
-      const _pr = (usuario.perfil || '').toLowerCase().trim();
-      const _rn = _pr === 'admin' || _pr === 'administrador' ? 'admin'
-                : _pr === 'recepcao' || _pr === 'recepção' ? 'recepcao'
-                : _pr === 'prof' || _pr === 'profissional' ? 'prof'
-                : _pr || 'recepcao';
+      // Normaliza o campo perfil para os valores internos ('admin','recepcao','prof')
+      const _perfilRaw = (usuario.perfil || '').toLowerCase().trim();
+      const _roleNorm  = _perfilRaw === 'admin' || _perfilRaw === 'administrador' ? 'admin'
+                       : _perfilRaw === 'recepcao' || _perfilRaw === 'recepção' ? 'recepcao'
+                       : _perfilRaw === 'prof' || _perfilRaw === 'profissional' ? 'prof'
+                       : _perfilRaw || 'recepcao';
       _finalizarLogin({
         nome:     usuario.nome     || emailInput,
-        role:     _rn,
+        role:     _roleNorm,
         initials: (usuario.nome || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
         foto:     usuario.foto     || '',
         id:       usuario.id,
-        perfilId: usuario.perfil_id || null,
+        perfilId: usuario.perfil_id || usuario.perfilId || null,
       });
       return;
 
@@ -5551,6 +5552,7 @@ function _finalizarLogin(user) {
     document.getElementById('nav-config-section').style.display = 'none';
     document.getElementById('nav-fatur-section').style.display  = 'none';
   }
+  // Garante que admin sempre vê Usuários e Perfis
   if (role === 'admin') {
     const uEl = document.getElementById('nav-usuarios-item');
     const pEl = document.getElementById('nav-perfis-item');
@@ -5624,6 +5626,7 @@ function gotoPage(page, el) {
   if (page === 'config')    try { initConfigPage(); } catch(e) {}
   if (page === 'conecta-fechamento') try { renderHistoricoFechamentos(); } catch(e) {}
   if (page === 'perfis')    try { renderPerfisLista(); } catch(e) { console.warn(e); }
+  if (page === 'usuarios')  try { renderUsuarios(); } catch(e) { console.warn(e); }
   if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
   if (page === 'senhas')    try { renderSenhas(); } catch(e) {}
   if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
