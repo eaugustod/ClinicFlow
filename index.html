@@ -8324,22 +8324,41 @@ function previewGuiasAutomaticas() {
       // Âncora após o fim da autorização → encerra
       if (diaAncora > dataFimReal) break;
 
-      // guia1 = dia âncora (deve estar dentro do intervalo)
-      const g1 = diaAncora;
+      // ── Ajuste de feriado ─────────────────────────────────────────────
+      // Se o dia cair em feriado:
+      //   • Sexta → recua para quinta (-1 dia)
+      //   • Demais → avança para o próximo dia útil (+1 dia)
+      // Repete até encontrar um dia útil sem feriado.
+      const ajustarFeriado = (d) => {
+        let r = new Date(d);
+        while (isFeriado(dateToISO(r)) || r.getDay() === 0 || r.getDay() === 6) {
+          if (r.getDay() === 5 || (r.getDay() === 6 && isFeriado(dateToISO(addDays(r,-1))))) {
+            // Sexta em feriado → vai para quinta
+            r = addDays(r, -1);
+          } else {
+            // Demais → avança um dia
+            r = addDays(r, 1);
+          }
+        }
+        return r;
+      };
+
+      // guia1 = dia âncora ajustado por feriado
+      const g1 = ajustarFeriado(diaAncora);
       let g2ISO = null;
 
       if (is60 && guiasRestantes > 1) {
         // guia2 = diaAncora + offset (pode ser negativo = mesma semana, antes)
         const offset = offsetG2(diaAncora.getDay());
-        const g2 = addDays(diaAncora, offset);
-        // guia2 deve estar dentro do intervalo de autorização e não ser fim de semana
+        const g2Raw = addDays(diaAncora, offset);
+        // Aplica ajuste de feriado na guia2
+        const g2 = ajustarFeriado(g2Raw);
+        // guia2 deve estar dentro do intervalo de autorização e não colidir com guia1
         if (
           g2 >= dataIniReal &&
           g2 <= dataFimReal &&
           g2 >= D_PRIM &&
-          g2.getDay() !== 0 &&
-          g2.getDay() !== 6 &&
-          !isFeriado(dateToISO(g2))
+          dateToISO(g2) !== dateToISO(g1)
         ) {
           g2ISO = dateToISO(g2);
         }
