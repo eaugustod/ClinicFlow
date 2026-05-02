@@ -3035,6 +3035,12 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
               Salvar configurações
             </button>
           </div>
+          <div style="margin-top:12px;display:flex;justify-content:flex-end">
+            <button class="btn-sm btn-accent" onclick="salvarCanalNotif()" style="display:flex;align-items:center;gap:6px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/></svg>
+              Salvar canal no banco
+            </button>
+          </div>
         </div>
 
         <!-- WhatsApp -->
@@ -5454,12 +5460,18 @@ async function doLogin() {
       }
 
       // Login bem-sucedido via Supabase
+      const _pr = (usuario.perfil || '').toLowerCase().trim();
+      const _rn = _pr === 'admin' || _pr === 'administrador' ? 'admin'
+                : _pr === 'recepcao' || _pr === 'recepção' ? 'recepcao'
+                : _pr === 'prof' || _pr === 'profissional' ? 'prof'
+                : _pr || 'recepcao';
       _finalizarLogin({
         nome:     usuario.nome     || emailInput,
-        role:     usuario.perfil   || 'recepcao',
+        role:     _rn,
         initials: (usuario.nome || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
         foto:     usuario.foto     || '',
         id:       usuario.id,
+        perfilId: usuario.perfil_id || null,
       });
       return;
 
@@ -5536,6 +5548,12 @@ function _finalizarLogin(user) {
     document.getElementById('nav-config-section').style.display = 'none';
     document.getElementById('nav-fatur-section').style.display  = 'none';
   }
+  if (role === 'admin') {
+    const uEl = document.getElementById('nav-usuarios-item');
+    const pEl = document.getElementById('nav-perfis-item');
+    if (uEl) { uEl.style.display = ''; uEl.removeAttribute('data-perfil-hidden'); }
+    if (pEl) { pEl.style.display = ''; pEl.removeAttribute('data-perfil-hidden'); }
+  }
   // Aplica permissões de perfil personalizado se existir
   _aplicarPermissoesDePerfil(user);
 
@@ -5609,6 +5627,12 @@ function gotoPage(page, el) {
   if (page === 'historico') try { renderHistPacList(); } catch(e) {}
   if (page === 'dashboard') try { renderDashboard(); } catch(e) {}
   if (page === 'relatorios') try { renderRelatorios(); } catch(e) {}
+  if (page === 'usuarios')  try { renderUsuarios(); } catch(e) {}
+  if (page === 'fechamento') {
+    const mi = document.getElementById('fech-mes');
+    if (mi && !mi.value) { const n=new Date(); mi.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
+    try { if (typeof renderFechamento==='function') renderFechamento(); } catch(e) {}
+  }
   // Espaço Conecta
   if (page === 'conecta-agenda')        try { conectaRenderAgenda(); } catch(e) {}
   if (page === 'conecta-profissionais') try { conectaRenderLocatarios(); } catch(e) {}
@@ -7365,9 +7389,25 @@ function excluirHistorico(id) {
   });
 }
 function excluirAgendamento(id) {
-  if (!confirm('Excluir este agendamento permanentemente?')) return;
-  const idx = APPOINTMENTS.findIndex(a=>a.id===id);
-  if (idx>-1) { APPOINTMENTS.splice(idx,1); closeModal('modal-agendamento'); renderDayView(); showToast('Agendamento excluído.','error'); }
+  const appt = APPOINTMENTS.find(a => a.id === id);
+  if (!appt) return;
+  let ids = [id];
+  if (appt.isGrupo && appt.groupId) {
+    const membros = APPOINTMENTS.filter(a => a.groupId === appt.groupId && a.dataISO === appt.dataISO);
+    if (membros.length > 1) {
+      if (!confirm('Grupo com ' + membros.length + ' pacientes.
+OK = excluir TODOS. Cancelar = cancelar.')) return;
+      ids = membros.map(a => a.id);
+    } else { if (!confirm('Excluir este agendamento permanentemente?')) return; }
+  } else { if (!confirm('Excluir este agendamento permanentemente?')) return; }
+  const sb = window._cfGetDb ? window._cfGetDb() : null;
+  if (sb) {
+    ids.forEach(eid => sb.from('notificacoes').delete().eq('agendamento_id', eid).eq('enviada', false).then(()=>{}));
+    sb.from('agendamentos').delete().in('id', ids).then(({error}) => { if (error) console.error('[Excluir]', error.message); });
+  }
+  ids.forEach(eid => { const i = APPOINTMENTS.findIndex(a => a.id === eid); if (i > -1) APPOINTMENTS.splice(i, 1); });
+  closeModal('modal-agendamento'); renderDayView();
+  showToast(ids.length > 1 ? ids.length + ' agendamentos excluídos.' : 'Agendamento excluído.', 'error');
 }
 
 function excluirAgendamentoComGuia() {
@@ -7400,11 +7440,23 @@ function excluirAgendamentoComGuia() {
       GUIAS.splice(guiaIdx, 1);
       renderGuiasList();
     }
-    // Remove agendamento do Supabase
+    // Remove agendamento do Supabase (suporte a grupo)
     const _sb = window._cfGetDb ? window._cfGetDb() : null;
-    if (_sb) _sb.from('agendamentos').delete().eq('id', currentApptId).then(({error}) => {
-      if (error) console.error('[Excluir Agendamento]', error.message);
-    });
+    if (_sb) {
+      const _apptG = APPOINTMENTS.find(a => a.id === currentApptId);
+      const _idsG = (_apptG && _apptG.isGrupo && _apptG.groupId)
+        ? APPOINTMENTS.filter(a => a.groupId === _apptG.groupId && a.dataISO === _apptG.dataISO).map(a => a.id)
+        : [currentApptId];
+      _idsG.forEach(eid => _sb.from('notificacoes').delete().eq('agendamento_id', eid).eq('enviada', false).then(()=>{}));
+      _sb.from('agendamentos').delete().in('id', _idsG).then(({error}) => {
+        if (error) console.error('[Excluir Agendamento]', error.message);
+      });
+      // Remove demais membros do grupo da memória
+      _idsG.filter(eid => eid !== currentApptId).forEach(eid => {
+        const gi = APPOINTMENTS.findIndex(a => a.id === eid);
+        if (gi > -1) APPOINTMENTS.splice(gi, 1);
+      });
+    }
   }
   const idx = APPOINTMENTS.findIndex(a => a.id === currentApptId);
   if (idx > -1) APPOINTMENTS.splice(idx, 1);
@@ -14268,8 +14320,21 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // ═══════════════════════════════════════════════════════════════════════
 //  SUPABASE INTEGRATION — ClinicFlow
-//  Patch integrado inline (não precisa de supabase_patch.js externo)
 // ═══════════════════════════════════════════════════════════════════════
+
+// Singleton global: evita múltiplos GoTrueClient
+;(function _definirSingleton() {
+  let _cachedClient = null;
+  window._cfGetOrCreateClient = function(url, key) {
+    if (_cachedClient) return _cachedClient;
+    if (window.__cfSb) { _cachedClient = window.__cfSb; return _cachedClient; }
+    if (!window.supabase || !url || !key) return null;
+    _cachedClient = window.supabase.createClient(url, key);
+    window.__cfSb = _cachedClient;
+    return _cachedClient;
+  };
+})();
+
 (function () {
   'use strict';
 
@@ -14393,6 +14458,18 @@ document.addEventListener('DOMContentLoaded', function() {
       showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
       // Atualiza avatar da sidebar com foto do usuário logado (se cadastrada)
       try { if (typeof atualizarAvatarSidebar === 'function') atualizarAvatarSidebar(); } catch(_e2) {}
+      // Re-renderiza página ativa se ela depende de dados do banco
+      try {
+        const _ap = document.querySelector('.page.active');
+        if (_ap) {
+          const _pid = _ap.id.replace('page-', '');
+          const _rm = { usuarios: ()=>renderUsuarios(), perfis: ()=>renderPerfisLista(),
+            fechamento: ()=>{ if(typeof renderFechamento==='function') renderFechamento(); },
+            'conecta-agenda': ()=>conectaRenderAgenda(), 'conecta-profissionais': ()=>conectaRenderLocatarios(),
+            'conecta-fechamento': ()=>renderHistoricoFechamentos(), relatorios: ()=>renderRelatorios() };
+          if (_rm[_pid]) _rm[_pid]();
+        }
+      } catch(_re) {}
     } catch (e) {
       showToast('Erro ao carregar dados: ' + e.message, 'error');
       console.error('[ClinicFlow Supabase]', e);
@@ -14983,10 +15060,24 @@ document.addEventListener('DOMContentLoaded', function() {
     showToast('Registro excluído.', 'error');
   };
   window.excluirAgendamento = async function (id) {
-    if (!confirm('Excluir este agendamento permanentemente?')) return;
-    const sb = getDb(); if (sb) await sb.from('agendamentos').delete().eq('id', id);
-    const i = APPOINTMENTS.findIndex(a => a.id === id); if (i > -1) APPOINTMENTS.splice(i, 1);
-    closeModal('modal-agendamento'); refreshUI(); showToast('Agendamento excluído.', 'error');
+    const appt = APPOINTMENTS.find(a => a.id === id);
+    if (!appt) return;
+    let ids = [id];
+    if (appt.isGrupo && appt.groupId) {
+      const membros = APPOINTMENTS.filter(a => a.groupId === appt.groupId && a.dataISO === appt.dataISO);
+      if (membros.length > 1) {
+        if (!confirm('Este agendamento faz parte de um grupo com ' + membros.length + ' pacientes.\n\nOK = excluir TODOS os ' + membros.length + ' agendamentos do grupo.\nCancelar = cancelar.')) return;
+        ids = membros.map(a => a.id);
+      } else { if (!confirm('Excluir este agendamento permanentemente?')) return; }
+    } else { if (!confirm('Excluir este agendamento permanentemente?')) return; }
+    const sb = getDb();
+    if (sb) {
+      for (const eid of ids) await sb.from('notificacoes').delete().eq('agendamento_id', eid).eq('enviada', false).then(()=>{});
+      await sb.from('agendamentos').delete().in('id', ids);
+    }
+    ids.forEach(eid => { const i = APPOINTMENTS.findIndex(a => a.id === eid); if (i > -1) APPOINTMENTS.splice(i, 1); });
+    closeModal('modal-agendamento'); refreshUI();
+    showToast(ids.length > 1 ? ids.length + ' agendamentos do grupo excluídos.' : 'Agendamento excluído.', 'error');
   };
 
   // ── Função testarConexaoSupabase ──────────────────────────────────────────
@@ -15044,7 +15135,10 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   window.loadFromSupabase = loadFromSupabase;
-  window._cf = getDb; // expõe getDb para impConfirmar e outros módulos
+  window._cf             = getDb;
+  window.getDb           = getDb;           // WA / Notif modules
+  window._cfGetDb        = getDb;           // sincronizarDados, exclusão etc.
+  window.salvarConfigNoDB = salvarConfigNoDB; // módulos externos
   window._cfMap   = map;   // expõe os mapeamentos para sincronizarDados
   console.log('[ClinicFlow Supabase] Integração carregada ✓');
 
@@ -15768,15 +15862,21 @@ async function carregarUsuariosSupabase() {
     const { data, error } = await sb.from('usuarios').select('*').order('nome').limit(500);
     if (error || !data || !data.length) return;
     USUARIOS.length = 0;
-    data.forEach(r => USUARIOS.push({
-      id: String(r.id),        // sempre string para evitar mismatch numérico
-      nome: r.nome, email: r.email, cpf: r.cpf || '',
-      rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
-      perfil: r.perfil || 'admin', status: r.status || 'Ativo',
-      foto: r.foto || '', senha: r.senha || '',
-      profId: r.prof_id || null,
-      criadoEm: r.created_at || ''
-    }));
+    data.forEach(r => {
+      const _pr = (r.perfil || '').toLowerCase().trim();
+      const _rn = _pr === 'admin' || _pr === 'administrador' ? 'admin'
+                : _pr === 'recepcao' || _pr === 'recepção' ? 'recepcao'
+                : _pr === 'prof' || _pr === 'profissional' ? 'prof'
+                : _pr || 'recepcao';
+      USUARIOS.push({
+        id: String(r.id), nome: r.nome, email: r.email, cpf: r.cpf || '',
+        rg: r.rg || '', tel: r.telefone || '', nasc: r.data_nascimento || '',
+        perfil: _rn, status: r.status || 'Ativo',
+        foto: r.foto || '', senha: r.senha || '',
+        profId: r.prof_id || null, perfilId: r.perfil_id || null,
+        criadoEm: r.created_at || ''
+      });
+    });
     salvarUsuariosLocal();
     renderUsuarios();
   } catch(e) { console.warn('[ClinicFlow] Tabela usuarios não encontrada, usando localStorage', e.message); }
@@ -15948,17 +16048,28 @@ const _origGotoPage = window.gotoPage;
 window.gotoPage = function(page, el) {
   _origGotoPage && _origGotoPage(page, el);
   if (page === 'usuarios') {
-    renderUsuarios();
-    // Tenta recarregar do Supabase em segundo plano
+    try { renderUsuarios(); } catch(e) {}
     try { if (typeof carregarUsuariosSupabase === 'function') carregarUsuariosSupabase(); } catch(_e) {}
   }
+  if (page === 'perfis') {
+    try { renderPerfisLista(); } catch(e) {}
+  }
   if (page === 'fechamento') {
-    // Inicializa mês atual se não preenchido
     const mesInput = document.getElementById('fech-mes');
     if (mesInput && !mesInput.value) {
       const now = new Date();
       mesInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2,'0');
     }
+    try { if (typeof renderFechamento === 'function') renderFechamento(); } catch(_e) {}
+  }
+  if (page === 'conecta-agenda') {
+    try { conectaRenderAgenda(); } catch(e) {}
+  }
+  if (page === 'conecta-profissionais') {
+    try { conectaRenderLocatarios(); } catch(e) {}
+  }
+  if (page === 'conecta-fechamento') {
+    try { renderHistoricoFechamentos(); } catch(e) {}
   }
 };
 
@@ -16099,10 +16210,11 @@ function _garantirPerfisBase() {
     },
   ];
   BASE.forEach(base => {
-    if (!PERFIS_ACESSO.find(p => p.id === base.id)) {
-      PERFIS_ACESSO.unshift(base);
-    }
+    const idx = PERFIS_ACESSO.findIndex(p => p.id === base.id);
+    if (idx === -1) { PERFIS_ACESSO.unshift(base); }
+    else { PERFIS_ACESSO[idx] = { ...PERFIS_ACESSO[idx], ...base }; } // sempre atualiza lista de módulos
   });
+  try { localStorage.setItem('cf_perfis_acesso', JSON.stringify(PERFIS_ACESSO)); } catch(e) {}
 }
 
 // ── Render da lista de perfis ─────────────────────────────────────────────
@@ -16324,7 +16436,21 @@ Deseja continuar?`)) return;
 // ── Aplicar permissões ao fazer login ────────────────────────────────────
 function _aplicarPermissoesDePerfil(user) {
   if (!user) return;
-  _carregarPerfisLocal();
+  // MODULOS_SISTEMA é definido depois (linha ~16400+); se ainda não existe, agenda retry
+  if (typeof MODULOS_SISTEMA === 'undefined') { setTimeout(() => _aplicarPermissoesDePerfil(user), 400); return; }
+  try { _carregarPerfisLocal(); } catch(e) {}
+
+  // Admin puro: acesso total — força visibilidade de todos os nav-items
+  if (user.role === 'admin' && (!user.perfilId || user.perfilId === '__admin__')) {
+    try { user.modulosPermitidos = MODULOS_SISTEMA.flatMap(s => s.itens.map(i => i.id)); } catch(e) {}
+    ['nav-admin-section','nav-config-section','nav-fatur-section','nav-conecta-section'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = '';
+    });
+    document.querySelectorAll('.nav-item[data-perfil-hidden]').forEach(el => {
+      el.style.display = ''; el.removeAttribute('data-perfil-hidden');
+    });
+    window.CURRENT_USER = user; return;
+  }
 
   // Descobre qual perfil usar
   let perfil = null;
@@ -16336,7 +16462,7 @@ function _aplicarPermissoesDePerfil(user) {
     const baseId = { admin:'__admin__', recepcao:'__recepcao__', prof:'__prof__' }[user.role];
     if (baseId) perfil = PERFIS_ACESSO.find(p => p.id === baseId);
   }
-  if (!perfil) return; // admin sem perfil: acesso total (já tratado em _finalizarLogin)
+  if (!perfil) return; // sem perfil definido: não restringe
 
   const modulosAtivos = new Set(perfil.modulos || []);
 
@@ -16644,7 +16770,13 @@ async function _syncBloqueioSupabase(bloqueio, op) {
 async function _carregarBloqueiosSupabase(sb) {
   try {
     const { data, error } = await sb.from('bloqueios_agenda').select('*').limit(5000);
-    if (error || !data) return;
+    if (error) {
+      if (error.code === 'PGRST200' || error.code === '42P01' || (error.message||'').includes('not found') || (error.message||'').includes('does not exist')) {
+        _carregarBloqueiosLocal && _carregarBloqueiosLocal(); return;
+      }
+      throw error;
+    }
+    if (!data) return;
     BLOQUEIOS.length = 0;
     data.forEach(row => BLOQUEIOS.push({
       id:      row.id,
