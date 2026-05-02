@@ -16778,12 +16778,31 @@ Deseja continuar?`)) return;
 // ── Aplicar permissões ao fazer login ────────────────────────────────────
 function _aplicarPermissoesDePerfil(user) {
   if (!user) return;
-  _carregarPerfisLocal();
 
-  // Admin sem perfil customizado: acesso total, não aplica restrições
+  // Se MODULOS_SISTEMA ainda não foi definido (módulo de perfis carrega depois),
+  // agenda para executar assim que o DOM terminar de carregar
+  if (typeof MODULOS_SISTEMA === 'undefined') {
+    setTimeout(() => _aplicarPermissoesDePerfil(user), 300);
+    return;
+  }
+
+  try { _carregarPerfisLocal(); } catch(e) {}
+
+  // Admin sem perfil customizado: acesso total — garante itens visíveis e retorna
   if (user.role === 'admin' && (!user.perfilId || user.perfilId === '__admin__')) {
-    user.modulosPermitidos = MODULOS_SISTEMA.flatMap(s => s.itens.map(i => i.id));
-    user.subPerms = Object.fromEntries(Object.entries(SUB_PERMS).map(([k,v]) => [k, v.map(p => p.id)]));
+    try {
+      user.modulosPermitidos = MODULOS_SISTEMA.flatMap(s => s.itens.map(i => i.id));
+      user.subPerms = Object.fromEntries(Object.entries(SUB_PERMS).map(([k,v]) => [k, v.map(p => p.id)]));
+    } catch(e) {}
+    // Força visibilidade de todos os nav-sections e itens para admin
+    ['nav-admin-section','nav-config-section','nav-fatur-section','nav-conecta-section'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    document.querySelectorAll('.nav-item[data-perfil-hidden]').forEach(el => {
+      el.style.display = '';
+      el.removeAttribute('data-perfil-hidden');
+    });
     window.CURRENT_USER = user;
     return;
   }
@@ -17106,7 +17125,15 @@ async function _syncBloqueioSupabase(bloqueio, op) {
 async function _carregarBloqueiosSupabase(sb) {
   try {
     const { data, error } = await sb.from('bloqueios_agenda').select('*').limit(5000);
-    if (error || !data) return;
+    // Tabela pode não existir ainda (código PGRST200/42P01) — ignora silenciosamente
+    if (error) {
+      if (error.code === 'PGRST200' || error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('not found')) {
+        _carregarBloqueiosLocal();
+        return;
+      }
+      throw error;
+    }
+    if (!data) return;
     BLOQUEIOS.length = 0;
     data.forEach(row => BLOQUEIOS.push({
       id:      row.id,
@@ -17120,7 +17147,10 @@ async function _carregarBloqueiosSupabase(sb) {
     }));
     _salvarBloqueiosLocal();
   } catch(e) {
-    console.warn('[ClinicFlow Bloqueio] Falha ao carregar do Supabase:', e);
+    // Silencia erros 404 da tabela opcional
+    if (!String(e.message || '').includes('404')) {
+      console.warn('[ClinicFlow Bloqueio] Falha ao carregar do Supabase:', e);
+    }
     _carregarBloqueiosLocal(); // fallback local
   }
 }
