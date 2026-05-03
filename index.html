@@ -6428,10 +6428,20 @@ function renderRelatorios() {
 // ═══════════════════════════════════════════════════════════════════
 //  RELATÓRIO MENSAL DE ATENDIMENTOS POR PLANO / PACIENTE
 // ═══════════════════════════════════════════════════════════════════
+
+// Rótulos legíveis para o campo tipo do agendamento
+const TIPO_AG_LABELS = {
+  avaliacao:  'Avaliação',
+  anamnese:   'Anamnese',
+  retorno:    'Consulta de Retorno',
+  sessao:     'Sessão Terapêutica',
+  alta:       'Sessão de Alta',
+};
+
 function initRelAtendMensalSelect() {
   const sel = document.getElementById('rel-atend-mes');
   if (!sel) return;
-  // Coleta todos os meses com agendamentos
+  const valorAtual = sel.value; // preserva seleção atual
   const meses = new Set();
   APPOINTMENTS.forEach(a => { if (a.dataISO) meses.add(a.dataISO.slice(0,7)); });
   GUIAS.forEach(g => { if (g.data) meses.add(g.data.slice(0,7)); });
@@ -6441,26 +6451,27 @@ function initRelAtendMensalSelect() {
   sel.innerHTML = sorted.map(m => {
     const [y, mo] = m.split('-');
     const label = new Date(+y, +mo-1, 1).toLocaleString('pt-BR', {month:'long', year:'numeric'});
-    return `<option value="${m}"${m===mesAtual?' selected':''}>${label.charAt(0).toUpperCase()+label.slice(1)}</option>`;
+    return `<option value="${m}">${label.charAt(0).toUpperCase()+label.slice(1)}</option>`;
   }).join('');
+  // Restaura seleção anterior; se não existir, usa mês atual
+  sel.value = (valorAtual && sorted.includes(valorAtual)) ? valorAtual : mesAtual;
 }
 
 function renderRelAtendMensal() {
+  // Atualiza opções do select SEM resetar a seleção do usuário
   initRelAtendMensalSelect();
+
   const wrap = document.getElementById('rel-atend-mensal-wrap');
   if (!wrap) return;
-  const sel  = document.getElementById('rel-atend-mes');
-  const mes  = sel ? sel.value : new Date().toISOString().slice(0,7);
+  const sel = document.getElementById('rel-atend-mes');
+  const mes = sel ? sel.value : new Date().toISOString().slice(0,7);
   const [y, mo] = mes.split('-').map(Number);
-  const iniISO  = mes + '-01';
-  const fimISO  = new Date(y, mo, 0).toISOString().slice(0,10);
+  const iniISO = mes + '-01';
+  const fimISO = new Date(y, mo, 0).toISOString().slice(0,10);
 
-  // ── Agendamentos do mês (todos os status com agendamento real) ──
   const appts = APPOINTMENTS.filter(a =>
     (a.dataISO||'') >= iniISO && (a.dataISO||'') <= fimISO
   );
-
-  // ── Guias do mês ──
   const guias = GUIAS.filter(g =>
     (g.data||'') >= iniISO && (g.data||'') <= fimISO
   );
@@ -6470,13 +6481,17 @@ function renderRelAtendMensal() {
     return;
   }
 
-  // ── Agrupa por plano → tipo de atendimento → paciente ──
-  // Tipo de atendimento = procDesc da guia ou "Particular" se não tiver guia
-  // Usa os agendamentos como base e cruza com guias pelo (pac + data)
+  // ── Resolve tipo de atendimento do agendamento ─────────────────────
+  // Prioridade: campo tipo do agendamento → especialidade do profissional → 'Sessão Terapêutica'
+  const tipoDoAppt = (a) => {
+    if (a.tipo && TIPO_AG_LABELS[a.tipo]) return TIPO_AG_LABELS[a.tipo];
+    if (a.tipo && a.tipo.trim()) return a.tipo.trim();
+    const prof = PROFISSIONAIS.find(p => p.id === a.profId);
+    if (prof && prof.esp && prof.esp.trim()) return prof.esp.trim();
+    return 'Sessão Terapêutica';
+  };
 
-  const dadosPorPlano = {}; // { planoNome: { tipoAtend: { pacNome: { ag30, ag60, guias, valor } } } }
-
-  // Indexa guias por pac+data para lookup rápido
+  // ── Indexa guias por pac+data ──────────────────────────────────────
   const guiaIdx = {};
   guias.forEach(g => {
     const k = (g.pac||'').toLowerCase().trim() + '|' + (g.data||'');
@@ -6484,58 +6499,46 @@ function renderRelAtendMensal() {
     guiaIdx[k].push(g);
   });
 
-  // Processa cada agendamento
+  const dadosPorPlano = {};
+
+  // Processa agendamentos
   appts.forEach(a => {
     const planoNome = a.plano || 'Particular';
     const pacNome   = a.paciente || '—';
     const dur       = a.durMin || 30;
-    const kGl = pacNome.toLowerCase().trim() + '|' + (a.dataISO||'');
+    const tipo      = tipoDoAppt(a);
+    const kGl       = pacNome.toLowerCase().trim() + '|' + (a.dataISO||'');
     const guiasPac  = guiaIdx[kGl] || [];
 
-    // Tipo de atendimento: usa procDesc da primeira guia vinculada, ou status do agendamento para Particular
-    let tipoAtend = 'Particular';
-    if (guiasPac.length > 0) {
-      const procs = guiasPac[0].dados?.procs;
-      tipoAtend = (procs && procs[0]?.desc) ? procs[0].desc : (guiasPac[0].plano || planoNome);
-    } else if (planoNome !== 'Particular') {
-      tipoAtend = planoNome;
-    }
-
     if (!dadosPorPlano[planoNome]) dadosPorPlano[planoNome] = {};
-    if (!dadosPorPlano[planoNome][tipoAtend]) dadosPorPlano[planoNome][tipoAtend] = {};
-    if (!dadosPorPlano[planoNome][tipoAtend][pacNome]) {
-      dadosPorPlano[planoNome][tipoAtend][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
-    }
-    const cell = dadosPorPlano[planoNome][tipoAtend][pacNome];
+    if (!dadosPorPlano[planoNome][tipo]) dadosPorPlano[planoNome][tipo] = {};
+    if (!dadosPorPlano[planoNome][tipo][pacNome])
+      dadosPorPlano[planoNome][tipo][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
+
+    const cell = dadosPorPlano[planoNome][tipo][pacNome];
     if (dur >= 60) cell.ag60++; else cell.ag30++;
-    // Soma guias já contabilizadas evitando duplicatas por dia
-    guiasPac.forEach(g => {
-      cell.nGuias++;
-      cell.valor += g.valor || 0;
-    });
+    guiasPac.forEach(g => { cell.nGuias++; cell.valor += g.valor||0; });
   });
 
-  // Pacientes só com guias (sem agendamento registrado) — garante que ninguém fique de fora
+  // Pacientes só com guias (sem agendamento no mês)
   guias.forEach(g => {
-    const pacNome  = g.pac || '—';
-    const kGl = pacNome.toLowerCase().trim() + '|' + (g.data||'');
-    const temAppt  = appts.some(a =>
+    const pacNome = g.pac || '—';
+    const temAppt = appts.some(a =>
       a.paciente.toLowerCase().trim() === pacNome.toLowerCase().trim() && a.dataISO === g.data
     );
-    if (temAppt) return; // já processado acima
-    const planoNome  = g.plano || 'Particular';
-    const procs      = g.dados?.procs;
-    const tipoAtend  = (procs && procs[0]?.desc) ? procs[0].desc : planoNome;
+    if (temAppt) return;
+    const planoNome = g.plano || 'Particular';
+    const procs     = g.dados?.procs;
+    const tipo      = (procs && procs[0]?.desc) ? procs[0].desc : 'Sessão Terapêutica';
     if (!dadosPorPlano[planoNome]) dadosPorPlano[planoNome] = {};
-    if (!dadosPorPlano[planoNome][tipoAtend]) dadosPorPlano[planoNome][tipoAtend] = {};
-    if (!dadosPorPlano[planoNome][tipoAtend][pacNome]) {
-      dadosPorPlano[planoNome][tipoAtend][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
-    }
-    dadosPorPlano[planoNome][tipoAtend][pacNome].nGuias++;
-    dadosPorPlano[planoNome][tipoAtend][pacNome].valor += g.valor || 0;
+    if (!dadosPorPlano[planoNome][tipo]) dadosPorPlano[planoNome][tipo] = {};
+    if (!dadosPorPlano[planoNome][tipo][pacNome])
+      dadosPorPlano[planoNome][tipo][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
+    dadosPorPlano[planoNome][tipo][pacNome].nGuias++;
+    dadosPorPlano[planoNome][tipo][pacNome].valor += g.valor||0;
   });
 
-  // ── Renderiza ──
+  // ── Renderiza ──────────────────────────────────────────────────────
   const brl = v => 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2});
   const thStyle = 'position:sticky;top:0;z-index:2;padding:9px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg-raised)';
   const tdStyle = 'padding:8px 14px;font-size:13px;border-bottom:1px solid var(--border-soft);vertical-align:middle';
@@ -6545,7 +6548,7 @@ function renderRelAtendMensal() {
   let html = '<table style="width:100%;min-width:900px;border-collapse:collapse">';
   html += `<thead><tr>
     <th style="${thStyle};min-width:220px">Plano</th>
-    <th style="${thStyle};min-width:220px">Tipo de Atendimento</th>
+    <th style="${thStyle};min-width:200px">Tipo de Atendimento</th>
     <th style="${thStyle};min-width:200px">Paciente</th>
     <th style="${thStyle};text-align:center;min-width:110px">Agend. 30 min</th>
     <th style="${thStyle};text-align:center;min-width:110px">Agend. 60 min</th>
@@ -6553,53 +6556,45 @@ function renderRelAtendMensal() {
     <th style="${thStyle};text-align:right;min-width:130px">Valor Total</th>
   </tr></thead><tbody>`;
 
-  let grandTotal30 = 0, grandTotal60 = 0, grandTotalGuias = 0, grandTotalValor = 0;
-  const planosSorted = Object.keys(dadosPorPlano).sort();
+  let grandTotal30=0, grandTotal60=0, grandTotalGuias=0, grandTotalValor=0;
 
-  planosSorted.forEach(plano => {
+  Object.keys(dadosPorPlano).sort().forEach(plano => {
     const tipos = dadosPorPlano[plano];
-    const tiposSorted = Object.keys(tipos).sort();
     let planoTotal30=0, planoTotal60=0, planoTotalGuias=0, planoTotalValor=0;
     let planoFirstRow = true;
 
-    tiposSorted.forEach(tipo => {
+    Object.keys(tipos).sort().forEach(tipo => {
       const pacs = tipos[tipo];
-      const pacsSorted = Object.keys(pacs).sort();
       let tipoTotal30=0, tipoTotal60=0, tipoTotalGuias=0, tipoTotalValor=0;
       let tipoFirstRow = true;
 
-      pacsSorted.forEach(pac => {
+      Object.keys(pacs).sort().forEach(pac => {
         const d = pacs[pac];
-        tipoTotal30    += d.ag30;   tipoTotal60     += d.ag60;
-        tipoTotalGuias += d.nGuias; tipoTotalValor  += d.valor;
-
+        tipoTotal30+=d.ag30; tipoTotal60+=d.ag60; tipoTotalGuias+=d.nGuias; tipoTotalValor+=d.valor;
         html += `<tr>
-          <td style="${tdStyle};color:var(--text-muted);font-size:11px">${planoFirstRow && tipoFirstRow ? `<span style="font-weight:600;font-size:13px;color:var(--text-primary)">${plano}</span>` : ''}</td>
-          <td style="${tdStyle};color:var(--text-muted);font-size:11px">${tipoFirstRow ? `<span style="font-size:12px;color:var(--text-secondary)">${tipo}</span>` : ''}</td>
+          <td style="${tdStyle}">${planoFirstRow && tipoFirstRow ? `<span style="font-weight:600;font-size:13px">${plano}</span>` : ''}</td>
+          <td style="${tdStyle}">${tipoFirstRow ? `<span style="font-size:12px;color:var(--text-secondary)">${tipo}</span>` : ''}</td>
           <td style="${tdStyle}">${pac}</td>
-          <td style="${tdNum}">${d.ag30 || '—'}</td>
-          <td style="${tdNum}">${d.ag60 || '—'}</td>
-          <td style="${tdNum}">${d.nGuias || '—'}</td>
-          <td style="${tdVal}">${d.valor > 0 ? brl(d.valor) : '—'}</td>
+          <td style="${tdNum}">${d.ag30||'—'}</td>
+          <td style="${tdNum}">${d.ag60||'—'}</td>
+          <td style="${tdNum}">${d.nGuias||'—'}</td>
+          <td style="${tdVal}">${d.valor>0?brl(d.valor):'—'}</td>
         </tr>`;
-        planoFirstRow = false; tipoFirstRow = false;
+        planoFirstRow=false; tipoFirstRow=false;
       });
 
-      // Subtotal por tipo de atendimento
       html += `<tr style="background:var(--bg-overlay)">
         <td style="${tdStyle}"></td>
-        <td style="${tdStyle};font-size:11px;color:var(--text-muted);padding-left:20px">Subtotal — ${tipo}</td>
+        <td style="${tdStyle};font-size:11px;color:var(--text-muted)">Subtotal — ${tipo}</td>
         <td style="${tdStyle}"></td>
         <td style="${tdNum};font-weight:600">${tipoTotal30||'—'}</td>
         <td style="${tdNum};font-weight:600">${tipoTotal60||'—'}</td>
         <td style="${tdNum};font-weight:600">${tipoTotalGuias||'—'}</td>
         <td style="${tdVal};font-weight:600">${tipoTotalValor>0?brl(tipoTotalValor):'—'}</td>
       </tr>`;
-
       planoTotal30+=tipoTotal30; planoTotal60+=tipoTotal60; planoTotalGuias+=tipoTotalGuias; planoTotalValor+=tipoTotalValor;
     });
 
-    // Subtotal por plano
     html += `<tr style="background:var(--accent-soft)">
       <td style="${tdStyle};font-weight:700;color:var(--accent)" colspan="3">Total — ${plano}</td>
       <td style="${tdNum};font-weight:700;color:var(--accent)">${planoTotal30||'—'}</td>
@@ -6607,11 +6602,9 @@ function renderRelAtendMensal() {
       <td style="${tdNum};font-weight:700;color:var(--accent)">${planoTotalGuias||'—'}</td>
       <td style="${tdVal};font-weight:700;color:var(--accent)">${planoTotalValor>0?brl(planoTotalValor):'—'}</td>
     </tr>`;
-
     grandTotal30+=planoTotal30; grandTotal60+=planoTotal60; grandTotalGuias+=planoTotalGuias; grandTotalValor+=planoTotalValor;
   });
 
-  // Total geral
   html += `<tr style="background:var(--bg-raised);border-top:2px solid var(--border-mid)">
     <td style="${tdStyle};font-weight:700;font-size:13px" colspan="3">TOTAL GERAL</td>
     <td style="${tdNum};font-weight:700;font-size:13px">${grandTotal30||'—'}</td>
@@ -6650,11 +6643,10 @@ function exportRelAtendMensal() {
     const dur       = a.durMin || 30;
     const kGl = pacNome.toLowerCase().trim() + '|' + (a.dataISO||'');
     const guiasPac  = guiaIdx[kGl] || [];
-    let tipoAtend = 'Particular';
-    if (guiasPac.length > 0) {
-      const procs = guiasPac[0].dados?.procs;
-      tipoAtend = (procs && procs[0]?.desc) ? procs[0].desc : (guiasPac[0].plano || planoNome);
-    } else if (planoNome !== 'Particular') { tipoAtend = planoNome; }
+    let tipoAtend = 'Sessão Terapêutica';
+    if (a.tipo && TIPO_AG_LABELS[a.tipo]) tipoAtend = TIPO_AG_LABELS[a.tipo];
+    else if (a.tipo && a.tipo.trim()) tipoAtend = a.tipo.trim();
+    else { const prof = PROFISSIONAIS.find(p => p.id === a.profId); if (prof && prof.esp) tipoAtend = prof.esp; }
     if (!dadosPorPlano[planoNome]) dadosPorPlano[planoNome] = {};
     if (!dadosPorPlano[planoNome][tipoAtend]) dadosPorPlano[planoNome][tipoAtend] = {};
     if (!dadosPorPlano[planoNome][tipoAtend][pacNome]) dadosPorPlano[planoNome][tipoAtend][pacNome] = { ag30:0, ag60:0, nGuias:0, valor:0 };
@@ -9529,12 +9521,42 @@ function atualizarStatusLote(loteId, novoStatus) {
   if (novoStatus === 'Enviado' || novoStatus === 'Faturado') {
     l.dataEnvio = l.dataEnvio || new Date().toISOString().slice(0, 10);
   }
+
+  // ── Mapeamento lote → status das guias ────────────────────────────
+  // Pendente → Pendente | Enviado → Enviado | Pago → Pago | Glosado → Glosado
+  const statusGuia = {
+    'Pendente': 'Pendente',
+    'Enviado':  'Enviado',
+    'Pago':     'Pago',
+    'Glosado':  'Glosado',
+  }[novoStatus] || novoStatus;
+
   const sb = window._cfGetDb ? window._cfGetDb() : null;
+
+  // Atualiza o lote no banco
   if (sb) {
     sb.from('lotes_tiss').update({ status: novoStatus, data_envio: l.dataEnvio || null }).eq('id', loteId)
       .then(function(r) { if (r.error) console.error('[Lote status]', r.error.message); });
   }
-  showToast('Status atualizado: ' + novoStatus, 'success');
+
+  // Atualiza todas as guias do lote em memória e no banco
+  const guiaIds = l.guiaIds || [];
+  guiaIds.forEach(gid => {
+    const g = GUIAS.find(x => x.id === gid);
+    if (g) {
+      g.status = statusGuia;
+      if (sb) {
+        sb.from('guias_sadt').update({ status: statusGuia }).eq('id', gid)
+          .then(function(r) { if (r.error) console.error('[Guia status via lote]', r.error.message); });
+      }
+    }
+  });
+
+  // Re-renderiza a listagem de guias se estiver visível, para refletir os novos status
+  try { if (typeof renderGuias === 'function') renderGuias(); } catch(e) {}
+  try { if (typeof renderTiss === 'function') renderTiss(); } catch(e) {}
+
+  showToast(`Status do lote e ${guiaIds.length} guia(s) atualizados: ${novoStatus}`, 'success');
 }
 
 // ── Tabela de conselhos TISS (2 dígitos) ─────────────────────────────────────
@@ -9762,7 +9784,7 @@ function gerarXMLLote(loteId) {
 
   // d) XML sem hash primeiro (formato canônico — sem indentação)
   const xmlSemHash =
-    '<?xml version="1.0" encoding="ISO-8859-1"?>\n' +
+    '<?xml version="1.0" encoding="ISO-8859-1"?>' +
     '<ans:mensagemTISS xmlns:ans="http://www.ans.gov.br/padroes/tiss/schemas">' +
     '<ans:cabecalho>' +
     '<ans:identificacaoTransacao>' +
@@ -9784,9 +9806,7 @@ function gerarXMLLote(loteId) {
     '<ans:prestadorParaOperadora>' +
     '<ans:loteGuias>' +
     '<ans:numeroLote>'+esc(l.num)+'</ans:numeroLote>' +
-    '<ans:guiasTISS>' +
     xmlGuias +
-    '</ans:guiasTISS>' +
     '</ans:loteGuias>' +
     '</ans:prestadorParaOperadora>' +
     '<ans:epilogo><ans:hash></ans:hash></ans:epilogo>' +
