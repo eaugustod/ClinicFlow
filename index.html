@@ -2644,6 +2644,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
             Exportar XML
           </button>
+          <button class="btn-sm btn-secondary" onclick="abrirValidadorGuias()" style="color:var(--warning);border-color:rgba(251,191,36,0.3);background:rgba(251,191,36,0.07)">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 2L1 21h22L12 2zm0 3.5L20.5 19h-17L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg>
+            Validar guias
+          </button>
           <button class="btn-sm btn-accent" onclick="abrirNovaGuia()">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             Nova guia
@@ -9419,44 +9423,14 @@ function loteAtualizarGuias() {
     loteRecalc();
     return;
   }
-  // Show only Pendente guias for this plano that are not yet in a lote
-  const guias = GUIAS.filter(g => g.planoId===planoId && !g.loteId && g.status==='Pendente');
+  // Show ALL guias for this plano that are not yet in a lote (any status except already lotted)
+  const guias = GUIAS.filter(g => g.planoId===planoId && !g.loteId);
   if (!guias.length) {
-    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma guia pendente para este plano.</div>';
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Todas as guias deste plano já estão em lotes.</div>';
     loteRecalc();
     return;
   }
   el.innerHTML = '';
-
-  // Select all / Deselect all button row
-  let _todosSelec = true;
-  const selAllBar = document.createElement('div');
-  selAllBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--bg-overlay);border-bottom:1px solid var(--border)';
-  const selAllBtn = document.createElement('button');
-  selAllBtn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(79,142,247,0.25);border-radius:6px;padding:4px 10px;cursor:pointer;transition:opacity 0.15s';
-  selAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><span id="sel-all-label">Desmarcar tudo</span>';
-  selAllBtn.onmouseenter = function(){ this.style.opacity='0.8'; };
-  selAllBtn.onmouseleave = function(){ this.style.opacity='1'; };
-  selAllBtn.onclick = function() {
-    _todosSelec = !_todosSelec;
-    const label = document.getElementById('sel-all-label');
-    const icon = selAllBtn.querySelector('svg');
-    document.querySelectorAll('#lote-guias-disponiveis input[type=checkbox]').forEach(c => { c.checked = _todosSelec; });
-    if (_todosSelec) {
-      label.textContent = 'Desmarcar tudo';
-      icon.innerHTML = '<path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>';
-    } else {
-      label.textContent = 'Selecionar tudo';
-      icon.innerHTML = '<path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>';
-    }
-    loteRecalcAndWarn();
-  };
-  selAllBar.appendChild(selAllBtn);
-  const selInfo = document.createElement('span');
-  selInfo.style.cssText = 'font-size:11px;color:var(--text-muted)';
-  selInfo.textContent = guias.length + ' guia(s) pendente(s)';
-  selAllBar.appendChild(selInfo);
-  el.appendChild(selAllBar);
 
   // Header row
   const hdr = document.createElement('div');
@@ -19667,6 +19641,61 @@ function emitirRelatorioLocacao() {
   .tfoot td { padding: 10px 10px; border-top: 2px solid #1e3a6e; font-size: 10pt; }
   .footer { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 8pt; color: #94a3b8; text-align: center; }
   @media print { body { padding: 10mm 12mm; } }
+
+/* ═══════════════════════════════════════
+   VALIDADOR DE GUIAS
+═══════════════════════════════════════ */
+.val-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+.val-card.critico { border-left: 3px solid var(--danger); }
+.val-card.atencao  { border-left: 3px solid var(--warning); }
+.val-card.ok       { border-left: 3px solid var(--success); }
+.val-card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer;
+  transition: background var(--transition);
+}
+.val-card-header:hover { background: var(--bg-overlay); }
+.val-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
+}
+.val-badge.critico { background: rgba(248,113,113,0.15); color: var(--danger); }
+.val-badge.atencao  { background: rgba(251,191,36,0.15);  color: var(--warning); }
+.val-badge.ok       { background: rgba(52,211,153,0.15);  color: var(--success); }
+.val-pac-nome { font-size: 13px; font-weight: 600; flex: 1; }
+.val-guia-num { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+.val-chevron { color: var(--text-muted); transition: transform 0.2s; font-size: 14px; }
+.val-card.expanded .val-chevron { transform: rotate(180deg); }
+.val-erros {
+  display: none; padding: 0 14px 12px;
+  border-top: 1px solid var(--border); background: var(--bg-surface);
+}
+.val-card.expanded .val-erros { display: block; }
+.val-erro-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.val-erro-item:last-child { border-bottom: none; }
+.val-erro-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.val-erro-dot.critico { background: var(--danger); }
+.val-erro-dot.atencao  { background: var(--warning); }
+.val-erro-label { font-weight: 500; color: var(--text-primary); }
+.val-erro-desc  { color: var(--text-secondary); margin-top: 1px; font-size: 11px; }
+.val-resumo-card {
+  padding: 14px 20px; background: var(--bg-raised); text-align: center;
+}
+.val-resumo-num { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.val-resumo-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+
 </style>
 </head>
 <body>
@@ -20077,7 +20106,293 @@ function _buildChatPanelHTML(snap) {
 }
 
 console.log('[ClinicFlow] Módulo Usuários & Webcam carregado ✓');
+
+// ─── VALIDADOR DE GUIAS SADT ──────────────────────────────────────────────────
+
+var _validadorResultados = [];
+var _validadorFiltroAtivo = 'todos';
+var _validadorBusca = '';
+
+function abrirValidadorGuias() {
+  _validadorResultados = [];
+  _validadorFiltroAtivo = 'todos';
+  _validadorBusca = '';
+
+  const hoje = new Date();
+  const iniMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+
+  const guias = (typeof GUIAS !== 'undefined') ? GUIAS : [];
+  if (!guias.length) {
+    showToast('Nenhuma guia cadastrada para validar', 'error');
+    return;
+  }
+
+  guias.forEach(function(g) {
+    var erros = [];
+
+    // 1. Nome do paciente
+    if (!g.pac || !g.pac.trim()) {
+      erros.push({ nivel: 'critico', campo: 'Nome do paciente', desc: 'Nome do beneficiário não informado.' });
+    }
+
+    // 2. Nº carteirinha
+    if (!g.carteirinha || !g.carteirinha.trim() || g.carteirinha === '—') {
+      erros.push({ nivel: 'critico', campo: 'Nº da carteirinha', desc: 'Número de carteirinha do beneficiário não preenchido.' });
+    }
+
+    // 3. Nº da solicitação / guia prestador
+    var numOp = (g.numOp || '').trim();
+    if (!numOp) {
+      erros.push({ nivel: 'critico', campo: 'Nº da solicitação / guia prestador', desc: 'Número da solicitação ou guia atribuída pelo prestador não informado.' });
+    }
+
+    // 4. Senha de autorização
+    var senha = (g.dados && g.dados.senha) ? g.dados.senha.trim() : numOp;
+    if (!senha) {
+      erros.push({ nivel: 'critico', campo: 'Número da senha', desc: 'Senha / autorização do plano não preenchida.' });
+    }
+
+    // 5. Data de autorização dentro do mês
+    var dataAut = (g.dados && g.dados.dataAut) ? g.dados.dataAut : '';
+    if (!dataAut) {
+      erros.push({ nivel: 'critico', campo: 'Data de autorização', desc: 'Data de autorização não informada.' });
+    } else {
+      var dtAut = new Date(dataAut + 'T12:00');
+      if (dtAut.getFullYear() !== hoje.getFullYear() || dtAut.getMonth() !== hoje.getMonth()) {
+        erros.push({ nivel: 'atencao', campo: 'Data de autorização fora do mês', desc: 'A autorização (' + dtAut.toLocaleDateString('pt-BR') + ') está fora do mês atual. Verifique a competência.' });
+      }
+    }
+
+    // 6. Data de execução válida (>= data de autorização)
+    var dataExec = g.data || '';
+    if (!dataExec) {
+      erros.push({ nivel: 'critico', campo: 'Data de execução', desc: 'Data de execução do procedimento não informada.' });
+    } else if (dataAut) {
+      var dtExec = new Date(dataExec + 'T12:00');
+      var dtAutRef = new Date(dataAut + 'T12:00');
+      if (dtExec < dtAutRef) {
+        erros.push({ nivel: 'critico', campo: 'Data de execução anterior à autorização', desc: 'Execução em ' + dtExec.toLocaleDateString('pt-BR') + ' é anterior à autorização em ' + dtAutRef.toLocaleDateString('pt-BR') + '.' });
+      }
+    }
+
+    // 7. Código do procedimento
+    var procs = (g.dados && g.dados.procs && g.dados.procs.length) ? g.dados.procs : [];
+    if (!procs.length) {
+      erros.push({ nivel: 'critico', campo: 'Código do procedimento', desc: 'Nenhum procedimento informado na guia.' });
+    } else {
+      var semCodigo = procs.filter(function(p){ return !p.codigo || !p.codigo.trim(); });
+      if (semCodigo.length) {
+        erros.push({ nivel: 'critico', campo: 'Código do procedimento ausente', desc: semCodigo.length + ' procedimento(s) sem código TUSS/CBHPM.' });
+      }
+    }
+
+    // 8. Valor do procedimento
+    if (!g.valor || g.valor <= 0) {
+      erros.push({ nivel: 'critico', campo: 'Valor do procedimento', desc: 'Valor total da guia é zero ou não preenchido.' });
+    } else {
+      var procsSemValor = procs.filter(function(p){ return !p.valor || p.valor <= 0; });
+      if (procsSemValor.length) {
+        erros.push({ nivel: 'atencao', campo: 'Valor de procedimento zerado', desc: procsSemValor.length + ' procedimento(s) com valor R$ 0,00.' });
+      }
+    }
+
+    // 9. CID
+    if (!g.cid || !g.cid.trim()) {
+      erros.push({ nivel: 'critico', campo: 'CID', desc: 'Código CID (indicação clínica) não informado.' });
+    }
+
+    // 10. Nome do solicitante (profissional)
+    var profId = g.profId;
+    var prof = (typeof PROFISSIONAIS !== 'undefined' && profId) ? PROFISSIONAIS.find(function(p){ return p.id === profId; }) : null;
+    if (!prof) {
+      erros.push({ nivel: 'critico', campo: 'Nome do solicitante', desc: 'Profissional solicitante não vinculado à guia.' });
+    }
+
+    // 11. Nome do executante (contratado)
+    // Tentativa: busca no plano o nome do contratado
+    var plano = (typeof PLANOS !== 'undefined' && g.planoId) ? PLANOS.find(function(p){ return p.id === g.planoId; }) : null;
+    var nomeExecutante = (plano && plano.nomeContratado) ? plano.nomeContratado.trim() : '';
+    if (!nomeExecutante) {
+      erros.push({ nivel: 'atencao', campo: 'Nome do executante', desc: 'Nome do contratado executante não cadastrado no plano de saúde.' });
+    }
+
+    var nivel = 'ok';
+    if (erros.some(function(e){ return e.nivel === 'critico'; })) nivel = 'critico';
+    else if (erros.some(function(e){ return e.nivel === 'atencao'; })) nivel = 'atencao';
+
+    _validadorResultados.push({ g: g, erros: erros, nivel: nivel });
+  });
+
+  renderValidador();
+  openModal('modal-validador');
+}
+
+function renderValidador() {
+  var resultados = _validadorResultados;
+  var total  = resultados.length;
+  var nCrit  = resultados.filter(function(r){ return r.nivel === 'critico'; }).length;
+  var nAt    = resultados.filter(function(r){ return r.nivel === 'atencao'; }).length;
+  var nOk    = resultados.filter(function(r){ return r.nivel === 'ok'; }).length;
+
+  // Resumo
+  var resumoEl = document.getElementById('validador-resumo');
+  if (resumoEl) {
+    resumoEl.innerHTML =
+      '<div class="val-resumo-card"><div class="val-resumo-num">' + total + '</div><div class="val-resumo-label">Guias analisadas</div></div>' +
+      '<div class="val-resumo-card"><div class="val-resumo-num" style="color:var(--danger)">' + nCrit + '</div><div class="val-resumo-label">Risco crítico de glosa</div></div>' +
+      '<div class="val-resumo-card"><div class="val-resumo-num" style="color:var(--warning)">' + nAt + '</div><div class="val-resumo-label">Atenção</div></div>' +
+      '<div class="val-resumo-card"><div class="val-resumo-num" style="color:var(--success)">' + nOk + '</div><div class="val-resumo-label">Válidas</div></div>';
+  }
+
+  var subEl = document.getElementById('validador-sub');
+  if (subEl) subEl.textContent = nCrit + ' guia(s) com pendências críticas · ' + nAt + ' com alertas · ' + nOk + ' aprovadas';
+
+  var rodapeEl = document.getElementById('validador-rodape');
+  if (rodapeEl) rodapeEl.textContent = 'Validação realizada em ' + new Date().toLocaleString('pt-BR');
+
+  renderValidadorLista();
+}
+
+function renderValidadorLista() {
+  var lista = document.getElementById('validador-lista');
+  if (!lista) return;
+
+  var filtrados = _validadorResultados.filter(function(r) {
+    if (_validadorFiltroAtivo !== 'todos' && r.nivel !== _validadorFiltroAtivo) return false;
+    if (_validadorBusca && r.g.pac && !r.g.pac.toLowerCase().includes(_validadorBusca.toLowerCase())) return false;
+    return true;
+  });
+
+  // Ordena: critico > atencao > ok
+  filtrados.sort(function(a, b) {
+    var order = { critico: 0, atencao: 1, ok: 2 };
+    return (order[a.nivel] || 0) - (order[b.nivel] || 0);
+  });
+
+  if (!filtrados.length) {
+    lista.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma guia encontrada para este filtro.</div>';
+    return;
+  }
+
+  lista.innerHTML = filtrados.map(function(r, i) {
+    var g = r.g;
+    var nivelIcon = r.nivel === 'ok' ? '✓' : r.nivel === 'atencao' ? '!' : '✕';
+    var errosHtml = r.erros.length ? r.erros.map(function(e) {
+      return '<div class="val-erro-item">' +
+        '<div class="val-erro-dot ' + e.nivel + '"></div>' +
+        '<div><div class="val-erro-label">' + e.campo + '</div><div class="val-erro-desc">' + e.desc + '</div></div>' +
+        '</div>';
+    }).join('') : '<div class="val-erro-item"><div class="val-erro-dot" style="background:var(--success)"></div><div><div class="val-erro-label" style="color:var(--success)">Guia válida</div><div class="val-erro-desc">Todos os campos obrigatórios estão preenchidos corretamente.</div></div></div>';
+
+    return '<div class="val-card ' + r.nivel + '" id="val-card-' + i + '">' +
+      '<div class="val-card-header" onclick="toggleValCard(' + i + ')">' +
+        '<div class="val-badge ' + r.nivel + '">' + nivelIcon + '</div>' +
+        '<div class="val-pac-nome">' + (g.pac || '—') + '</div>' +
+        '<div class="val-guia-num">#' + (g.num || '?') + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-left:8px">' + (g.data ? g.data.split('-').reverse().join('/') : '—') + '</div>' +
+        (r.erros.length ? '<div style="font-size:11px;color:' + (r.nivel==='critico'?'var(--danger)':'var(--warning)') + ';margin-left:8px;font-weight:500">' + r.erros.length + ' pendência(s)</div>' : '') +
+        '<div class="val-chevron">&#9660;</div>' +
+      '</div>' +
+      '<div class="val-erros">' + errosHtml + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleValCard(i) {
+  var card = document.getElementById('val-card-' + i);
+  if (card) card.classList.toggle('expanded');
+}
+
+function filtrarValidador(tipo) {
+  _validadorFiltroAtivo = tipo;
+  document.querySelectorAll('.val-filtro-btn').forEach(function(b) { b.style.fontWeight = ''; });
+  var btn = document.getElementById('val-btn-' + tipo);
+  if (btn) btn.style.fontWeight = '700';
+  renderValidadorLista();
+}
+
+function buscarValidador(q) {
+  _validadorBusca = q;
+  renderValidadorLista();
+}
+
+function exportarRelatorioValidacao() {
+  var linhas = ['RELATÓRIO DE VALIDAÇÃO DE GUIAS SADT', 'Gerado em: ' + new Date().toLocaleString('pt-BR'), ''];
+  linhas.push('RESUMO:');
+  var nCrit = _validadorResultados.filter(function(r){ return r.nivel === 'critico'; }).length;
+  var nAt   = _validadorResultados.filter(function(r){ return r.nivel === 'atencao'; }).length;
+  var nOk   = _validadorResultados.filter(function(r){ return r.nivel === 'ok'; }).length;
+  linhas.push('Total analisadas: ' + _validadorResultados.length);
+  linhas.push('Críticas (risco de glosa): ' + nCrit);
+  linhas.push('Atenção: ' + nAt);
+  linhas.push('Válidas: ' + nOk);
+  linhas.push('');
+  linhas.push('DETALHAMENTO:');
+  linhas.push('');
+  _validadorResultados.forEach(function(r) {
+    linhas.push('Guia #' + (r.g.num || '?') + ' — ' + (r.g.pac || '?') + ' — ' + (r.g.data || 'sem data'));
+    linhas.push('Status: ' + r.nivel.toUpperCase());
+    if (r.erros.length) {
+      r.erros.forEach(function(e) { linhas.push('  [' + e.nivel.toUpperCase() + '] ' + e.campo + ': ' + e.desc); });
+    } else {
+      linhas.push('  Guia válida.');
+    }
+    linhas.push('');
+  });
+  var blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'validacao_guias_' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('Relatório exportado!', 'success');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 </script>
+
+
+<!-- Modal Validador de Guias SADT -->
+<div class="modal-overlay" id="modal-validador">
+  <div class="modal" style="max-width:760px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div>
+        <div class="modal-title">Validador de Guias SADT</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="validador-sub">Analisando pendências que podem causar glosa</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-validador')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body" style="flex:1;overflow-y:auto;padding:0">
+      <!-- Resumo -->
+      <div id="validador-resumo" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0"></div>
+      <!-- Filtro -->
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--bg-surface);border-bottom:1px solid var(--border);flex-shrink:0">
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">Mostrar:</span>
+        <button class="btn-sm btn-secondary val-filtro-btn" id="val-btn-todos" onclick="filtrarValidador('todos')" style="font-size:11px;padding:3px 10px">Todas</button>
+        <button class="btn-sm btn-secondary val-filtro-btn" id="val-btn-critico" onclick="filtrarValidador('critico')" style="font-size:11px;padding:3px 10px;color:var(--danger);border-color:rgba(248,113,113,0.3)">Crítico</button>
+        <button class="btn-sm btn-secondary val-filtro-btn" id="val-btn-atencao" onclick="filtrarValidador('atencao')" style="font-size:11px;padding:3px 10px;color:var(--warning);border-color:rgba(251,191,36,0.3)">Atenção</button>
+        <button class="btn-sm btn-secondary val-filtro-btn" id="val-btn-ok" onclick="filtrarValidador('ok')" style="font-size:11px;padding:3px 10px;color:var(--success);border-color:rgba(52,211,153,0.3)">OK</button>
+        <div style="flex:1"></div>
+        <div class="search-input-wrap" style="width:200px">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input class="search-input" placeholder="Buscar paciente..." oninput="buscarValidador(this.value)" style="width:200px">
+        </div>
+      </div>
+      <!-- Lista de guias -->
+      <div id="validador-lista" style="padding:16px 20px"></div>
+    </div>
+    <div class="modal-footer" style="flex-shrink:0">
+      <div style="font-size:11px;color:var(--text-muted)" id="validador-rodape"></div>
+      <div style="flex:1"></div>
+      <button class="btn-sm btn-secondary" onclick="exportarRelatorioValidacao()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        Exportar relatório
+      </button>
+      <button class="btn-sm btn-accent" onclick="closeModal('modal-validador')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+</body>\n</html>';
 
 </body>
 </html>
