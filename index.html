@@ -3591,6 +3591,7 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
 
 
     <!-- ══ ESPAÇO CONECTA: Agendamento de Salas ══ -->
+    <div class="page" id="page-conecta-agenda">
       <div class="conecta-header" style="flex-shrink:0">
         <div>
           <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Agendamento de Salas</h2>
@@ -19738,9 +19739,10 @@ function emitirRelatorioLocacao() {
   overflow: hidden;
   transition: border-color var(--transition);
 }
-.val-card.critico { border-left: 3px solid var(--danger); }
-.val-card.atencao  { border-left: 3px solid var(--warning); }
-.val-card.ok       { border-left: 3px solid var(--success); }
+.val-card.critico    { border-left: 3px solid var(--danger); }
+.val-card.atencao    { border-left: 3px solid var(--warning); }
+.val-card.informativo{ border-left: 3px solid var(--info); }
+.val-card.ok         { border-left: 3px solid var(--success); }
 .val-card-header {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 14px; cursor: pointer;
@@ -19752,9 +19754,10 @@ function emitirRelatorioLocacao() {
   width: 22px; height: 22px; border-radius: 50%;
   font-size: 10px; font-weight: 700; flex-shrink: 0;
 }
-.val-badge.critico { background: rgba(248,113,113,0.15); color: var(--danger); }
-.val-badge.atencao  { background: rgba(251,191,36,0.15);  color: var(--warning); }
-.val-badge.ok       { background: rgba(52,211,153,0.15);  color: var(--success); }
+.val-badge.critico    { background: rgba(248,113,113,0.15);  color: var(--danger); }
+.val-badge.atencao    { background: rgba(251,191,36,0.15);   color: var(--warning); }
+.val-badge.informativo{ background: rgba(96,165,250,0.15);   color: var(--info); }
+.val-badge.ok         { background: rgba(52,211,153,0.15);   color: var(--success); }
 .val-pac-nome { font-size: 13px; font-weight: 600; flex: 1; }
 .val-guia-num { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
 .val-chevron { color: var(--text-muted); transition: transform 0.2s; font-size: 14px; }
@@ -19771,8 +19774,9 @@ function emitirRelatorioLocacao() {
 }
 .val-erro-item:last-child { border-bottom: none; }
 .val-erro-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-.val-erro-dot.critico { background: var(--danger); }
-.val-erro-dot.atencao  { background: var(--warning); }
+.val-erro-dot.critico    { background: var(--danger); }
+.val-erro-dot.atencao    { background: var(--warning); }
+.val-erro-dot.informativo{ background: var(--info); }
 .val-erro-label { font-weight: 500; color: var(--text-primary); }
 .val-erro-desc  { color: var(--text-secondary); margin-top: 1px; font-size: 11px; }
 .val-resumo-card {
@@ -20239,8 +20243,15 @@ function abrirValidadorGuias() {
 
     // 5. Data de autorização dentro do mês
     var dataAut = (g.dados && g.dados.dataAut) ? g.dados.dataAut : '';
+    // Se não tem data no dados da guia, busca na SENHAS_PLANO via num_op (numOp)
+    if (!dataAut && numOp && typeof SENHAS_PLANO !== 'undefined') {
+      var senhaVinc = SENHAS_PLANO.find(function(s) {
+        return (s.numGuiaOp && s.numGuiaOp === numOp) || (s.numSenha && s.numSenha === numOp);
+      });
+      if (senhaVinc && senhaVinc.dataAut) dataAut = senhaVinc.dataAut;
+    }
     if (!dataAut) {
-      erros.push({ nivel: 'critico', campo: 'Data de autorização', desc: 'Data de autorização não informada.' });
+      erros.push({ nivel: 'atencao', campo: 'Data de autorização', desc: 'Data de autorização não encontrada na guia nem na senha vinculada.' });
     } else {
       var dtAut = new Date(dataAut + 'T12:00');
       if (dtAut.getFullYear() !== hoje.getFullYear() || dtAut.getMonth() !== hoje.getMonth()) {
@@ -20283,7 +20294,7 @@ function abrirValidadorGuias() {
 
     // 9. CID
     if (!g.cid || !g.cid.trim()) {
-      erros.push({ nivel: 'critico', campo: 'CID', desc: 'Código CID (indicação clínica) não informado.' });
+      erros.push({ nivel: 'informativo', campo: 'CID', desc: 'Código CID (indicação clínica) não informado (campo informativo).' });
     }
 
     // 10. Nome do solicitante (profissional)
@@ -20304,6 +20315,7 @@ function abrirValidadorGuias() {
     var nivel = 'ok';
     if (erros.some(function(e){ return e.nivel === 'critico'; })) nivel = 'critico';
     else if (erros.some(function(e){ return e.nivel === 'atencao'; })) nivel = 'atencao';
+    else if (erros.some(function(e){ return e.nivel === 'informativo'; })) nivel = 'informativo';
 
     _validadorResultados.push({ g: g, erros: erros, nivel: nivel });
   });
@@ -20350,7 +20362,7 @@ function renderValidadorLista() {
 
   // Ordena: critico > atencao > ok
   filtrados.sort(function(a, b) {
-    var order = { critico: 0, atencao: 1, ok: 2 };
+    var order = { critico: 0, atencao: 1, informativo: 2, ok: 3 };
     return (order[a.nivel] || 0) - (order[b.nivel] || 0);
   });
 
@@ -20361,7 +20373,7 @@ function renderValidadorLista() {
 
   lista.innerHTML = filtrados.map(function(r, i) {
     var g = r.g;
-    var nivelIcon = r.nivel === 'ok' ? '✓' : r.nivel === 'atencao' ? '!' : '✕';
+    var nivelIcon = r.nivel === 'ok' ? '✓' : r.nivel === 'atencao' ? '!' : r.nivel === 'informativo' ? 'i' : '✕';
     var errosHtml = r.erros.length ? r.erros.map(function(e) {
       return '<div class="val-erro-item">' +
         '<div class="val-erro-dot ' + e.nivel + '"></div>' +
@@ -20375,7 +20387,7 @@ function renderValidadorLista() {
         '<div class="val-pac-nome">' + (g.pac || '—') + '</div>' +
         '<div class="val-guia-num">#' + (g.num || '?') + '</div>' +
         '<div style="font-size:11px;color:var(--text-muted);margin-left:8px">' + (g.data ? g.data.split('-').reverse().join('/') : '—') + '</div>' +
-        (r.erros.length ? '<div style="font-size:11px;color:' + (r.nivel==='critico'?'var(--danger)':'var(--warning)') + ';margin-left:8px;font-weight:500">' + r.erros.length + ' pendência(s)</div>' : '') +
+        (r.erros.length ? '<div style="font-size:11px;color:' + (r.nivel==='critico'?'var(--danger)':r.nivel==='atencao'?'var(--warning)':'var(--info)') + ';margin-left:8px;font-weight:500">' + r.erros.length + ' pendência(s)</div>' : '') +
         '<div class="val-chevron">&#9660;</div>' +
       '</div>' +
       '<div class="val-erros">' + errosHtml + '</div>' +
