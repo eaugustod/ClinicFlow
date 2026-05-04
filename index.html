@@ -3701,7 +3701,7 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
           </div>
           <div class="form-group">
             <label>Data</label>
-            <input class="form-input" type="date" id="ag-data">
+            <input class="form-input" type="date" id="ag-data" onchange="if(_recAtiva)onRecChange()">
           </div>
         </div>
         <!-- Horários + Duração -->
@@ -3839,6 +3839,59 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
           <div class="form-group">
             <label>Observações</label>
             <textarea class="form-input" rows="2" placeholder="Observações sobre o agendamento..." id="ag-obs"></textarea>
+          </div>
+        </div>
+
+        <!-- ── RECORRÊNCIA ── (visível apenas em novo agendamento) -->
+        <div id="ag-recorrencia-wrap" style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-top:4px">
+          <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleRecorrencia()">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;color:var(--accent);flex-shrink:0"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              <span style="font-size:13px;font-weight:500">Recorrência</span>
+              <span id="ag-rec-resumo" style="font-size:11px;color:var(--text-muted)">Desativada</span>
+            </div>
+            <svg id="ag-rec-chevron" viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text-muted);transition:transform .2s"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+          </div>
+
+          <div id="ag-rec-painel" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+            <!-- Tipo de recorrência -->
+            <div class="form-row cols-2" style="margin-bottom:0">
+              <div class="form-group" style="margin-bottom:10px">
+                <label>Frequência</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px">
+                  <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-overlay);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px" id="rec-lbl-diario">
+                    <input type="radio" name="ag-recorrencia" value="diario" style="accent-color:var(--accent)" onchange="onRecChange()"> Diariamente
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-overlay);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px" id="rec-lbl-semanal">
+                    <input type="radio" name="ag-recorrencia" value="semanal" style="accent-color:var(--accent)" onchange="onRecChange()" checked> Semanalmente
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-overlay);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px" id="rec-lbl-quinzenal">
+                    <input type="radio" name="ag-recorrencia" value="quinzenal" style="accent-color:var(--accent)" onchange="onRecChange()"> Quinzenalmente
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-overlay);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px" id="rec-lbl-mensal">
+                    <input type="radio" name="ag-recorrencia" value="mensal" style="accent-color:var(--accent)" onchange="onRecChange()"> Mensalmente
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:10px">
+                <label>Limite</label>
+                <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
+                  <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg-overlay);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px" id="rec-lbl-ilimitado">
+                    <input type="radio" name="ag-limite" value="ilimitado" style="accent-color:var(--accent)" onchange="onRecLimiteChange()" checked> Ilimitado
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg-overlay);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:12px" id="rec-lbl-qtd">
+                    <input type="radio" name="ag-limite" value="qtd" style="accent-color:var(--accent)" onchange="onRecLimiteChange()"> Qtd. de vezes
+                    <input type="number" id="ag-rec-qtd" min="2" max="365" value="10"
+                      style="width:64px;padding:3px 7px;font-size:12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);display:none;margin-left:4px"
+                      oninput="onRecChange()">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview das próximas datas -->
+            <div id="ag-rec-preview" style="margin-top:6px;padding:9px 12px;background:var(--bg-overlay);border-radius:var(--radius-sm);font-size:11.5px;color:var(--text-secondary);min-height:32px"></div>
           </div>
         </div>
 
@@ -6900,6 +6953,9 @@ function openAppt(id) {
   currentApptId = id;
   const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
   populateSelects();
+  // Oculta recorrência no modo edição
+  const recWrap = document.getElementById('ag-recorrencia-wrap');
+  if (recWrap) recWrap.style.display = 'none';
 
   document.getElementById('ag-modal-title').textContent = 'Agendamento — ' + appt.paciente;
   document.getElementById('ag-modal-sub').textContent   = appt.hora + (appt.horaFim?' – '+appt.horaFim:'') + ' · ' + (prof ? prof.nomeAgenda||prof.nome : '') + ' · ' + appt.plano;
@@ -10706,6 +10762,8 @@ function openNovoAgendamento(profId, hora, paciente) {
   if (paciente) onPacienteChange(paciente);
   // Reset grupo state
   if (typeof grupoResetState === 'function') grupoResetState();
+  // Reset recorrência
+  recorrenciaReset();
   switchAgTab('dados', document.getElementById('tab-dados'));
   openModal('modal-agendamento');
 }
@@ -10717,6 +10775,122 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 // ═══════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+//  RECORRÊNCIA DE AGENDAMENTO
+// ═══════════════════════════════════════════════════════════════════
+let _recAtiva = false;
+
+function recorrenciaReset() {
+  _recAtiva = false;
+  const wrap = document.getElementById('ag-recorrencia-wrap');
+  if (wrap) wrap.style.display = '';
+  const painel = document.getElementById('ag-rec-painel');
+  if (painel) painel.style.display = 'none';
+  const chevron = document.getElementById('ag-rec-chevron');
+  if (chevron) chevron.style.transform = '';
+  const resumo = document.getElementById('ag-rec-resumo');
+  if (resumo) resumo.textContent = 'Desativada';
+  const qtdInput = document.getElementById('ag-rec-qtd');
+  if (qtdInput) { qtdInput.style.display = 'none'; qtdInput.value = 10; }
+  // Reset radios
+  const radSem = document.querySelector('input[name="ag-recorrencia"][value="semanal"]');
+  if (radSem) radSem.checked = true;
+  const radIlim = document.querySelector('input[name="ag-limite"][value="ilimitado"]');
+  if (radIlim) radIlim.checked = true;
+  const prev = document.getElementById('ag-rec-preview');
+  if (prev) prev.textContent = '';
+}
+
+function toggleRecorrencia() {
+  const painel  = document.getElementById('ag-rec-painel');
+  const chevron = document.getElementById('ag-rec-chevron');
+  if (!painel) return;
+  _recAtiva = painel.style.display === 'none';
+  painel.style.display  = _recAtiva ? '' : 'none';
+  if (chevron) chevron.style.transform = _recAtiva ? 'rotate(180deg)' : '';
+  onRecChange();
+}
+
+function onRecLimiteChange() {
+  const limite  = document.querySelector('input[name="ag-limite"]:checked')?.value;
+  const qtdInput = document.getElementById('ag-rec-qtd');
+  if (qtdInput) qtdInput.style.display = (limite === 'qtd') ? '' : 'none';
+  onRecChange();
+}
+
+function recGerarDatas(dataBase, freq, limite, qtd) {
+  // dataBase: Date — data do primeiro agendamento
+  // freq: 'diario'|'semanal'|'quinzenal'|'mensal'
+  // limite: 'ilimitado'|'qtd'
+  // qtd: número (usado se limite==='qtd')
+  const MAX_ILIMITADO = 52; // gera até 52 ocorrências quando ilimitado
+  const max = limite === 'qtd' ? Math.min(parseInt(qtd)||10, 365) : MAX_ILIMITADO;
+  const intervaloDias = { diario:1, semanal:7, quinzenal:14, mensal:0 }[freq] || 7;
+  const datas = [];
+  let cur = new Date(dataBase);
+  for (let i = 0; i < max; i++) {
+    if (i === 0) { datas.push(new Date(cur)); continue; }
+    if (freq === 'mensal') {
+      cur = new Date(dataBase);
+      cur.setMonth(cur.getMonth() + i);
+    } else {
+      cur = new Date(datas[datas.length-1]);
+      cur.setDate(cur.getDate() + intervaloDias);
+    }
+    datas.push(new Date(cur));
+  }
+  return datas;
+}
+
+function onRecChange() {
+  if (!_recAtiva) {
+    const resumo = document.getElementById('ag-rec-resumo');
+    if (resumo) resumo.textContent = 'Desativada';
+    return;
+  }
+  const freq    = document.querySelector('input[name="ag-recorrencia"]:checked')?.value || 'semanal';
+  const limite  = document.querySelector('input[name="ag-limite"]:checked')?.value || 'ilimitado';
+  const qtd     = parseInt(document.getElementById('ag-rec-qtd')?.value)||10;
+  const dataStr = document.getElementById('ag-data')?.value;
+  if (!dataStr) return;
+  const dataBase = new Date(dataStr + 'T12:00:00');
+  const datas    = recGerarDatas(dataBase, freq, limite, qtd);
+  const freqLabel = { diario:'Diário', semanal:'Semanal', quinzenal:'Quinzenal', mensal:'Mensal' }[freq];
+  const resumo = document.getElementById('ag-rec-resumo');
+  if (resumo) resumo.textContent = `${freqLabel} · ${datas.length} ocorrência(s)`;
+  // Preview: primeiras 5 + última
+  const fmtD = d => d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+  const preview = document.getElementById('ag-rec-preview');
+  if (!preview) return;
+  const shown = datas.slice(0, 5);
+  let txt = shown.map(fmtD).join(' · ');
+  if (datas.length > 5) txt += ` · … · ${fmtD(datas[datas.length-1])}`;
+  preview.innerHTML = `<span style="color:var(--accent);font-weight:500">${datas.length} agendamentos:</span> ${txt}`;
+}
+
+async function salvarAgendamentoRecorrente(dadosBase, sb, map) {
+  const freq    = document.querySelector('input[name="ag-recorrencia"]:checked')?.value || 'semanal';
+  const limite  = document.querySelector('input[name="ag-limite"]:checked')?.value || 'ilimitado';
+  const qtd     = parseInt(document.getElementById('ag-rec-qtd')?.value)||10;
+  const dataBase = new Date((dadosBase.dataISO||'') + 'T12:00:00');
+  const datas    = recGerarDatas(dataBase, freq, limite, qtd);
+  let criados = 0;
+  for (const d of datas) {
+    const dataISO = d.toISOString().slice(0,10);
+    const reg = Object.assign({}, dadosBase, { dataISO });
+    if (sb) {
+      const { data, error } = await sb.from('agendamentos').insert([map.apptToDb(reg)]).select().single();
+      if (error) { console.error('[Recorrência]', error.message); continue; }
+      reg.id = data.id;
+    } else {
+      reg.id = Math.max(...APPOINTMENTS.map(a=>a.id), 0) + 1;
+    }
+    APPOINTMENTS.push(reg);
+    criados++;
+  }
+  return criados;
+}
+
 function salvarAgendamento() {
   // Redireciona para salvamento em grupo se modo grupo estiver ativo e for novo agendamento
   if (typeof _grupoMode !== 'undefined' && _grupoMode && !currentApptId) {
@@ -10747,6 +10921,48 @@ function salvarAgendamento() {
     const profNome2 = prof2?.nomeAgenda || prof2?.nome || 'Profissional';
     const horario2  = b?.diaTodo ? 'dia todo' : `${b?.horaIni||''} – ${b?.horaFim||''}`;
     showToast(`🔒 Agenda de ${profNome2} bloqueada neste horário (${horario2}). Remova o bloqueio primeiro.`, 'error');
+    return;
+  }
+
+  // ── Novo agendamento com recorrência ──────────────────────────────
+  if (!currentApptId && _recAtiva) {
+    const dadosBase = {
+      profId, paciente: pac,
+      plano: planoObj?.nome || 'Particular', planoId,
+      hora: horaIni, horaFim, durMin,
+      modalidade, meetLink, status: novoStatus,
+      obs, carteirinha, guia: null, waSent: false,
+      dataISO: dataAgISO,
+      tipo: document.getElementById('ag-tipo')?.value || 'sessao',
+    };
+    // Usa versão async via override do Supabase se disponível
+    const sb = window._cfGetDb ? window._cfGetDb() : null;
+    const map = window._cfMap || null;
+    if (sb && map) {
+      salvarAgendamentoRecorrente(dadosBase, sb, map).then(criados => {
+        closeModal('modal-agendamento');
+        grupoResetState(); recorrenciaReset();
+        renderDayView(); try { updateNavBadges(); } catch(e) {}
+        showToast(`${criados} agendamento(s) recorrente(s) criados!`, 'success');
+      });
+    } else {
+      // Fallback sem Supabase (modo offline)
+      const freq   = document.querySelector('input[name="ag-recorrencia"]:checked')?.value || 'semanal';
+      const limite = document.querySelector('input[name="ag-limite"]:checked')?.value || 'ilimitado';
+      const qtd    = parseInt(document.getElementById('ag-rec-qtd')?.value)||10;
+      const datas  = recGerarDatas(new Date(dataAgISO + 'T12:00:00'), freq, limite, qtd);
+      datas.forEach(d => {
+        const reg = Object.assign({}, dadosBase, {
+          id: Math.max(...APPOINTMENTS.map(a=>a.id), 0) + 1,
+          dataISO: d.toISOString().slice(0,10)
+        });
+        APPOINTMENTS.push(reg);
+      });
+      closeModal('modal-agendamento');
+      grupoResetState(); recorrenciaReset();
+      renderDayView(); try { updateNavBadges(); } catch(e) {}
+      showToast(`${datas.length} agendamento(s) recorrente(s) criados!`, 'success');
+    }
     return;
   }
 
