@@ -452,6 +452,24 @@ a { text-decoration: none; color: inherit; }
   display: block;
 }
 
+/* Financeiro — Pagamentos a Terapeutas */
+#page-financeiro {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+#page-financeiro.active { display: flex; }
+#page-financeiro .fin-scroll-wrap { flex: 1; overflow-y: auto; min-height: 0; }
+#page-financeiro .data-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-raised); }
+.fin-status-chip { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600; }
+.fin-status-chip.pendente { background:rgba(251,191,36,0.12);color:var(--warning);border:1px solid rgba(251,191,36,0.25); }
+.fin-status-chip.pago     { background:rgba(52,211,153,0.12);color:var(--success);border:1px solid rgba(52,211,153,0.25); }
+.fin-stats-bar { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px; }
+.fin-stat-card { background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px; }
+.fin-stat-num  { font-size:22px;font-weight:700;letter-spacing:-0.5px; }
+.fin-stat-lbl  { font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;margin-top:3px; }
+
 /* Usuários & Acesso */
 #page-usuarios {
   display: none;
@@ -2064,6 +2082,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
           Fechamento Mensal
         </div>
+        <div class="nav-item" onclick="gotoPage('financeiro',this)" id="nav-financeiro-item">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+          Financeiro
+        </div>
         <div class="nav-item" onclick="gotoPage('config',this)">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
           Configurações
@@ -3507,8 +3529,68 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
       </div>
     </div>
 
+    <!-- FINANCEIRO: Pagamentos a Terapeutas -->
+    <div class="page" id="page-financeiro">
+      <div style="flex-shrink:0;margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Financeiro — Pagamentos a Terapeutas</h2>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Gerencie repasses, recibos e notas fiscais dos profissionais</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="form-select" id="fin-filtro-mes" style="width:180px" onchange="finRenderTabela()"></select>
+            <select class="form-select" id="fin-filtro-status" style="width:140px" onchange="finRenderTabela()">
+              <option value="">Todos os status</option>
+              <option value="pendente">Pendente</option>
+              <option value="pago">Pago</option>
+            </select>
+            <button class="btn-sm btn-accent" onclick="finGerarDoFechamento()">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Gerar do Fechamento
+            </button>
+          </div>
+        </div>
+        <div class="fin-stats-bar" id="fin-stats-bar" style="margin-top:16px">
+          <div class="fin-stat-card"><div class="fin-stat-num" id="fin-stat-total">0</div><div class="fin-stat-lbl">Registros</div></div>
+          <div class="fin-stat-card"><div class="fin-stat-num" style="color:var(--warning)" id="fin-stat-pendente">R$ 0,00</div><div class="fin-stat-lbl">A Pagar</div></div>
+          <div class="fin-stat-card"><div class="fin-stat-num" style="color:var(--success)" id="fin-stat-pago">R$ 0,00</div><div class="fin-stat-lbl">Ja Pago</div></div>
+          <div class="fin-stat-card"><div class="fin-stat-num" id="fin-stat-nfs">0</div><div class="fin-stat-lbl">NFs Recebidas</div></div>
+        </div>
+      </div>
+      <div class="table-card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
+        <div style="flex-shrink:0;padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">
+          <div class="search-input-wrap" style="flex:1;max-width:320px">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input class="search-input" placeholder="Buscar profissional..." oninput="finRenderTabela()" id="fin-search">
+          </div>
+          <span style="font-size:12px;color:var(--text-muted)" id="fin-count-label"></span>
+        </div>
+        <div class="fin-scroll-wrap">
+          <table class="data-table" style="width:100%">
+            <thead>
+              <tr>
+                <th>Profissional</th>
+                <th>Competencia</th>
+                <th>Tipo de Terapia</th>
+                <th style="text-align:center">Qtd. Pac.</th>
+                <th style="text-align:right">Valor</th>
+                <th style="text-align:center">Status</th>
+                <th style="text-align:right">Valor Pago</th>
+                <th>Data Pgto.</th>
+                <th style="text-align:center">NF</th>
+                <th style="text-align:right">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="fin-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">Nenhum registro. Clique em "Gerar do Fechamento" para importar os dados.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
     <!-- ══ ESPAÇO CONECTA: Agendamento de Salas ══ -->
-    <div class="page" id="page-conecta-agenda">
       <div class="conecta-header" style="flex-shrink:0">
         <div>
           <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Agendamento de Salas</h2>
@@ -5779,7 +5861,7 @@ function doLogout() {
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', perfis:'Perfis de Acesso', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', fechamento:'Fechamento Mensal', usuarios:'Usuários & Acesso', perfis:'Perfis de Acesso', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação' };
+const pageTitles = { dashboard:'Dashboard', agenda:'Agenda', perfis:'Perfis de Acesso', pacientes:'Pacientes', profissionais:'Profissionais', planos:'Planos de Saúde', procedimentos:'Tabela de Preços', tiss:'Guias SADT', lotes:'Lotes TISS', senhas:'Senhas & Autorizações', espera:'Lista de Espera', historico:'Histórico do Paciente', importar:'Importar Agenda', relatorios:'Relatórios', config:'Configurações', fechamento:'Fechamento Mensal', usuarios:'Usuários & Acesso', perfis:'Perfis de Acesso', 'conecta-agenda':'Agendamento de Salas', 'conecta-profissionais':'Profissionais Locatários', 'conecta-fechamento':'Fechamento de Locação', financeiro:'Financeiro — Pagamentos a Terapeutas' };
 function gotoPage(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5790,6 +5872,7 @@ function gotoPage(page, el) {
   document.getElementById('topbar-title').textContent = pageTitles[page] || page;
   if (page === 'config')    try { initConfigPage(); } catch(e) {}
   if (page === 'conecta-fechamento') try { renderHistoricoFechamentos(); } catch(e) {}
+  if (page === 'financeiro') try { finRenderTabela(); } catch(e) {}
   if (page === 'perfis')    try { renderPerfisLista(); } catch(e) { console.warn(e); }
   if (page === 'usuarios')  try { renderUsuarios(); } catch(e) { console.warn(e); }
   if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
@@ -9866,7 +9949,9 @@ function gerarXMLLote(loteId) {
     '<ans:prestadorParaOperadora>' +
     '<ans:loteGuias>' +
     '<ans:numeroLote>'+esc(l.num)+'</ans:numeroLote>' +
+    '<ans:guiasTISS>'+
     xmlGuias +
+    '</ans:guiasTISS>' +
     '</ans:loteGuias>' +
     '</ans:prestadorParaOperadora>' +
     '<ans:epilogo><ans:hash></ans:hash></ans:epilogo>' +
@@ -20393,6 +20478,605 @@ function exportarRelatorioValidacao() {
 </div>
 
 </body>\n</html>';
+
+<!-- ══════════════════════════════════════════════════════════
+     MÓDULO FINANCEIRO — PAGAMENTOS A TERAPEUTAS
+     Integrado ao Supabase: tabela pagamentos_terapeutas
+══════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+'use strict';
+
+// ── Estado local ────────────────────────────────────────────
+let FIN_REGISTROS = [];   // array em memória
+let _finEditId    = null; // id sendo editado no modal
+
+// ── Helpers ─────────────────────────────────────────────────
+const brl = v => 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function finMesLabel(ym) {
+  if (!ym) return '';
+  const [y,m] = ym.split('-').map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'})
+    .replace(/^\w/, c=>c.toUpperCase());
+}
+
+function finGetSb() { return (typeof sb !== 'undefined') ? sb : null; }
+
+// ── Carrega do Supabase ─────────────────────────────────────
+async function finCarregar() {
+  const s = finGetSb();
+  if (!s) { finCarregarLocal(); return; }
+  try {
+    const { data, error } = await s.from('pagamentos_terapeutas').select('*').order('competencia', {ascending:false});
+    if (error) throw error;
+    FIN_REGISTROS = (data || []).map(r => ({
+      id:            r.id,
+      profissionalId:r.profissional_id,
+      profissional:  r.profissional_nome,
+      competencia:   r.competencia,
+      tipo:          r.tipo_terapia,
+      qtdPacientes:  r.qtd_pacientes,
+      valor:         parseFloat(r.valor_a_receber||0),
+      status:        r.status_pagamento||'pendente',
+      valorPago:     parseFloat(r.valor_pago||0),
+      dataPagamento: r.data_pagamento||'',
+      nfUrl:         r.nota_fiscal_url||'',
+      nfNome:        r.nota_fiscal_nome||'',
+      obs:           r.obs||'',
+      criadoEm:      r.criado_em||'',
+    }));
+    finSalvarLocal();
+  } catch(e) {
+    console.warn('[Financeiro] Erro ao carregar Supabase:', e.message);
+    finCarregarLocal();
+  }
+  finPopularMeses();
+  finRenderTabela();
+}
+
+function finCarregarLocal() {
+  try { FIN_REGISTROS = JSON.parse(localStorage.getItem('cf_fin_registros')||'[]'); } catch(e) { FIN_REGISTROS=[]; }
+}
+
+function finSalvarLocal() {
+  localStorage.setItem('cf_fin_registros', JSON.stringify(FIN_REGISTROS));
+}
+
+// ── Salva / atualiza no Supabase ────────────────────────────
+async function finPersistir(reg) {
+  finSalvarLocal();
+  const s = finGetSb();
+  if (!s) return;
+  const payload = {
+    id:                   reg.id,
+    profissional_id:      reg.profissionalId||null,
+    profissional_nome:    reg.profissional,
+    competencia:          reg.competencia,
+    tipo_terapia:         reg.tipo,
+    qtd_pacientes:        reg.qtdPacientes,
+    valor_a_receber:      reg.valor,
+    status_pagamento:     reg.status,
+    valor_pago:           reg.valorPago||0,
+    data_pagamento:       reg.dataPagamento||null,
+    nota_fiscal_url:      reg.nfUrl||null,
+    nota_fiscal_nome:     reg.nfNome||null,
+    obs:                  reg.obs||null,
+  };
+  try {
+    const { error } = await s.from('pagamentos_terapeutas').upsert(payload, {onConflict:'id'});
+    if (error) console.error('[Financeiro] Erro upsert:', error.message);
+  } catch(e) { console.error('[Financeiro]', e); }
+}
+
+// ── Popula select de meses ──────────────────────────────────
+function finPopularMeses() {
+  const sel = document.getElementById('fin-filtro-mes');
+  if (!sel) return;
+  const meses = [...new Set(FIN_REGISTROS.map(r=>r.competencia))].sort((a,b)=>b.localeCompare(a));
+  const now = new Date();
+  const nowYM = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const opcoes = [{ val:'', label:'Todas as competencias' }, ...meses.map(m=>({val:m, label:finMesLabel(m)}))];
+  sel.innerHTML = opcoes.map(o=>`<option value="${o.val}">${o.label}</option>`).join('');
+  // Seleciona o mes atual se existir, senão todos
+  if (meses.includes(nowYM)) sel.value = nowYM;
+}
+
+// ── Gerar registros a partir do Fechamento Mensal ───────────
+window.finGerarDoFechamento = function() {
+  // Lê o mês selecionado no fechamento
+  const mesEl = document.getElementById('fech-mes');
+  let mesVal = mesEl ? mesEl.value : '';
+  if (!mesVal) {
+    // Tenta pegar do select financeiro
+    const hoje = new Date();
+    mesVal = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+  }
+
+  if (!mesVal) { showToast('Selecione o mês no Fechamento Mensal primeiro', 'error'); return; }
+
+  // Verifica se existe dados de fechamento
+  if (typeof APPOINTMENTS === 'undefined' || !APPOINTMENTS.length) {
+    showToast('Nenhum agendamento encontrado', 'error'); return;
+  }
+
+  const [ano, mes] = mesVal.split('-').map(Number);
+  const ISO_PRIM = `${ano}-${String(mes).padStart(2,'0')}-01`;
+  const ISO_ULT  = new Date(ano, mes, 0).toISOString().slice(0,10);
+
+  const atendidos = APPOINTMENTS.filter(a =>
+    (a.status||'').toLowerCase() === 'atendido' &&
+    a.dataISO >= ISO_PRIM && a.dataISO <= ISO_ULT
+  );
+
+  if (!atendidos.length) { showToast('Nenhum atendimento "Atendido" no periodo selecionado', 'error'); return; }
+
+  // Agrupa por profissional + tipo de terapia
+  // Tipo: "avaliacao_neuro" se tipo === 'avaliacao', senao "convencional"
+  const grupos = {};
+  atendidos.forEach(a => {
+    const prof = typeof PROFISSIONAIS !== 'undefined'
+      ? PROFISSIONAIS.find(p=>p.id===a.profId)
+      : null;
+    const profNome = prof ? prof.nome : ('Prof #'+(a.profId||'?'));
+    const profId   = a.profId || null;
+    const tipoRaw  = (a.tipo||'sessao').toLowerCase();
+    const tipo = (tipoRaw.includes('avalia') || tipoRaw.includes('neuro')) ? 'avaliacao_neuro' : 'convencional';
+    const key  = `${profId||profNome}__${tipo}`;
+
+    if (!grupos[key]) {
+      grupos[key] = { profissionalId: profId, profissional: profNome, tipo, pacientes: new Set(), valor: 0 };
+    }
+    grupos[key].pacientes.add(a.paciente);
+
+    // Valor por sessão (do cadastro do profissional se disponível)
+    let valSessao = 0;
+    if (prof) {
+      if (tipo === 'avaliacao_neuro') valSessao = parseFloat(prof.valorAvaliacao || prof.valorAval || 0);
+      else {
+        const dur = a.durMin || 30;
+        valSessao = dur >= 60
+          ? parseFloat(prof.valor60 || prof.valorSessao60 || 0)
+          : parseFloat(prof.valor30 || prof.valorSessao || 0);
+      }
+    }
+    grupos[key].valor += valSessao;
+  });
+
+  let novos = 0;
+  Object.values(grupos).forEach(g => {
+    const chaveExist = FIN_REGISTROS.findIndex(r =>
+      r.competencia === mesVal &&
+      r.profissional === g.profissional &&
+      r.tipo === g.tipo
+    );
+    const reg = {
+      id:            chaveExist >= 0 ? FIN_REGISTROS[chaveExist].id : ('fin_'+ Date.now()+'_'+Math.random().toString(36).substr(2,5)),
+      profissionalId:g.profissionalId,
+      profissional:  g.profissional,
+      competencia:   mesVal,
+      tipo:          g.tipo,
+      qtdPacientes:  g.pacientes.size,
+      valor:         g.valor,
+      status:        chaveExist >= 0 ? FIN_REGISTROS[chaveExist].status : 'pendente',
+      valorPago:     chaveExist >= 0 ? FIN_REGISTROS[chaveExist].valorPago : 0,
+      dataPagamento: chaveExist >= 0 ? FIN_REGISTROS[chaveExist].dataPagamento : '',
+      nfUrl:         chaveExist >= 0 ? FIN_REGISTROS[chaveExist].nfUrl : '',
+      nfNome:        chaveExist >= 0 ? FIN_REGISTROS[chaveExist].nfNome : '',
+      obs:           '',
+    };
+    if (chaveExist >= 0) FIN_REGISTROS[chaveExist] = reg;
+    else { FIN_REGISTROS.push(reg); novos++; }
+    finPersistir(reg);
+  });
+
+  finPopularMeses();
+  // Seleciona o mes gerado
+  const sel = document.getElementById('fin-filtro-mes');
+  if (sel) sel.value = mesVal;
+  finRenderTabela();
+  showToast(`${novos > 0 ? novos + ' registros gerados' : 'Registros atualizados'} para ${finMesLabel(mesVal)}!`, 'success');
+};
+
+// ── Renderiza tabela ─────────────────────────────────────────
+window.finRenderTabela = function() {
+  const tbody    = document.getElementById('fin-tbody');
+  if (!tbody) return;
+  const filtMes  = document.getElementById('fin-filtro-mes')?.value || '';
+  const filtSt   = document.getElementById('fin-filtro-status')?.value || '';
+  const filtBusc = (document.getElementById('fin-search')?.value||'').toLowerCase();
+
+  let lista = FIN_REGISTROS.filter(r => {
+    if (filtMes && r.competencia !== filtMes) return false;
+    if (filtSt  && r.status !== filtSt) return false;
+    if (filtBusc && !r.profissional.toLowerCase().includes(filtBusc)) return false;
+    return true;
+  });
+
+  // Stats
+  const totPendente = lista.filter(r=>r.status==='pendente').reduce((a,r)=>a+r.valor,0);
+  const totPago     = lista.filter(r=>r.status==='pago').reduce((a,r)=>a+(r.valorPago||r.valor),0);
+  const totNF       = lista.filter(r=>r.nfUrl||r.nfNome).length;
+  document.getElementById('fin-stat-total').textContent    = lista.length;
+  document.getElementById('fin-stat-pendente').textContent = brl(totPendente);
+  document.getElementById('fin-stat-pago').textContent     = brl(totPago);
+  document.getElementById('fin-stat-nfs').textContent      = totNF;
+  const countLbl = document.getElementById('fin-count-label');
+  if (countLbl) countLbl.textContent = lista.length + ' registro' + (lista.length!==1?'s':'');
+
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">Nenhum registro encontrado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = lista.map(r => {
+    const tipoLabel = r.tipo === 'avaliacao_neuro' ? 'Aval. Neuro.' : 'Convencional';
+    const tipoColor = r.tipo === 'avaliacao_neuro' ? 'var(--info)' : 'var(--text-secondary)';
+    const statusChip = r.status === 'pago'
+      ? '<span class="fin-status-chip pago">&#10003; Pago</span>'
+      : '<span class="fin-status-chip pendente">&#9679; Pendente</span>';
+    const nfBtn = (r.nfUrl || r.nfNome)
+      ? `<button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px" onclick="finVisualizarNF('${r.id}')" title="Ver nota fiscal">&#128196; ${r.nfNome||'Ver NF'}</button>`
+      : `<span style="font-size:11px;color:var(--text-muted)">—</span>`;
+    const dp = r.dataPagamento ? r.dataPagamento.split('-').reverse().join('/') : '—';
+    return `<tr>
+      <td style="font-weight:500">${r.profissional}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${finMesLabel(r.competencia)}</td>
+      <td><span style="font-size:12px;font-weight:500;color:${tipoColor}">${tipoLabel}</span></td>
+      <td style="text-align:center;font-weight:600">${r.qtdPacientes}</td>
+      <td style="text-align:right;font-weight:700;color:var(--text-primary)">${brl(r.valor)}</td>
+      <td style="text-align:center">${statusChip}</td>
+      <td style="text-align:right;color:${r.status==='pago'?'var(--success)':'var(--text-muted)'}">${r.valorPago ? brl(r.valorPago) : '—'}</td>
+      <td style="font-size:12px">${dp}</td>
+      <td style="text-align:center">${nfBtn}</td>
+      <td style="text-align:right">
+        <div style="display:flex;gap:4px;justify-content:flex-end">
+          <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:11px" onclick="finAbrirModal('${r.id}')" title="Registrar pagamento">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            Editar
+          </button>
+          <button class="btn-sm btn-secondary" style="padding:4px 8px;font-size:11px;color:var(--success)" onclick="finGerarRecibo('${r.id}')" title="Gerar recibo">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg>
+            Recibo
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+};
+
+// ── Abre modal de edição ─────────────────────────────────────
+window.finAbrirModal = function(id) {
+  const r = FIN_REGISTROS.find(x=>x.id===id);
+  if (!r) return;
+  _finEditId = id;
+
+  // Preenche campos do modal
+  document.getElementById('fin-modal-title').textContent = 'Editar Pagamento — ' + r.profissional;
+  document.getElementById('fin-modal-sub').textContent   = finMesLabel(r.competencia) + ' · ' + (r.tipo==='avaliacao_neuro'?'Avaliação Neuro':'Convencional');
+  document.getElementById('fin-ed-prof').textContent     = r.profissional;
+  document.getElementById('fin-ed-comp').textContent     = finMesLabel(r.competencia);
+  document.getElementById('fin-ed-tipo').textContent     = r.tipo==='avaliacao_neuro'?'Avaliação Neuropsicológica':'Convencional';
+  document.getElementById('fin-ed-qtd').textContent      = r.qtdPacientes + ' paciente' + (r.qtdPacientes!==1?'s':'');
+  document.getElementById('fin-ed-valor').textContent    = brl(r.valor);
+  document.getElementById('fin-status-sel').value        = r.status||'pendente';
+  document.getElementById('fin-valor-pago').value        = r.valorPago||'';
+  document.getElementById('fin-data-pago').value         = r.dataPagamento||'';
+  document.getElementById('fin-obs').value               = r.obs||'';
+  // NF
+  const nfWrap = document.getElementById('fin-nf-wrap');
+  if (r.nfUrl) {
+    nfWrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:13px">&#128196; ${r.nfNome||'Nota Fiscal'}</span>
+      <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px" onclick="finVisualizarNF('${r.id}')">Visualizar</button>
+      <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px;color:var(--danger)" onclick="finRemoverNF()">Remover</button>
+    </div>`;
+  } else {
+    nfWrap.innerHTML = `<label class="btn-sm btn-secondary" style="padding:5px 12px;cursor:pointer">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+      Anexar Nota Fiscal
+      <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="finAnexarNF(this)">
+    </label>`;
+  }
+  // Toggle campos pagamento
+  finToggleStatusCampos();
+  openModal('modal-financeiro');
+};
+
+window.finToggleStatusCampos = function() {
+  const status = document.getElementById('fin-status-sel')?.value;
+  const pgtoFields = document.getElementById('fin-pgto-fields');
+  if (pgtoFields) pgtoFields.style.display = status === 'pago' ? '' : 'none';
+};
+
+window.finAnexarNF = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // Armazena base64 temporariamente no registro em edição
+    const r = FIN_REGISTROS.find(x=>x.id===_finEditId);
+    if (!r) return;
+    r._nfDataPending = e.target.result;
+    r._nfNomePending = file.name;
+    const nfWrap = document.getElementById('fin-nf-wrap');
+    if (nfWrap) nfWrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:13px;color:var(--success)">&#9989; ${file.name}</span>
+      <button class="btn-sm btn-secondary" style="padding:3px 8px;font-size:11px;color:var(--danger)" onclick="finRemoverNF()">Remover</button>
+    </div>`;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+};
+
+window.finRemoverNF = function() {
+  const r = FIN_REGISTROS.find(x=>x.id===_finEditId);
+  if (r) { r.nfUrl=''; r.nfNome=''; r._nfDataPending=''; r._nfNomePending=''; }
+  const nfWrap = document.getElementById('fin-nf-wrap');
+  if (nfWrap) nfWrap.innerHTML = `<label class="btn-sm btn-secondary" style="padding:5px 12px;cursor:pointer">
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+    Anexar Nota Fiscal
+    <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="finAnexarNF(this)">
+  </label>`;
+};
+
+window.finVisualizarNF = function(id) {
+  const r = FIN_REGISTROS.find(x=>x.id===id);
+  if (!r || !r.nfUrl) { showToast('Nenhuma nota fiscal anexada','error'); return; }
+  const win = window.open('','_blank');
+  if (win) {
+    if (r.nfUrl.startsWith('data:image')) {
+      win.document.write('<html><body style="margin:0;background:#000"><img src="'+r.nfUrl+'" style="max-width:100%;"></body></html>');
+    } else {
+      win.document.write('<html><body style="margin:0"><embed src="'+r.nfUrl+'" width="100%" height="100%" type="application/pdf"></body></html>');
+    }
+  }
+};
+
+// ── Salvar edição ────────────────────────────────────────────
+window.finSalvarModal = async function() {
+  const r = FIN_REGISTROS.find(x=>x.id===_finEditId);
+  if (!r) return;
+  r.status        = document.getElementById('fin-status-sel').value;
+  r.valorPago     = parseFloat(document.getElementById('fin-valor-pago').value)||0;
+  r.dataPagamento = document.getElementById('fin-data-pago').value||'';
+  r.obs           = document.getElementById('fin-obs').value||'';
+
+  // Aplica NF pendente
+  if (r._nfDataPending) {
+    r.nfUrl  = r._nfDataPending;
+    r.nfNome = r._nfNomePending||'nota_fiscal';
+    delete r._nfDataPending; delete r._nfNomePending;
+  }
+
+  // Supabase: upload NF se existir
+  const s = finGetSb();
+  if (s && r.nfUrl && r.nfUrl.startsWith('data:')) {
+    try {
+      const base64 = r.nfUrl.split(',')[1];
+      const mime   = r.nfUrl.split(';')[0].split(':')[1];
+      const ext    = mime === 'application/pdf' ? 'pdf' : 'jpg';
+      const path   = `nf/${r.id}_${Date.now()}.${ext}`;
+      const bin    = Uint8Array.from(atob(base64), c=>c.charCodeAt(0));
+      const { data: upData, error: upErr } = await s.storage.from('clinicflow').upload(path, bin, {contentType:mime, upsert:true});
+      if (!upErr && upData) {
+        const { data: urlData } = s.storage.from('clinicflow').getPublicUrl(path);
+        r.nfUrl = urlData?.publicUrl || r.nfUrl;
+      }
+    } catch(e) { console.warn('[Financeiro] Upload NF:', e); }
+  }
+
+  await finPersistir(r);
+  closeModal('modal-financeiro');
+  finRenderTabela();
+  showToast('Pagamento atualizado!', 'success');
+};
+
+// ── Gerar Recibo ─────────────────────────────────────────────
+window.finGerarRecibo = function(id) {
+  const r = FIN_REGISTROS.find(x=>x.id===id);
+  if (!r) return;
+  const clinNome = (typeof CLINICA !== 'undefined' && CLINICA.nome) ? CLINICA.nome : 'ClinicFlow';
+  const clinEnd  = (typeof CLINICA !== 'undefined' && CLINICA.endereco) ? CLINICA.endereco : '';
+  const clinCNPJ = (typeof CLINICA !== 'undefined' && CLINICA.cnpj) ? CLINICA.cnpj : '';
+  const dataEmis = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const tipoLabel = r.tipo === 'avaliacao_neuro' ? 'Avaliação Neuropsicológica' : 'Terapia Convencional';
+  const valExib   = r.status === 'pago' && r.valorPago ? r.valorPago : r.valor;
+  const dpExib    = r.dataPagamento ? r.dataPagamento.split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
+  const numRecibo = 'REC-'+String(Date.now()).slice(-8);
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Recibo — ${r.profissional}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1e293b; background:#fff; padding:20mm 18mm; max-width:210mm; margin:0 auto; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #1e3a6e; padding-bottom:14px; margin-bottom:18px; }
+  .header h1 { font-size:18pt; color:#1e3a6e; }
+  .header .sub { font-size:9pt; color:#64748b; margin-top:3px; }
+  .recibo-badge { background:#1e3a6e; color:#fff; padding:6px 14px; border-radius:6px; font-size:9pt; font-weight:700; }
+  .section { margin-bottom:16px; }
+  .section-title { font-size:8pt; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e2e8f0; padding-bottom:4px; margin-bottom:10px; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .info-item .lbl { font-size:8pt; color:#94a3b8; margin-bottom:2px; }
+  .info-item .val { font-size:10pt; font-weight:500; }
+  .valor-box { background:#f0fdf4; border:2px solid #16a34a; border-radius:8px; padding:14px 20px; margin:20px 0; display:flex; justify-content:space-between; align-items:center; }
+  .valor-box .label { font-size:9pt; color:#15803d; font-weight:600; }
+  .valor-box .amount { font-size:20pt; font-weight:700; color:#15803d; }
+  .assinaturas { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:40px; }
+  .ass-line { border-top:1px solid #94a3b8; padding-top:6px; text-align:center; font-size:8.5pt; color:#64748b; }
+  .footer { margin-top:20px; border-top:1px solid #e2e8f0; padding-top:8px; font-size:7.5pt; color:#94a3b8; text-align:center; }
+  @media print { body { padding:12mm; } button { display:none!important; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>${clinNome}</h1>
+    ${clinEnd ? `<div class="sub">${clinEnd}</div>` : ''}
+    ${clinCNPJ ? `<div class="sub">CNPJ: ${clinCNPJ}</div>` : ''}
+  </div>
+  <div style="text-align:right">
+    <div class="recibo-badge">RECIBO</div>
+    <div style="font-size:8pt;color:#94a3b8;margin-top:6px">Nº ${numRecibo}</div>
+    <div style="font-size:8pt;color:#94a3b8">Emitido em: ${dataEmis}</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Dados do Profissional</div>
+  <div class="info-grid">
+    <div class="info-item"><div class="lbl">Profissional</div><div class="val">${r.profissional}</div></div>
+    <div class="info-item"><div class="lbl">Competência</div><div class="val">${finMesLabel(r.competencia)}</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Detalhamento do Servico</div>
+  <div class="info-grid">
+    <div class="info-item"><div class="lbl">Tipo de Terapia</div><div class="val">${tipoLabel}</div></div>
+    <div class="info-item"><div class="lbl">Quantidade de Pacientes Atendidos</div><div class="val">${r.qtdPacientes}</div></div>
+    <div class="info-item"><div class="lbl">Valor por Sessao/Servico</div><div class="val">${r.qtdPacientes > 0 ? brl(r.valor / r.qtdPacientes) : '—'}</div></div>
+    <div class="info-item"><div class="lbl">Subtotal</div><div class="val">${brl(r.valor)}</div></div>
+  </div>
+</div>
+
+<div class="valor-box">
+  <div class="label">VALOR ${r.status === 'pago' ? 'PAGO' : 'A RECEBER'}</div>
+  <div class="amount">${brl(valExib)}</div>
+</div>
+
+${r.status === 'pago' ? `<div class="section">
+  <div class="section-title">Dados do Pagamento</div>
+  <div class="info-grid">
+    <div class="info-item"><div class="lbl">Data do Pagamento</div><div class="val">${dpExib}</div></div>
+    <div class="info-item"><div class="lbl">Status</div><div class="val" style="color:#16a34a;font-weight:700">PAGO</div></div>
+  </div>
+</div>` : ''}
+
+${r.obs ? `<div class="section"><div class="section-title">Observacoes</div><p style="font-size:9.5pt">${r.obs}</p></div>` : ''}
+
+<div class="assinaturas">
+  <div class="ass-line">${clinNome}<br>Clínica / Emissor</div>
+  <div class="ass-line">${r.profissional}<br>Profissional / Recebedor</div>
+</div>
+<div class="footer">Documento gerado automaticamente pelo ClinicFlow em ${dataEmis}</div>
+<br><button onclick="window.print()" style="margin-top:10px;padding:8px 20px;background:#1e3a6e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:10pt">&#128438; Imprimir / Salvar PDF</button>
+</body>
+</html>`;
+
+  const win = window.open('','_blank','width=820,height:700');
+  if (win) { win.document.write(html); win.document.close(); }
+  else { showToast('Pop-up bloqueado — permita pop-ups para gerar o recibo','error'); }
+};
+
+// ── Exposição global ─────────────────────────────────────────
+window.finCarregar    = finCarregar;
+window.finRenderTabela= finRenderTabela;
+
+// Inicializa ao carregar a página
+document.addEventListener('DOMContentLoaded', () => {
+  finCarregarLocal();
+  finPopularMeses();
+  // Popula o select de meses com o mês atual como padrão
+  const hoje = new Date();
+  const nowYM = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+  const sel = document.getElementById('fin-filtro-mes');
+  if (sel && !sel.options.length) {
+    sel.innerHTML = `<option value="${nowYM}">${finMesLabel(nowYM)}</option>`;
+  }
+  // Tenta carregar do supabase ao inicializar (com retry)
+  setTimeout(() => { try { finCarregar(); } catch(e) {} }, 1500);
+});
+
+})();
+</script>
+
+<!-- Modal: Editar Pagamento / Registrar Pagamento de Terapeuta -->
+<div class="modal-overlay" id="modal-financeiro">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="fin-modal-title">Registrar Pagamento</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="fin-modal-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-financeiro')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <!-- Info somente leitura -->
+      <div style="background:var(--bg-raised);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px">Profissional</div>
+          <div style="font-size:14px;font-weight:600" id="fin-ed-prof"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px">Competência</div>
+          <div style="font-size:14px;font-weight:600" id="fin-ed-comp"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px">Tipo de Terapia</div>
+          <div style="font-size:13px" id="fin-ed-tipo"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px">Pacientes Atendidos</div>
+          <div style="font-size:13px" id="fin-ed-qtd"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px">Valor a Receber</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent)" id="fin-ed-valor"></div>
+        </div>
+      </div>
+
+      <!-- Status pagamento -->
+      <div class="form-group">
+        <label class="form-label">Status do Pagamento</label>
+        <select class="form-select" id="fin-status-sel" onchange="finToggleStatusCampos()">
+          <option value="pendente">Pendente</option>
+          <option value="pago">Pago</option>
+        </select>
+      </div>
+
+      <!-- Campos de pagamento (visíveis só quando pago) -->
+      <div id="fin-pgto-fields" style="display:none">
+        <div class="form-row cols-2">
+          <div class="form-group">
+            <label class="form-label">Valor Pago (R$)</label>
+            <input class="form-input" type="number" id="fin-valor-pago" placeholder="0,00" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data do Pagamento</label>
+            <input class="form-input" type="date" id="fin-data-pago">
+          </div>
+        </div>
+      </div>
+
+      <!-- Nota Fiscal -->
+      <div class="form-group">
+        <label class="form-label">Nota Fiscal (PDF ou imagem)</label>
+        <div id="fin-nf-wrap"></div>
+      </div>
+
+      <!-- Observações -->
+      <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea class="form-input" id="fin-obs" rows="2" placeholder="Observações sobre este pagamento..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-secondary" onclick="closeModal('modal-financeiro')">Cancelar</button>
+      <button class="btn-sm btn-secondary" onclick="finGerarRecibo(document.querySelector('#fin-modal-title')?.dataset?.id||_finEditId||'')" style="display:none" id="fin-btn-recibo">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/></svg>
+        Gerar Recibo
+      </button>
+      <button class="btn-sm btn-accent" onclick="finSalvarModal()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Salvar
+      </button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
