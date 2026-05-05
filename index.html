@@ -20241,7 +20241,7 @@ function abrirValidadorGuias() {
       erros.push({ nivel: 'critico', campo: 'Número da senha', desc: 'Senha / autorização do plano não preenchida.' });
     }
 
-    // 5. Data de autorização dentro do mês
+    // 5. Data de autorização dentro da competência do lote ao qual a guia pertence
     var dataAut = (g.dados && g.dados.dataAut) ? g.dados.dataAut : '';
     // Se não tem data no dados da guia, busca na SENHAS_PLANO via num_op (numOp)
     if (!dataAut && numOp && typeof SENHAS_PLANO !== 'undefined') {
@@ -20254,8 +20254,32 @@ function abrirValidadorGuias() {
       erros.push({ nivel: 'atencao', campo: 'Data de autorização', desc: 'Data de autorização não encontrada na guia nem na senha vinculada.' });
     } else {
       var dtAut = new Date(dataAut + 'T12:00');
-      if (dtAut.getFullYear() !== hoje.getFullYear() || dtAut.getMonth() !== hoje.getMonth()) {
-        erros.push({ nivel: 'atencao', campo: 'Data de autorização fora do mês', desc: 'A autorização (' + dtAut.toLocaleDateString('pt-BR') + ') está fora do mês atual. Verifique a competência.' });
+      // Busca o lote ao qual esta guia pertence (via guiaIds em LOTES)
+      var loteVinc = (typeof LOTES !== 'undefined')
+        ? LOTES.find(function(l) { return l.guiaIds && l.guiaIds.indexOf(g.id) !== -1; })
+        : null;
+      if (loteVinc && loteVinc.competencia) {
+        // Competência do lote está no formato "Março/2026" — converte para ano/mês numérico
+        var mesesPtBR = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+        var partes = loteVinc.competencia.split('/');
+        var nomeMes = (partes[0] || '').trim().toLowerCase();
+        var anoLote = parseInt(partes[1] || 0, 10);
+        var mesLote = mesesPtBR.indexOf(nomeMes); // 0-based
+        if (mesLote === -1 || !anoLote) {
+          // Competência em formato desconhecido — tenta fallback AAAA-MM
+          var mParts = loteVinc.competencia.match(/^(\d{4})-(\d{2})$/);
+          if (mParts) { anoLote = parseInt(mParts[1], 10); mesLote = parseInt(mParts[2], 10) - 1; }
+        }
+        if (mesLote !== -1 && anoLote) {
+          if (dtAut.getFullYear() !== anoLote || dtAut.getMonth() !== mesLote) {
+            erros.push({ nivel: 'atencao', campo: 'Data de autorização fora da competência do lote', desc: 'A autorização (' + dtAut.toLocaleDateString('pt-BR') + ') está fora da competência do lote (' + loteVinc.competencia + ').' });
+          }
+        }
+      } else {
+        // Guia não está vinculada a nenhum lote — valida contra o mês atual como fallback
+        if (dtAut.getFullYear() !== hoje.getFullYear() || dtAut.getMonth() !== hoje.getMonth()) {
+          erros.push({ nivel: 'atencao', campo: 'Data de autorização fora do mês', desc: 'A autorização (' + dtAut.toLocaleDateString('pt-BR') + ') está fora do mês atual e a guia não está vinculada a nenhum lote. Verifique a competência.' });
+        }
       }
     }
 
