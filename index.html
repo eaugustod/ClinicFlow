@@ -2822,6 +2822,60 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         </div>
       </div>
 
+      <!-- ═══════════ AUDITORIA: DIVERGÊNCIAS AGENDA × HISTÓRICO ═══════════ -->
+      <div style="margin-top:24px;flex-shrink:0;display:flex;flex-direction:column" id="rel-auditoria-wrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;flex-shrink:0">
+          <div>
+            <div style="font-size:14px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--warning)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              Auditoria — Divergências de Status (Agenda × Histórico)
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Compara o status atual da agenda com o status registrado no histórico pelo terapeuta</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="form-select" id="aud-filtro-prof" style="width:180px;padding:6px 10px;font-size:12px" onchange="renderAuditoriaDivergencias()">
+              <option value="">Todos os terapeutas</option>
+            </select>
+            <select class="form-select" id="aud-filtro-mes" style="width:150px;padding:6px 10px;font-size:12px" onchange="renderAuditoriaDivergencias()">
+              <option value="">Todos os meses</option>
+            </select>
+            <button class="btn-sm btn-secondary" onclick="renderAuditoriaDivergencias()" style="font-size:12px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              Atualizar
+            </button>
+            <button class="btn-sm btn-secondary" onclick="exportAuditoriaDivergencias()" style="font-size:12px">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Exportar CSV
+            </button>
+          </div>
+        </div>
+        <!-- KPIs rápidos -->
+        <div id="aud-kpis" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"></div>
+        <!-- Tabela -->
+        <div style="overflow:auto;border-radius:var(--radius-md);border:1px solid var(--border);max-height:520px;min-width:0">
+          <table class="data-table" id="aud-table" style="min-width:780px">
+            <thead style="position:sticky;top:0;z-index:2;background:var(--bg-raised)">
+              <tr>
+                <th>Data</th>
+                <th>Terapeuta</th>
+                <th>Paciente</th>
+                <th style="text-align:center">Status Agenda<br><span style="font-weight:400;font-size:10px;color:var(--text-muted)">(recepção)</span></th>
+                <th style="text-align:center">Status Histórico<br><span style="font-weight:400;font-size:10px;color:var(--text-muted)">(terapeuta)</span></th>
+                <th style="text-align:center">Tipo de Divergência</th>
+                <th>Hora</th>
+                <th>Plano</th>
+              </tr>
+            </thead>
+            <tbody id="aud-tbody"></tbody>
+          </table>
+        </div>
+        <div id="aud-empty" style="display:none;text-align:center;padding:40px;color:var(--text-muted);border:1px solid var(--border);border-radius:var(--radius-md);margin-top:0">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:36px;height:36px;margin:0 auto 10px;opacity:.3"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          <div style="font-size:14px;font-weight:500">Nenhuma divergência encontrada</div>
+          <div style="font-size:12px;margin-top:4px">Os status de agenda e histórico estão alinhados para o período selecionado.</div>
+        </div>
+      </div>
+
     </div>
 
     <!-- CONFIG -->
