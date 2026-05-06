@@ -17984,8 +17984,13 @@ document.addEventListener('DOMContentLoaded', function () {
 // Prioriza o campo tipo explícito do select, depois fallback por regex
 function isAvalNeuropsico(appt) {
   const tipoExplicito = (appt.tipo || '').toLowerCase();
-  if (tipoExplicito === 'avaliacao') return true;
+  // Se tipo explícito for devolutiva, NÃO é avaliação
+  if (tipoExplicito === 'devolutiva') return false;
+  if (tipoExplicito === 'avaliacao')  return true;
+  // Fallback por regex — mas só se não for devolutiva pelo texto também
   const campos = [appt.tipoSessao, appt.obs, appt.procedimento, appt.descricao];
+  const reDevol = /devolutiva/i;
+  if (campos.some(c => c && reDevol.test(String(c)))) return false;
   const re = /aval[ia]+[çc][aã]o\s+neuro|AN ·|neuro.*aval|avalia[çc][aã]o\s+nps|avalia[çc][aã]o\s+neuropsico/i;
   return campos.some(c => c && re.test(String(c)));
 }
@@ -17993,7 +17998,10 @@ function isAvalNeuropsico(appt) {
 // Identifica se o agendamento é do tipo "Devolutiva Neuropsicológica"
 function isDevolutivaNeuropsico(appt) {
   const tipoExplicito = (appt.tipo || '').toLowerCase();
+  // Se tipo explícito for avaliacao, NÃO é devolutiva
+  if (tipoExplicito === 'avaliacao')  return false;
   if (tipoExplicito === 'devolutiva') return true;
+  // Fallback por regex
   const campos = [appt.tipoSessao, appt.obs, appt.procedimento, appt.descricao];
   const re = /devolutiva\s*neuro|devolutiva\s*nps|devolutiva\s*neuropsico/i;
   return campos.some(c => c && re.test(String(c)));
@@ -18037,11 +18045,13 @@ function renderFechamento() {
       porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [], devolutivas: [] };
     }
 
-    const dur = a.durMin || 30;
+    const dur      = a.durMin || 30;
+    const tipoRaw  = (a.tipo || '').toLowerCase();
 
-    if (isAvalNeuropsico(a)) {
+    // Classifica pelo campo tipo explícito primeiro; fallback para isAval/isDevol por regex
+    if (tipoRaw === 'avaliacao' || (tipoRaw === '' && isAvalNeuropsico(a))) {
       porProf[profId].avals.push(a);
-    } else if (isDevolutivaNeuropsico(a)) {
+    } else if (tipoRaw === 'devolutiva' || (tipoRaw === '' && isDevolutivaNeuropsico(a))) {
       porProf[profId].devolutivas.push(a);
     } else if (dur >= 60) {
       porProf[profId].sessoes60.push(a);
@@ -18352,11 +18362,16 @@ function emitirRelatorioFechamento() {
     const prof   = PROFISSIONAIS.find(p => p.id === profId);
     if (!prof) return;
     if (!porProf[profId]) porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [], devolutivas: [] };
-    const dur = a.durMin || 30;
-    if (isAvalNeuropsico(a))       porProf[profId].avals.push(a);
-    else if (isDevolutivaNeuropsico(a)) porProf[profId].devolutivas.push(a);
-    else if (dur >= 60)            porProf[profId].sessoes60.push(a);
-    else                           porProf[profId].sessoes30.push(a);
+    const dur     = a.durMin || 30;
+    const tipoRaw = (a.tipo || '').toLowerCase();
+    if (tipoRaw === 'avaliacao' || (tipoRaw === '' && isAvalNeuropsico(a)))
+      porProf[profId].avals.push(a);
+    else if (tipoRaw === 'devolutiva' || (tipoRaw === '' && isDevolutivaNeuropsico(a)))
+      porProf[profId].devolutivas.push(a);
+    else if (dur >= 60)
+      porProf[profId].sessoes60.push(a);
+    else
+      porProf[profId].sessoes30.push(a);
   });
 
   // Avaliações: apenas 1º por paciente (só contagem, sem repasse)
