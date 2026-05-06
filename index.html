@@ -3586,11 +3586,13 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
             </tbody>
           </table>
         </div>
+        <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;gap:18px;flex-wrap:wrap">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-secondary);margin-right:5px"></span><strong style="color:var(--text-secondary)">Sessões Regulares</strong> — todos os atendimentos (exceto Aval./Devolutiva Neuro). Gera repasse.</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warning);margin-right:5px"></span><strong style="color:var(--warning)">Devolutiva Neuro</strong> — contabilizada em quantidade e gera repasse ao terapeuta.</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--info);margin-right:5px"></span><strong style="color:var(--info)">Aval. Neuro.</strong> — apenas contagem, sem repasse financeiro ao terapeuta.</span>
+        </div>
       </div>
     </div>
-
-
-    <!-- ══ ESPAÇO CONECTA: Agendamento de Salas ══ -->
     <div class="page" id="page-conecta-agenda">
       <div class="conecta-header" style="flex-shrink:0">
         <div>
@@ -3904,9 +3906,9 @@ ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
             <label>Tipo de atendimento</label>
             <select class="form-select" id="ag-tipo">
               <option value="avaliacao">Avaliação Neuro</option>
+              <option value="devolutiva">Devolutiva Neuro</option>
               <option value="anamnese">Anamnese</option>
               <option value="retorno">Consulta de retorno</option>
-              <option value="retorno">Devolutiva Neuro</option>
               <option value="sessao">Sessão terapêutica</option>
               <option value="alta">Sessão de alta</option>
             </select>
@@ -6573,7 +6575,8 @@ function renderRelatorios() {
 
 // Rótulos legíveis para o campo tipo do agendamento
 const TIPO_AG_LABELS = {
-  avaliacao:  'Avaliação',
+  avaliacao:  'Avaliação Neuro',
+  devolutiva: 'Devolutiva Neuro',
   anamnese:   'Anamnese',
   retorno:    'Consulta de Retorno',
   sessao:     'Sessão Terapêutica',
@@ -20649,7 +20652,10 @@ window.finGerarDoFechamento = function() {
   if (!atendidos.length) { showToast('Nenhum atendimento "Atendido" no periodo selecionado', 'error'); return; }
 
   // Agrupa por profissional + tipo de terapia
-  // Tipo: "avaliacao_neuro" se tipo === 'avaliacao', senao "convencional"
+  // Tipos:
+  //   "avaliacao_neuro" → tipo === 'avaliacao'  (Avaliação Neuro — contabiliza qtd, SEM valor de repasse)
+  //   "devolutiva_neuro"→ tipo === 'devolutiva' (Devolutiva Neuro — contabiliza qtd E gera valor de repasse)
+  //   "convencional"    → todos os demais        (Sessões regulares — gera valor de repasse)
   const grupos = {};
   atendidos.forEach(a => {
     const prof = typeof PROFISSIONAIS !== 'undefined'
@@ -20658,7 +20664,16 @@ window.finGerarDoFechamento = function() {
     const profNome = prof ? prof.nome : ('Prof #'+(a.profId||'?'));
     const profId   = a.profId || null;
     const tipoRaw  = (a.tipo||'sessao').toLowerCase();
-    const tipo = (tipoRaw.includes('avalia') || tipoRaw.includes('neuro')) ? 'avaliacao_neuro' : 'convencional';
+
+    let tipo;
+    if (tipoRaw === 'avaliacao' || tipoRaw.includes('avalia')) {
+      tipo = 'avaliacao_neuro';
+    } else if (tipoRaw === 'devolutiva' || tipoRaw.includes('devolutiva')) {
+      tipo = 'devolutiva_neuro';
+    } else {
+      tipo = 'convencional';
+    }
+
     const key  = `${profId||profNome}__${tipo}`;
 
     if (!grupos[key]) {
@@ -20666,11 +20681,13 @@ window.finGerarDoFechamento = function() {
     }
     grupos[key].pacientes.add(a.paciente);
 
-    // Valor por sessão (do cadastro do profissional se disponível)
+    // Valor por sessão — Avaliação Neuro NÃO gera repasse; Devolutiva e Sessões Regulares sim
     let valSessao = 0;
-    if (prof) {
-      if (tipo === 'avaliacao_neuro') valSessao = parseFloat(prof.valorAvaliacao || prof.valorAval || 0);
-      else {
+    if (prof && tipo !== 'avaliacao_neuro') {
+      if (tipo === 'devolutiva_neuro') {
+        valSessao = parseFloat(prof.valorDevolutiva || prof.valorAvaliacao || prof.valorAval || 0);
+      } else {
+        // convencional
         const dur = a.durMin || 30;
         valSessao = dur >= 60
           ? parseFloat(prof.valor60 || prof.valorSessao60 || 0)
@@ -20730,9 +20747,10 @@ window.finRenderTabela = function() {
     return true;
   });
 
-  // Stats
-  const totPendente = lista.filter(r=>r.status==='pendente').reduce((a,r)=>a+r.valor,0);
-  const totPago     = lista.filter(r=>r.status==='pago').reduce((a,r)=>a+(r.valorPago||r.valor),0);
+  // Stats — Avaliação Neuro não gera repasse, excluída dos totais financeiros
+  const listaRepasse = lista.filter(r => r.tipo !== 'avaliacao_neuro');
+  const totPendente = listaRepasse.filter(r=>r.status==='pendente').reduce((a,r)=>a+r.valor,0);
+  const totPago     = listaRepasse.filter(r=>r.status==='pago').reduce((a,r)=>a+(r.valorPago||r.valor),0);
   const totNF       = lista.filter(r=>r.nfUrl||r.nfNome).length;
   document.getElementById('fin-stat-total').textContent    = lista.length;
   document.getElementById('fin-stat-pendente').textContent = brl(totPendente);
@@ -20747,8 +20765,16 @@ window.finRenderTabela = function() {
   }
 
   tbody.innerHTML = lista.map(r => {
-    const tipoLabel = r.tipo === 'avaliacao_neuro' ? 'Aval. Neuro.' : 'Convencional';
-    const tipoColor = r.tipo === 'avaliacao_neuro' ? 'var(--info)' : 'var(--text-secondary)';
+    const tipoLabel = r.tipo === 'avaliacao_neuro'
+      ? 'Aval. Neuro.'
+      : r.tipo === 'devolutiva_neuro'
+      ? 'Devolutiva Neuro'
+      : 'Sessões Regulares';
+    const tipoColor = r.tipo === 'avaliacao_neuro'
+      ? 'var(--info)'
+      : r.tipo === 'devolutiva_neuro'
+      ? 'var(--warning)'
+      : 'var(--text-secondary)';
     const statusChip = r.status === 'pago'
       ? '<span class="fin-status-chip pago">&#10003; Pago</span>'
       : '<span class="fin-status-chip pendente">&#9679; Pendente</span>';
@@ -20761,7 +20787,11 @@ window.finRenderTabela = function() {
       <td style="font-size:12px;color:var(--text-secondary)">${finMesLabel(r.competencia)}</td>
       <td><span style="font-size:12px;font-weight:500;color:${tipoColor}">${tipoLabel}</span></td>
       <td style="text-align:center;font-weight:600">${r.qtdPacientes}</td>
-      <td style="text-align:right;font-weight:700;color:var(--text-primary)">${brl(r.valor)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--text-primary)">${
+        r.tipo === 'avaliacao_neuro'
+          ? `<span style="font-size:11px;color:var(--text-muted)" title="Avaliação Neuro não gera repasse ao terapeuta">— sem repasse</span>`
+          : brl(r.valor)
+      }</td>
       <td style="text-align:center">${statusChip}</td>
       <td style="text-align:right;color:${r.status==='pago'?'var(--success)':'var(--text-muted)'}">${r.valorPago ? brl(r.valorPago) : '—'}</td>
       <td style="font-size:12px">${dp}</td>
@@ -20788,14 +20818,22 @@ window.finAbrirModal = function(id) {
   if (!r) return;
   _finEditId = id;
 
-  // Preenche campos do modal
+  const _tipoModalLabel = r.tipo === 'avaliacao_neuro'
+    ? 'Avaliação Neuro'
+    : r.tipo === 'devolutiva_neuro'
+    ? 'Devolutiva Neuro'
+    : 'Sessões Regulares';
   document.getElementById('fin-modal-title').textContent = 'Editar Pagamento — ' + r.profissional;
-  document.getElementById('fin-modal-sub').textContent   = finMesLabel(r.competencia) + ' · ' + (r.tipo==='avaliacao_neuro'?'Avaliação Neuro':'Convencional');
+  document.getElementById('fin-modal-sub').textContent   = finMesLabel(r.competencia) + ' · ' + _tipoModalLabel;
   document.getElementById('fin-ed-prof').textContent     = r.profissional;
   document.getElementById('fin-ed-comp').textContent     = finMesLabel(r.competencia);
-  document.getElementById('fin-ed-tipo').textContent     = r.tipo==='avaliacao_neuro'?'Avaliação Neuropsicológica':'Convencional';
+  document.getElementById('fin-ed-tipo').textContent     = r.tipo === 'avaliacao_neuro'
+    ? 'Avaliação Neuropsicológica (sem repasse)'
+    : r.tipo === 'devolutiva_neuro'
+    ? 'Devolutiva Neuropsicológica'
+    : 'Sessões Regulares';
   document.getElementById('fin-ed-qtd').textContent      = r.qtdPacientes + ' paciente' + (r.qtdPacientes!==1?'s':'');
-  document.getElementById('fin-ed-valor').textContent    = brl(r.valor);
+  document.getElementById('fin-ed-valor').textContent    = r.tipo === 'avaliacao_neuro' ? 'Não gera repasse' : brl(r.valor);
   document.getElementById('fin-status-sel').value        = r.status||'pendente';
   document.getElementById('fin-valor-pago').value        = r.valorPago||'';
   document.getElementById('fin-data-pago').value         = r.dataPagamento||'';
@@ -20917,7 +20955,11 @@ window.finGerarRecibo = function(id) {
   const clinEnd  = (typeof CLINICA !== 'undefined' && CLINICA.endereco) ? CLINICA.endereco : '';
   const clinCNPJ = (typeof CLINICA !== 'undefined' && CLINICA.cnpj) ? CLINICA.cnpj : '';
   const dataEmis = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-  const tipoLabel = r.tipo === 'avaliacao_neuro' ? 'Avaliação Neuropsicológica' : 'Terapia Convencional';
+  const tipoLabel = r.tipo === 'avaliacao_neuro'
+    ? 'Avaliação Neuropsicológica'
+    : r.tipo === 'devolutiva_neuro'
+    ? 'Devolutiva Neuropsicológica'
+    : 'Sessões Regulares';
   const valExib   = r.status === 'pago' && r.valorPago ? r.valorPago : r.valor;
   const dpExib    = r.dataPagamento ? r.dataPagamento.split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
   const numRecibo = 'REC-'+String(Date.now()).slice(-8);
