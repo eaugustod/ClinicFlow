@@ -3313,7 +3313,8 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <strong style="color:var(--accent)">⚠ Coluna de fotos — SQL necessário:</strong><br>
             Para salvar fotos de pacientes, profissionais e usuários, execute no SQL Editor do Supabase:<br>
             <code style="display:block;margin-top:6px;padding:8px;background:var(--bg-overlay);border-radius:var(--radius-sm);font-size:11px;white-space:pre;overflow-x:auto">ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS foto TEXT;
-ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;</code>
+ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;
+ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'sessao';</code>
           </div>
 
           <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
@@ -7080,6 +7081,8 @@ function openAppt(id) {
   }
   document.getElementById('ag-carteirinha').value = appt.carteirinha || '';
   document.getElementById('ag-obs').value               = appt.obs || '';
+  const agTipoSel = document.getElementById('ag-tipo');
+  if (agTipoSel) agTipoSel.value = appt.tipo || 'sessao';
 
   // Duration select
   const dur = appt.durMin || 30;
@@ -11085,6 +11088,7 @@ function salvarAgendamento() {
       appt.status     = novoStatus;
       appt.obs        = obs;
       appt.carteirinha= carteirinha;
+      appt.tipo       = document.getElementById('ag-tipo')?.value || appt.tipo || 'sessao';
       const temDados = document.getElementById('sadt-beneficiario')?.value;
       if (temDados) {
         const totalTxt = document.getElementById('sadt-total')?.textContent || '0';
@@ -11101,6 +11105,7 @@ function salvarAgendamento() {
       id: nextId, profId, paciente: pac,
       plano: planoObj?.nome || 'Particular',
       hora: horaIni, horaFim, durMin,
+      tipo: document.getElementById('ag-tipo')?.value || 'sessao',
       modalidade, meetLink, status: novoStatus,
       obs, carteirinha, guia: null, waSent: false,
       dataISO: document.getElementById('ag-data')?.value || '',
@@ -15404,8 +15409,8 @@ document.addEventListener('DOMContentLoaded', function() {
     dbToPlano: r => ({ id:r.id, nome:r.nome, nomeGuia:r.nome_guia||'', cnpj:r.cnpj||'', ans:r.ans||'', tabela:r.tabela||'CBHPM', codPrestador:r.cod_prestador||'', nomeContratado:r.nome_contratado||'', cnes:r.cnes||'', numGuiaInicial:r.num_guia_inicial||1, usaTiss:r.usa_tiss!==false, aplicaTodos:r.aplica_todos!==false, tipoId:r.tipo_id||'Código', versaoTiss:r.versao_tiss||'4.02.00', tel:r.tel||'', email:r.email||'', obs:r.obs||'', status:r.status||'Ativo', pacientes:r.pacientes||0, juntarGuia:r.juntar_guia!==false, nomePlanoGuia:r.nome_plano_guia||'', logo:r.logo||null }),
     procToDb: p => ({ codigo:p.codigo||null, descricao:p.desc, desc_curta:p.descCurta||null, tipo:p.tipo||'Sessão', val_part:p.valPart||0, val_plano:p.valPlano||0, tabela:p.tabela||'TUSS', plano_id:p.planoId||0, status:p.status||'Ativo', obs:p.obs||null }),
     dbToProc: r => ({ id:r.id, codigo:r.codigo||'', desc:r.descricao||r.desc||'', descCurta:r.desc_curta||'', tipo:r.tipo||'Sessão', valPart:r.val_part||0, valPlano:r.val_plano||0, tabela:r.tabela||'TUSS', planoId:r.plano_id||0, status:r.status||'Ativo', obs:r.obs||'' }),
-    apptToDb: a => ({ prof_id:a.profId, paciente:a.paciente, plano:a.plano||'Particular', plano_id:a.planoId||5, hora:a.hora, hora_fim:a.horaFim||null, dur_min:a.durMin||30, data_iso:a.dataISO||null, status:a.status||'agendado', obs:a.obs||null, modalidade:a.modalidade||'presencial', meet_link:a.meetLink||null, wa_sent:a.waSent||false, carteirinha:a.carteirinha||null, guia:a.guia||null }),
-    dbToAppt: r => ({ id:r.id, profId:r.prof_id, paciente:r.paciente, plano:r.plano||'Particular', planoId:r.plano_id, hora:r.hora, horaFim:r.hora_fim||'', durMin:r.dur_min||30, dataISO:r.data_iso||'', status:r.status||'agendado', obs:r.obs||'', modalidade:r.modalidade||'presencial', meetLink:r.meet_link||'', waSent:r.wa_sent||false, carteirinha:r.carteirinha||'', guia:r.guia||null }),
+    apptToDb: a => ({ prof_id:a.profId, paciente:a.paciente, plano:a.plano||'Particular', plano_id:a.planoId||5, hora:a.hora, hora_fim:a.horaFim||null, dur_min:a.durMin||30, data_iso:a.dataISO||null, tipo:a.tipo||'sessao', status:a.status||'agendado', obs:a.obs||null, modalidade:a.modalidade||'presencial', meet_link:a.meetLink||null, wa_sent:a.waSent||false, carteirinha:a.carteirinha||null, guia:a.guia||null }),
+    dbToAppt: r => ({ id:r.id, profId:r.prof_id, paciente:r.paciente, plano:r.plano||'Particular', planoId:r.plano_id, hora:r.hora, horaFim:r.hora_fim||'', durMin:r.dur_min||30, dataISO:r.data_iso||'', tipo:r.tipo||'sessao', status:r.status||'agendado', obs:r.obs||'', modalidade:r.modalidade||'presencial', meetLink:r.meet_link||'', waSent:r.wa_sent||false, carteirinha:r.carteirinha||'', guia:r.guia||null }),
     guiaToDb: g => ({ num:g.num, pac:g.pac, plano_id:g.planoId, plano:g.plano, prof_id:g.profId, valor:g.valor||0, status:g.status||'Pendente', data:g.data||null, lote_id:g.loteId||null, lote_num:g.loteNum||null, dados:g.dados||null, carteirinha:g.carteirinha||null, num_op:g.numOp||null, cid:g.cid||null }),
     dbToGuia: r => ({ id:r.id, num:r.num, pac:r.pac, planoId:r.plano_id, plano:r.plano, profId:r.prof_id, valor:r.valor||0, status:r.status||'Pendente', data:r.data||'', loteId:r.lote_id||null, loteNum:r.lote_num||null, dados:r.dados||{}, carteirinha:r.carteirinha||'', numOp:r.num_op||'', cid:r.cid||'' }),
     loteToDb: l => ({ num:l.num, competencia:l.competencia, plano_id:l.planoId, plano:l.plano, qtd:l.qtd||0, valor:l.valor||0, status:l.status||'Pendente', data_criacao:l.dataCriacao||null, data_envio:l.dataEnvio||null, obs:l.obs||null, guia_ids:l.guiaIds||[] }),
@@ -15692,6 +15697,7 @@ document.addEventListener('DOMContentLoaded', function() {
       profId, paciente: pac, plano: planoObj?.nome || 'Particular', planoId: planoId || 5,
       hora: horaIni, horaFim, durMin: calcDurMin(horaIni, horaFim),
       dataISO: document.getElementById('ag-data')?.value || '',
+      tipo: document.getElementById('ag-tipo')?.value || 'sessao',
       status: novoStatus, obs: document.getElementById('ag-obs')?.value || '',
       modalidade: document.querySelector('input[name="ag-modalidade"]:checked')?.value || 'presencial',
       meetLink: document.getElementById('ag-meet-link')?.value || '',
