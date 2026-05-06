@@ -17964,9 +17964,21 @@ document.addEventListener('DOMContentLoaded', function () {
 // ═══════════════════════════════════════════════════════════════
 
 // Identifica se o agendamento é do tipo "Avaliação Neuropsicológica"
+// Prioriza o campo tipo explícito do select, depois fallback por regex
 function isAvalNeuropsico(appt) {
-  const campos = [appt.tipo, appt.tipoSessao, appt.obs, appt.procedimento, appt.descricao];
+  const tipoExplicito = (appt.tipo || '').toLowerCase();
+  if (tipoExplicito === 'avaliacao') return true;
+  const campos = [appt.tipoSessao, appt.obs, appt.procedimento, appt.descricao];
   const re = /aval[ia]+[çc][aã]o\s+neuro|AN ·|neuro.*aval|avalia[çc][aã]o\s+nps|avalia[çc][aã]o\s+neuropsico/i;
+  return campos.some(c => c && re.test(String(c)));
+}
+
+// Identifica se o agendamento é do tipo "Devolutiva Neuropsicológica"
+function isDevolutivaNeuropsico(appt) {
+  const tipoExplicito = (appt.tipo || '').toLowerCase();
+  if (tipoExplicito === 'devolutiva') return true;
+  const campos = [appt.tipoSessao, appt.obs, appt.procedimento, appt.descricao];
+  const re = /devolutiva\s*neuro|devolutiva\s*nps|devolutiva\s*neuropsico/i;
   return campos.some(c => c && re.test(String(c)));
 }
 
@@ -17992,7 +18004,11 @@ function renderFechamento() {
   );
 
   // ── Agrupa por profissional ──────────────────────────────────
-  // Cada entrada: { prof, sessoes30:[], sessoes60:[], avals:[] }
+  // Cada entrada: { prof, sessoes30:[], sessoes60:[], avals:[], devolutivas:[] }
+  // Regras:
+  //   avals       → Avaliação Neuro: contabiliza qtd, NÃO gera repasse
+  //   devolutivas → Devolutiva Neuro: contabiliza qtd E gera repasse (valorDevolutiva)
+  //   sessoes30/60→ Sessões Regulares: geram repasse (valor30/valor60)
   const porProf = {};
 
   aptsAtend.forEach(a => {
@@ -18001,13 +18017,15 @@ function renderFechamento() {
     if (!prof) return;
 
     if (!porProf[profId]) {
-      porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [] };
+      porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [], devolutivas: [] };
     }
 
     const dur = a.durMin || 30;
 
     if (isAvalNeuropsico(a)) {
       porProf[profId].avals.push(a);
+    } else if (isDevolutivaNeuropsico(a)) {
+      porProf[profId].devolutivas.push(a);
     } else if (dur >= 60) {
       porProf[profId].sessoes60.push(a);
     } else {
@@ -18015,23 +18033,21 @@ function renderFechamento() {
     }
   });
 
-  // ── Avaliação neuropsicológica: apenas 1º atendimento por paciente/profissional ──
+  // ── Avaliação Neuro: apenas conta o 1º atend. por paciente/profissional ──
+  // (sem valor de repasse — só quantidade para registro)
   Object.values(porProf).forEach(entry => {
-    // Agrupa avaliações por paciente e mantém apenas o mais antigo
     const byPac = {};
     entry.avals.forEach(a => {
-      if (!byPac[a.paciente] || a.dataISO < byPac[a.paciente].dataISO) {
-        byPac[a.paciente] = a;
-      }
+      if (!byPac[a.paciente] || a.dataISO < byPac[a.paciente].dataISO) byPac[a.paciente] = a;
     });
     entry.avalsContabilizadas = Object.values(byPac);
-    // Mantém todas para exibição mas marca quais contam
     entry.avalsTotal = entry.avals.length;
   });
 
   // ── Calcula totais ───────────────────────────────────────────
+  // totalGeralValor = apenas Sessões Regulares + Devolutivas (o que gera repasse)
   let totalGeralAtend = 0, totalGeralValor = 0;
-  let totalGeralAval = 0, totalGeralValorAval = 0;
+  let totalGeralAval = 0, totalGeralDevol = 0, totalGeralValorDevol = 0;
 
   const profs = Object.values(porProf).sort((a,b) => a.prof.nome.localeCompare(b.prof.nome));
 
@@ -18039,17 +18055,19 @@ function renderFechamento() {
   profs.forEach(e => {
     const n30 = e.sessoes30.length, n60 = e.sessoes60.length;
     const v30 = e.prof.valor30 || 0, v60 = e.prof.valor60 || 0;
-    e.totalSessoes  = n30 + n60;
-    e.totalValorSess = n30 * v30 + n60 * v60;
-    e.totalAvals    = e.avalsContabilizadas.length;
-    e.totalValorAval = e.totalAvals * (e.prof.valorAval || 0);
-    totalGeralAtend += e.totalSessoes;
-    totalGeralValor += e.totalValorSess;
-    totalGeralAval  += e.totalAvals;
-    totalGeralValorAval += e.totalValorAval;
+    const vDevol = parseFloat(e.prof.valorDevolutiva || e.prof.valorAval || 0);
+    e.totalSessoes    = n30 + n60;
+    e.totalValorSess  = n30 * v30 + n60 * v60;
+    e.totalAvals      = e.avalsContabilizadas.length;  // só para contagem
+    e.totalDevols     = e.devolutivas.length;
+    e.totalValorDevol = e.totalDevols * vDevol;
+    e.totalValorRepasse = e.totalValorSess + e.totalValorDevol; // o que gera repasse
+    totalGeralAtend   += e.totalSessoes;
+    totalGeralValor   += e.totalValorRepasse;
+    totalGeralAval    += e.totalAvals;
+    totalGeralDevol   += e.totalDevols;
+    totalGeralValorDevol += e.totalValorDevol;
   });
-
-  const totalGeral = totalGeralValor + totalGeralValorAval;
 
   // ── Renderiza KPIs ───────────────────────────────────────────
   const kpisEl = document.getElementById('fech-kpis');
@@ -18058,32 +18076,32 @@ function renderFechamento() {
     kpisEl.innerHTML = `
       <div class="stat-card">
         <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2z"/></svg></div>
-        <div class="stat-label">Atendimentos no mês</div>
+        <div class="stat-label">Sessões Regulares</div>
         <div class="stat-value">${totalGeralAtend}</div>
         <div class="stat-delta">${mesLabel}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div>
-        <div class="stat-label">Valor total sessões</div>
-        <div class="stat-value" style="font-size:22px">${brlFmt(totalGeralValor)}</div>
-        <div class="stat-delta">${totalGeralAtend} atend. × valores cadastrados</div>
-      </div>
-      <div class="stat-card">
         <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86z"/></svg></div>
-        <div class="stat-label">Avaliações neuropsico.</div>
+        <div class="stat-label">Avaliações Neuro</div>
         <div class="stat-value">${totalGeralAval}</div>
-        <div class="stat-delta">${brlFmt(totalGeralValorAval)} total</div>
+        <div class="stat-delta">Sem repasse — só contagem</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div>
-        <div class="stat-label">Total geral a receber</div>
-        <div class="stat-value" style="font-size:22px;color:var(--success)">${brlFmt(totalGeral)}</div>
-        <div class="stat-delta">Sessões + Avaliações</div>
+        <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg></div>
+        <div class="stat-label">Devolutivas Neuro</div>
+        <div class="stat-value">${totalGeralDevol}</div>
+        <div class="stat-delta">${brlFmt(totalGeralValorDevol)} em repasse</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div>
+        <div class="stat-label">Total a Repassar</div>
+        <div class="stat-value" style="font-size:22px;color:var(--success)">${brlFmt(totalGeralValor)}</div>
+        <div class="stat-delta">Sessões Regulares + Devolutivas</div>
       </div>`;
   }
 
   // ── Renderiza cards de terapeutas ────────────────────────────
-  const profsComSessoes = profs.filter(e => e.totalSessoes > 0);
+  const profsComSessoes = profs.filter(e => e.totalSessoes > 0 || e.totalDevols > 0);
   const profsComAvals   = profs.filter(e => e.totalAvals > 0);
 
   const terapSection = document.getElementById('fech-terapeutas-section');
@@ -18108,14 +18126,15 @@ function renderFechamento() {
   if (emptyEl) emptyEl.style.display = 'none';
   if (btnRel)  btnRel.style.display  = '';
 
-  // ── Cards de sessões regulares ───────────────────────────────
+  // ── Cards de Sessões Regulares + Devolutivas Neuro (ambas geram repasse) ──
   if (terapSection) terapSection.style.display = profsComSessoes.length ? '' : 'none';
   profsComSessoes.forEach(e => {
-    const { prof, sessoes30, sessoes60 } = e;
-    const n30 = sessoes30.length, n60 = sessoes60.length;
+    const { prof, sessoes30, sessoes60, devolutivas } = e;
+    const n30 = sessoes30.length, n60 = sessoes60.length, nDevol = devolutivas.length;
     const v30 = prof.valor30 || 0, v60 = prof.valor60 || 0;
+    const vDevol = parseFloat(prof.valorDevolutiva || prof.valorAval || 0);
 
-    // Agrupa por plano
+    // Agrupa sessões regulares por plano
     const porPlano = {};
     [...sessoes30, ...sessoes60].forEach(a => {
       const pl = a.plano || 'Particular';
@@ -18136,6 +18155,16 @@ function renderFechamento() {
       </div>`;
     }).join('');
 
+    // Bloco de Devolutivas (se houver)
+    const devolBlock = nDevol > 0 ? `
+      <div style="margin-top:12px;padding:10px 12px;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius-sm)">
+        <div style="font-size:11px;font-weight:600;color:var(--warning);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Devolutivas Neuro</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+          <span style="color:var(--text-secondary)">${nDevol} devolutiva${nDevol > 1 ? 's' : ''} × ${brlFmt(vDevol)}/un</span>
+          <span style="font-weight:700;color:var(--warning)">${brlFmt(e.totalValorDevol)}</span>
+        </div>
+      </div>` : '';
+
     const alertValor = (v30 === 0 && n30 > 0) || (v60 === 0 && n60 > 0)
       ? `<div style="font-size:11px;color:var(--warning);margin-top:8px">⚠ Valor R$0,00 — configure os valores no cadastro do profissional</div>` : '';
 
@@ -18148,7 +18177,7 @@ function renderFechamento() {
         <div style="font-size:14px;font-weight:600">${prof.nome}</div>
         <div style="font-size:11px;color:var(--text-muted);margin-left:auto">${prof.esp || ''}</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
         <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
           <div style="font-size:20px;font-weight:700;color:var(--accent)">${n30}</div>
           <div style="font-size:11px;color:var(--text-muted)">Sessões 30min</div>
@@ -18160,24 +18189,28 @@ function renderFechamento() {
           <div style="font-size:11px;color:var(--text-secondary)">${brlFmt(v60)}/un</div>
         </div>
         <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:var(--success)">${brlFmt(e.totalValorSess)}</div>
-          <div style="font-size:11px;color:var(--text-muted)">Total ${n30+n60} atend.</div>
+          <div style="font-size:20px;font-weight:700;color:var(--warning)">${nDevol}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Devolutivas</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${brlFmt(vDevol)}/un</div>
+        </div>
+        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
+          <div style="font-size:16px;font-weight:700;color:var(--success)">${brlFmt(e.totalValorRepasse)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Total repasse</div>
         </div>
       </div>
-      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Por plano de saúde</div>
-      ${planoRows}
+      ${Object.keys(porPlano).length > 0 ? `<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Sessões Regulares — por plano</div>${planoRows}` : ''}
+      ${devolBlock}
       ${alertValor}`;
     terapCards.appendChild(card);
   });
 
-  // ── Cards de avaliações neuropsicológicas ────────────────────
+  // ── Cards de Avaliação Neuropsicológica (apenas contagem, SEM repasse) ──
   if (avalSection) avalSection.style.display = profsComAvals.length ? '' : 'none';
   profsComAvals.forEach(e => {
     const { prof } = e;
     const contabilizadas = e.avalsContabilizadas;
-    const vAval = prof.valorAval || 0;
 
-    // Agrupa por plano
+    // Agrupa por plano — só contagem, sem valor
     const porPlano = {};
     contabilizadas.forEach(a => {
       const pl = a.plano || 'Particular';
@@ -18189,17 +18222,14 @@ function renderFechamento() {
         <div style="color:var(--text-secondary)">${pl}</div>
         <div style="display:flex;gap:16px;align-items:center">
           <span style="color:var(--text-muted)">${n} avaliação${n > 1 ? 'ões' : ''}</span>
-          <span style="font-weight:600;color:var(--success)">${brlFmt(n * vAval)}</span>
+          <span style="font-size:11px;color:var(--text-muted);font-style:italic">sem repasse</span>
         </div>
       </div>`;
     }).join('');
 
     const descartadas = e.avalsTotal - contabilizadas.length;
     const descartInfo = descartadas > 0
-      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px">ℹ ${descartadas} atendimento(s) de retorno/continuação não contabilizado(s) (apenas 1º atendimento por paciente)</div>` : '';
-
-    const alertValor = vAval === 0
-      ? `<div style="font-size:11px;color:var(--warning);margin-top:8px">⚠ Valor R$0,00 — configure no cadastro do profissional</div>` : '';
+      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px">ℹ ${descartadas} sessão(ões) de continuação não contabilizada(s) (apenas 1º atendimento por paciente)</div>` : '';
 
     const pacientes = [...new Set(contabilizadas.map(a => a.paciente))];
 
@@ -18212,25 +18242,22 @@ function renderFechamento() {
         <div style="font-size:14px;font-weight:600">${prof.nome}</div>
         <div style="font-size:11px;color:var(--text-muted);margin-left:auto">${prof.esp || ''}</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div style="background:rgba(96,165,250,0.07);border:1px solid rgba(96,165,250,0.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--info)">
+        ℹ Esta categoria é apenas para <strong>contagem e registro</strong>. Avaliações Neuropsicológicas <strong>não geram repasse financeiro</strong> ao terapeuta. O valor de repasse das Devolutivas aparece na seção de Sessões acima.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">
         <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
-          <div style="font-size:20px;font-weight:700;color:var(--warning)">${contabilizadas.length}</div>
-          <div style="font-size:11px;color:var(--text-muted)">Avaliações</div>
-          <div style="font-size:11px;color:var(--text-secondary)">(1º atend./paciente)</div>
+          <div style="font-size:24px;font-weight:700;color:var(--info)">${contabilizadas.length}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Avaliações (1º atend./paciente)</div>
         </div>
         <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
-          <div style="font-size:20px;font-weight:700;color:var(--text-secondary)">${pacientes.length}</div>
-          <div style="font-size:11px;color:var(--text-muted)">Pacientes distintos</div>
-        </div>
-        <div style="background:var(--bg-raised);border-radius:var(--radius-sm);padding:10px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:var(--success)">${brlFmt(e.totalValorAval)}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${brlFmt(vAval)}/avaliação</div>
+          <div style="font-size:24px;font-weight:700;color:var(--text-secondary)">${pacientes.length}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Pacientes avaliados</div>
         </div>
       </div>
       <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Por plano de saúde</div>
       ${planoRows}
-      ${descartInfo}
-      ${alertValor}`;
+      ${descartInfo}`;
     avalCards.appendChild(card);
   });
 
@@ -18260,14 +18287,15 @@ function emitirRelatorioFechamento() {
     const profId = a.profId;
     const prof   = PROFISSIONAIS.find(p => p.id === profId);
     if (!prof) return;
-    if (!porProf[profId]) porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [] };
+    if (!porProf[profId]) porProf[profId] = { prof, sessoes30: [], sessoes60: [], avals: [], devolutivas: [] };
     const dur = a.durMin || 30;
-    if (isAvalNeuropsico(a)) porProf[profId].avals.push(a);
-    else if (dur >= 60)       porProf[profId].sessoes60.push(a);
-    else                      porProf[profId].sessoes30.push(a);
+    if (isAvalNeuropsico(a))       porProf[profId].avals.push(a);
+    else if (isDevolutivaNeuropsico(a)) porProf[profId].devolutivas.push(a);
+    else if (dur >= 60)            porProf[profId].sessoes60.push(a);
+    else                           porProf[profId].sessoes30.push(a);
   });
 
-  // Avaliações: apenas 1º por paciente
+  // Avaliações: apenas 1º por paciente (só contagem, sem repasse)
   Object.values(porProf).forEach(e => {
     const byPac = {};
     e.avals.forEach(a => {
@@ -18278,24 +18306,31 @@ function emitirRelatorioFechamento() {
 
   const profs = Object.values(porProf).sort((a,b) => a.prof.nome.localeCompare(b.prof.nome));
 
-  let totalAtend = 0, totalValor = 0;
+  let totalAtend = 0, totalValor = 0, totalAvals = 0, totalDevols = 0;
+
+  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
   const rows = profs.map(e => {
-    const { prof, sessoes30, sessoes60 } = e;
+    const { prof, sessoes30, sessoes60, devolutivas } = e;
     const n30 = sessoes30.length, n60 = sessoes60.length;
-    const nAval = e.avalsContabilizadas.length;
-    const total = n30 + n60;
-    const v30  = prof.valor30  || 0, v60 = prof.valor60 || 0, vAv = prof.valorAval || 0;
-    const valor = n30 * v30 + n60 * v60 + nAval * vAv;
+    const nDevol = devolutivas.length;
+    const nAval  = e.avalsContabilizadas.length;
+    const total  = n30 + n60;
+    const v30    = prof.valor30 || 0, v60 = prof.valor60 || 0;
+    const vDevol = parseFloat(prof.valorDevolutiva || prof.valorAval || 0);
+    // Repasse = Sessões Regulares + Devolutivas (Avaliação Neuro NÃO gera repasse)
+    const valor  = n30 * v30 + n60 * v60 + nDevol * vDevol;
     totalAtend += total;
     totalValor += valor;
-    const fmt = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    totalAvals += nAval;
+    totalDevols += nDevol;
     return `<tr>
       <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0">${prof.nome}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${total}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${n30}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${n60}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${nAval}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${nDevol}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;color:#64748b">${nAval}<span style="font-size:7.5pt;margin-left:4px">(s/rep.)</span></td>
       <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#16a34a">${fmt(valor)}</td>
     </tr>`;
   }).join('');
@@ -18320,14 +18355,13 @@ function emitirRelatorioFechamento() {
   thead tr { background: #1e3a6e; color: #fff; }
   thead th { padding: 8px 10px; text-align: left; font-weight: 600; }
   thead th:nth-child(2),thead th:nth-child(3),thead th:nth-child(4),thead th:nth-child(5),thead th:nth-child(6) { text-align: center; }
-  thead th:nth-child(6) { text-align: right; }
+  thead th:last-child { text-align: right; }
   tbody tr:nth-child(even) { background: #f8fafc; }
   .tfoot { margin-top: 0; }
   .tfoot tr { background: #e8f0fe !important; font-weight: 700; }
   .tfoot td { padding: 10px 10px; border-top: 2px solid #1e3a6e; font-size: 10pt; }
+  .note-box { margin: 14px 0; padding: 8px 12px; background: #eff6ff; border-left: 3px solid #3b82f6; font-size: 8pt; color: #1e40af; border-radius: 3px; }
   .footer { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 8pt; color: #94a3b8; text-align: center; }
-  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 8pt; font-weight: 600; }
-  .badge-green { background: #dcfce7; color: #16a34a; }
   @media print {
     body { padding: 10mm 12mm; }
     button { display: none !important; }
@@ -18343,15 +18377,20 @@ function emitirRelatorioFechamento() {
   <span>Emitido em: ${dataEmis}</span>
   <span>Competência: <strong>${mesLabCap}</strong></span>
 </div>
+<div class="note-box">
+  <strong>Regra de repasse:</strong> Sessões Regulares e Devolutivas Neuro geram repasse ao terapeuta.
+  Avaliações Neuropsicológicas são apenas contabilizadas (coluna "Aval. Neuro. (s/rep.)") e <strong>não entram no valor a repassar</strong>.
+</div>
 <table>
   <thead>
     <tr>
       <th>Terapeuta</th>
-      <th style="text-align:center">Total Atend.</th>
+      <th style="text-align:center">Sess. Reg.</th>
       <th style="text-align:center">30 min</th>
       <th style="text-align:center">60 min</th>
-      <th style="text-align:center">Aval. Neuro.</th>
-      <th style="text-align:right">Valor Total</th>
+      <th style="text-align:center">Devolutivas</th>
+      <th style="text-align:center">Aval. Neuro. (s/rep.)</th>
+      <th style="text-align:right">Valor Repasse</th>
     </tr>
   </thead>
   <tbody>${rows}</tbody>
@@ -18359,13 +18398,17 @@ function emitirRelatorioFechamento() {
     <tr>
       <td><strong>TOTAL GERAL</strong></td>
       <td style="text-align:center"><strong>${totalAtend}</strong></td>
-      <td colspan="3" style="text-align:center;font-size:8.5pt;color:#475569">— — —</td>
+      <td colspan="2" style="text-align:center;font-size:8.5pt;color:#475569">— —</td>
+      <td style="text-align:center"><strong>${totalDevols}</strong></td>
+      <td style="text-align:center;color:#64748b"><strong>${totalAvals}</strong></td>
       <td style="text-align:right;color:#16a34a;font-size:11pt"><strong>${fmtBrl(totalValor)}</strong></td>
     </tr>
   </tfoot>
 </table>
 <div class="footer">
-  Documento gerado automaticamente pelo ClinicFlow &bull; Apenas atendimentos com status "Atendido" &bull; Avaliação neuropsicológica: contabilizado 1º atendimento por paciente
+  Documento gerado automaticamente pelo ClinicFlow &bull; Apenas atendimentos com status "Atendido" &bull;
+  Avaliação Neuro: contabilizado apenas 1º atendimento por paciente, sem geração de repasse &bull;
+  Devolutiva Neuro: gera repasse ao terapeuta
 </div>
 <script>window.onload = function(){ window.print(); };<\/script>
 </body>
