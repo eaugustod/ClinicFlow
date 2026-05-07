@@ -3368,7 +3368,9 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             Para salvar fotos de pacientes, profissionais e usuários, execute no SQL Editor do Supabase:<br>
             <code style="display:block;margin-top:6px;padding:8px;background:var(--bg-overlay);border-radius:var(--radius-sm);font-size:11px;white-space:pre;overflow-x:auto">ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS foto TEXT;
 ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS foto TEXT;
-ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'sessao';</code>
+ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'sessao';
+-- Índice para dedup de historico por paciente + data + profissional (evita duplicatas de agendamento)
+CREATE INDEX IF NOT EXISTS idx_historico_pac_data_prof ON historico(pac_id, data, prof_id) WHERE tipo = 'agendamento';</code>
           </div>
 
           <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
@@ -5950,7 +5952,7 @@ function gotoPage(page, el) {
   if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
   if (page === 'historico') try { renderHistPacList(); } catch(e) {}
   if (page === 'dashboard') try { renderDashboard(); } catch(e) {}
-  if (page === 'relatorios') try { renderRelatorios(); initRelAtendMensalSelect(); renderRelAtendMensal(); } catch(e) {}
+  if (page === 'relatorios') try { renderRelatorios(); initRelAtendMensalSelect(); renderRelAtendMensal(); initAuditoriaFiltros(); renderAuditoriaDivergencias(); } catch(e) {}
   // Espaço Conecta
   if (page === 'conecta-agenda')        try { conectaRenderAgenda(); } catch(e) {}
   if (page === 'conecta-profissionais') try { conectaRenderLocatarios(); } catch(e) {}
@@ -6648,6 +6650,291 @@ const TIPO_AG_LABELS = {
   sessao:     'Sessão Terapêutica',
   alta:       'Sessão de Alta',
 };
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUDITORIA — DIVERGÊNCIAS DE STATUS AGENDA × HISTÓRICO
+// ═══════════════════════════════════════════════════════════════════
+
+const STATUS_LABEL = {
+  agendado:    'Agendado',
+  confirmado:  'Confirmado',
+  atendido:    'Atendido',
+  chegou:      'Em Espera',
+  desmarcado:  'Desmarcado',
+  cancelado:   'Cancelado',
+  '':          '—',
+};
+
+const STATUS_COLOR = {
+  agendado:   'var(--info)',
+  confirmado: 'var(--accent)',
+  atendido:   'var(--success)',
+  chegou:     'var(--warning)',
+  desmarcado: 'var(--text-muted)',
+  cancelado:  'var(--error)',
+  '':         'var(--text-muted)',
+};
+
+// Classifica o tipo de divergência para facilitar a análise
+function audTipoDivergencia(statusAgenda, statusHist) {
+  const a = (statusAgenda || '').toLowerCase();
+  const h = (statusHist   || '').toLowerCase();
+  if (a === 'atendido' && (h === 'desmarcado' || h === 'cancelado'))
+    return { label: 'Atendido × Cancelado', color: 'var(--error)', bg: 'rgba(239,68,68,0.08)' };
+  if ((a === 'desmarcado' || a === 'cancelado') && h === 'atendido')
+    return { label: 'Cancelado × Atendido', color: 'var(--warning)', bg: 'rgba(251,191,36,0.1)' };
+  if (a === 'atendido' && h !== 'atendido' && h !== '')
+    return { label: 'Atendido × ' + STATUS_LABEL[h], color: 'var(--warning)', bg: 'rgba(251,191,36,0.1)' };
+  if (h === 'atendido' && a !== 'atendido')
+    return { label: STATUS_LABEL[a] + ' × Atendido', color: 'var(--info)', bg: 'rgba(96,165,250,0.1)' };
+  return { label: STATUS_LABEL[a] + ' × ' + STATUS_LABEL[h], color: 'var(--text-secondary)', bg: 'rgba(100,116,139,0.07)' };
+}
+
+function initAuditoriaFiltros() {
+  // Profissionais
+  const selProf = document.getElementById('aud-filtro-prof');
+  if (!selProf) return;
+  const valorProfAtual = selProf.value;
+  selProf.innerHTML = '<option value="">Todos os terapeutas</option>';
+  PROFISSIONAIS.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.nome;
+    selProf.appendChild(o);
+  });
+  if (valorProfAtual) selProf.value = valorProfAtual;
+
+  // Meses disponíveis
+  const selMes = document.getElementById('aud-filtro-mes');
+  if (!selMes) return;
+  const valorMesAtual = selMes.value;
+  const meses = new Set();
+  APPOINTMENTS.forEach(a => { if (a.dataISO) meses.add(a.dataISO.slice(0,7)); });
+  selMes.innerHTML = '<option value="">Todos os meses</option>';
+  Array.from(meses).sort().reverse().forEach(m => {
+    const [ano, mes] = m.split('-');
+    const label = new Date(ano, mes-1, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    const o = document.createElement('option');
+    o.value = m; o.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+    selMes.appendChild(o);
+  });
+  if (valorMesAtual) selMes.value = valorMesAtual;
+}
+
+function renderAuditoriaDivergencias() {
+  initAuditoriaFiltros();
+
+  const filtroProf = document.getElementById('aud-filtro-prof')?.value || '';
+  const filtroMes  = document.getElementById('aud-filtro-mes')?.value  || '';
+
+  // Monta índice duplo:
+  // 1. por apptId (fonte) — vínculo direto e preciso
+  // 2. por chave composta pacId|dataISO|hora|profId — cobre registros antigos sem fonte
+  const histPorApptId = {};
+  const histPorChave  = {};
+  HISTORICO.forEach(h => {
+    if (h.tipo !== 'agendamento') return;
+    if (h.fonte) histPorApptId[String(h.fonte)] = h;
+    const pac = PACIENTES.find(p => p.id === h.pacId);
+    if (pac) {
+      const hora  = h.conteudo?.hora || '';
+      const chave = h.pacId + '|' + (h.data||'') + '|' + hora + '|' + (h.profId||'');
+      if (chave !== h.pacId+'|||') histPorChave[chave] = h; // só indexa se chave tem informação útil
+    }
+  });
+
+  const divergencias = [];
+
+  APPOINTMENTS.forEach(appt => {
+    // Filtro profissional
+    if (filtroProf && String(appt.profId) !== String(filtroProf)) return;
+    // Filtro mês
+    if (filtroMes && !(appt.dataISO || '').startsWith(filtroMes)) return;
+
+    // Busca pelo vínculo mais preciso primeiro
+    const pac = PACIENTES.find(p => p.nome === appt.paciente);
+    const chavePac = pac
+      ? pac.id + '|' + (appt.dataISO||'') + '|' + (appt.hora||'') + '|' + (appt.profId||'')
+      : null;
+    const hist = histPorApptId[String(appt.id)]
+      || (chavePac ? histPorChave[chavePac] : null);
+    if (!hist) return; // sem registro no histórico — não há base de comparação
+
+    const statusAgenda = (appt.status || '').toLowerCase();
+    const statusHist   = (hist.status  || (hist.conteudo?.status) || '').toLowerCase();
+
+    if (statusAgenda === statusHist) return; // sem divergência
+
+    const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
+    divergencias.push({
+      dataISO:      appt.dataISO  || '',
+      hora:         appt.hora     || '—',
+      profNome:     prof ? prof.nome : ('Prof #' + (appt.profId || '?')),
+      profId:       appt.profId,
+      paciente:     appt.paciente || '—',
+      plano:        appt.plano    || '—',
+      statusAgenda,
+      statusHist,
+      divergencia:  audTipoDivergencia(statusAgenda, statusHist),
+      apptId:       appt.id,
+    });
+  });
+
+  // Ordena: mais recente primeiro, depois por terapeuta
+  divergencias.sort((a,b) => b.dataISO.localeCompare(a.dataISO) || a.profNome.localeCompare(b.profNome));
+
+  // ── KPIs ─────────────────────────────────────────────────────
+  const kpisEl = document.getElementById('aud-kpis');
+  if (kpisEl) {
+    const porProf = {};
+    divergencias.forEach(d => {
+      porProf[d.profNome] = (porProf[d.profNome] || 0) + 1;
+    });
+    const profMaisDiv = Object.entries(porProf).sort((a,b) => b[1]-a[1])[0];
+    kpisEl.innerHTML = `
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:140px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Total de divergências</div>
+        <div style="font-size:24px;font-weight:700;color:${divergencias.length > 0 ? 'var(--warning)' : 'var(--success)'}">${divergencias.length}</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:140px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Terapeutas envolvidos</div>
+        <div style="font-size:24px;font-weight:700;color:var(--text-primary)">${Object.keys(porProf).length}</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:160px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Terapeuta c/ mais divergências</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-primary)">${profMaisDiv ? profMaisDiv[0] + ' (' + profMaisDiv[1] + ')' : '—'}</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:140px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Pacientes distintos</div>
+        <div style="font-size:24px;font-weight:700;color:var(--text-primary)">${new Set(divergencias.map(d=>d.paciente)).size}</div>
+      </div>`;
+  }
+
+  // ── Tabela ────────────────────────────────────────────────────
+  const tbody  = document.getElementById('aud-tbody');
+  const emptyEl = document.getElementById('aud-empty');
+  const tableEl = document.getElementById('aud-table');
+  if (!tbody) return;
+
+  if (divergencias.length === 0) {
+    tbody.innerHTML = '';
+    if (tableEl)  tableEl.style.display  = 'none';
+    if (emptyEl)  emptyEl.style.display  = '';
+    return;
+  }
+  if (tableEl) tableEl.style.display = '';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // Agrupa por terapeuta para exibição em grupos
+  const grupos = [];
+  let profAtual = null;
+  divergencias.forEach(d => {
+    if (d.profNome !== profAtual) {
+      grupos.push({ prof: d.profNome, rows: [] });
+      profAtual = d.profNome;
+    }
+    grupos[grupos.length-1].rows.push(d);
+  });
+
+  tbody.innerHTML = grupos.map(g => {
+    const headerRow = `<tr style="background:var(--bg-raised)">
+      <td colspan="8" style="padding:8px 14px;font-size:12px;font-weight:600;color:var(--text-primary);border-bottom:2px solid var(--border)">
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;color:var(--accent)"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+          ${g.prof} — ${g.rows.length} divergência${g.rows.length > 1 ? 's' : ''}
+        </span>
+      </td>
+    </tr>`;
+
+    const dataRows = g.rows.map(d => {
+      const dataFmt = d.dataISO ? d.dataISO.split('-').reverse().join('/') : '—';
+      const div = d.divergencia;
+      return `<tr>
+        <td style="font-weight:500;white-space:nowrap">${dataFmt}</td>
+        <td style="color:var(--text-muted);font-size:12px">${d.profNome}</td>
+        <td style="font-weight:500">${d.paciente}</td>
+        <td style="text-align:center">
+          <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:rgba(96,165,250,0.1);color:${STATUS_COLOR[d.statusAgenda] || 'var(--text-secondary)'}">
+            ${STATUS_LABEL[d.statusAgenda] || d.statusAgenda}
+          </span>
+        </td>
+        <td style="text-align:center">
+          <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:rgba(239,68,68,0.08);color:${STATUS_COLOR[d.statusHist] || 'var(--text-secondary)'}">
+            ${STATUS_LABEL[d.statusHist] || d.statusHist || '—'}
+          </span>
+        </td>
+        <td style="text-align:center">
+          <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:${div.bg};color:${div.color}">
+            ${div.label}
+          </span>
+        </td>
+        <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${d.hora}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${d.plano}</td>
+      </tr>`;
+    }).join('');
+
+    return headerRow + dataRows;
+  }).join('');
+}
+
+function exportAuditoriaDivergencias() {
+  const filtroProf = document.getElementById('aud-filtro-prof')?.value || '';
+  const filtroMes  = document.getElementById('aud-filtro-mes')?.value  || '';
+
+  const histPorApptId2 = {};
+  const histPorChave2  = {};
+  HISTORICO.forEach(h => {
+    if (h.tipo !== 'agendamento') return;
+    if (h.fonte) histPorApptId2[String(h.fonte)] = h;
+    const pac = PACIENTES.find(p => p.id === h.pacId);
+    if (pac) {
+      const hora  = h.conteudo?.hora || '';
+      const chave = h.pacId + '|' + (h.data||'') + '|' + hora + '|' + (h.profId||'');
+      if (chave !== h.pacId+'|||') histPorChave2[chave] = h;
+    }
+  });
+
+  const linhas = [['Data','Hora','Terapeuta','Paciente','Plano','Status Agenda','Status Histórico','Tipo Divergência']];
+
+  APPOINTMENTS.forEach(appt => {
+    if (filtroProf && String(appt.profId) !== String(filtroProf)) return;
+    if (filtroMes  && !(appt.dataISO||'').startsWith(filtroMes)) return;
+    const pac2    = PACIENTES.find(p => p.nome === appt.paciente);
+    const chave2  = pac2 ? pac2.id+'|'+(appt.dataISO||'')+'|'+(appt.hora||'')+'|'+(appt.profId||'') : null;
+    const hist = histPorApptId2[String(appt.id)] || (chave2 ? histPorChave2[chave2] : null);
+    if (!hist) return;
+    const sa = (appt.status || '').toLowerCase();
+    const sh = (hist.status || hist.conteudo?.status || '').toLowerCase();
+    if (sa === sh) return;
+    const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
+    const div  = audTipoDivergencia(sa, sh);
+    linhas.push([
+      (appt.dataISO||'').split('-').reverse().join('/'),
+      appt.hora || '—',
+      prof ? prof.nome : 'Prof #' + (appt.profId||'?'),
+      appt.paciente || '—',
+      appt.plano    || '—',
+      STATUS_LABEL[sa] || sa,
+      STATUS_LABEL[sh] || sh,
+      div.label,
+    ]);
+  });
+
+  linhas.sort((a,b) => {
+    const da = (a[0]||'').split('/').reverse().join('-');
+    const db = (b[0]||'').split('/').reverse().join('-');
+    return db.localeCompare(da) || a[2].localeCompare(b[2]);
+  });
+
+  const csv = linhas.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const mes  = filtroMes || 'completo';
+  a.href = url; a.download = 'auditoria_divergencias_' + mes + '.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('CSV exportado!', 'success');
+}
 
 function initRelAtendMensalSelect() {
   const sel = document.getElementById('rel-atend-mes');
@@ -12887,16 +13174,29 @@ function renderTimeline() {
     const dateFmt = date ? date.split('-').reverse().join('/') : '—';
     let html = '';
 
-    // Appointments for this date
-    (apptByDate[date]||[]).forEach(a => {
+    // Appointments for this date — cada agendamento vincula só a evolução do MESMO profissional
+    const evolsNoDiaUsadas = new Set(); // controla quais evoluções já foram exibidas dentro de um agendamento
+    (apptByDate[date]||[]).sort((a,b)=>(a.hora||'').localeCompare(b.hora||'')).forEach(a => {
       const dotColor = statusColors[a.status] || 'var(--accent)';
       const chipStr = '<span class="chip '+(a.status==='atendido'?'green':a.status==='cancelado'?'gray':a.status==='confirmado'?'purple':a.status==='chegou'?'yellow':a.status==='desmarcado'?'red':'blue')+'" style="font-size:10px">'+a.status+'</span>';
-      // Evoluções do mesmo dia — embute dentro do box do agendamento
-      const evolsNoDia = (evolByDate[date]||[]);
-      const evolsHTML = evolsNoDia.length ? evolsNoDia.map(ev => {
-        const prof = PROFISSIONAIS.find(x=>x.id===ev.profId);
+      const profAppt = PROFISSIONAIS.find(x=>x.id===a.profId);
+      const profLabel = profAppt ? '<span style="font-size:11px;background:rgba(96,165,250,0.1);color:var(--info);border-radius:99px;padding:1px 8px">'+profAppt.nomeAgenda||profAppt.nome+'</span>' : '';
+
+      // Evoluções vinculadas a este agendamento: mesmo profissional + mesma data
+      // Prioridade: fonte === apptId, depois profId + data coincidente
+      const evolsDoAppt = (evolByDate[date]||[]).filter(ev => {
+        if (evolsNoDiaUsadas.has(ev.id)) return false;
+        // Vínculo direto pelo fonte (apptId gravado no historico)
+        if (ev.fonte && ev.fonte === String(a.id)) return true;
+        // Vínculo por profissional: mesmo profId, mesma data, sem fonte de outro agendamento
+        if (ev.profId === a.profId && (!ev.fonte || ev.fonte === '')) return true;
+        return false;
+      });
+      evolsDoAppt.forEach(ev => evolsNoDiaUsadas.add(ev.id));
+
+      const evolsHTML = evolsDoAppt.length ? evolsDoAppt.map(ev => {
         return '<div style="background:var(--bg-overlay);border-left:3px solid var(--success);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:8px 12px;margin-top:8px">' +
-          '<div style="font-size:11px;font-weight:600;color:var(--success);margin-bottom:4px">📝 '+(ev.titulo||'Evolução')+(prof?' · <span style="color:var(--text-muted)">'+prof.nome+'</span>':'')+'</div>' +
+          '<div style="font-size:11px;font-weight:600;color:var(--success);margin-bottom:4px">📝 '+(ev.titulo||'Evolução')+'</div>' +
           '<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5">'+(ev.conteudo?.texto||'')+'</div>' +
           '<div style="margin-top:6px;display:flex;gap:4px">' +
             '<button class="action-btn" style="font-size:11px" onclick="editarHistorico('+ev.id+')">✏️</button>' +
@@ -12904,6 +13204,7 @@ function renderTimeline() {
           '</div>' +
         '</div>';
       }).join('') : '';
+
       const badges = guiasBadge(date);
       html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
         '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
@@ -12914,7 +13215,7 @@ function renderTimeline() {
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
             '<span style="font-size:14px">📅</span>' +
             '<span style="font-size:13px;font-weight:500">'+a.hora+' — '+a.plano+'</span>' +
-            chipStr +
+            chipStr + profLabel +
             (badges ? badges : '') +
             '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
           '</div>' +
@@ -12924,33 +13225,32 @@ function renderTimeline() {
       '</div>';
     });
 
-    // Evoluções sem agendamento no mesmo dia (ou dias sem agendamento)
-    if (!apptByDate[date] || !apptByDate[date].length) {
-      (evolByDate[date]||[]).forEach(ev => {
-        const prof = PROFISSIONAIS.find(x=>x.id===ev.profId);
-        const badges = guiasBadge(date);
-        html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
-          '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
-            '<div style="width:12px;height:12px;border-radius:50%;background:#34d399;border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
-            '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
+    // Evoluções que não foram vinculadas a nenhum agendamento do dia (ou dias sem agendamento)
+    const evolsSemAppt = (evolByDate[date]||[]).filter(ev => !evolsNoDiaUsadas.has(ev.id));
+    evolsSemAppt.forEach(ev => {
+      const prof = PROFISSIONAIS.find(x=>x.id===ev.profId);
+      const badges = guiasBadge(date);
+      html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
+          '<div style="width:12px;height:12px;border-radius:50%;background:#34d399;border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
+          '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
+        '</div>' +
+        '<div style="flex:1;padding-bottom:4px">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
+            '<span style="font-size:14px">📝</span>' +
+            '<span style="font-size:13px;font-weight:500">'+(ev.titulo||'Evolução')+'</span>' +
+            (prof?'<span style="font-size:11px;color:var(--text-muted)">'+prof.nome+'</span>':'') +
+            (badges ? badges : '') +
+            '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
           '</div>' +
-          '<div style="flex:1;padding-bottom:4px">' +
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
-              '<span style="font-size:14px">📝</span>' +
-              '<span style="font-size:13px;font-weight:500">'+(ev.titulo||'Evolução')+'</span>' +
-              (prof?'<span style="font-size:11px;color:var(--text-muted)">'+prof.nome+'</span>':'') +
-              (badges ? badges : '') +
-              '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
-            '</div>' +
-            (ev.conteudo?.texto?'<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5;background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+ev.conteudo.texto+'</div>':'') +
-            '<div style="margin-top:4px;display:flex;gap:4px">' +
-              '<button class="action-btn" onclick="editarHistorico('+ev.id+')">'+EDIT_ICON+'</button>' +
-              '<button class="action-btn" style="color:var(--danger)" onclick="excluirHistorico('+ev.id+')">'+DEL_ICON+'</button>' +
-            '</div>' +
+          (ev.conteudo?.texto?'<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5;background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+ev.conteudo.texto+'</div>':'') +
+          '<div style="margin-top:4px;display:flex;gap:4px">' +
+            '<button class="action-btn" onclick="editarHistorico('+ev.id+')">'+EDIT_ICON+'</button>' +
+            '<button class="action-btn" style="color:var(--danger)" onclick="excluirHistorico('+ev.id+')">'+DEL_ICON+'</button>' +
           '</div>' +
-        '</div>';
-      });
-    }
+        '</div>' +
+      '</div>';
+    });
 
     // Other historico items (anamnese etc.) for this date
     otherHists.filter(h=>(h.data||'')===date).forEach(h => {
@@ -13663,12 +13963,19 @@ function registrarAtendimento(apptId) {
   if (!appt) return;
   const pac = PACIENTES.find(p=>p.nome===appt.paciente);
   if (!pac) return;
-  const already = HISTORICO.find(h=>h.tipo==='agendamento'&&h.fonte===String(apptId));
+  // Chave composta: apptId é o mais preciso; fallback por pacId+data+hora+profId
+  const already = HISTORICO.find(h =>
+    h.tipo === 'agendamento' && (
+      h.fonte === String(apptId) ||
+      (h.pacId === pac.id && h.data === (appt.dataISO||'') &&
+       h.profId === appt.profId && (h.conteudo?.hora||'') === (appt.hora||''))
+    )
+  );
   if (already) return;
   HISTORICO.push({
     id: nextHistId++, pacId: pac.id, tipo:'agendamento',
     titulo: appt.hora+' — '+appt.plano,
-    conteudo: { obs:appt.obs||'', status:appt.status },
+    conteudo: { obs:appt.obs||'', status:appt.status, hora:appt.hora||'', profId:appt.profId },
     profId: appt.profId, data: appt.dataISO||'',
     status: appt.status, fonte: String(apptId),
   });
@@ -15858,7 +16165,57 @@ document.addEventListener('DOMContentLoaded', function() {
     appt.status = status;
     const sb = getDb();
     if (sb) await sb.from('agendamentos').update({ status }).eq('id', id);
-    if (status === 'atendido') try { registrarAtendimento(id); } catch (e) {}
+    if (status === 'atendido') {
+      try {
+        const pac = PACIENTES.find(p => p.nome === appt.paciente);
+        if (pac) {
+          // Verifica duplicata no banco usando chave composta antes de inserir
+          const existenteQuery = sb.from('historico')
+            .select('id')
+            .eq('pac_id', pac.id)
+            .eq('tipo', 'agendamento')
+            .eq('data', appt.dataISO || '');
+          if (appt.profId) existenteQuery.eq('prof_id', appt.profId);
+          else existenteQuery.is('prof_id', null);
+          const { data: existente } = await existenteQuery.limit(1);
+          const jaExisteNoBanco = existente && existente.length > 0;
+          // Verifica também pelo fonte (apptId)
+          const { data: existenteFonte } = await sb.from('historico')
+            .select('id')
+            .eq('tipo', 'agendamento')
+            .eq('fonte', String(id))
+            .limit(1);
+          if (!jaExisteNoBanco && !(existenteFonte && existenteFonte.length > 0)) {
+            const novoHist = {
+              pac_id: pac.id, tipo: 'agendamento',
+              titulo: (appt.hora || '') + ' — ' + (appt.plano || ''),
+              conteudo: { obs: appt.obs || '', status: appt.status, hora: appt.hora || '', profId: appt.profId },
+              prof_id: appt.profId || null,
+              data: appt.dataISO || '',
+              status: appt.status,
+              fonte: String(id),
+            };
+            const { data: inserted } = await sb.from('historico').insert([novoHist]).select().single();
+            // Também adiciona em memória (evita duplicata local)
+            const jaLocal = HISTORICO.find(h =>
+              h.tipo === 'agendamento' && (
+                h.fonte === String(id) ||
+                (h.pacId === pac.id && h.data === (appt.dataISO||'') && h.profId === appt.profId)
+              )
+            );
+            if (!jaLocal) {
+              HISTORICO.push({ ...novoHist, id: inserted?.id || nextHistId++, pacId: pac.id });
+            }
+          } else {
+            // Já existe no banco — só garante memória local
+            registrarAtendimento(id);
+          }
+        }
+      } catch (e) {
+        // Fallback para versão local se Supabase falhar
+        try { registrarAtendimento(id); } catch(e2) {}
+      }
+    }
     const msgs = { confirmado:'Consulta confirmada!', atendido:'Marcado como atendido!', chegou:'Paciente em espera!', desmarcado:'Consulta desmarcada.', cancelado:'Agendamento cancelado.' };
     showToast(msgs[status] || 'Status atualizado.', ['desmarcado','cancelado'].includes(status) ? 'error' : 'success');
     refreshUI();
