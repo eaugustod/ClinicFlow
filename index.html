@@ -6695,23 +6695,49 @@ const STATUS_COLOR = {
 };
 
 // Extrai o status real de um registro de histórico, buscando em todos os campos possíveis
+// Normaliza qualquer valor de status/presença para o valor canônico do sistema
+// Garante que "presente", "p", "atendido" sejam todos tratados como "atendido"
+function audNormalizarStatus(raw) {
+  if (!raw) return null;
+  const v = String(raw).trim().toLowerCase();
+  if (!v) return null;
+  // Canônico: atendido
+  if (['atendido','presente','p','sim','yes','✓','compareceu','realizado'].includes(v))
+    return 'atendido';
+  // Canônico: desmarcado
+  if (['desmarcado','justificado','justificou','justificada','j','justif',
+       'justificou ausência','justificou ausencia','remarcado'].includes(v))
+    return 'desmarcado';
+  // Canônico: cancelado
+  if (['cancelado','falta','f','ausente','não compareceu','nao compareceu',
+       'nao veio','não veio','c','no-show'].includes(v))
+    return 'cancelado';
+  // Canônico: confirmado
+  if (['confirmado','confirmou','conf'].includes(v))
+    return 'confirmado';
+  // Canônico: agendado
+  if (['agendado','agendada','scheduled'].includes(v))
+    return 'agendado';
+  // Retorna o valor como veio se não for mapeado
+  return v;
+}
+
 function audExtrairStatusHist(hist) {
   if (!hist) return null;
-  // 1. Campo status direto na raiz
+  // 1. Campo status direto na raiz — normaliza antes de retornar
   const s = (hist.status || '').trim();
-  if (s) return s.toLowerCase();
+  if (s) return audNormalizarStatus(s);
   // 2. Dentro de conteudo.status
   const cs = (hist.conteudo?.status || '').trim();
-  if (cs) return cs.toLowerCase();
+  if (cs) return audNormalizarStatus(cs);
   // 3. Dentro de conteudo.presenca (importações de planilha)
-  const cp = (hist.conteudo?.presenca || '').trim().toLowerCase();
-  if (cp === 'p' || cp === 'presente' || cp === 'atendido') return 'atendido';
-  if (cp === 'f' || cp === 'falta' || cp === 'ausente')     return 'desmarcado';
-  if (cp === 'cancelado' || cp === 'c')                      return 'cancelado';
+  const cp = (hist.conteudo?.presenca || '').trim();
+  if (cp) return audNormalizarStatus(cp);
   // 4. Título pode conter ícone de presença (● P / ● F)
   const titulo = (hist.titulo || '').toLowerCase();
-  if (/● p|presença|✅/.test(titulo))   return 'atendido';
-  if (/● f|falta|❌/.test(titulo))      return 'desmarcado';
+  if (/● p|✅|presença ok/.test(titulo))  return 'atendido';
+  if (/● f|❌|falta/.test(titulo))       return 'cancelado';
+  if (/● j|justif/.test(titulo))           return 'desmarcado';
   // Nenhuma informação encontrada — terapeuta não apontou
   return null;
 }
@@ -6828,12 +6854,15 @@ function renderAuditoriaDivergencias() {
       return;
     }
 
-    // Extrai status do histórico de todos os campos possíveis
-    const statusHist = audExtrairStatusHist(hist); // pode ser null
+    // Extrai e normaliza status de ambos os lados antes de comparar
+    const statusHistNorm   = audExtrairStatusHist(hist);       // já normalizado
+    const statusAgendaNorm = audNormalizarStatus(statusAgenda); // normaliza agenda também
 
-    // Sem divergência: status iguais OU agenda ainda aberta sem apontamento
-    if (statusHist !== null && statusAgenda === statusHist) return;
-    if (statusHist === null && !statusFinais.includes(statusAgenda)) return;
+    // Sem divergência: status equivalentes OU agenda ainda aberta sem apontamento
+    if (statusHistNorm !== null && statusAgendaNorm === statusHistNorm) return;
+    if (statusHistNorm === null && !statusFinais.includes(statusAgendaNorm)) return;
+
+    const statusHist = statusHistNorm; // alias para uso abaixo
 
     const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
     divergencias.push({
@@ -6992,9 +7021,11 @@ function exportAuditoriaDivergencias() {
     if (!hist) {
       if (!statusFinaisExp.includes(sa)) return;
     }
-    const sh = hist ? audExtrairStatusHist(hist) : null;
-    if (sh !== null && sa === sh) return;
-    if (sh === null && !statusFinaisExp.includes(sa)) return;
+    const shNorm = hist ? audExtrairStatusHist(hist) : null;
+    const saNorm = audNormalizarStatus(sa);
+    if (shNorm !== null && saNorm === shNorm) return;
+    if (shNorm === null && !statusFinaisExp.includes(saNorm)) return;
+    const sh = shNorm;
     const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
     const div  = audTipoDivergencia(sa, sh);
     linhas.push([
