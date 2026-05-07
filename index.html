@@ -6804,18 +6804,74 @@ function renderAuditoriaDivergencias() {
   // Monta índice duplo:
   // 1. por apptId (fonte) — vínculo direto e preciso
   // 2. por chave composta pacId|dataISO|hora|profId — cobre registros antigos sem fonte
-  const histPorApptId = {};
-  const histPorChave  = {};
+  // Índices múltiplos para cobrir todas as variações de preenchimento do histórico:
+  // 1. por apptId numérico (fonte = id do agendamento)
+  // 2. por chave completa: pacId|data|hora|profId
+  // 3. por chave sem prof:  pacId|data|hora  (profId NULL no histórico)
+  // 4. por chave sem hora:  pacId|data|profId (hora não gravada no histórico)
+  // 5. por chave mínima:    pacId|data        (fallback — usado quando há 1 histórico por dia)
+  const histPorApptId  = {};
+  const histPorFull    = {}; // pacId|data|hora|profId
+  const histPorSemProf = {}; // pacId|data|hora  (profId null)
+  const histPorSemHora = {}; // pacId|data|profId (hora null)
+  const histPorData    = {}; // pacId|data — array pois pode haver múltiplos
+
   HISTORICO.forEach(h => {
     if (h.tipo !== 'agendamento') return;
-    if (h.fonte) histPorApptId[String(h.fonte)] = h;
-    const pac = PACIENTES.find(p => p.id === h.pacId);
-    if (pac) {
-      const hora  = h.conteudo?.hora || '';
-      const chave = h.pacId + '|' + (h.data||'') + '|' + hora + '|' + (h.profId||'');
-      if (chave !== h.pacId+'|||') histPorChave[chave] = h; // só indexa se chave tem informação útil
+    // Índice por fonte (apptId como string ou número)
+    if (h.fonte) {
+      histPorApptId[String(h.fonte)] = h;
+      // Tenta também como número caso fonte seja string de id numérico
+      const n = parseInt(h.fonte);
+      if (!isNaN(n)) histPorApptId[n] = h;
     }
+    const hora  = (h.conteudo?.hora || h.titulo?.match(/^(\d{2}:\d{2})/)?.[1] || '').substring(0,5);
+    const prof  = h.profId || null;
+    const data  = h.data   || '';
+    const pacId = h.pacId;
+    if (!pacId || !data) return;
+
+    // Chave completa
+    if (hora && prof) histPorFull[pacId+'|'+data+'|'+hora+'|'+prof] = h;
+    // Sem profissional (prof_id NULL no banco)
+    if (hora)         histPorSemProf[pacId+'|'+data+'|'+hora] = h;
+    // Sem hora (hora não gravada)
+    if (prof)         histPorSemHora[pacId+'|'+data+'|'+prof] = h;
+    // Só paciente + data (fallback)
+    if (!histPorData[pacId+'|'+data]) histPorData[pacId+'|'+data] = [];
+    histPorData[pacId+'|'+data].push(h);
   });
+
+  function audBuscarHist(appt, pac) {
+    if (!pac) return null;
+    const id    = appt.id;
+    const data  = appt.dataISO || '';
+    const hora  = (appt.hora || '').substring(0,5);
+    const prof  = appt.profId || null;
+    const pacId = pac.id;
+
+    // 1. Vínculo direto pelo apptId
+    if (histPorApptId[id] || histPorApptId[String(id)]) 
+      return histPorApptId[id] || histPorApptId[String(id)];
+    // 2. Chave completa
+    if (hora && prof && histPorFull[pacId+'|'+data+'|'+hora+'|'+prof])
+      return histPorFull[pacId+'|'+data+'|'+hora+'|'+prof];
+    // 3. Sem profissional (prof_id NULL no histórico)
+    if (hora && histPorSemProf[pacId+'|'+data+'|'+hora])
+      return histPorSemProf[pacId+'|'+data+'|'+hora];
+    // 4. Sem hora (hora não gravada no histórico)
+    if (prof && histPorSemHora[pacId+'|'+data+'|'+prof])
+      return histPorSemHora[pacId+'|'+data+'|'+prof];
+    // 5. Fallback por paciente+data: só usa se houver exatamente 1 registro
+    const porData = histPorData[pacId+'|'+data];
+    if (porData && porData.length === 1) return porData[0];
+    // Se há múltiplos no dia, tenta encontrar o que tem hora mais próxima no título
+    if (porData && porData.length > 1 && hora) {
+      const match = porData.find(h => (h.titulo||'').includes(hora));
+      if (match) return match;
+    }
+    return null;
+  }
 
   const divergencias = [];
 
@@ -6825,13 +6881,8 @@ function renderAuditoriaDivergencias() {
     // Filtro mês
     if (filtroMes && !(appt.dataISO || '').startsWith(filtroMes)) return;
 
-    // Busca pelo vínculo mais preciso primeiro
-    const pac = PACIENTES.find(p => p.nome === appt.paciente);
-    const chavePac = pac
-      ? pac.id + '|' + (appt.dataISO||'') + '|' + (appt.hora||'') + '|' + (appt.profId||'')
-      : null;
-    const hist = histPorApptId[String(appt.id)]
-      || (chavePac ? histPorChave[chavePac] : null);
+    const pac  = PACIENTES.find(p => p.nome === appt.paciente);
+    const hist = audBuscarHist(appt, pac);
 
     // Se não há historico: só registra divergência se o agendamento já tem status final
     const statusAgenda = (appt.status || '').toLowerCase();
@@ -6995,27 +7046,13 @@ function exportAuditoriaDivergencias() {
   const filtroProf = document.getElementById('aud-filtro-prof')?.value || '';
   const filtroMes  = document.getElementById('aud-filtro-mes')?.value  || '';
 
-  const histPorApptId2 = {};
-  const histPorChave2  = {};
-  HISTORICO.forEach(h => {
-    if (h.tipo !== 'agendamento') return;
-    if (h.fonte) histPorApptId2[String(h.fonte)] = h;
-    const pac = PACIENTES.find(p => p.id === h.pacId);
-    if (pac) {
-      const hora  = h.conteudo?.hora || '';
-      const chave = h.pacId + '|' + (h.data||'') + '|' + hora + '|' + (h.profId||'');
-      if (chave !== h.pacId+'|||') histPorChave2[chave] = h;
-    }
-  });
-
   const linhas = [['Data','Hora','Terapeuta','Paciente','Plano','Status Agenda','Status Histórico','Tipo Divergência']];
 
   APPOINTMENTS.forEach(appt => {
     if (filtroProf && String(appt.profId) !== String(filtroProf)) return;
     if (filtroMes  && !(appt.dataISO||'').startsWith(filtroMes)) return;
-    const pac2    = PACIENTES.find(p => p.nome === appt.paciente);
-    const chave2  = pac2 ? pac2.id+'|'+(appt.dataISO||'')+'|'+(appt.hora||'')+'|'+(appt.profId||'') : null;
-    const hist = histPorApptId2[String(appt.id)] || (chave2 ? histPorChave2[chave2] : null);
+    const pac2 = PACIENTES.find(p => p.nome === appt.paciente);
+    const hist = audBuscarHist(appt, pac2);
     const sa = (appt.status || '').toLowerCase();
     const statusFinaisExp = ['atendido','desmarcado','cancelado'];
     if (!hist) {
