@@ -2839,6 +2839,11 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <select class="form-select" id="aud-filtro-mes" style="width:150px;padding:6px 10px;font-size:12px" onchange="renderAuditoriaDivergencias()">
               <option value="">Todos os meses</option>
             </select>
+            <select class="form-select" id="aud-filtro-tipo" style="width:190px;padding:6px 10px;font-size:12px" onchange="renderAuditoriaDivergencias()">
+              <option value="">Todos os tipos</option>
+              <option value="sem_apontamento">Sem apontamento</option>
+              <option value="conflito">Conflito de status</option>
+            </select>
             <button class="btn-sm btn-secondary" onclick="renderAuditoriaDivergencias()" style="font-size:12px">
               <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
               Atualizar
@@ -6662,32 +6667,63 @@ const STATUS_LABEL = {
   chegou:      'Em Espera',
   desmarcado:  'Desmarcado',
   cancelado:   'Cancelado',
+  sem_apontamento: 'Sem apontamento',
   '':          '—',
 };
 
 const STATUS_COLOR = {
-  agendado:   'var(--info)',
-  confirmado: 'var(--accent)',
-  atendido:   'var(--success)',
-  chegou:     'var(--warning)',
-  desmarcado: 'var(--text-muted)',
-  cancelado:  'var(--error)',
-  '':         'var(--text-muted)',
+  agendado:        'var(--info)',
+  confirmado:      'var(--accent)',
+  atendido:        'var(--success)',
+  chegou:          'var(--warning)',
+  desmarcado:      'var(--text-muted)',
+  cancelado:       'var(--error)',
+  sem_apontamento: 'var(--text-muted)',
+  '':              'var(--text-muted)',
 };
+
+// Extrai o status real de um registro de histórico, buscando em todos os campos possíveis
+function audExtrairStatusHist(hist) {
+  if (!hist) return null;
+  // 1. Campo status direto na raiz
+  const s = (hist.status || '').trim();
+  if (s) return s.toLowerCase();
+  // 2. Dentro de conteudo.status
+  const cs = (hist.conteudo?.status || '').trim();
+  if (cs) return cs.toLowerCase();
+  // 3. Dentro de conteudo.presenca (importações de planilha)
+  const cp = (hist.conteudo?.presenca || '').trim().toLowerCase();
+  if (cp === 'p' || cp === 'presente' || cp === 'atendido') return 'atendido';
+  if (cp === 'f' || cp === 'falta' || cp === 'ausente')     return 'desmarcado';
+  if (cp === 'cancelado' || cp === 'c')                      return 'cancelado';
+  // 4. Título pode conter ícone de presença (● P / ● F)
+  const titulo = (hist.titulo || '').toLowerCase();
+  if (/● p|presença|✅/.test(titulo))   return 'atendido';
+  if (/● f|falta|❌/.test(titulo))      return 'desmarcado';
+  // Nenhuma informação encontrada — terapeuta não apontou
+  return null;
+}
 
 // Classifica o tipo de divergência para facilitar a análise
 function audTipoDivergencia(statusAgenda, statusHist) {
   const a = (statusAgenda || '').toLowerCase();
-  const h = (statusHist   || '').toLowerCase();
+  const h = statusHist ? statusHist.toLowerCase() : null;
+
+  // Terapeuta não apontou nenhum status
+  if (!h) {
+    if (a === 'atendido')
+      return { label: 'Atendido sem apontamento', color: 'var(--warning)', bg: 'rgba(251,191,36,0.1)' };
+    return { label: 'Histórico sem status', color: 'var(--text-muted)', bg: 'rgba(100,116,139,0.07)' };
+  }
   if (a === 'atendido' && (h === 'desmarcado' || h === 'cancelado'))
-    return { label: 'Atendido × Cancelado', color: 'var(--error)', bg: 'rgba(239,68,68,0.08)' };
+    return { label: 'Atendido × Cancelado', color: 'var(--error)', bg: 'rgba(239,68,68,0.1)' };
   if ((a === 'desmarcado' || a === 'cancelado') && h === 'atendido')
-    return { label: 'Cancelado × Atendido', color: 'var(--warning)', bg: 'rgba(251,191,36,0.1)' };
-  if (a === 'atendido' && h !== 'atendido' && h !== '')
-    return { label: 'Atendido × ' + STATUS_LABEL[h], color: 'var(--warning)', bg: 'rgba(251,191,36,0.1)' };
+    return { label: 'Cancelado × Atendido', color: 'var(--error)', bg: 'rgba(239,68,68,0.1)' };
+  if (a === 'atendido' && h !== 'atendido')
+    return { label: 'Atendido × ' + (STATUS_LABEL[h] || h), color: 'var(--warning)', bg: 'rgba(251,191,36,0.1)' };
   if (h === 'atendido' && a !== 'atendido')
-    return { label: STATUS_LABEL[a] + ' × Atendido', color: 'var(--info)', bg: 'rgba(96,165,250,0.1)' };
-  return { label: STATUS_LABEL[a] + ' × ' + STATUS_LABEL[h], color: 'var(--text-secondary)', bg: 'rgba(100,116,139,0.07)' };
+    return { label: (STATUS_LABEL[a] || a) + ' × Atendido', color: 'var(--info)', bg: 'rgba(96,165,250,0.1)' };
+  return { label: (STATUS_LABEL[a] || a) + ' × ' + (STATUS_LABEL[h] || h), color: 'var(--text-secondary)', bg: 'rgba(100,116,139,0.07)' };
 }
 
 function initAuditoriaFiltros() {
@@ -6725,6 +6761,7 @@ function renderAuditoriaDivergencias() {
 
   const filtroProf = document.getElementById('aud-filtro-prof')?.value || '';
   const filtroMes  = document.getElementById('aud-filtro-mes')?.value  || '';
+  const filtroTipo = document.getElementById('aud-filtro-tipo')?.value || '';
 
   // Monta índice duplo:
   // 1. por apptId (fonte) — vínculo direto e preciso
@@ -6757,68 +6794,105 @@ function renderAuditoriaDivergencias() {
       : null;
     const hist = histPorApptId[String(appt.id)]
       || (chavePac ? histPorChave[chavePac] : null);
-    if (!hist) return; // sem registro no histórico — não há base de comparação
 
+    // Se não há historico: só registra divergência se o agendamento já tem status final
     const statusAgenda = (appt.status || '').toLowerCase();
-    const statusHist   = (hist.status  || (hist.conteudo?.status) || '').toLowerCase();
+    const statusFinais = ['atendido','desmarcado','cancelado'];
+    if (!hist) {
+      if (!statusFinais.includes(statusAgenda)) return; // sem status final, sem divergência
+      const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
+      divergencias.push({
+        dataISO:     appt.dataISO || '',
+        hora:        appt.hora    || '—',
+        profNome:    prof ? prof.nome : ('Prof #' + (appt.profId || '?')),
+        profId:      appt.profId,
+        paciente:    appt.paciente || '—',
+        plano:       appt.plano    || '—',
+        statusAgenda,
+        statusHist:  null, // sem registro no histórico
+        divergencia: audTipoDivergencia(statusAgenda, null),
+        apptId:      appt.id,
+      });
+      return;
+    }
 
-    if (statusAgenda === statusHist) return; // sem divergência
+    // Extrai status do histórico de todos os campos possíveis
+    const statusHist = audExtrairStatusHist(hist); // pode ser null
+
+    // Sem divergência: status iguais OU agenda ainda aberta sem apontamento
+    if (statusHist !== null && statusAgenda === statusHist) return;
+    if (statusHist === null && !statusFinais.includes(statusAgenda)) return;
 
     const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
     divergencias.push({
-      dataISO:      appt.dataISO  || '',
-      hora:         appt.hora     || '—',
-      profNome:     prof ? prof.nome : ('Prof #' + (appt.profId || '?')),
-      profId:       appt.profId,
-      paciente:     appt.paciente || '—',
-      plano:        appt.plano    || '—',
+      dataISO:     appt.dataISO || '',
+      hora:        appt.hora    || '—',
+      profNome:    prof ? prof.nome : ('Prof #' + (appt.profId || '?')),
+      profId:      appt.profId,
+      paciente:    appt.paciente || '—',
+      plano:       appt.plano    || '—',
       statusAgenda,
       statusHist,
-      divergencia:  audTipoDivergencia(statusAgenda, statusHist),
-      apptId:       appt.id,
+      divergencia: audTipoDivergencia(statusAgenda, statusHist),
+      apptId:      appt.id,
     });
   });
 
+  // Aplica filtro por tipo de divergência
+  const divFiltradas = filtroTipo === 'sem_apontamento'
+    ? divergencias.filter(d => d.statusHist === null)
+    : filtroTipo === 'conflito'
+    ? divergencias.filter(d => d.statusHist !== null)
+    : divergencias;
+
   // Ordena: mais recente primeiro, depois por terapeuta
-  divergencias.sort((a,b) => b.dataISO.localeCompare(a.dataISO) || a.profNome.localeCompare(b.profNome));
+  divFiltradas.sort((a,b) => b.dataISO.localeCompare(a.dataISO) || a.profNome.localeCompare(b.profNome));
 
   // ── KPIs ─────────────────────────────────────────────────────
   const kpisEl = document.getElementById('aud-kpis');
   if (kpisEl) {
     const porProf = {};
-    divergencias.forEach(d => {
-      porProf[d.profNome] = (porProf[d.profNome] || 0) + 1;
-    });
+    divFiltradas.forEach(d => { porProf[d.profNome] = (porProf[d.profNome] || 0) + 1; });
     const profMaisDiv = Object.entries(porProf).sort((a,b) => b[1]-a[1])[0];
+    const nSemApont   = divergencias.filter(d => d.statusHist === null).length;
+    const nConflito   = divergencias.filter(d => d.statusHist !== null).length;
     kpisEl.innerHTML = `
-      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:140px">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Total de divergências</div>
-        <div style="font-size:24px;font-weight:700;color:${divergencias.length > 0 ? 'var(--warning)' : 'var(--success)'}">${divergencias.length}</div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:130px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Total divergências</div>
+        <div style="font-size:24px;font-weight:700;color:${divFiltradas.length > 0 ? 'var(--warning)' : 'var(--success)'}">${divFiltradas.length}</div>
       </div>
-      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:140px">
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:130px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sem apontamento</div>
+        <div style="font-size:24px;font-weight:700;color:var(--text-muted)">${nSemApont}</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:130px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Conflito de status</div>
+        <div style="font-size:24px;font-weight:700;color:var(--error)">${nConflito}</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:130px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Terapeutas envolvidos</div>
         <div style="font-size:24px;font-weight:700;color:var(--text-primary)">${Object.keys(porProf).length}</div>
       </div>
       <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:160px">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Terapeuta c/ mais divergências</div>
-        <div style="font-size:15px;font-weight:600;color:var(--text-primary)">${profMaisDiv ? profMaisDiv[0] + ' (' + profMaisDiv[1] + ')' : '—'}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Mais divergências</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${profMaisDiv ? profMaisDiv[0] + ' (' + profMaisDiv[1] + ')' : '—'}</div>
       </div>
-      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:140px">
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;min-width:130px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Pacientes distintos</div>
-        <div style="font-size:24px;font-weight:700;color:var(--text-primary)">${new Set(divergencias.map(d=>d.paciente)).size}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--text-primary)">${new Set(divFiltradas.map(d=>d.paciente)).size}</div>
       </div>`;
   }
 
   // ── Tabela ────────────────────────────────────────────────────
-  const tbody  = document.getElementById('aud-tbody');
+  const tbody   = document.getElementById('aud-tbody');
   const emptyEl = document.getElementById('aud-empty');
   const tableEl = document.getElementById('aud-table');
   if (!tbody) return;
 
-  if (divergencias.length === 0) {
+  if (divFiltradas.length === 0) {
     tbody.innerHTML = '';
-    if (tableEl)  tableEl.style.display  = 'none';
-    if (emptyEl)  emptyEl.style.display  = '';
+    if (tableEl) tableEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = '';
     return;
   }
   if (tableEl) tableEl.style.display = '';
@@ -6827,7 +6901,7 @@ function renderAuditoriaDivergencias() {
   // Agrupa por terapeuta para exibição em grupos
   const grupos = [];
   let profAtual = null;
-  divergencias.forEach(d => {
+  divFiltradas.forEach(d => {
     if (d.profNome !== profAtual) {
       grupos.push({ prof: d.profNome, rows: [] });
       profAtual = d.profNome;
@@ -6858,8 +6932,8 @@ function renderAuditoriaDivergencias() {
           </span>
         </td>
         <td style="text-align:center">
-          <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:rgba(239,68,68,0.08);color:${STATUS_COLOR[d.statusHist] || 'var(--text-secondary)'}">
-            ${STATUS_LABEL[d.statusHist] || d.statusHist || '—'}
+          <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:${d.statusHist ? 'rgba(239,68,68,0.08)' : 'rgba(100,116,139,0.08)'};color:${STATUS_COLOR[d.statusHist || ''] || 'var(--text-muted)'}">
+            ${d.statusHist ? (STATUS_LABEL[d.statusHist] || d.statusHist) : 'Não apontado'}
           </span>
         </td>
         <td style="text-align:center">
@@ -6901,10 +6975,14 @@ function exportAuditoriaDivergencias() {
     const pac2    = PACIENTES.find(p => p.nome === appt.paciente);
     const chave2  = pac2 ? pac2.id+'|'+(appt.dataISO||'')+'|'+(appt.hora||'')+'|'+(appt.profId||'') : null;
     const hist = histPorApptId2[String(appt.id)] || (chave2 ? histPorChave2[chave2] : null);
-    if (!hist) return;
     const sa = (appt.status || '').toLowerCase();
-    const sh = (hist.status || hist.conteudo?.status || '').toLowerCase();
-    if (sa === sh) return;
+    const statusFinaisExp = ['atendido','desmarcado','cancelado'];
+    if (!hist) {
+      if (!statusFinaisExp.includes(sa)) return;
+    }
+    const sh = hist ? audExtrairStatusHist(hist) : null;
+    if (sh !== null && sa === sh) return;
+    if (sh === null && !statusFinaisExp.includes(sa)) return;
     const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
     const div  = audTipoDivergencia(sa, sh);
     linhas.push([
