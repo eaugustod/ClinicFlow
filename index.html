@@ -5148,7 +5148,7 @@ CREATE INDEX IF NOT EXISTS idx_historico_pac_data_prof ON historico(pac_id, data
 
 <!-- Modal Importar Evoluções -->
 <div class="modal-overlay" id="modal-importar-evolucoes">
-  <div class="modal" style="max-width:680px">
+  <div class="modal" style="max-width:940px">
     <div class="modal-header">
       <div>
         <div class="modal-title">📝 Importar Evoluções — Google Sheets</div>
@@ -5191,19 +5191,31 @@ CREATE INDEX IF NOT EXISTS idx_historico_pac_data_prof ON historico(pac_id, data
           <div id="evo-imp-preview-summary" style="font-size:13px;font-weight:600"></div>
           <button class="btn-sm btn-secondary" style="font-size:12px" onclick="evoImpVoltarStep1()">← Voltar</button>
         </div>
-        <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md)">
-          <table class="data-table" style="margin:0">
-            <thead><tr>
+        <div style="margin-bottom:8px;font-size:11px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);margin-right:4px"></span>Já existe evolução nesse horário</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);margin-right:4px"></span>Paciente não localizado</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(100,116,139,0.1);border:1px solid var(--border);margin-right:4px"></span>Duplicata — será ignorada</span>
+        </div>
+        <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md)">
+          <table class="data-table" style="margin:0;min-width:820px">
+            <thead style="position:sticky;top:0;z-index:2;background:var(--bg-raised)"><tr>
               <th style="width:28px"></th>
-              <th>Data</th><th>Paciente</th><th>Horário</th><th>Presença</th><th>Evolução (prévia)</th>
+              <th>Data</th>
+              <th>Paciente</th>
+              <th>Horário</th>
+              <th>Presença / Status</th>
+              <th>Terapeuta <span style="font-weight:400;font-size:10px;color:var(--accent)">(editável)</span></th>
+              <th>Conflito</th>
+              <th>Evolução (prévia)</th>
             </tr></thead>
             <tbody id="evo-imp-preview-tbody"></tbody>
           </table>
         </div>
-        <div style="margin-top:10px;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-muted)">
-          <span id="evo-imp-cnt-ok"   style="color:var(--success)"></span>
-          <span id="evo-imp-cnt-skip" style="color:var(--warning)"></span>
-          <span id="evo-imp-cnt-dup"  style="color:var(--text-muted)"></span>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-muted);flex-wrap:wrap">
+          <span id="evo-imp-cnt-ok"      style="color:var(--success)"></span>
+          <span id="evo-imp-cnt-conflict" style="color:var(--error)"></span>
+          <span id="evo-imp-cnt-skip"    style="color:var(--warning)"></span>
+          <span id="evo-imp-cnt-dup"     style="color:var(--text-muted)"></span>
         </div>
       </div>
 
@@ -13591,18 +13603,35 @@ function parseEvolucaoCSV(txt) {
     }
 
     const pac  = encontrarPacientePorNome(pacNome);
+
+    // Localiza agendamento pelo paciente + data + horário (chave composta)
     const appt = pac ? APPOINTMENTS.find(a =>
       a.paciente === pac.nome &&
-      (dataISO ? a.dataISO === dataISO : false) ||
-      (pac && horaIni ? (a.paciente===pac.nome && a.hora===horaIni) : false)
+      (dataISO ? a.dataISO === dataISO : true) &&
+      (horaIni ? a.hora === horaIni    : true)
     ) : null;
 
-    // Deduplicação por paciente + data + hora de início
+    // ProfId: prioridade agendamento → fallback 0
+    const profId = appt?.profId || 0;
+    const profNome = profId ? (PROFISSIONAIS.find(p=>p.id===profId)?.nome || '') : '';
+
+    // Deduplicação exata: paciente + data + horário + profissional
     const dup = pac ? HISTORICO.find(h =>
+      h.pacId === pac.id && h.tipo === 'evolucao' &&
+      h.data === (dataISO||dataStr) &&
+      (h.conteudo?.horaIni||'') === horaIni &&
+      (profId ? h.profId === profId : true)
+    ) : null;
+
+    // Conflito: existe OUTRA evolução no mesmo dia+hora mas de profissional diferente
+    // (ou sem profissional identificado) — sinaliza para revisão mas não bloqueia
+    const conflito = !dup && pac ? HISTORICO.find(h =>
       h.pacId === pac.id && h.tipo === 'evolucao' &&
       h.data === (dataISO||dataStr) &&
       (h.conteudo?.horaIni||'') === horaIni
     ) : null;
+
+    const presencaStatus = evoPresencaInfo(presenca).status; // mapeia presença → status
 
     const status = (!pacNome||!dataStr) ? 'err'
                  : !pac                  ? 'warn_pac'
@@ -13610,8 +13639,8 @@ function parseEvolucaoCSV(txt) {
                  : 'ok';
 
     result.push({ rowIdx, pacNome, dataStr, dataISO, horaIni, horaFim,
-      durStr, convNome, semana, presenca, evoTxt, regStr,
-      pac, appt, dup, status });
+      durStr, convNome, semana, presenca, presencaStatus, evoTxt, regStr,
+      pac, appt, dup, conflito, profId, profNome, status });
   });
 
   return result;
@@ -13648,6 +13677,15 @@ function handleEvoFileSelect(input) {
     if (pr) { pr.style.display='block'; pr.innerHTML='<span style="color:var(--success);font-size:12px">✓ Arquivo: <strong>'+file.name+'</strong></span>'; }
   };
   reader.readAsText(file, 'UTF-8');
+}
+
+function evoImpSetProf(idx, profId) {
+  if (!window._evoParsed || !window._evoParsed[idx]) return;
+  const profIdNum = parseInt(profId) || 0;
+  window._evoParsed[idx].profId   = profIdNum;
+  window._evoParsed[idx].profNome = profIdNum
+    ? (PROFISSIONAIS.find(p=>p.id===profIdNum)?.nome || '')
+    : '';
 }
 
 function evoImpVoltarStep1() {
@@ -13691,34 +13729,76 @@ function evoImpPreview() {
   const dup  = parsed.filter(r=>r.status==='dup').length;
   const warn = parsed.filter(r=>r.status==='warn_pac').length;
 
+  const conflict = parsed.filter(r=>r.status==='ok' && r.conflito).length;
+
   const sumEl = document.getElementById('evo-imp-preview-summary');
   if (sumEl) sumEl.textContent = parsed.length+' linha(s) analisada(s)';
-  const okEl=document.getElementById('evo-imp-cnt-ok');
-  const skEl=document.getElementById('evo-imp-cnt-skip');
-  const dpEl=document.getElementById('evo-imp-cnt-dup');
-  if(okEl) okEl.textContent = ok   ? '✓ '+ok+' para importar'             : '';
-  if(skEl) skEl.textContent = warn ? '⚠ '+warn+' paciente não localizado'  : '';
-  if(dpEl) dpEl.textContent = dup  ? '⊘ '+dup+' já existente(s) — serão ignoradas' : '';
+  const okEl  = document.getElementById('evo-imp-cnt-ok');
+  const cfEl  = document.getElementById('evo-imp-cnt-conflict');
+  const skEl  = document.getElementById('evo-imp-cnt-skip');
+  const dpEl  = document.getElementById('evo-imp-cnt-dup');
+  if(okEl) okEl.textContent = ok       ? '✓ '+ok+' para importar'                  : '';
+  if(cfEl) cfEl.textContent = conflict ? '⚠ '+conflict+' com conflito de horário'  : '';
+  if(skEl) skEl.textContent = warn     ? '⚠ '+warn+' paciente não localizado'       : '';
+  if(dpEl) dpEl.textContent = dup      ? '⊘ '+dup+' já existente(s) — serão ignoradas' : '';
+
+  // Monta opções de profissionais para o select inline
+  const profOptions = PROFISSIONAIS.slice()
+    .sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(p=>'<option value="'+p.id+'">'+p.nome+'</option>')
+    .join('');
 
   const tbody = document.getElementById('evo-imp-preview-tbody');
-  if (tbody) tbody.innerHTML = parsed.map(r => {
+  if (tbody) tbody.innerHTML = parsed.map((r, idx) => {
     const pi = evoPresencaInfo(r.presenca);
-    const ico = r.status==='ok'       ? '<span style="color:var(--success)">✓</span>'
+    const ico = r.status==='ok' && r.conflito
+              ? '<span style="color:var(--error)" title="Já existe evolução neste horário">⚠</span>'
+              : r.status==='ok'       ? '<span style="color:var(--success)">✓</span>'
               : r.status==='dup'      ? '<span style="color:var(--text-muted)" title="Já importado">⊘</span>'
               : r.status==='warn_pac' ? '<span style="color:var(--warning)" title="Paciente não localizado">⚠</span>'
               : '<span style="color:var(--danger)">✗</span>';
     const dateFmt = r.dataISO ? r.dataISO.split('-').reverse().join('/') : r.dataStr;
-    const prev = (r.evoTxt||'').substring(0,55)+(r.evoTxt?.length>55?'…':'') || '<em style="color:var(--text-muted)">sem texto</em>';
-    const rowStyle = r.status==='dup' ? 'opacity:0.4' : r.status!=='ok' ? 'background:rgba(251,191,36,0.06)' : '';
-    return '<tr style="'+rowStyle+'">' +
+    const prev = (r.evoTxt||'').substring(0,50)+(r.evoTxt?.length>50?'…':'') || '<em style="color:var(--text-muted)">sem texto</em>';
+    const rowBg = r.status==='dup'      ? 'opacity:0.38'
+                : r.conflito            ? 'background:rgba(239,68,68,0.06)'
+                : r.status!=='ok'       ? 'background:rgba(251,191,36,0.06)'
+                : '';
+    // Conflito info
+    const conflitoInfo = r.conflito
+      ? '<div style="font-size:10px;color:var(--error);margin-top:2px" title="'+
+          (HISTORICO.find(h=>h.id===r.conflito.id)?.titulo||'')+'">'+
+          '⚠ Existe: '+(r.conflito.titulo||'evolução no mesmo horário').substring(0,30)+
+        '</div>'
+      : '';
+    // Terapeuta select editável
+    const profSel = r.status !== 'dup'
+      ? '<select class="form-select" style="font-size:11px;padding:2px 6px;min-width:130px" '+
+          'onchange="evoImpSetProf('+idx+',this.value)">' +
+          '<option value="">— não identificado —</option>' + profOptions +
+        '</select>' +
+        '<script>document.currentScript.previousElementSibling.value="'+r.profId+'"<\/script>'
+      : '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+
+    return '<tr style="'+rowBg+'" id="evo-imp-row-'+idx+'">' +
       '<td style="text-align:center;width:28px">'+ico+'</td>' +
       '<td style="font-size:12px;white-space:nowrap">'+dateFmt+'</td>' +
       '<td style="font-size:12px">'+(r.pac ? r.pac.nome : '<span style="color:var(--warning)">'+r.pacNome+'</span>')+'</td>' +
       '<td style="font-size:12px;white-space:nowrap">'+(r.horaIni||'—')+(r.horaFim?' – '+r.horaFim:'')+'</td>' +
-      '<td style="font-size:11px"><span class="chip '+pi.chip+'" style="font-size:10px">'+(r.presenca||'—')+'</span></td>' +
+      '<td style="font-size:11px">' +
+        '<span class="chip '+pi.chip+'" style="font-size:10px">'+(r.presenca||'—')+'</span>' +
+        (pi.status ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">→ status: '+pi.status+'</div>' : '') +
+      '</td>' +
+      '<td>'+profSel+'</td>' +
+      '<td style="font-size:11px">'+conflitoInfo+'</td>' +
       '<td style="font-size:11px;color:var(--text-secondary)">'+prev+'</td>' +
     '</tr>';
   }).join('');
+
+  // Seta profId nos selects via JS após render (script inline não funciona em innerHTML)
+  parsed.forEach((r, idx) => {
+    const sel = document.querySelector('#evo-imp-row-'+idx+' select');
+    if (sel && r.profId) sel.value = String(r.profId);
+  });
 
   const s1=document.getElementById('evo-imp-step-1');
   const s2=document.getElementById('evo-imp-step-2');
@@ -13756,6 +13836,9 @@ async function evoImpConfirmar() {
       (r.horaIni ? ' · ' + r.horaIni : '') +
       (r.semana  ? ' · ' + r.semana  : '');
 
+    // profId: usa o valor editado na preview (pode ter sido alterado pelo usuário)
+    const profIdFinal = r.profId || r.appt?.profId || 0;
+
     const hObj = {
       id: nextHistId++, pacId: pac.id, tipo: 'evolucao', titulo,
       conteudo: {
@@ -13767,8 +13850,10 @@ async function evoImpConfirmar() {
         convenio: r.convNome || '',
         semana:   r.semana   || '',
       },
-      profId: r.appt?.profId || 0,
+      profId: profIdFinal,
       data:   r.dataISO || r.dataStr,
+      // status na raiz: mapeado da presença (atendido / desmarcado / falta)
+      status: pi.status || null,
       fonte:  'Google Sheets',
       apptId: r.appt?.id || null,
     };
@@ -13776,9 +13861,14 @@ async function evoImpConfirmar() {
     if (sb) {
       try {
         const { data: row, error } = await sb.from('historico').insert([{
-          pac_id: hObj.pacId, tipo:'evolucao', titulo: hObj.titulo,
-          conteudo: hObj.conteudo, prof_id: hObj.profId||null,
-          data: hObj.data, fonte:'Google Sheets',
+          pac_id:  hObj.pacId,
+          tipo:    'evolucao',
+          titulo:  hObj.titulo,
+          conteudo: hObj.conteudo,
+          prof_id: profIdFinal || null,
+          data:    hObj.data,
+          status:  pi.status || null,   // ← presença gravada em status
+          fonte:   'Google Sheets',
         }]).select('id').single();
         if (error) { console.error('[evoImpConfirmar]', error.message); dbErrors++; }
         else if (row) hObj.id = row.id;
