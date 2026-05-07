@@ -13412,33 +13412,60 @@ function renderTimeline() {
       });
       evolsDoAppt.forEach(ev => evolsNoDiaUsadas.add(ev.id));
 
-      const evolsHTML = evolsDoAppt.length ? evolsDoAppt.map(ev => {
-        return '<div style="background:var(--bg-overlay);border-left:3px solid var(--success);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:8px 12px;margin-top:8px">' +
-          '<div style="font-size:11px;font-weight:600;color:var(--success);margin-bottom:4px">📝 '+(ev.titulo||'Evolução')+'</div>' +
-          '<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5">'+(ev.conteudo?.texto||'')+'</div>' +
-          '<div style="margin-top:6px;display:flex;gap:4px">' +
-            '<button class="action-btn" style="font-size:11px" onclick="editarHistorico('+ev.id+')">✏️</button>' +
-            '<button class="action-btn" style="font-size:11px;color:var(--danger)" onclick="excluirHistorico('+ev.id+')">🗑</button>' +
-          '</div>' +
-        '</div>';
-      }).join('') : '';
+      // Determina bloco de evolução ou "Falta" quando desmarcado sem evolução com texto
+      const statusIsDesmarcado = ['desmarcado','cancelado'].includes((a.status||'').toLowerCase());
+
+      const evolsHTML = evolsDoAppt.length
+        ? evolsDoAppt.map(ev => {
+            const temTexto = !!(ev.conteudo?.texto||'').trim();
+            // Desmarcado sem texto → mostra chip de Falta em vez de bloco vazio
+            if (!temTexto && statusIsDesmarcado) {
+              return '<div style="margin-top:8px;margin-left:2px;display:flex;align-items:center;gap:6px">' +
+                '<span style="font-size:11px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid rgba(239,68,68,0.25);border-radius:99px;padding:2px 10px;font-weight:600">✗ Falta registrada</span>' +
+                '<span style="font-size:10px;color:var(--text-muted)">'+(ev.titulo||'')+'</span>' +
+                '<div style="margin-left:auto;display:flex;gap:4px">' +
+                  '<button class="action-btn" style="font-size:11px" onclick="editarHistorico('+ev.id+')">✏️</button>' +
+                  '<button class="action-btn" style="font-size:11px;color:var(--danger)" onclick="excluirHistorico('+ev.id+')">🗑</button>' +
+                '</div>' +
+              '</div>';
+            }
+            return '<div style="margin-top:8px;margin-left:2px;background:var(--bg-overlay);border-left:3px solid var(--success);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:8px 12px">' +
+              '<div style="font-size:11px;font-weight:600;color:var(--success);margin-bottom:4px">📝 '+(ev.titulo||'Evolução')+'</div>' +
+              (temTexto ? '<div style="font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.5">'+(ev.conteudo.texto)+'</div>' : '') +
+              '<div style="margin-top:6px;display:flex;gap:4px">' +
+                '<button class="action-btn" style="font-size:11px" onclick="editarHistorico('+ev.id+')">✏️</button>' +
+                '<button class="action-btn" style="font-size:11px;color:var(--danger)" onclick="excluirHistorico('+ev.id+')">🗑</button>' +
+              '</div>' +
+            '</div>';
+          }).join('')
+        // Sem evolução + desmarcado → mostra "Falta não registrada" como aviso leve
+        : statusIsDesmarcado
+          ? '<div style="margin-top:6px;margin-left:2px">' +
+              '<span style="font-size:11px;color:var(--text-muted);font-style:italic">Sem registro de evolução</span>' +
+            '</div>'
+          : '';
 
       const badges = guiasBadge(date);
+      // profLabel: nome com espaço antes da data — separador explícito
+      const profLabelFmt = profAppt
+        ? ' <span style="font-size:11px;background:rgba(96,165,250,0.1);color:var(--info);border-radius:99px;padding:1px 8px;margin-right:4px">'+(profAppt.nomeAgenda||profAppt.nome)+'</span> '
+        : '';
       html += '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">' +
         '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px">' +
           '<div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-surface);flex-shrink:0"></div>' +
           '<div style="width:2px;flex:1;background:var(--border);margin-top:4px"></div>' +
         '</div>' +
         '<div style="flex:1;padding-bottom:4px">' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">' +
             '<span style="font-size:14px">📅</span>' +
             '<span style="font-size:13px;font-weight:500">'+a.hora+' — '+a.plano+'</span>' +
-            chipStr + profLabel +
+            chipStr + profLabelFmt +
             (badges ? badges : '') +
             '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'+dateFmt+'</span>' +
           '</div>' +
-          (a.obs?'<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm)">'+a.obs+'</div>':'') +
-          evolsHTML +
+          (a.obs?'<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-raised);padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:4px">'+a.obs+'</div>':'') +
+          // Evolução recuada — visualmente aninhada dentro do agendamento
+          (evolsHTML ? '<div style="padding-left:16px;border-left:2px solid var(--border);margin-left:4px;margin-top:4px">'+evolsHTML+'</div>' : '') +
         '</div>' +
       '</div>';
     });
