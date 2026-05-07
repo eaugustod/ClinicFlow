@@ -6855,6 +6855,16 @@ function renderAuditoriaDivergencias() {
     });
   });
 
+  // Verifica se um registro de histórico é compatível com o agendamento
+  // Regra crítica: histórico com prof_id preenchido SÓ pode ser vinculado
+  // ao agendamento do MESMO profissional — nunca de profissional diferente
+  function audHistCompativelComProf(h, profAppt) {
+    if (!h) return false;
+    if (!h.profId) return true;          // prof_id NULL → pode ser de qualquer prof
+    if (!profAppt) return true;          // agendamento sem prof → aceita qualquer
+    return h.profId === profAppt;        // ambos preenchidos → devem ser iguais
+  }
+
   function audBuscarHist(appt, pac) {
     if (!pac) return null;
     const id    = appt.id;
@@ -6863,43 +6873,48 @@ function renderAuditoriaDivergencias() {
     const prof  = appt.profId || null;
     const pacId = pac.id;
 
-    // 1. Vínculo direto pelo apptId (fonte numérica)
+    // 1. Vínculo direto pelo apptId (fonte numérica) — mais confiável, aceita sempre
     const porId = histPorApptId[id] || histPorApptId[String(id)];
-    if (porId) return porId;
+    if (porId && audHistCompativelComProf(porId, prof)) return porId;
 
     // 2. Chave completa: pacId|data|hora|profId
     if (hora && prof) {
       const h = histPorFull[pacId+'|'+data+'|'+hora+'|'+prof];
       if (h) return h;
     }
-    // 3. Sem profissional: pacId|data|hora (prof_id NULL no histórico)
+    // 3. Sem profissional: pacId|data|hora — só usa se prof_id do histórico for NULL
     if (hora) {
       const h = histPorSemProf[pacId+'|'+data+'|'+hora];
-      if (h) return h;
+      if (h && audHistCompativelComProf(h, prof)) return h;
     }
     // 4. Sem hora: pacId|data|profId
     if (prof) {
       const h = histPorSemHora[pacId+'|'+data+'|'+prof];
       if (h) return h;
     }
-    // 5. Fallback: paciente+data — se único registro no dia, usa ele
-    const porData = histPorData[pacId+'|'+data] || [];
+    // 5. Fallback: paciente+data
+    // IMPORTANTE: só usa registros compatíveis com o profissional do agendamento
+    const porData = (histPorData[pacId+'|'+data] || [])
+      .filter(h => audHistCompativelComProf(h, prof));
+
+    if (porData.length === 0) return null;
     if (porData.length === 1) return porData[0];
-    // Se múltiplos no dia, tenta casar pela hora no título ou campo hora
-    if (porData.length > 1 && hora) {
-      const match = porData.find(h =>
+
+    // Múltiplos compatíveis: tenta casar pela hora
+    if (hora) {
+      const matchHora = porData.find(h =>
         (h.hora||'').substring(0,5) === hora ||
         (h.conteudo?.horaIni||'').substring(0,5) === hora ||
         (h.titulo||'').includes(hora)
       );
-      if (match) return match;
-      // Último recurso: usa o do mesmo profissional se houver
-      if (prof) {
-        const matchProf = porData.find(h => h.profId === prof);
-        if (matchProf) return matchProf;
-      }
+      if (matchHora) return matchHora;
     }
-    return null;
+    // Múltiplos sem hora identificável: prefere o do mesmo prof explícito
+    const matchProf = porData.find(h => h.profId === prof);
+    if (matchProf) return matchProf;
+
+    // Último recurso: primeiro compatível
+    return porData[0];
   }
 
   const divergencias = [];
