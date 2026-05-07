@@ -6913,11 +6913,21 @@ function renderAuditoriaDivergencias() {
     const pac  = PACIENTES.find(p => p.nome === appt.paciente);
     const hist = audBuscarHist(appt, pac);
 
-    // Se não há historico: só registra divergência se o agendamento já tem status final
-    const statusAgenda = (appt.status || '').toLowerCase();
-    const statusFinais = ['atendido','desmarcado','cancelado'];
+    const statusAgenda     = (appt.status || '').toLowerCase();
+    const statusAgendaNorm = audNormalizarStatus(statusAgenda);
+    const statusFinais     = ['atendido','desmarcado','cancelado'];
+
+    // Casos que NUNCA são divergência — agenda e histórico concordam semanticamente:
+    // • desmarcado + sem apontamento → correto (terapeuta não precisa apontar cancelamento)
+    // • desmarcado + cancelado       → correto (sinônimos)
+    // • cancelado  + sem apontamento → correto
+    // • cancelado  + cancelado/desmarcado → correto
+    const statusCancelamento = ['desmarcado','cancelado'];
+
     if (!hist) {
-      if (!statusFinais.includes(statusAgenda)) return; // sem status final, sem divergência
+      // Sem histórico: só é divergência se status final for "atendido"
+      // (desmarcado/cancelado sem apontamento é comportamento esperado)
+      if (statusAgendaNorm !== 'atendido') return;
       const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
       divergencias.push({
         dataISO:     appt.dataISO || '',
@@ -6927,20 +6937,25 @@ function renderAuditoriaDivergencias() {
         paciente:    appt.paciente || '—',
         plano:       appt.plano    || '—',
         statusAgenda,
-        statusHist:  null, // sem registro no histórico
-        divergencia: audTipoDivergencia(statusAgenda, null),
+        statusHist:  null,
+        divergencia: audTipoDivergencia(statusAgendaNorm, null),
         apptId:      appt.id,
       });
       return;
     }
 
-    // Extrai e normaliza status de ambos os lados antes de comparar
-    const statusHistNorm   = audExtrairStatusHist(hist);       // já normalizado
-    const statusAgendaNorm = audNormalizarStatus(statusAgenda); // normaliza agenda também
+    // Extrai e normaliza status do histórico
+    const statusHistNorm = audExtrairStatusHist(hist);
 
-    // Sem divergência: status equivalentes OU agenda ainda aberta sem apontamento
+    // Sem divergência:
+    // 1. Status iguais após normalização
     if (statusHistNorm !== null && statusAgendaNorm === statusHistNorm) return;
+    // 2. Agenda aberta (agendado/confirmado) sem apontamento → ainda não aconteceu
     if (statusHistNorm === null && !statusFinais.includes(statusAgendaNorm)) return;
+    // 3. Agenda desmarcada/cancelada + histórico sem apontamento → correto
+    if (statusHistNorm === null && statusCancelamento.includes(statusAgendaNorm)) return;
+    // 4. Agenda desmarcada/cancelada + histórico cancelado/desmarcado → sinônimos, correto
+    if (statusCancelamento.includes(statusAgendaNorm) && statusCancelamento.includes(statusHistNorm)) return;
 
     const statusHist = statusHistNorm; // alias para uso abaixo
 
@@ -7082,15 +7097,16 @@ function exportAuditoriaDivergencias() {
     if (filtroMes  && !(appt.dataISO||'').startsWith(filtroMes)) return;
     const pac2 = PACIENTES.find(p => p.nome === appt.paciente);
     const hist = audBuscarHist(appt, pac2);
-    const sa = (appt.status || '').toLowerCase();
-    const statusFinaisExp = ['atendido','desmarcado','cancelado'];
-    if (!hist) {
-      if (!statusFinaisExp.includes(sa)) return;
-    }
-    const shNorm = hist ? audExtrairStatusHist(hist) : null;
+    const sa    = (appt.status || '').toLowerCase();
     const saNorm = audNormalizarStatus(sa);
+    const statusCancelamentoExp = ['desmarcado','cancelado'];
+    const shNorm = hist ? audExtrairStatusHist(hist) : null;
+    // Mesmas regras do render: sem divergência quando...
+    if (!hist && saNorm !== 'atendido') return;
     if (shNorm !== null && saNorm === shNorm) return;
-    if (shNorm === null && !statusFinaisExp.includes(saNorm)) return;
+    if (shNorm === null && !['atendido','desmarcado','cancelado'].includes(saNorm)) return;
+    if (shNorm === null && statusCancelamentoExp.includes(saNorm)) return;
+    if (statusCancelamentoExp.includes(saNorm) && statusCancelamentoExp.includes(shNorm)) return;
     const sh = shNorm;
     const prof = PROFISSIONAIS.find(p => p.id === appt.profId);
     const div  = audTipoDivergencia(sa, sh);
