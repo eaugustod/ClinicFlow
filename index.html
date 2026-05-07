@@ -6804,71 +6804,100 @@ function renderAuditoriaDivergencias() {
   // Monta índice duplo:
   // 1. por apptId (fonte) — vínculo direto e preciso
   // 2. por chave composta pacId|dataISO|hora|profId — cobre registros antigos sem fonte
-  // Índices múltiplos para cobrir todas as variações de preenchimento do histórico:
-  // 1. por apptId numérico (fonte = id do agendamento)
-  // 2. por chave completa: pacId|data|hora|profId
-  // 3. por chave sem prof:  pacId|data|hora  (profId NULL no histórico)
-  // 4. por chave sem hora:  pacId|data|profId (hora não gravada no histórico)
-  // 5. por chave mínima:    pacId|data        (fallback — usado quando há 1 histórico por dia)
+  // Índices para busca em cascata — inclui tipo='agendamento' E tipo='evolucao'
+  // pois registros importados do Google Sheets chegam como 'evolucao' sem registro 'agendamento' par.
+  // Prioridade na indexação: agendamento > evolucao (agendamento sobrescreve se existir)
   const histPorApptId  = {};
   const histPorFull    = {}; // pacId|data|hora|profId
   const histPorSemProf = {}; // pacId|data|hora  (profId null)
   const histPorSemHora = {}; // pacId|data|profId (hora null)
   const histPorData    = {}; // pacId|data — array pois pode haver múltiplos
 
-  HISTORICO.forEach(h => {
-    if (h.tipo !== 'agendamento') return;
-    // Índice por fonte (apptId como string ou número)
-    if (h.fonte) {
-      histPorApptId[String(h.fonte)] = h;
-      // Tenta também como número caso fonte seja string de id numérico
-      const n = parseInt(h.fonte);
-      if (!isNaN(n)) histPorApptId[n] = h;
-    }
-    const hora  = (h.conteudo?.hora || h.titulo?.match(/^(\d{2}:\d{2})/)?.[1] || '').substring(0,5);
-    const prof  = h.profId || null;
-    const data  = h.data   || '';
-    const pacId = h.pacId;
-    if (!pacId || !data) return;
+  // Indexa primeiro evoluções (menor prioridade), depois agendamentos (sobrescreve)
+  ['evolucao', 'agendamento'].forEach(tipoAlvo => {
+    HISTORICO.forEach(h => {
+      if (h.tipo !== tipoAlvo) return;
 
-    // Chave completa
-    if (hora && prof) histPorFull[pacId+'|'+data+'|'+hora+'|'+prof] = h;
-    // Sem profissional (prof_id NULL no banco)
-    if (hora)         histPorSemProf[pacId+'|'+data+'|'+hora] = h;
-    // Sem hora (hora não gravada)
-    if (prof)         histPorSemHora[pacId+'|'+data+'|'+prof] = h;
-    // Só paciente + data (fallback)
-    if (!histPorData[pacId+'|'+data]) histPorData[pacId+'|'+data] = [];
-    histPorData[pacId+'|'+data].push(h);
+      // Índice por fonte (apptId numérico gravado no campo fonte)
+      if (h.fonte) {
+        const n = parseInt(h.fonte);
+        if (!isNaN(n)) {
+          histPorApptId[n] = h;
+          histPorApptId[String(n)] = h;
+        } else {
+          histPorApptId[h.fonte] = h;
+        }
+      }
+
+      // Extrai hora: campo hora dedicado → conteudo.horaIni → título (regex HH:MM)
+      const horaRaw = h.hora
+        || h.conteudo?.horaIni
+        || h.conteudo?.hora
+        || (h.titulo || '').match(/(\d{2}:\d{2})/)?.[1]
+        || '';
+      const hora  = horaRaw.substring(0, 5);
+      const prof  = h.profId || null;
+      const data  = h.data   || '';
+      const pacId = h.pacId;
+      if (!pacId || !data) return;
+
+      // Chave completa (mais precisa)
+      if (hora && prof) histPorFull[pacId+'|'+data+'|'+hora+'|'+prof] = h;
+      // Sem profissional (prof_id NULL)
+      if (hora)         histPorSemProf[pacId+'|'+data+'|'+hora] = h;
+      // Sem hora
+      if (prof)         histPorSemHora[pacId+'|'+data+'|'+prof] = h;
+      // Mínimo: paciente + data
+      if (!histPorData[pacId+'|'+data]) histPorData[pacId+'|'+data] = [];
+      // Evita duplicatas no array
+      if (!histPorData[pacId+'|'+data].find(x => x.id === h.id))
+        histPorData[pacId+'|'+data].push(h);
+    });
   });
 
   function audBuscarHist(appt, pac) {
     if (!pac) return null;
     const id    = appt.id;
     const data  = appt.dataISO || '';
-    const hora  = (appt.hora || '').substring(0,5);
+    const hora  = (appt.hora || '').substring(0, 5);
     const prof  = appt.profId || null;
     const pacId = pac.id;
 
-    // 1. Vínculo direto pelo apptId
-    if (histPorApptId[id] || histPorApptId[String(id)]) 
-      return histPorApptId[id] || histPorApptId[String(id)];
-    // 2. Chave completa
-    if (hora && prof && histPorFull[pacId+'|'+data+'|'+hora+'|'+prof])
-      return histPorFull[pacId+'|'+data+'|'+hora+'|'+prof];
-    // 3. Sem profissional (prof_id NULL no histórico)
-    if (hora && histPorSemProf[pacId+'|'+data+'|'+hora])
-      return histPorSemProf[pacId+'|'+data+'|'+hora];
-    // 4. Sem hora (hora não gravada no histórico)
-    if (prof && histPorSemHora[pacId+'|'+data+'|'+prof])
-      return histPorSemHora[pacId+'|'+data+'|'+prof];
-    // 5. Fallback por paciente+data: só usa se houver exatamente 1 registro
-    const porData = histPorData[pacId+'|'+data];
-    if (porData && porData.length === 1) return porData[0];
-    // Se há múltiplos no dia, tenta encontrar o que tem hora mais próxima no título
-    if (porData && porData.length > 1 && hora) {
-      const match = porData.find(h => (h.titulo||'').includes(hora));
+    // 1. Vínculo direto pelo apptId (fonte numérica)
+    const porId = histPorApptId[id] || histPorApptId[String(id)];
+    if (porId) return porId;
+
+    // 2. Chave completa: pacId|data|hora|profId
+    if (hora && prof) {
+      const h = histPorFull[pacId+'|'+data+'|'+hora+'|'+prof];
+      if (h) return h;
+    }
+    // 3. Sem profissional: pacId|data|hora (prof_id NULL no histórico)
+    if (hora) {
+      const h = histPorSemProf[pacId+'|'+data+'|'+hora];
+      if (h) return h;
+    }
+    // 4. Sem hora: pacId|data|profId
+    if (prof) {
+      const h = histPorSemHora[pacId+'|'+data+'|'+prof];
+      if (h) return h;
+    }
+    // 5. Fallback: paciente+data — se único registro no dia, usa ele
+    const porData = histPorData[pacId+'|'+data] || [];
+    if (porData.length === 1) return porData[0];
+    // Se múltiplos no dia, tenta casar pela hora no título ou campo hora
+    if (porData.length > 1 && hora) {
+      const match = porData.find(h =>
+        (h.hora||'').substring(0,5) === hora ||
+        (h.conteudo?.horaIni||'').substring(0,5) === hora ||
+        (h.titulo||'').includes(hora)
+      );
       if (match) return match;
+      // Último recurso: usa o do mesmo profissional se houver
+      if (prof) {
+        const matchProf = porData.find(h => h.profId === prof);
+        if (matchProf) return matchProf;
+      }
     }
     return null;
   }
