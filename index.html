@@ -5799,6 +5799,7 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
           Pré-visualizar
         </button>
         <div id="gg-preview-summary" style="font-size:12px;color:var(--text-muted)"></div>
+        <div id="gg-aviso-cancelamentos" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);line-height:1.6"></div>
       </div>
       <!-- Preview table -->
       <div id="gg-preview-wrap" style="display:none">
@@ -9631,6 +9632,8 @@ function abrirGerarGuias() {
   document.getElementById('gg-preview-wrap').style.display = 'none';
   document.getElementById('gg-btn-gerar').style.display = 'none';
   document.getElementById('gg-preview-summary').textContent = '';
+  const avisoEl = document.getElementById('gg-aviso-cancelamentos');
+  if (avisoEl) { avisoEl.style.display = 'none'; avisoEl.innerHTML = ''; }
   _ggParsed = [];
   openModal('modal-gerar-guias');
 }
@@ -9710,6 +9713,19 @@ function previewGuiasAutomaticas() {
       matchNome(a.paciente, senha.paciente)
     ).sort((a, b) => a.dataISO.localeCompare(b.dataISO));
 
+    // ── Data de corte por cancelamento ───────────────────────────────────
+    // Se houver algum agendamento com status "cancelado" no mês,
+    // não gerar guias com data >= dataCorte (a data do 1º cancelamento).
+    // Desmarcados NÃO são corte — a geração segue normalmente para semanas
+    // com desmarcados; cancelado encerra definitivamente a geração.
+    const apptCancelado = allAppts.find(a =>
+      (a.status || '').toLowerCase() === 'cancelado'
+    );
+    // dataCorte: data do 1º agendamento cancelado (ou null = sem corte)
+    const dataCorte = apptCancelado
+      ? new Date(apptCancelado.dataISO + 'T12:00:00')
+      : null;
+
     // appts: apenas ativos, usados para calcular datas e duração
     const appts = allAppts.filter(a =>
       !['cancelado','desmarcado'].includes((a.status||'').toLowerCase())
@@ -9728,10 +9744,20 @@ function previewGuiasAutomaticas() {
       : new Date(D_PRIM);
     const dataIniReal = dataAutDate > D_PRIM ? dataAutDate : new Date(D_PRIM);
 
-    // Data final = min(validade, último do mês)
-    const dataFimReal = senha.validade && new Date(senha.validade + 'T12:00:00') < D_ULT
+    // Data final = min(validade, último do mês, dataCorte-1 dia se houver cancelamento)
+    // O -1 dia garante que guias até o dia anterior ao cancelamento são incluídas.
+    // Exemplo: cancelamento em 20/05 → última guia pode ser 19/05.
+    let dataFimReal = senha.validade && new Date(senha.validade + 'T12:00:00') < D_ULT
       ? new Date(senha.validade + 'T12:00:00')
       : new Date(D_ULT);
+
+    if (dataCorte) {
+      // Corte inclusivo: última guia pode ter data == dataCorte
+      // Semanas com datas > dataCorte são descartadas
+      if (dataCorte < dataFimReal) {
+        dataFimReal = new Date(dataCorte);
+      }
+    }
 
     // ── Procedimento ─────────────────────────────────────────────────────
     const proc = (senha.procs && senha.procs.length > 0)
@@ -9926,6 +9952,7 @@ function previewGuiasAutomaticas() {
         data2ISO: g2ISO,
         procCod, procDesc, procVal,
         dup1, dup2,
+        dataCorte: dataCorte ? dateToISO(dataCorte) : null,
         status: allDup ? 'dup' : 'ok',
       });
 
@@ -9935,6 +9962,33 @@ function previewGuiasAutomaticas() {
       semAtual = addDays(semAtual, 7);
     }
   });
+
+  // Aviso geral de cortes por cancelamento (pacientes com dataCorte)
+  const cortesMap = {};
+  _ggParsed.forEach(r => {
+    if (r.dataCorte && !cortesMap[r.pacNomeReal]) {
+      cortesMap[r.pacNomeReal] = r.dataCorte;
+    }
+  });
+  const aviso = document.getElementById('gg-aviso-cancelamentos');
+  if (aviso) {
+    const pacsCortados = Object.entries(cortesMap);
+    if (pacsCortados.length) {
+      aviso.style.display = '';
+      // dataCorte é a data DO cancelamento; última guia = dia anterior
+      const fmtISO = iso => iso ? iso.split('-').reverse().join('/') : '';
+      aviso.innerHTML = '<strong style="color:var(--danger)">⚠ Corte por cancelamento:</strong> ' +
+        pacsCortados.map(([pac, dtCancelISO]) => {
+          const fmtDt = fmtISO(dtCancelISO);
+          return `<span style="background:rgba(248,113,113,.12);padding:2px 10px;border-radius:99px;font-size:11px;margin:2px 4px;display:inline-block">` +
+            `<strong>${pac}</strong> — cancelamento em ${fmtDt} · ` +
+            `guias geradas até ${fmtDt} (inclusive)</span>`;
+        }).join('');
+    } else {
+      aviso.style.display = 'none';
+      aviso.innerHTML = '';
+    }
+  }
 
   renderPreviewGG();
 }
