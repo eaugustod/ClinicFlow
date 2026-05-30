@@ -2648,6 +2648,9 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
             <input class="search-input" id="tiss-busca-pac" placeholder="Buscar paciente..." oninput="renderGuiasList()" style="width:200px">
           </div>
+          <select class="form-select" id="tiss-filtro-mes" style="width:150px;padding:5px 10px;font-size:12px" onchange="renderGuiasList()">
+            <option value="">Todos os meses</option>
+          </select>
           <select class="form-select" id="tiss-filtro-status" style="width:140px;padding:5px 10px;font-size:12px" onchange="renderGuiasList()">
             <option value="">Todos os status</option>
             <option value="Pendente">Pendente</option>
@@ -2687,12 +2690,23 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
     <!-- LOTES -->
     <div class="page" id="page-lotes">
-      <div class="lotes-fixed-header" style="display:flex;align-items:center;justify-content:space-between">
+      <div class="lotes-fixed-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
           <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Lotes TISS</h2>
           <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Agrupe guias por plano e competência para envio</p>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select class="form-select" id="lotes-filtro-competencia" style="width:190px;padding:7px 12px;font-size:13px" onchange="renderLotesTable()">
+            <option value="">Todas as competências</option>
+          </select>
+          <select class="form-select" id="lotes-filtro-status" style="width:150px;padding:7px 12px;font-size:13px" onchange="renderLotesTable()">
+            <option value="">Todos os status</option>
+            <option value="Pendente">Pendente</option>
+            <option value="Gerado">Gerado</option>
+            <option value="Enviado">Enviado</option>
+            <option value="Faturado">Faturado</option>
+            <option value="Glosado">Glosado</option>
+          </select>
           <button class="btn-sm btn-secondary" onclick="abrirFecharLote()">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
             Fechar lote
@@ -3022,13 +3036,22 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <h2 style="font-size:18px;font-weight:600;letter-spacing:-0.3px">Senhas &amp; Autorizações</h2>
             <p style="color:var(--text-muted);font-size:13px;margin-top:2px">Senhas e autorizações liberadas pelos planos por paciente</p>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <div class="search-input-wrap" style="width:220px">
               <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
               <input class="search-input" id="senhas-busca-pac" placeholder="Buscar paciente..." oninput="renderSenhas()" style="width:220px">
             </div>
             <select class="form-select" id="senhas-filtro-plano" style="width:180px;padding:7px 12px;font-size:13px" onchange="renderSenhas()">
               <option value="">Todos os planos</option>
+            </select>
+            <select class="form-select" id="senhas-filtro-mes" style="width:170px;padding:7px 12px;font-size:13px" onchange="renderSenhas()">
+              <option value="">Todos os períodos</option>
+            </select>
+            <select class="form-select" id="senhas-filtro-status" style="width:140px;padding:7px 12px;font-size:13px" onchange="renderSenhas()">
+              <option value="">Todos os status</option>
+              <option value="Ativa">Ativa</option>
+              <option value="Vencida">Vencida</option>
+              <option value="Usada">Usada</option>
             </select>
             <button class="btn-sm btn-accent" onclick="abrirNovaSenha()">
               <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -3044,7 +3067,9 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
         <table class="data-table">
           <thead><tr>
             <th>Paciente</th><th>Plano / ANS</th><th>Nº Senha</th><th>Nº Guia Op.</th>
-            <th>Procedimento</th><th>Qtd.Aut.</th><th>Qtd.Usada</th><th>Validade</th><th>Status</th><th></th>
+            <th>Procedimento</th><th style="text-align:center">Qtd.Aut.</th><th style="text-align:center">Qtd.Usada</th>
+            <th>Data Aut.</th><th>Validade</th><th>Status</th>
+            <th style="min-width:80px;white-space:nowrap"></th>
           </tr></thead>
           <tbody id="senhas-tbody"></tbody>
         </table>
@@ -5782,8 +5807,8 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
             <thead style="position:sticky;top:0;z-index:2;background:var(--bg-raised)">
               <tr>
                 <th style="width:28px"><input type="checkbox" id="gg-sel-all" onchange="ggToggleAll(this)"></th>
-                <th>Paciente</th><th>Plano</th><th>Data Guia 1</th><th>Data Guia 2</th>
-                <th>Proc.</th><th>Sess. restantes</th><th>Status</th>
+                <th>Paciente</th><th>Plano / Autorização</th><th>Data Guia 1</th><th>Data Guia 2</th>
+                <th>Duração</th><th>Status</th>
               </tr>
             </thead>
             <tbody id="gg-preview-tbody"></tbody>
@@ -9360,7 +9385,19 @@ function renderGuiasList() {
       '<div class="tiss-info-card"><div class="tiss-info-label">Último lote</div><div class="tiss-info-value" style="font-size:14px">'+(ultLote?ultLote.dataCriacao.split('-').reverse().join('/'):'—')+'</div></div>';
   }
 
-  // Populate filters
+  // Populate month filter from existing guias
+  const fmEl = document.getElementById('tiss-filtro-mes');
+  if (fmEl) {
+    const currentMesFiltro = fmEl.value;
+    const meses = [...new Set(GUIAS.map(g => (g.data||'').slice(0,7)).filter(Boolean))].sort().reverse();
+    fmEl.innerHTML = '<option value="">Todos os meses</option>' + meses.map(m => {
+      const [y,mo] = m.split('-');
+      const label = new Date(+y,+mo-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());
+      return `<option value="${m}"${currentMesFiltro===m?' selected':''}>${label}</option>`;
+    }).join('');
+  }
+
+  // Populate plano filter
   const fpEl = document.getElementById('tiss-filtro-plano');
   if (fpEl && fpEl.options.length <= 1) {
     PLANOS.filter(p=>p.nome!=='Particular').forEach(p => {
@@ -9370,14 +9407,16 @@ function renderGuiasList() {
     });
   }
 
+  const mesFiltro    = document.getElementById('tiss-filtro-mes')?.value    || '';
   const statusFiltro = document.getElementById('tiss-filtro-status')?.value || '';
   const planoFiltro  = parseInt(document.getElementById('tiss-filtro-plano')?.value  || '0');
   const buscaPac     = (document.getElementById('tiss-busca-pac')?.value || '').toLowerCase().trim();
 
   let list = GUIAS;
-  if (statusFiltro) list = list.filter(g=>g.status===statusFiltro);
-  if (planoFiltro)  list = list.filter(g=>g.planoId===planoFiltro);
-  if (buscaPac)     list = list.filter(g=>(g.pac||'').toLowerCase().includes(buscaPac));
+  if (mesFiltro)    list = list.filter(g => (g.data||'').startsWith(mesFiltro));
+  if (statusFiltro) list = list.filter(g => g.status === statusFiltro);
+  if (planoFiltro)  list = list.filter(g => g.planoId === planoFiltro);
+  if (buscaPac)     list = list.filter(g => (g.pac||'').toLowerCase().includes(buscaPac));
 
   const el = document.getElementById('guias-list');
   if (!el) return;
@@ -9763,6 +9802,19 @@ function previewGuiasAutomaticas() {
       if (!allApptPorSemana[k]) allApptPorSemana[k] = a;
     });
 
+    // ── Guias totais a gerar para esta senha ─────────────────────────────
+    // qtdAutorizada = total autorizado pela operadora
+    // qtdUsada      = já geradas/usadas
+    // restantes     = ainda a gerar nesta rodada
+    //
+    // Regra de qtd por semana:
+    //   30 min → 1 guia/semana
+    //   60 min → 2 guias/semana (desde que ambas caiam dentro do período)
+    //
+    // O loop abaixo desconta de guiasRestantes conforme gera,
+    // respeitando os limites da senha. Se uma semana gerar só 1 das 2 guias
+    // (ex: g2 cai fora da validade), só 1 é descontada.
+
     // Encontra a segunda da semana que contém dataIniReal
     const dowIni = dataIniReal.getDay() === 0 ? 7 : dataIniReal.getDay();
     const segIni = new Date(dataIniReal);
@@ -9814,19 +9866,41 @@ function previewGuiasAutomaticas() {
       let g2ISO = null;
 
       if (is60 && guiasRestantes > 1) {
-        // guia2 = diaAncora + offset (pode ser negativo = mesma semana, antes)
+        // guia2 = diaAncora + offset (pode ser negativo = mesma semana, antes da âncora)
         const offset = offsetG2(diaAncora.getDay());
-        const g2Raw = addDays(diaAncora, offset);
-        // Aplica ajuste de feriado na guia2
-        const g2 = ajustarFeriado(g2Raw);
-        // guia2 deve estar dentro do intervalo de autorização e não colidir com guia1
+        const g2Raw  = addDays(diaAncora, offset);
+        const g2     = ajustarFeriado(g2Raw);
+        const g2Iso  = dateToISO(g2);
+        const g1Iso2 = dateToISO(g1);
+
+        // Diferença em dias entre as duas datas (sempre positiva)
+        const diffDias = Math.abs(
+          (new Date(g2Iso + 'T12:00:00') - new Date(g1Iso2 + 'T12:00:00')) / 86400000
+        );
+
+        // g2 é válida se:
+        //  1. Está dentro do intervalo [dataIniReal, dataFimReal]
+        //  2. Está dentro do mês
+        //  3. É diferente de g1 (diffDias >= 1)
+        //  4. Caso g2 < g1 (Qui/Sex): g2 >= dataIniReal (não pode cair antes da autorização)
+        //  5. Caso g2 > g1: g2 não pode ultrapassar dataFimReal
         if (
           g2 >= dataIniReal &&
           g2 <= dataFimReal &&
           g2 >= D_PRIM &&
-          dateToISO(g2) !== dateToISO(g1)
+          diffDias >= 1
         ) {
-          g2ISO = dateToISO(g2);
+          g2ISO = g2Iso;
+        } else if (diffDias < 1) {
+          // g2 colide com g1 após ajuste de feriado → avança 1 dia útil a partir de g1
+          const g2Fallback = ajustarFeriado(addDays(g1, 1));
+          if (
+            g2Fallback >= dataIniReal &&
+            g2Fallback <= dataFimReal &&
+            dateToISO(g2Fallback) !== g1Iso2
+          ) {
+            g2ISO = dateToISO(g2Fallback);
+          }
         }
       }
 
@@ -9884,7 +9958,7 @@ function renderPreviewGG() {
   if (!tbody) return;
 
   if (!_ggParsed.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">
       Nenhum resultado encontrado.<br>
       <small>Verifique se há senhas ativas com validade cobrindo o mês e agendamentos cadastrados.</small>
     </td></tr>`;
@@ -9897,6 +9971,8 @@ function renderPreviewGG() {
     const isDup  = r.status === 'dup';
     const rowSt  = isDup ? 'opacity:0.5' : '';
     const rest   = r.senha.qtdAutorizada - (r.senha.qtdUsada || 0);
+    const fmtAut = r.senha.dataAut ? r.senha.dataAut.split('-').reverse().join('/') : '—';
+    const fmtVal = r.senha.validade ? r.senha.validade.split('-').reverse().join('/') : '—';
     const tipo   = r.is60
       ? '<span class="chip blue" style="font-size:9px">60 min · 2</span>'
       : '<span class="chip gray" style="font-size:9px">30 min · 1</span>';
@@ -9937,11 +10013,15 @@ function renderPreviewGG() {
         <input type="checkbox" class="gg-row-chk" data-idx="${idx}" ${isDup?'disabled':'checked'}>
       </td>
       <td style="font-size:12px;font-weight:500">${r.pacNomeReal}${apptInf}</td>
-      <td style="font-size:11px">${r.plano.nome}</td>
+      <td style="font-size:11px">${r.plano.nome}
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">
+          Aut: ${fmtAut} · Val: ${fmtVal}
+          <span style="margin-left:4px;font-weight:600;color:${rest<=2?'var(--danger)':'var(--text-muted)'}">(${rest} restantes)</span>
+        </div>
+      </td>
       <td style="padding:4px 8px">${inputD1}</td>
       <td style="padding:4px 8px">${inputD2}</td>
       <td style="text-align:center">${tipo}</td>
-      <td style="text-align:center;font-size:12px">${rest}</td>
       <td><span class="chip ${isDup?'gray':'green'}" style="font-size:10px">${isDup?'Já gerada':'Pronto'}</span></td>
     </tr>`;
   }).join('');
@@ -10452,8 +10532,31 @@ function salvarGuia() {
 function renderLotesTable() {
   const tbody = document.getElementById('lotes-tbody');
   if (!tbody) return;
+
+  // Populate competência filter
+  const fcEl = document.getElementById('lotes-filtro-competencia');
+  if (fcEl) {
+    const currentComp = fcEl.value;
+    const competencias = [...new Set(LOTES.map(l => l.competencia).filter(Boolean))].sort().reverse();
+    fcEl.innerHTML = '<option value="">Todas as competências</option>' +
+      competencias.map(c => `<option value="${c}"${currentComp===c?' selected':''}>${c}</option>`).join('');
+  }
+
+  const compFiltro   = document.getElementById('lotes-filtro-competencia')?.value || '';
+  const statusFiltro = document.getElementById('lotes-filtro-status')?.value       || '';
+
+  let list = LOTES;
+  if (compFiltro)   list = list.filter(l => (l.competencia||'') === compFiltro);
+  if (statusFiltro) list = list.filter(l => (l.status||'') === statusFiltro);
+
   tbody.innerHTML = '';
-  LOTES.forEach(l => {
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted)">Nenhum lote encontrado.</td></tr>';
+    return;
+  }
+
+  list.forEach(l => {
     const tr = document.createElement('tr');
     tr.innerHTML =
       '<td><span style="font-family:var(--font-mono)">' + l.num + '</span></td>' +
@@ -10470,7 +10573,7 @@ function renderLotesTable() {
           }).join('') +
         '</select>' +
       '</td>' +
-      '<td><div class="table-actions"></div></td>';
+      '<td style="white-space:nowrap;min-width:90px"><div class="table-actions" style="flex-wrap:nowrap"></div></td>';
 
     const actions = tr.querySelector('.table-actions');
 
@@ -15033,13 +15136,41 @@ function renderSenhas() {
       fpEl.appendChild(opt);
     });
   }
-  const planoFiltro = parseInt(fpEl?.value || '0');
-  const buscaPac = (document.getElementById('senhas-busca-pac')?.value || '').toLowerCase().trim();
-  let list = SENHAS_PLANO;
-  if (planoFiltro) list = list.filter(s => s.planoId === planoFiltro);
-  if (buscaPac)    list = list.filter(s => s.paciente.toLowerCase().includes(buscaPac));
 
-  // Stats
+  // Populate month filter (based on dataAut)
+  const fmEl = document.getElementById('senhas-filtro-mes');
+  if (fmEl) {
+    const currentMes = fmEl.value;
+    const meses = [...new Set(
+      SENHAS_PLANO.map(s => (s.dataAut||s.validade||'').slice(0,7)).filter(Boolean)
+    )].sort().reverse();
+    fmEl.innerHTML = '<option value="">Todos os períodos</option>' + meses.map(m => {
+      const [y,mo] = m.split('-');
+      const label = new Date(+y,+mo-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());
+      return `<option value="${m}"${currentMes===m?' selected':''}>${label}</option>`;
+    }).join('');
+  }
+
+  const planoFiltro  = parseInt(fpEl?.value || '0');
+  const mesFiltro    = document.getElementById('senhas-filtro-mes')?.value    || '';
+  const statusFiltro = document.getElementById('senhas-filtro-status')?.value || '';
+  const buscaPac     = (document.getElementById('senhas-busca-pac')?.value || '').toLowerCase().trim();
+
+  let list = SENHAS_PLANO;
+  if (planoFiltro)  list = list.filter(s => s.planoId === planoFiltro);
+  if (mesFiltro)    list = list.filter(s => {
+    // Filtra por mês que cobre o período: dataAut <= fim do mês filtrado E validade >= início do mês filtrado
+    const [y,m] = mesFiltro.split('-').map(Number);
+    const mesIni = `${y}-${String(m).padStart(2,'0')}-01`;
+    const mesUlt = `${y}-${String(m).padStart(2,'0')}-${new Date(y,m,0).getDate()}`;
+    const aut = s.dataAut || '0000-00-00';
+    const val = s.validade || '9999-12-31';
+    return aut <= mesUlt && val >= mesIni;
+  });
+  if (statusFiltro) list = list.filter(s => s.status === statusFiltro);
+  if (buscaPac)     list = list.filter(s => s.paciente.toLowerCase().includes(buscaPac));
+
+  // Stats (sempre sobre o total, sem filtro)
   const statsEl = document.getElementById('senhas-stats');
   if (statsEl) {
     const ativas   = SENHAS_PLANO.filter(s=>s.status==='Ativa').length;
@@ -15063,28 +15194,34 @@ function renderSenhas() {
   if (!tbody) return;
   tbody.innerHTML = '';
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma senha cadastrada. Clique em "Nova senha/autorização" para adicionar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma senha encontrada.</td></tr>';
     return;
   }
   list.forEach(s => {
-    const plano  = PLANOS.find(p=>p.id===s.planoId);
-    const qtdStr = s.qtdUsada + ' / ' + s.qtdAutorizada;
-    const chipCls= s.status==='Ativa'?'green':s.status==='Vencida'?'red':'gray';
-    const pr     = s.procs?.map(p=>p.desc||p.codigo).join(', ') || '—';
+    const plano   = PLANOS.find(p=>p.id===s.planoId);
+    const chipCls = s.status==='Ativa'?'green':s.status==='Vencida'?'red':'gray';
+    const pr      = s.procs?.map(p=>p.desc||p.codigo).join(', ') || '—';
+    const fmtDate = iso => iso ? iso.split('-').reverse().join('/') : '—';
+    const restantes = s.qtdAutorizada - (s.qtdUsada||0);
+    const qtdColor  = restantes <= 0 ? 'var(--danger)' : restantes <= 2 ? 'var(--warning)' : 'var(--success)';
+
     const tr = document.createElement('tr');
     tr.innerHTML =
       '<td><div style="font-size:13px;font-weight:500">'+s.paciente+'</div>' +
         '<div style="font-size:11px;color:var(--text-muted)">'+s.carteirinha+'</div></td>' +
       '<td>'+(plano?plano.nome+' <span style="font-size:10px;color:var(--text-muted)">ANS '+plano.ans+'</span>':'—')+'</td>' +
       '<td style="font-family:var(--font-mono)">'+s.numSenha+'</td>' +
-      '<td style="font-family:var(--font-mono);color:var(--text-muted)">'+( s.numGuiaOp||'—')+'</td>' +
-      '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="'+pr+'">'+pr+'</td>' +
+      '<td style="font-family:var(--font-mono);color:var(--text-muted)">'+(s.numGuiaOp||'—')+'</td>' +
+      '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="'+pr+'">'+pr+'</td>' +
       '<td style="text-align:center">'+s.qtdAutorizada+'</td>' +
-      '<td style="text-align:center;color:'+(s.qtdUsada>=s.qtdAutorizada?'var(--danger)':'var(--success)')+'">'+s.qtdUsada+'</td>' +
-      '<td style="font-size:12px">'+(s.validade?s.validade.split('-').reverse().join('/'):'—')+'</td>' +
+      '<td style="text-align:center;color:'+qtdColor+';font-weight:600">'+(s.qtdUsada||0)+' <span style="font-size:10px;font-weight:400;color:var(--text-muted)">/ '+s.qtdAutorizada+'</span></td>' +
+      '<td style="font-size:12px;white-space:nowrap">'+fmtDate(s.dataAut)+'</td>' +
+      '<td style="font-size:12px;white-space:nowrap">'+fmtDate(s.validade)+'</td>' +
       '<td><span class="chip '+chipCls+'">'+s.status+'</span></td>' +
-      '<td><div class="table-actions"></div></td>';
+      '<td style="white-space:nowrap;min-width:80px"><div class="table-actions" style="flex-wrap:nowrap;gap:4px"></div></td>';
+
     const actions = tr.querySelector('.table-actions');
+
     const editBtn = document.createElement('button');
     editBtn.className='action-btn'; editBtn.title='Editar'; editBtn.innerHTML=EDIT_ICON;
     editBtn.addEventListener('click', ()=>editarSenha(s.id));
