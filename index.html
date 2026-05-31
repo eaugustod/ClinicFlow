@@ -3312,10 +3312,11 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
               <div>Não configurada — preencha os dados abaixo e clique em Testar</div>
             </div>
             <form onsubmit="return false;" autocomplete="off" style="display:contents">
+            <input type="text" name="username" autocomplete="username" style="display:none" aria-hidden="true">
             <div class="form-row cols-2">
               <div class="form-group">
                 <label>URL da Evolution API</label>
-                <input class="form-input" id="cfg-evo-url" placeholder="http://localhost:8080 ou https://sua-api.com">
+                <input class="form-input" id="cfg-evo-url" placeholder="http://localhost:8080 ou https://sua-api.com" autocomplete="off">
               </div>
               <div class="form-group">
                 <label>API Key</label>
@@ -16883,7 +16884,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sb.from('profissionais').select('*').order('nome').limit(500),
         sb.from('planos_saude').select('*').order('nome').limit(500),
         sb.from('procedimentos').select('*').order('descricao').limit(5000),
-        sb.from('pacientes').select('id,nome,carteirinha,plano_id,plano,nascimento,cpf,tel,email,status,foto,obs').order('nome').limit(10000),
+        sb.from('pacientes').select('*').order('nome').limit(10000),
         sb.from('agendamentos').select('*').order('data_iso',{ascending:false}).limit(5000),
         sb.from('config_clinica').select('*').limit(1),
       ]);
@@ -16919,12 +16920,13 @@ document.addEventListener('DOMContentLoaded', function() {
       } catch(_) {}
 
       // ══ FASE 2 — dados secundários em paralelo, sem bloquear UI ═══════════
+      const safe = (q) => Promise.resolve(q).catch(()=>({data:[]}));
       const [lo, se, esp, gu, hist] = await Promise.all([
-        sb.from('lotes_tiss').select('*').order('created_at',{ascending:false}).limit(2000).catch(()=>({data:[]})),
-        sb.from('senhas_plano').select('*').order('created_at',{ascending:false}).limit(5000).catch(()=>({data:[]})),
-        sb.from('lista_espera').select('*').order('created_at',{ascending:false}).limit(2000).catch(()=>({data:[]})),
-        sb.from('guias_sadt').select('*').order('created_at',{ascending:false}).limit(5000).catch(()=>({data:[]})),
-        sb.from('historico').select('*').order('data',{ascending:false}).limit(5000).catch(()=>({data:[]})),
+        safe(sb.from('lotes_tiss').select('*').order('created_at',{ascending:false}).limit(2000)),
+        safe(sb.from('senhas_plano').select('*').order('created_at',{ascending:false}).limit(5000)),
+        safe(sb.from('lista_espera').select('*').order('created_at',{ascending:false}).limit(2000)),
+        safe(sb.from('guias_sadt').select('*').order('created_at',{ascending:false}).limit(5000)),
+        safe(sb.from('historico').select('*').order('data',{ascending:false}).limit(5000)),
       ]);
 
       rep(LOTES,        lo.data,   map.dbToLote);
