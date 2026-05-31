@@ -17122,7 +17122,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const sb = getDb();
     if (currentApptId) {
       const temSadt = document.getElementById('sadt-beneficiario')?.value;
-      if (temSadt) {
+      // Cria guia automática APENAS se o plano do agendamento tem usa_tiss = true
+      const planoDoAgend = PLANOS.find(p => p.id === dados.planoId);
+      const planoUsaTiss = planoDoAgend ? planoDoAgend.usaTiss === true : false;
+      if (temSadt && planoUsaTiss) {
         // ── Calcula o valor correto independente de o usuário ter aberto a aba SADT ──
         // Prioridade: 1) campo sadt-total (se preenchido pelo usuário)
         //             2) valor dos procedimentos executados (sadt-ep-val-*)
