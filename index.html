@@ -2679,6 +2679,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 2L1 21h22L12 2zm0 3.5L20.5 19h-17L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg>
             Validar guias
           </button>
+          <button class="btn-sm btn-secondary" onclick="abrirValidadorComAjuste()" style="color:#7c3aed;border-color:rgba(124,58,237,0.3);background:rgba(124,58,237,0.07)">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            Validar com ajuste
+          </button>
           <button class="btn-sm btn-accent" onclick="abrirNovaGuia()">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             Nova guia
@@ -21590,6 +21594,40 @@ function emitirRelatorioLocacao() {
 .val-resumo-num { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
 .val-resumo-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
 
+/* ── Validador com Ajuste ───────────────────────────── */
+.vaj-card { border:1px solid var(--border); border-radius:var(--radius-md); margin-bottom:10px; overflow:hidden; background:var(--bg-raised); }
+.vaj-card.critico  { border-left:3px solid var(--danger); }
+.vaj-card.atencao  { border-left:3px solid var(--warning); }
+.vaj-card.informativo { border-left:3px solid var(--accent); }
+.vaj-card.ok       { border-left:3px solid var(--success); }
+.vaj-card.salvo    { border-color:var(--success)!important; }
+.vaj-header { display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;background:var(--bg-raised);user-select:none; }
+.vaj-header:hover { background:var(--bg-overlay); }
+.vaj-body   { padding:14px 16px;border-top:1px solid var(--border);display:none;background:var(--bg-surface); }
+.vaj-card.expanded .vaj-body { display:block; }
+.vaj-grid   { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.vaj-grid.cols3 { grid-template-columns:1fr 1fr 1fr; }
+.vaj-campo  { margin-bottom:4px; }
+.vaj-campo label { display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px; }
+.vaj-campo label .vaj-dot { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+.vaj-campo label .vaj-dot.critico { background:var(--danger); }
+.vaj-campo label .vaj-dot.atencao { background:var(--warning); }
+.vaj-campo label .vaj-dot.ok      { background:var(--success); }
+.vaj-campo label .vaj-dot.none    { background:var(--border); }
+.vaj-input { width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;font-size:13px;color:var(--text-primary);font-family:inherit;transition:border-color .15s,background .15s; }
+.vaj-input:focus { outline:none;border-color:var(--accent); }
+.vaj-input.erro  { border-color:var(--danger)!important;background:rgba(248,113,113,.06); }
+.vaj-input.ok    { border-color:var(--success)!important;background:rgba(52,211,153,.04); }
+.vaj-hint { font-size:11px;margin-top:4px;padding:3px 8px;border-radius:var(--radius-sm);display:none;align-items:center;gap:5px; }
+.vaj-hint.show { display:flex; }
+.vaj-hint.critico { background:rgba(248,113,113,.1);color:var(--danger); }
+.vaj-hint.atencao { background:rgba(251,191,36,.1);color:#b45309; }
+.vaj-hint.ok      { background:rgba(52,211,153,.1);color:var(--success); }
+.vaj-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border); }
+.vaj-save-btn { padding:6px 18px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .15s; }
+.vaj-save-btn:disabled { opacity:.35;cursor:not-allowed; }
+.vaj-save-status { font-size:11px;color:var(--text-muted); }
+
 </style>
 </head>
 <body>
@@ -22273,9 +22311,408 @@ function exportarRelatorioValidacao() {
   showToast('Relatório exportado!', 'success');
 }
 // ─────────────────────────────────────────────────────────────────────────────
+// VALIDADOR COM AJUSTE
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _vajResultados    = [];   // [{g, erros, nivel, dirty, saved}]
+let _vajFiltroAtivo   = 'todos';
+
+// ── Campos editáveis por tipo de erro ──────────────────────────────────────
+// Define quais campos a guia tem para cada tipo de pendência
+const VAJ_CAMPOS = {
+  'Nome do paciente':                  { prop:'pac',            label:'Nome do paciente',             type:'text'   },
+  'Nº da carteirinha':                 { prop:'carteirinha',    label:'Nº da carteirinha',             type:'text'   },
+  'Nº da solicitação / guia prestador':{ prop:'numOp',          label:'Nº guia / solicitação',         type:'text'   },
+  'Número da senha':                   { prop:'dados.senha',    label:'Senha de autorização',          type:'text'   },
+  'Data de autorização':               { prop:'dados.dataAut',  label:'Data de autorização (AAAA-MM-DD)', type:'date' },
+  'Data de autorização fora da competência do lote': { prop:'dados.dataAut', label:'Data de autorização', type:'date' },
+  'Data de autorização fora do mês':   { prop:'dados.dataAut',  label:'Data de autorização',           type:'date'  },
+  'Data de execução':                  { prop:'data',           label:'Data de execução',              type:'date'  },
+  'Data de execução anterior à autorização': { prop:'data',     label:'Data de execução',              type:'date'  },
+  'Código do procedimento':            { prop:'dados.procs.0.codigo', label:'Código TUSS/CBHPM',        type:'text'  },
+  'Código do procedimento ausente':    { prop:'dados.procs.0.codigo', label:'Código TUSS/CBHPM',        type:'text'  },
+  'Valor do procedimento':             { prop:'valor',          label:'Valor total (R$)',               type:'number'},
+  'Valor de procedimento zerado':      { prop:'dados.procs.0.valor',  label:'Valor do procedimento',   type:'number'},
+  'CID':                               { prop:'cid',            label:'Código CID',                    type:'text'  },
+  'Nome do solicitante':               { prop:'profId',         label:'Profissional solicitante',       type:'select_prof' },
+  'Nome do executante':                { prop:'planoId',        label:'Plano (executante)',             type:'select_plano'},
+};
+
+// ── Abre o modal ──────────────────────────────────────────────────────────
+function abrirValidadorComAjuste() {
+  if (!GUIAS.length) { showToast('Nenhuma guia cadastrada para validar','error'); return; }
+  _vajResultados = [];
+  _vajFiltroAtivo = 'todos';
+
+  // Reutiliza a mesma lógica de validação do abrirValidadorGuias
+  const hoje = new Date();
+  GUIAS.forEach(function(g) {
+    // Clona a guia para edição isolada
+    const gc = JSON.parse(JSON.stringify(g));
+    const erros = _vajValidarGuia(gc, hoje);
+    const nivel = erros.some(e=>e.nivel==='critico') ? 'critico'
+      : erros.some(e=>e.nivel==='atencao') ? 'atencao'
+      : erros.some(e=>e.nivel==='informativo') ? 'informativo' : 'ok';
+    _vajResultados.push({ g: gc, gOrigId: g.id, erros, nivel, dirty:false, saved:false });
+  });
+
+  vajRenderResumo();
+  vajRenderLista();
+  document.getElementById('vaj-rodape').textContent = 'Validação em ' + new Date().toLocaleString('pt-BR');
+  openModal('modal-validador-ajuste');
+}
+
+// ── Lógica de validação (idêntica ao validadorGuias, mas recebe a guia clonada) ──
+function _vajValidarGuia(g, hoje) {
+  const erros = [];
+  hoje = hoje || new Date();
+
+  if (!g.pac || !g.pac.trim())
+    erros.push({ nivel:'critico', campo:'Nome do paciente', desc:'Nome do beneficiário não informado.' });
+
+  if (!g.carteirinha || !g.carteirinha.trim() || g.carteirinha==='—')
+    erros.push({ nivel:'critico', campo:'Nº da carteirinha', desc:'Número de carteirinha não preenchido.' });
+
+  const numOp = (g.numOp||'').trim();
+  if (!numOp)
+    erros.push({ nivel:'critico', campo:'Nº da solicitação / guia prestador', desc:'Número da solicitação não informado.' });
+
+  const senha = (g.dados&&g.dados.senha) ? g.dados.senha.trim() : numOp;
+  if (!senha)
+    erros.push({ nivel:'critico', campo:'Número da senha', desc:'Senha/autorização não preenchida.' });
+
+  let dataAut = (g.dados&&g.dados.dataAut) ? g.dados.dataAut : '';
+  if (!dataAut && numOp && typeof SENHAS_PLANO!=='undefined') {
+    const sv = SENHAS_PLANO.find(s=>(s.numGuiaOp&&s.numGuiaOp===numOp)||(s.numSenha&&s.numSenha===numOp));
+    if (sv&&sv.dataAut) dataAut=sv.dataAut;
+  }
+  if (!dataAut) {
+    erros.push({ nivel:'atencao', campo:'Data de autorização', desc:'Data de autorização não encontrada.' });
+  } else {
+    const dtAut = new Date(dataAut+'T12:00');
+    const lote  = (typeof LOTES!=='undefined') ? LOTES.find(l=>l.guiaIds&&l.guiaIds.indexOf(g.id)!==-1) : null;
+    if (lote&&lote.competencia) {
+      const mPtBR=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+      const pts=lote.competencia.split('/');
+      let ml=mPtBR.indexOf((pts[0]||'').trim().toLowerCase()), al=parseInt(pts[1]||0);
+      if (ml===-1) { const mp=lote.competencia.match(/^(\d{4})-(\d{2})$/); if(mp){al=parseInt(mp[1]);ml=parseInt(mp[2])-1;} }
+      if (ml!==-1&&al&&(dtAut.getFullYear()!==al||dtAut.getMonth()!==ml))
+        erros.push({ nivel:'atencao', campo:'Data de autorização fora da competência do lote', desc:'Autorização ('+dtAut.toLocaleDateString('pt-BR')+') fora da competência do lote ('+lote.competencia+').' });
+    } else {
+      if (dtAut.getFullYear()!==hoje.getFullYear()||dtAut.getMonth()!==hoje.getMonth())
+        erros.push({ nivel:'atencao', campo:'Data de autorização fora do mês', desc:'Autorização ('+dtAut.toLocaleDateString('pt-BR')+') fora do mês atual.' });
+    }
+  }
+
+  const dataExec = g.data||'';
+  if (!dataExec) {
+    erros.push({ nivel:'critico', campo:'Data de execução', desc:'Data de execução não informada.' });
+  } else if (dataAut) {
+    const dtExec=new Date(dataExec+'T12:00'), dtAutR=new Date(dataAut+'T12:00');
+    if (dtExec<dtAutR)
+      erros.push({ nivel:'critico', campo:'Data de execução anterior à autorização', desc:'Execução em '+dtExec.toLocaleDateString('pt-BR')+' é anterior à autorização em '+dtAutR.toLocaleDateString('pt-BR')+'.' });
+  }
+
+  const procs=(g.dados&&g.dados.procs&&g.dados.procs.length)?g.dados.procs:[];
+  if (!procs.length) {
+    erros.push({ nivel:'critico', campo:'Código do procedimento', desc:'Nenhum procedimento informado.' });
+  } else {
+    const sc=procs.filter(p=>!p.codigo||!p.codigo.trim());
+    if (sc.length) erros.push({ nivel:'critico', campo:'Código do procedimento ausente', desc:sc.length+' procedimento(s) sem código TUSS/CBHPM.' });
+  }
+
+  if (!g.valor||g.valor<=0) {
+    erros.push({ nivel:'critico', campo:'Valor do procedimento', desc:'Valor total é zero ou não preenchido.' });
+  } else {
+    const pz=procs.filter(p=>!p.valor||p.valor<=0);
+    if (pz.length) erros.push({ nivel:'atencao', campo:'Valor de procedimento zerado', desc:pz.length+' procedimento(s) com R$ 0,00.' });
+  }
+
+  if (!g.cid||!g.cid.trim())
+    erros.push({ nivel:'informativo', campo:'CID', desc:'CID não informado (campo informativo).' });
+
+  const prof=(typeof PROFISSIONAIS!=='undefined'&&g.profId)?PROFISSIONAIS.find(p=>p.id===g.profId):null;
+  if (!prof) erros.push({ nivel:'critico', campo:'Nome do solicitante', desc:'Profissional solicitante não vinculado.' });
+
+  const plano=(typeof PLANOS!=='undefined'&&g.planoId)?PLANOS.find(p=>p.id===g.planoId):null;
+  if (!plano||(plano&&!plano.nomeContratado))
+    erros.push({ nivel:'atencao', campo:'Nome do executante', desc:'Nome do contratado executante não cadastrado no plano.' });
+
+  return erros;
+}
+
+// ── Resumo de KPIs ────────────────────────────────────────────────────────
+function vajRenderResumo() {
+  const el = document.getElementById('vaj-resumo');
+  if (!el) return;
+  const tot   = _vajResultados.length;
+  const nCrit = _vajResultados.filter(r=>r.nivel==='critico').length;
+  const nAt   = _vajResultados.filter(r=>r.nivel==='atencao').length;
+  const nOk   = _vajResultados.filter(r=>r.nivel==='ok').length;
+  const nSalvo= _vajResultados.filter(r=>r.saved).length;
+  el.innerHTML =
+    '<div class="val-resumo-card"><div class="val-resumo-num">'+tot+'</div><div class="val-resumo-label">Analisadas</div></div>'+
+    '<div class="val-resumo-card"><div class="val-resumo-num" style="color:var(--danger)">'+nCrit+'</div><div class="val-resumo-label">Crítico</div></div>'+
+    '<div class="val-resumo-card"><div class="val-resumo-num" style="color:var(--warning)">'+nAt+'</div><div class="val-resumo-label">Atenção</div></div>'+
+    '<div class="val-resumo-card"><div class="val-resumo-num" style="color:var(--success)">'+nOk+'</div><div class="val-resumo-label">OK'+(nSalvo?' · '+nSalvo+' salvas':'')+'</div></div>';
+  const subEl=document.getElementById('vaj-sub');
+  if (subEl) subEl.textContent = nCrit+' crítica(s) · '+nAt+' atenção · '+nOk+' aprovadas' + (nSalvo?' · '+nSalvo+' salvas':'');
+}
+
+// ── Render da lista de cards ──────────────────────────────────────────────
+function vajRenderLista() {
+  const lista = document.getElementById('vaj-lista');
+  if (!lista) return;
+  const busca = (document.getElementById('vaj-busca')?.value||'').toLowerCase().trim();
+
+  let items = _vajResultados.filter(r => {
+    if (_vajFiltroAtivo==='pendentes') return r.erros.length>0 && !r.saved;
+    if (_vajFiltroAtivo!=='todos' && r.nivel!==_vajFiltroAtivo) return false;
+    return true;
+  });
+  if (busca) items = items.filter(r=>(r.g.pac||'').toLowerCase().includes(busca));
+  items.sort((a,b)=>{const o={critico:0,atencao:1,informativo:2,ok:3};return o[a.nivel]-o[b.nivel];});
+
+  if (!items.length) {
+    lista.innerHTML='<div style="padding:32px;text-align:center;color:var(--text-muted)">Nenhuma guia encontrada para este filtro.</div>';
+    return;
+  }
+
+  lista.innerHTML = items.map((r,idx)=>{
+    const realIdx = _vajResultados.indexOf(r);
+    const g = r.g;
+    const nivelIcon = r.nivel==='ok'?'✓':r.nivel==='atencao'?'!':r.nivel==='informativo'?'i':'✕';
+    const savedBadge = r.saved ? '<span style="background:rgba(52,211,153,.15);color:var(--success);font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid rgba(52,211,153,.3)">✓ Salva</span>' : '';
+    const dirtyBadge = r.dirty&&!r.saved ? '<span style="background:rgba(124,58,237,.12);color:#7c3aed;font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid rgba(124,58,237,.3)">● Pendente salvar</span>' : '';
+
+    // Campos editáveis: um por tipo de erro encontrado (sem duplicar props)
+    const propsJaAdicionadas = new Set();
+    const camposHtml = r.erros.map(e=>{
+      const cfg = VAJ_CAMPOS[e.campo];
+      if (!cfg) return '';
+      if (propsJaAdicionadas.has(cfg.prop)) return '';
+      propsJaAdicionadas.add(cfg.prop);
+
+      const valAtual = _vajGetProp(g, cfg.prop);
+      const inputId  = `vaj-input-${realIdx}-${cfg.prop.replace(/\./g,'_')}`;
+      let inputHtml  = '';
+
+      if (cfg.type==='select_prof') {
+        const opts = (typeof PROFISSIONAIS!=='undefined' ? PROFISSIONAIS : []).map(p=>
+          `<option value="${p.id}"${g.profId===p.id?' selected':''}>${p.nome}</option>`
+        ).join('');
+        inputHtml=`<select class="vaj-input" id="${inputId}" onchange="vajOnChange(${realIdx},'${cfg.prop}',this.value,'${e.campo}')"><option value="">— Selecione —</option>${opts}</select>`;
+      } else if (cfg.type==='select_plano') {
+        const opts = (typeof PLANOS!=='undefined' ? PLANOS : []).map(p=>
+          `<option value="${p.id}"${g.planoId===p.id?' selected':''}>${p.nome}</option>`
+        ).join('');
+        inputHtml=`<select class="vaj-input" id="${inputId}" onchange="vajOnChange(${realIdx},'${cfg.prop}',this.value,'${e.campo}')"><option value="">— Selecione —</option>${opts}</select>`;
+      } else {
+        inputHtml=`<input class="vaj-input ${e.nivel}" id="${inputId}" type="${cfg.type==='number'?'number':'text'}" value="${(valAtual||'').toString().replace(/"/g,'&quot;')}" placeholder="${cfg.label}" onchange="vajOnChange(${realIdx},'${cfg.prop}',this.value,'${e.campo}')" oninput="vajOnChange(${realIdx},'${cfg.prop}',this.value,'${e.campo}')">`;
+      }
+
+      return `<div class="vaj-campo">
+        <label><span class="vaj-dot ${e.nivel}"></span>${cfg.label}</label>
+        ${inputHtml}
+        <div class="vaj-hint" id="vaj-hint-${realIdx}-${cfg.prop.replace(/\./g,'_')}">${e.desc}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+
+    // Campos ok (sem erros, mas editáveis como bônus: data de execução e valor)
+    const camposExtra = !camposHtml ? `
+      <div class="vaj-campo">
+        <label><span class="vaj-dot ok"></span>Data de execução</label>
+        <input class="vaj-input ok" type="text" value="${g.data||''}" placeholder="AAAA-MM-DD"
+          onchange="vajOnChange(${realIdx},'data',this.value,'Data de execução')"
+          oninput="vajOnChange(${realIdx},'data',this.value,'Data de execução')">
+      </div>
+      <div class="vaj-campo">
+        <label><span class="vaj-dot ok"></span>Valor total</label>
+        <input class="vaj-input ok" type="number" step="0.01" value="${g.valor||0}"
+          onchange="vajOnChange(${realIdx},'valor',this.value,'Valor do procedimento')"
+          oninput="vajOnChange(${realIdx},'valor',this.value,'Valor do procedimento')">
+      </div>` : '';
+
+    const hasDivs = r.erros.length>0;
+    return `<div class="vaj-card ${r.nivel}${r.saved?' salvo':''}${r.expanded?' expanded':''}" id="vaj-card-${realIdx}">
+      <div class="vaj-header" onclick="vajToggle(${realIdx})">
+        <div class="val-badge ${r.nivel}">${nivelIcon}</div>
+        <div class="val-pac-nome">${g.pac||'—'}</div>
+        <div class="val-guia-num">#${g.num||'?'}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-left:4px">${g.data?(g.data.split('-').reverse().join('/')):'—'}</div>
+        ${hasDivs?`<div style="font-size:11px;color:${r.nivel==='critico'?'var(--danger)':'var(--warning)'};margin-left:6px;font-weight:600">${r.erros.length} divergência(s)</div>`:''}
+        ${savedBadge}${dirtyBadge}
+        <div style="margin-left:auto"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;color:var(--text-muted);transform:${r.expanded?'rotate(180deg)':'none'}"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg></div>
+      </div>
+      <div class="vaj-body">
+        ${hasDivs ? `<div class="vaj-grid${r.erros.length>3?' cols3':''}">${camposHtml}</div>` : `<div class="vaj-grid">${camposExtra}</div>`}
+        <div class="vaj-actions">
+          <div class="vaj-save-status" id="vaj-status-${realIdx}"></div>
+          <button class="vaj-save-btn" id="vaj-save-${realIdx}" onclick="vajSalvarUm(${realIdx})"${r.saved&&!r.dirty?' disabled':''}>
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+            ${r.saved&&!r.dirty?'Salvo':'Salvar ajustes'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Toggle card ───────────────────────────────────────────────────────────
+function vajToggle(idx) {
+  _vajResultados[idx].expanded = !_vajResultados[idx].expanded;
+  vajRenderLista();
+}
+
+// ── Filtro ────────────────────────────────────────────────────────────────
+function vajFiltrar(tipo) {
+  _vajFiltroAtivo = tipo;
+  document.querySelectorAll('.vaj-filtro-btn').forEach(b=>b.style.fontWeight='');
+  const btn=document.getElementById('vaj-btn-'+tipo);
+  if (btn) btn.style.fontWeight='700';
+  vajRenderLista();
+}
+
+// ── Helper: get/set nested prop (ex: "dados.procs.0.codigo") ─────────────
+function _vajGetProp(obj, prop) {
+  return prop.split('.').reduce((o,k)=> o!=null ? o[k] : null, obj);
+}
+function _vajSetProp(obj, prop, val) {
+  const parts = prop.split('.');
+  let cur = obj;
+  for (let i=0;i<parts.length-1;i++) {
+    if (cur[parts[i]]==null) cur[parts[i]]={};
+    cur = cur[parts[i]];
+  }
+  const last = parts[parts.length-1];
+  if (!isNaN(parseFloat(val))&&['valor','valor_pago'].includes(last)) cur[last]=parseFloat(val);
+  else if (!isNaN(parseInt(val))&&last==='profId') cur[last]=parseInt(val);
+  else if (!isNaN(parseInt(val))&&last==='planoId') cur[last]=parseInt(val);
+  else cur[last]=val;
+}
+
+// ── onChange: atualiza, revalida, atualiza UI inline ─────────────────────
+function vajOnChange(idx, prop, val, campo) {
+  const r = _vajResultados[idx];
+  if (!r) return;
+
+  // Aplica a alteração na guia clonada
+  _vajSetProp(r.g, prop, val);
+  // Se valor total alterado, sincroniza dentro de dados.procs[0].total também
+  if (prop==='valor') {
+    const v=parseFloat(val)||0;
+    if (r.g.dados&&r.g.dados.procs&&r.g.dados.procs[0]) { r.g.dados.procs[0].valor=v; r.g.dados.procs[0].total=v; }
+  }
+
+  // Revalida a guia inteira
+  const hoje=new Date();
+  r.erros = _vajValidarGuia(r.g, hoje);
+  const novoNivel = r.erros.some(e=>e.nivel==='critico')?'critico'
+    :r.erros.some(e=>e.nivel==='atencao')?'atencao'
+    :r.erros.some(e=>e.nivel==='informativo')?'informativo':'ok';
+
+  r.nivel = novoNivel;
+  r.dirty = true;
+  r.saved = false;
+  r.expanded = true;
+
+  // Atualiza o input visualmente (classe erro/ok)
+  const propId = prop.replace(/\./g,'_');
+  const inputEl = document.getElementById(`vaj-input-${idx}-${propId}`);
+  if (inputEl) {
+    const erroParaCampo = r.erros.find(e=>{ const cfg=VAJ_CAMPOS[e.campo]; return cfg&&cfg.prop===prop; });
+    inputEl.className = 'vaj-input ' + (erroParaCampo ? erroParaCampo.nivel : 'ok');
+    // Atualiza a hint embaixo do campo
+    const hintEl = document.getElementById(`vaj-hint-${idx}-${propId}`);
+    if (hintEl) {
+      if (erroParaCampo) {
+        hintEl.className = 'vaj-hint show ' + erroParaCampo.nivel;
+        hintEl.textContent = erroParaCampo.desc;
+      } else {
+        hintEl.className = 'vaj-hint show ok';
+        hintEl.textContent = '✓ Valor válido';
+      }
+    }
+  }
+
+  // Atualiza o card header (nível + badge)
+  const card = document.getElementById('vaj-card-'+idx);
+  if (card) {
+    card.className = `vaj-card ${novoNivel}${r.saved?' salvo':''} expanded`;
+    const badge = card.querySelector('.val-badge');
+    if (badge) { badge.className='val-badge '+novoNivel; badge.textContent=novoNivel==='ok'?'✓':novoNivel==='atencao'?'!':novoNivel==='informativo'?'i':'✕'; }
+    const saveBtn = document.getElementById('vaj-save-'+idx);
+    if (saveBtn) { saveBtn.disabled=false; saveBtn.textContent='Salvar ajustes'; }
+    const statusEl = document.getElementById('vaj-status-'+idx);
+    if (statusEl) statusEl.textContent='';
+  }
+
+  // Atualiza resumo KPIs em tempo real
+  vajRenderResumo();
+}
+
+// ── Salvar uma guia ────────────────────────────────────────────────────────
+async function vajSalvarUm(idx) {
+  const r = _vajResultados[idx];
+  if (!r) return;
+  const saveBtn   = document.getElementById('vaj-save-'+idx);
+  const statusEl  = document.getElementById('vaj-status-'+idx);
+  if (saveBtn) { saveBtn.disabled=true; saveBtn.textContent='Salvando...'; }
+
+  // Encontra a guia original em GUIAS e substitui os campos editados
+  const origIdx = GUIAS.findIndex(g=>g.id===r.gOrigId);
+  if (origIdx>-1) Object.assign(GUIAS[origIdx], r.g);
+
+  // Persiste no Supabase
+  const sb=(window._cfGetDb?window._cfGetDb():null)||(window.getDb?window.getDb():null);
+  if (sb) {
+    try {
+      const payload = {
+        pac:         r.g.pac,
+        carteirinha: r.g.carteirinha||null,
+        num_op:      r.g.numOp||null,
+        cid:         r.g.cid||null,
+        valor:       r.g.valor||0,
+        data:        r.g.data||null,
+        dados:       r.g.dados||null,
+        prof_id:     r.g.profId||null,
+        plano_id:    r.g.planoId||null,
+        plano:       r.g.plano||null,
+      };
+      const { error } = await sb.from('guias_sadt').update(payload).eq('id', r.gOrigId);
+      if (error) throw error;
+    } catch(e) {
+      console.error('[VAJ] Erro ao salvar:', e.message);
+      if (statusEl) { statusEl.textContent='Erro: '+e.message; statusEl.style.color='var(--danger)'; }
+      if (saveBtn) { saveBtn.disabled=false; saveBtn.textContent='Tentar novamente'; }
+      return;
+    }
+  }
+
+  r.dirty=false; r.saved=true;
+  const card=document.getElementById('vaj-card-'+idx);
+  if (card) card.classList.add('salvo');
+  if (saveBtn) { saveBtn.disabled=true; saveBtn.textContent='✓ Salvo'; }
+  if (statusEl) { statusEl.textContent='Salvo em '+new Date().toLocaleTimeString('pt-BR'); statusEl.style.color='var(--success)'; }
+
+  // Recarrega a lista de guias
+  if (typeof renderGuiasList==='function') renderGuiasList();
+  vajRenderResumo();
+}
+
+// ── Salvar todos com alterações pendentes ────────────────────────────────
+async function vajSalvarTodos() {
+  const pendentes = _vajResultados.map((r,i)=>({r,i})).filter(({r})=>r.dirty&&!r.saved);
+  if (!pendentes.length) { showToast('Nenhum ajuste pendente para salvar','error'); return; }
+  const btn=document.getElementById('vaj-btn-salvar-todos');
+  if (btn) btn.disabled=true;
+  for (const {i} of pendentes) await vajSalvarUm(i);
+  if (btn) btn.disabled=false;
+  showToast(pendentes.length+' guia(s) salva(s) com sucesso!','success');
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 </script>
-
 
 <!-- Modal Validador de Guias SADT -->
 <div class="modal-overlay" id="modal-validador">
@@ -22991,7 +23428,47 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 
-<!-- ═══════════════ CONTROLE DE MESES — MÓDULO ═══════════════ -->
+<!-- ═══════════════ MODAL: VALIDAR COM AJUSTE ═══════════════ -->
+<div class="modal-overlay" id="modal-validador-ajuste">
+  <div class="modal" style="max-width:900px;max-height:92vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div>
+        <div class="modal-title">Validar com Ajuste</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="vaj-sub">Corrija divergências diretamente nesta tela</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-validador-ajuste')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="modal-body" style="flex:1;overflow-y:auto;padding:0">
+      <!-- Resumo KPIs -->
+      <div id="vaj-resumo" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0"></div>
+      <!-- Barra de filtros -->
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bg-surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">Mostrar:</span>
+        <button class="btn-sm btn-secondary vaj-filtro-btn" id="vaj-btn-todos"      onclick="vajFiltrar('todos')"      style="font-size:11px;padding:3px 10px;font-weight:700">Todas</button>
+        <button class="btn-sm btn-secondary vaj-filtro-btn" id="vaj-btn-critico"    onclick="vajFiltrar('critico')"    style="font-size:11px;padding:3px 10px;color:var(--danger);border-color:rgba(248,113,113,.3)">Crítico</button>
+        <button class="btn-sm btn-secondary vaj-filtro-btn" id="vaj-btn-atencao"    onclick="vajFiltrar('atencao')"    style="font-size:11px;padding:3px 10px;color:var(--warning);border-color:rgba(251,191,36,.3)">Atenção</button>
+        <button class="btn-sm btn-secondary vaj-filtro-btn" id="vaj-btn-ok"         onclick="vajFiltrar('ok')"         style="font-size:11px;padding:3px 10px;color:var(--success);border-color:rgba(52,211,153,.3)">OK</button>
+        <button class="btn-sm btn-secondary vaj-filtro-btn" id="vaj-btn-pendentes"  onclick="vajFiltrar('pendentes')"  style="font-size:11px;padding:3px 10px;color:#7c3aed;border-color:rgba(124,58,237,.3)">Pendentes ajuste</button>
+        <div style="flex:1"></div>
+        <div class="search-input-wrap" style="width:200px">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input class="search-input" id="vaj-busca" placeholder="Buscar paciente..." oninput="vajRenderLista()" style="width:200px">
+        </div>
+      </div>
+      <!-- Cards editáveis -->
+      <div id="vaj-lista" style="padding:14px 16px"></div>
+    </div>
+    <div class="modal-footer" style="flex-shrink:0">
+      <div style="font-size:11px;color:var(--text-muted)" id="vaj-rodape"></div>
+      <div style="flex:1"></div>
+      <button class="btn-sm btn-secondary" onclick="vajSalvarTodos()" id="vaj-btn-salvar-todos">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Salvar todos os ajustes
+      </button>
+      <button class="btn-sm btn-accent" onclick="closeModal('modal-validador-ajuste')">Fechar</button>
+    </div>
+  </div>
+</div>
 <script>
 (function() {
 'use strict';
