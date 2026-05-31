@@ -2717,6 +2717,7 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
           </button>
         </div>
       </div>
+      <div id="lotes-stats-row" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;flex-shrink:0"></div>
       <div class="lotes-table-wrap">
         <div class="table-card">
           <table class="data-table">
@@ -9373,20 +9374,7 @@ function proxGuiaNum(planoId) {
 }
 
 function renderGuiasList() {
-  // Update stats
-  const statsEl = document.getElementById('tiss-stats-row');
-  if (statsEl) {
-    const total   = GUIAS.reduce((s,g) => s+g.valor, 0);
-    const pend    = GUIAS.filter(g=>g.status==='Pendente').length;
-    const ultLote = LOTES.filter(l=>l.dataEnvio).sort((a,b)=>b.dataEnvio.localeCompare(a.dataEnvio))[0];
-    statsEl.innerHTML =
-      '<div class="tiss-info-card"><div class="tiss-info-label">Guias cadastradas</div><div class="tiss-info-value">'+GUIAS.length+'</div></div>' +
-      '<div class="tiss-info-card"><div class="tiss-info-label">Valor total</div><div class="tiss-info-value" style="color:var(--success)">'+brl(total)+'</div></div>' +
-      '<div class="tiss-info-card"><div class="tiss-info-label">Pendentes de envio</div><div class="tiss-info-value" style="color:var(--warning)">'+pend+'</div></div>' +
-      '<div class="tiss-info-card"><div class="tiss-info-label">Último lote</div><div class="tiss-info-value" style="font-size:14px">'+(ultLote?ultLote.dataCriacao.split('-').reverse().join('/'):'—')+'</div></div>';
-  }
-
-  // Populate month filter from existing guias
+  // Populate month filter
   const fmEl = document.getElementById('tiss-filtro-mes');
   if (fmEl) {
     const currentMesFiltro = fmEl.value;
@@ -9397,18 +9385,14 @@ function renderGuiasList() {
       return `<option value="${m}"${currentMesFiltro===m?' selected':''}>${label}</option>`;
     }).join('');
   }
-
   // Populate plano filter
   const fpEl = document.getElementById('tiss-filtro-plano');
   if (fpEl && fpEl.options.length <= 1) {
     PLANOS.filter(p=>p.nome!=='Particular').forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id; opt.textContent = p.nome;
+      const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.nome;
       fpEl.appendChild(opt);
     });
   }
-
-  const mesFiltro    = document.getElementById('tiss-filtro-mes')?.value    || '';
   const statusFiltro = document.getElementById('tiss-filtro-status')?.value || '';
   const planoFiltro  = parseInt(document.getElementById('tiss-filtro-plano')?.value  || '0');
   const buscaPac     = (document.getElementById('tiss-busca-pac')?.value || '').toLowerCase().trim();
@@ -9418,6 +9402,27 @@ function renderGuiasList() {
   if (statusFiltro) list = list.filter(g => g.status === statusFiltro);
   if (planoFiltro)  list = list.filter(g => g.planoId === planoFiltro);
   if (buscaPac)     list = list.filter(g => (g.pac||'').toLowerCase().includes(buscaPac));
+
+  // Stats — baseados nos registros filtrados
+  const statsEl = document.getElementById('tiss-stats-row');
+  if (statsEl) {
+    const totalVal  = list.reduce((s,g) => s + (g.valor||0), 0);
+    const pend      = list.filter(g => g.status === 'Pendente').length;
+    const enviado   = list.filter(g => g.status === 'Enviado').length;
+    const pago      = list.filter(g => g.status === 'Pago').length;
+    const glosado   = list.filter(g => g.status === 'Glosado').length;
+    const filtAtivo = mesFiltro || statusFiltro || planoFiltro || buscaPac;
+    const labelQtd  = filtAtivo
+      ? `${list.length} <span style="font-size:10px;color:var(--text-muted)">/ ${GUIAS.length} total</span>`
+      : `${GUIAS.length}`;
+    statsEl.innerHTML =
+      `<div class="tiss-info-card"><div class="tiss-info-label">Guias exibidas</div><div class="tiss-info-value">${labelQtd}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Valor filtrado</div><div class="tiss-info-value" style="color:var(--success)">${brl(totalVal)}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Pendentes</div><div class="tiss-info-value" style="color:var(--warning)">${pend}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Enviadas</div><div class="tiss-info-value" style="color:var(--accent)">${enviado}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Pagas</div><div class="tiss-info-value" style="color:var(--success)">${pago}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Glosadas</div><div class="tiss-info-value" style="color:var(--danger)">${glosado}</div></div>`;
+  }
 
   const el = document.getElementById('guias-list');
   if (!el) return;
@@ -10602,6 +10607,27 @@ function renderLotesTable() {
   let list = LOTES;
   if (compFiltro)   list = list.filter(l => (l.competencia||'') === compFiltro);
   if (statusFiltro) list = list.filter(l => (l.status||'') === statusFiltro);
+
+  // Stats — baseados nos registros filtrados
+  const statsLotesEl = document.getElementById('lotes-stats-row');
+  if (statsLotesEl) {
+    const totalVal  = list.reduce((s,l) => s + (l.valor||0), 0);
+    const totalGuias= list.reduce((s,l) => s + (l.qtd||0), 0);
+    const pend      = list.filter(l => l.status === 'Pendente').length;
+    const enviado   = list.filter(l => l.status === 'Enviado').length;
+    const faturado  = list.filter(l => l.status === 'Faturado').length;
+    const filtAtivo = compFiltro || statusFiltro;
+    const labelQtd  = filtAtivo
+      ? `${list.length} <span style="font-size:10px;color:var(--text-muted)">/ ${LOTES.length} total</span>`
+      : `${LOTES.length}`;
+    statsLotesEl.innerHTML =
+      `<div class="tiss-info-card"><div class="tiss-info-label">Lotes exibidos</div><div class="tiss-info-value">${labelQtd}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Guias no filtro</div><div class="tiss-info-value">${totalGuias}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Valor filtrado</div><div class="tiss-info-value" style="color:var(--success)">${brl(totalVal)}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Pendentes</div><div class="tiss-info-value" style="color:var(--warning)">${pend}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Enviados</div><div class="tiss-info-value" style="color:var(--accent)">${enviado}</div></div>` +
+      `<div class="tiss-info-card"><div class="tiss-info-label">Faturados</div><div class="tiss-info-value" style="color:var(--success)">${faturado}</div></div>`;
+  }
 
   tbody.innerHTML = '';
 
@@ -15224,22 +15250,25 @@ function renderSenhas() {
   if (statusFiltro) list = list.filter(s => s.status === statusFiltro);
   if (buscaPac)     list = list.filter(s => s.paciente.toLowerCase().includes(buscaPac));
 
-  // Stats (sempre sobre o total, sem filtro)
+  // Stats — baseados nos registros filtrados
   const statsEl = document.getElementById('senhas-stats');
   if (statsEl) {
-    const ativas   = SENHAS_PLANO.filter(s=>s.status==='Ativa').length;
-    const vencidas = SENHAS_PLANO.filter(s=>s.status==='Vencida').length;
-    const usadas   = SENHAS_PLANO.filter(s=>s.status==='Usada').length;
-    const total    = SENHAS_PLANO.length;
+    const ativas   = list.filter(s => s.status === 'Ativa').length;
+    const vencidas = list.filter(s => s.status === 'Vencida').length;
+    const usadas   = list.filter(s => s.status === 'Usada').length;
+    const filtAtivo = planoFiltro || mesFiltro || statusFiltro || buscaPac;
+    const labelQtd = filtAtivo
+      ? `${list.length} <span style="font-size:10px;color:var(--text-muted)">/ ${SENHAS_PLANO.length} total</span>`
+      : `${SENHAS_PLANO.length}`;
     const cards = [
-      { label:'Total cadastradas', val:total,   color:'var(--accent)'  },
-      { label:'Ativas',            val:ativas,   color:'var(--success)' },
-      { label:'Vencidas',          val:vencidas, color:'var(--danger)'  },
-      { label:'Usadas/Concluídas', val:usadas,   color:'var(--text-muted)' },
+      { label:'Exibidas',           val:labelQtd, color:'var(--accent)',     raw:true },
+      { label:'Ativas',             val:ativas,   color:'var(--success)'          },
+      { label:'Vencidas',           val:vencidas, color:'var(--danger)'           },
+      { label:'Usadas/Concluídas',  val:usadas,   color:'var(--text-muted)'       },
     ];
     statsEl.innerHTML = cards.map(c =>
       '<div class="tiss-info-card"><div class="tiss-info-label">'+c.label+'</div>' +
-      '<div class="tiss-info-value" style="color:'+c.color+'">'+c.val+'</div></div>'
+      '<div class="tiss-info-value" style="color:'+c.color+'">'+(c.raw ? c.val : c.val)+'</div></div>'
     ).join('');
   }
 
