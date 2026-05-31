@@ -16855,75 +16855,95 @@ document.addEventListener('DOMContentLoaded', function() {
   async function loadFromSupabase() {
     const sb = getDb();
     if (!sb) return;
-    showToast('Carregando dados do banco de dados...', 'success');
+
+    // ── Restaura cache local imediatamente para render sem delay ──────────
+    const CACHE_KEY = 'cf_cache_v2';
+    const cachedRaw = localStorage.getItem(CACHE_KEY);
+    if (cachedRaw) {
+      try {
+        const cache = JSON.parse(cachedRaw);
+        const repC = (arr, data, fn) => { if (!data||!data.length) return; arr.length=0; data.forEach(r=>arr.push(fn(r))); };
+        if (cache.profissionais) repC(PROFISSIONAIS, cache.profissionais, map.dbToProf);
+        if (cache.planos)        repC(PLANOS,        cache.planos,        map.dbToPlano);
+        if (cache.procedimentos) repC(PROCEDIMENTOS, cache.procedimentos, map.dbToProc);
+        if (cache.pacientes)     repC(PACIENTES,     cache.pacientes,     map.dbToPac);
+        if (cache.agendamentos)  repC(APPOINTMENTS,  cache.agendamentos,  map.dbToAppt);
+        if (cache.clinica)       Object.assign(CLINICA, cache.clinica);
+        try { activeProfFilters = new Set(getProfisComAgendaHoje().map(p=>p.id)); } catch(_){}
+        try { buildProfFilters(); populateSelects(); renderDayView(); renderDashboard(); } catch(_){}
+        showToast('\u{1F4C2} Cache restaurado \u2014 atualizando em segundo plano...', 'success');
+      } catch(_) { localStorage.removeItem(CACHE_KEY); }
+    } else {
+      showToast('Carregando dados...', 'success');
+    }
+
     try {
-      // Tabelas grandes (pacientes, agendamentos, historico) usam paginação
-      // Tabelas pequenas (planos, profissionais, etc.) usam query simples com limit alto
-      const [prof, pl, proc, lo, se, esp, cfg] = await Promise.all([
-        sb.from('profissionais').select('*').order('nome').limit(5000),
+      // ══ FASE 1 — dados críticos para a tela inicial, em paralelo ═══════════
+      const [prof, pl, proc, pacR, agR, cfg] = await Promise.all([
+        sb.from('profissionais').select('*').order('nome').limit(500),
         sb.from('planos_saude').select('*').order('nome').limit(500),
         sb.from('procedimentos').select('*').order('descricao').limit(5000),
-        sb.from('lotes_tiss').select('*').order('created_at', { ascending: false }).limit(2000),
-        sb.from('senhas_plano').select('*').order('created_at', { ascending: false }).limit(5000),
-        sb.from('lista_espera').select('*').order('created_at', { ascending: false }).limit(2000),
+        sb.from('pacientes').select('id,nome,carteirinha,plano_id,plano,nascimento,cpf,tel,email,status,foto,obs').order('nome').limit(10000),
+        sb.from('agendamentos').select('*').order('data_iso',{ascending:false}).limit(5000),
         sb.from('config_clinica').select('*').limit(1),
       ]);
 
-      // Tabelas grandes: paginação completa
-      const pac  = await fetchAll(sb.from('pacientes').select('*'),  'nome');
-      const ag   = await fetchAll(sb.from('agendamentos').select('*'), 'data_iso');
-      const gu   = await fetchAll(sb.from('guias_sadt').select('*'),  'created_at', false);
-      const hist = await fetchAll(sb.from('historico').select('*'),   'data', false);
+      const rep = (arr, data, fn) => { arr.length=0; (data||[]).forEach(r=>arr.push(fn(r))); };
+      rep(PROFISSIONAIS, prof.data, map.dbToProf);
+      rep(PLANOS,        pl.data,   map.dbToPlano);
+      rep(PROCEDIMENTOS, proc.data, map.dbToProc);
+      rep(PACIENTES,     pacR.data, map.dbToPac);
+      rep(APPOINTMENTS,  agR.data,  map.dbToAppt);
 
-      const rep = (arr, data, fn) => { arr.length = 0; (data || []).forEach(r => arr.push(fn(r))); };
-      rep(PACIENTES,    pac,        map.dbToPac);
-      rep(PROFISSIONAIS,prof.data,  map.dbToProf);
-      rep(PLANOS,       pl.data,    map.dbToPlano);
-      rep(PROCEDIMENTOS,proc.data,  map.dbToProc);
-      rep(APPOINTMENTS, ag,         map.dbToAppt);
-      rep(GUIAS,        gu,         map.dbToGuia);
-      rep(LOTES,        lo.data,    map.dbToLote);
-      rep(SENHAS_PLANO, se.data,    map.dbToSenha);
-      rep(LISTA_ESPERA, esp.data,   map.dbToEspera);
-      rep(HISTORICO,    hist,       map.dbToHist);
       if (cfg.data && cfg.data.length > 0) {
         Object.assign(CLINICA, cfg.data[0].dados || {});
-        // Sincroniza canal de notificação carregado do banco
-        if (CLINICA.canalNotif) {
-          WA_CONFIG.canal = CLINICA.canalNotif;
-          localStorage.setItem('cf_notif_canal', CLINICA.canalNotif);
-        }
+        if (CLINICA.canalNotif) { WA_CONFIG.canal = CLINICA.canalNotif; localStorage.setItem('cf_notif_canal', CLINICA.canalNotif); }
       }
 
-      // Carrega usuários do Supabase (merge com localStorage)
-      try { await carregarUsuariosSupabase(); } catch(_eu) {}
+      const maxId = (arr) => arr.length ? Math.max(...arr.map(x=>Number(x.id)||0))+1 : 1;
+      nextPacId = maxId(PACIENTES); nextPrfId = maxId(PROFISSIONAIS);
+      nextPlId  = maxId(PLANOS);    nextProcId = maxId(PROCEDIMENTOS);
+      activeProfFilters = new Set(getProfisComAgendaHoje().map(p=>p.id));
 
-      const maxId = (arr) => arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
-      nextPacId    = maxId(PACIENTES);
-      nextPrfId    = maxId(PROFISSIONAIS);
-      nextPlId     = maxId(PLANOS);
-      nextProcId   = maxId(PROCEDIMENTOS);
-      nextGuiaId   = maxId(GUIAS);
-      nextLoteId   = maxId(LOTES);
-      nextSenhaId  = maxId(SENHAS_PLANO);
-      nextEsperaId = maxId(LISTA_ESPERA);
+      // Render fase 1 — agenda aparece rapidamente
+      try { buildProfFilters(); populateSelects(); renderDayView(); renderDashboard(); renderPacientesTable(); renderProfissionaisTable(); renderSidebarLogo(); } catch(_) {}
+      try { if (typeof atualizarAvatarSidebar==='function') atualizarAvatarSidebar(); } catch(_) {}
+      showToast('\u2713 ' + PACIENTES.length + ' pac. \u00B7 ' + APPOINTMENTS.length + ' agend. \u2014 carregando mais...', 'success');
+
+      // Salva fase 1 no cache
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          profissionais: prof.data, planos: pl.data, procedimentos: proc.data,
+          pacientes: pacR.data, agendamentos: agR.data, clinica: CLINICA, ts: Date.now(),
+        }));
+      } catch(_) {}
+
+      // ══ FASE 2 — dados secundários em paralelo, sem bloquear UI ═══════════
+      const [lo, se, esp, gu, hist] = await Promise.all([
+        sb.from('lotes_tiss').select('*').order('created_at',{ascending:false}).limit(2000).catch(()=>({data:[]})),
+        sb.from('senhas_plano').select('*').order('created_at',{ascending:false}).limit(5000).catch(()=>({data:[]})),
+        sb.from('lista_espera').select('*').order('created_at',{ascending:false}).limit(2000).catch(()=>({data:[]})),
+        sb.from('guias_sadt').select('*').order('created_at',{ascending:false}).limit(5000).catch(()=>({data:[]})),
+        sb.from('historico').select('*').order('data',{ascending:false}).limit(5000).catch(()=>({data:[]})),
+      ]);
+
+      rep(LOTES,        lo.data,   map.dbToLote);
+      rep(SENHAS_PLANO, se.data,   map.dbToSenha);
+      rep(LISTA_ESPERA, esp.data,  map.dbToEspera);
+      rep(GUIAS,        gu.data,   map.dbToGuia);
+      rep(HISTORICO,    hist.data, map.dbToHist);
+
+      nextGuiaId   = maxId(GUIAS);   nextLoteId   = maxId(LOTES);
+      nextSenhaId  = maxId(SENHAS_PLANO); nextEsperaId = maxId(LISTA_ESPERA);
       nextHistId   = maxId(HISTORICO);
-      activeProfFilters = new Set(getProfisComAgendaHoje().map(p => p.id));
 
-      // Re-render all modules via refreshUI central
-      try { refreshUI(); } catch(e) {
-        // Fallback caso refreshUI ainda não esteja definida no momento do load inicial
-        ['renderPacientesTable','renderProfissionaisTable','renderPlanosGrid','renderProcedimentosTable',
-         'renderGuiasList','renderLotesTable','renderSenhas','buildProfFilters',
-         'populateSelects','renderDayView','renderSidebarLogo','renderDashboard','renderRelatorios',
-         'updateNavBadges'].forEach(fn => { try { window[fn](); } catch(e2) {} });
-      }
+      try { await carregarUsuariosSupabase(); } catch(_) {}
+      try { renderGuiasList(); renderLotesTable(); renderSenhas(); updateNavBadges(); } catch(_) {}
 
-      showToast('✓ ' + PACIENTES.length + ' pacientes · ' + APPOINTMENTS.length + ' agendamentos carregados', 'success');
-      // Atualiza avatar da sidebar com foto do usuário logado (se cadastrada)
-      try { if (typeof atualizarAvatarSidebar === 'function') atualizarAvatarSidebar(); } catch(_e2) {}
+      showToast('\u2713 Tudo carregado \u2014 ' + PACIENTES.length + ' pac. \u00B7 ' + APPOINTMENTS.length + ' agend. \u00B7 ' + GUIAS.length + ' guias', 'success');
+
     } catch (e) {
-      showToast('Erro ao carregar dados: ' + e.message, 'error');
+      showToast('Erro ao carregar: ' + e.message, 'error');
       console.error('[ClinicFlow Supabase]', e);
     }
   }
