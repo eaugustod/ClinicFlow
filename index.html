@@ -9393,6 +9393,7 @@ function renderGuiasList() {
       fpEl.appendChild(opt);
     });
   }
+  const mesFiltro    = document.getElementById('tiss-filtro-mes')?.value    || '';
   const statusFiltro = document.getElementById('tiss-filtro-status')?.value || '';
   const planoFiltro  = parseInt(document.getElementById('tiss-filtro-plano')?.value  || '0');
   const buscaPac     = (document.getElementById('tiss-busca-pac')?.value || '').toLowerCase().trim();
