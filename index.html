@@ -9697,261 +9697,234 @@ function previewGuiasAutomaticas() {
            tb.every(t => a.toLowerCase().includes(t));
   };
 
-  // ── Senhas ativas no período ─────────────────────────────────────────────
-  SENHAS_PLANO.filter(s => {
-    if (!s.ativa && s.status !== 'Ativa') return false;
-    if ((s.qtdUsada || 0) >= s.qtdAutorizada) return false;
-    if (planoId && s.planoId !== planoId) return false;
-    // Validade deve cobrir o mês (se informada)
-    if (s.validade && s.validade < ISO_PRIM) return false;
-    // dataAut deve ser até o fim do mês (se informada)
-    if (s.dataAut && s.dataAut > ISO_ULT) return false;
-    return true;
-  }).forEach(senha => {
-    if (pacFilt && !senha.paciente.toLowerCase().includes(pacFilt)) return;
-    const plano = PLANOS.find(p => p.id === senha.planoId);
+  // ── Monta mapa de senhas candidatas por paciente ─────────────────────────
+  // Para cada paciente, coleta TODAS as senhas com saldo:
+  //   1. Senhas do mês selecionado (dataAut dentro do mês ou cobrindo o mês)
+  //   2. Senhas de meses anteriores com saldo restante e validade ainda em vigor
+  // As senhas são ordenadas por dataAut ASC, para usar a mais antiga primeiro
+  // quando o agendamento cai antes da dataAut da senha mais recente.
+
+  // Mapa: paciente_normalizado → [senha, ...] ordenadas por dataAut ASC
+  const senhasPorPaciente = {};
+
+  SENHAS_PLANO.forEach(s => {
+    if (!s.ativa && s.status !== 'Ativa') return;
+    if ((s.qtdUsada || 0) >= s.qtdAutorizada) return;
+    if (planoId && s.planoId !== planoId) return;
+    // Validade não pode ter expirado antes do início do mês
+    if (s.validade && s.validade < ISO_PRIM) return;
+    // dataAut não pode ser após o fim do mês (senha futura não serve)
+    if (s.dataAut && s.dataAut > ISO_ULT) return;
+    const key = s.paciente.toLowerCase().trim();
+    if (!senhasPorPaciente[key]) senhasPorPaciente[key] = [];
+    senhasPorPaciente[key].push(s);
+  });
+
+  // Ordena cada lista por dataAut ASC (mais antigas primeiro = usa saldo anterior antes)
+  Object.values(senhasPorPaciente).forEach(arr =>
+    arr.sort((a, b) => (a.dataAut || '').localeCompare(b.dataAut || ''))
+  );
+
+  // ── Itera por paciente ────────────────────────────────────────────────────
+  // Agrupa senhas por paciente e processa juntas, alocando semanas para a senha certa
+  const pacientesProcessados = new Set();
+
+  Object.entries(senhasPorPaciente).forEach(([pacKey, senhasDosPac]) => {
+    // Filtra por paciente se solicitado
+    if (pacFilt && !pacKey.includes(pacFilt)) return;
+
+    // Usa a senha mais recente como referência de plano/proc/nome
+    const senhaRef = senhasDosPac[senhasDosPac.length - 1];
+    const plano = PLANOS.find(p => p.id === senhaRef.planoId);
     if (!plano) return;
 
-    // ── Agendamentos do paciente no mês (todos os status) ───────────────
-    // allAppts: usados para exibição correta na prévia (cancelado, desmarcado, atendido, etc.)
+    // Cria cópia mutável dos saldos para simulação
+    const saldos = senhasDosPac.map(s => ({
+      senha: s,
+      restantes: s.qtdAutorizada - (s.qtdUsada || 0),
+    }));
+
+    // ── Agendamentos do paciente no mês ──────────────────────────────────
     const allAppts = APPOINTMENTS.filter(a =>
       a.dataISO >= ISO_PRIM && a.dataISO <= ISO_ULT &&
-      matchNome(a.paciente, senha.paciente)
+      matchNome(a.paciente, senhaRef.paciente)
     ).sort((a, b) => a.dataISO.localeCompare(b.dataISO));
 
-    // ── Data de corte por cancelamento ───────────────────────────────────
-    // Se houver algum agendamento com status "cancelado" no mês,
-    // não gerar guias com data >= dataCorte (a data do 1º cancelamento).
-    // Desmarcados NÃO são corte — a geração segue normalmente para semanas
-    // com desmarcados; cancelado encerra definitivamente a geração.
+    // Data de corte por cancelamento
     const apptCancelado = allAppts.find(a =>
       (a.status || '').toLowerCase() === 'cancelado'
     );
-    // dataCorte: data do 1º agendamento cancelado (ou null = sem corte)
     const dataCorte = apptCancelado
       ? new Date(apptCancelado.dataISO + 'T12:00:00')
       : null;
 
-    // appts: apenas ativos, usados para calcular datas e duração
     const appts = allAppts.filter(a =>
       !['cancelado','desmarcado'].includes((a.status||'').toLowerCase())
     );
 
-    // Nome real do paciente (do agendamento se existir, senão da senha)
-    const pacNomeReal = allAppts.length ? allAppts[0].paciente : senha.paciente;
+    const pacNomeReal = allAppts.length ? allAppts[0].paciente : senhaRef.paciente;
 
-    // ── Limites ──────────────────────────────────────────────────────────
-    const restantes = senha.qtdAutorizada - (senha.qtdUsada || 0);
-    if (restantes <= 0) return;
+    // Data final do mês (com corte por cancelamento se houver)
+    let dataFimMes = new Date(D_ULT);
+    if (dataCorte && dataCorte < dataFimMes) dataFimMes = new Date(dataCorte);
 
-    // Data de início = max(dataAut, 1º do mês)
-    const dataAutDate = senha.dataAut
-      ? new Date(senha.dataAut + 'T12:00:00')
-      : new Date(D_PRIM);
-    const dataIniReal = dataAutDate > D_PRIM ? dataAutDate : new Date(D_PRIM);
-
-    // Data final = min(validade, último do mês, dataCorte-1 dia se houver cancelamento)
-    // O -1 dia garante que guias até o dia anterior ao cancelamento são incluídas.
-    // Exemplo: cancelamento em 20/05 → última guia pode ser 19/05.
-    let dataFimReal = senha.validade && new Date(senha.validade + 'T12:00:00') < D_ULT
-      ? new Date(senha.validade + 'T12:00:00')
-      : new Date(D_ULT);
-
-    if (dataCorte) {
-      // Corte inclusivo: última guia pode ter data == dataCorte
-      // Semanas com datas > dataCorte são descartadas
-      if (dataCorte < dataFimReal) {
-        dataFimReal = new Date(dataCorte);
-      }
-    }
-
-    // ── Procedimento ─────────────────────────────────────────────────────
-    const proc = (senha.procs && senha.procs.length > 0)
-      ? senha.procs[0]
-      : (PROCEDIMENTOS.find(p => p.planoId === senha.planoId) || PROCEDIMENTOS[0]);
-    const procCod  = proc?.codigo || '';
-    const procDesc = proc?.desc   || 'Sessão de Terapia';
-    const procVal  = (PROCEDIMENTOS.find(p => p.codigo === procCod && p.planoId === senha.planoId)
-      || PROCEDIMENTOS.find(p => p.codigo === procCod))?.valPlano || 0;
-
-    // ── Duração (usa 1º agendamento como referência; default 30 min) ─────
+    // Duração base
     const durMin = appts.length ? (appts[0].durMin || 30) : 30;
     const is60   = durMin >= 60;
 
-    // ═════════════════════════════════════════════════════════════════════
-    // GERAÇÃO DAS DATAS POR SEMANA
-    // Regras (por dia da semana do 1º agendamento do mês):
-    //   Seg (1): guia1=Seg, guia2=Qua (+2 dias corridos)
-    //   Ter (2): guia1=Ter, guia2=Qui (+2 dias corridos)
-    //   Qua (3): guia1=Qua, guia2=Sex (+2 dias corridos)
-    //   Qui (4): guia1=Qui, guia2=Ter da MESMA semana (-2 dias corridos)
-    //   Sex (5): guia1=Sex, guia2=Qua da MESMA semana (-2 dias corridos)
-    //
-    //   30 min → apenas 1 guia (guia1)
-    //   60 min → 2 guias (guia1 + guia2)
-    //
-    //   Todas as datas devem estar dentro de [dataIniReal, dataFimReal]
-    //   guia1 nunca pode ser anterior a dataIniReal (data inicial da autorização)
-    //   guia2 nunca pode ser anterior a dataIniReal
-    //   Nenhuma guia pode ser posterior a dataFimReal
-    // ═════════════════════════════════════════════════════════════════════
+    // Proc da senha de referência
+    const proc = (senhaRef.procs && senhaRef.procs.length > 0)
+      ? senhaRef.procs[0]
+      : (PROCEDIMENTOS.find(p => p.planoId === senhaRef.planoId) || PROCEDIMENTOS[0]);
+    const procCod  = proc?.codigo || '';
+    const procDesc = proc?.desc   || 'Sessão de Terapia';
+    const procVal  = (PROCEDIMENTOS.find(p => p.codigo === procCod && p.planoId === senhaRef.planoId)
+      || PROCEDIMENTOS.find(p => p.codigo === procCod))?.valPlano || 0;
 
-    // Descobre o dow base (dia da semana do 1º agendamento do mês)
-    // Usa o primeiro agendamento do mês como referência fixa
+    // Dia da semana base
     let dowBase = appts.length
       ? new Date(appts[0].dataISO + 'T12:00:00').getDay()
-      : 4; // default quinta
-    if (dowBase === 0 || dowBase === 6) dowBase = 4; // Não gera em fim de semana
+      : 4;
+    if (dowBase === 0 || dowBase === 6) dowBase = 4;
 
-    // Calcula o offset (em dias corridos) para a 2ª guia baseado no dia âncora
-    // Seg(1)→+2(Qua), Ter(2)→+2(Qui), Qua(3)→+2(Sex), Qui(4)→-2(Ter), Sex(5)→-2(Qua)
     const offsetG2 = (dow) => {
-      if (dow === 4) return -2; // Qui → Ter (mesma semana, recua 2 dias corridos)
-      if (dow === 5) return -2; // Sex → Qua (mesma semana, recua 2 dias corridos)
-      return 2;                 // Seg/Ter/Qua → avança 2 dias corridos
+      if (dow === 4) return -2;
+      if (dow === 5) return -2;
+      return 2;
     };
 
-    // Monta mapa de agendamentos por semana (chave = ISO da segunda daquela semana)
-    // apptPorSemana: apenas ativos (usado para calcular datas)
-    const apptPorSemana = {};
-    appts.forEach(a => {
-      const d   = new Date(a.dataISO + 'T12:00:00');
-      const dow = d.getDay() === 0 ? 7 : d.getDay();
-      const seg = new Date(d);
-      seg.setDate(d.getDate() - (dow - 1));
-      const k = dateToISO(seg);
-      if (!apptPorSemana[k]) apptPorSemana[k] = a;
-    });
+    // Faz ajuste de feriado
+    const ajustarFeriado = (d) => {
+      let r = new Date(d);
+      while (r.getDay() === 0 || r.getDay() === 6 || isFeriado(dateToISO(r)))
+        r = addDays(r, 1);
+      return r;
+    };
 
-    // allApptPorSemana: todos os status (usado só para exibição na prévia)
-    const allApptPorSemana = {};
-    allAppts.forEach(a => {
-      const d   = new Date(a.dataISO + 'T12:00:00');
-      const dow = d.getDay() === 0 ? 7 : d.getDay();
-      const seg = new Date(d);
-      seg.setDate(d.getDate() - (dow - 1));
-      const k = dateToISO(seg);
-      if (!allApptPorSemana[k]) allApptPorSemana[k] = a;
-    });
+    // Semana inicial: segunda da semana que contém D_PRIM
+    let semAtual = new Date(D_PRIM);
+    while (semAtual.getDay() !== 1) semAtual = addDays(semAtual, -1);
 
-    // ── Guias totais a gerar para esta senha ─────────────────────────────
-    // qtdAutorizada = total autorizado pela operadora
-    // qtdUsada      = já geradas/usadas
-    // restantes     = ainda a gerar nesta rodada
-    //
-    // Regra de qtd por semana:
-    //   30 min → 1 guia/semana
-    //   60 min → 2 guias/semana (desde que ambas caiam dentro do período)
-    //
-    // O loop abaixo desconta de guiasRestantes conforme gera,
-    // respeitando os limites da senha. Se uma semana gerar só 1 das 2 guias
-    // (ex: g2 cai fora da validade), só 1 é descontada.
+    // ── Loop por semana ───────────────────────────────────────────────────
+    while (semAtual <= dataFimMes) {
+      // Data âncora da semana = semAtual + offset para o dowBase
+      const diffToBase = ((dowBase - 1 + 7) % 7);
+      const diaAncora  = addDays(semAtual, diffToBase);
 
-    // Encontra a segunda da semana que contém dataIniReal
-    const dowIni = dataIniReal.getDay() === 0 ? 7 : dataIniReal.getDay();
-    const segIni = new Date(dataIniReal);
-    segIni.setDate(dataIniReal.getDate() - (dowIni - 1));
+      // Guia 1
+      const g1Raw = ajustarFeriado(diaAncora);
+      if (g1Raw > dataFimMes) { semAtual = addDays(semAtual, 7); continue; }
 
-    let guiasRestantes = restantes;
+      const g1ISO = dateToISO(g1Raw);
+      if (g1ISO < ISO_PRIM) { semAtual = addDays(semAtual, 7); continue; }
 
-    let semAtual = new Date(segIni);
-    while (semAtual <= dataFimReal && guiasRestantes > 0) {
-      const wKey    = dateToISO(semAtual);
-      const apptSem = apptPorSemana[wKey] || null;
+      // ── Escolhe a senha correta para a data da guia1 ──────────────────
+      // Regra: usa a senha mais antiga (saldo anterior) cuja dataAut ≤ g1ISO
+      //        e que ainda tem saldo. Se não houver, usa a próxima disponível.
+      let senhaParaG1 = null;
+      let idxSaldoG1  = -1;
 
-      // Dia âncora desta semana = dia do agendamento (se existe) ou projeção do dowBase
-      let diaAncora;
-      if (apptSem) {
-        diaAncora = new Date(apptSem.dataISO + 'T12:00:00');
-      } else {
-        // Projeta o mesmo dow base nesta semana (semAtual é sempre uma segunda)
-        diaAncora = new Date(semAtual);
-        diaAncora.setDate(semAtual.getDate() + (dowBase - 1));
+      for (let i = 0; i < saldos.length; i++) {
+        const sd = saldos[i];
+        if (sd.restantes <= 0) continue;
+        const sDataAut = sd.senha.dataAut || ISO_PRIM;
+        const sValidade = sd.senha.validade || '9999-12-31';
+        // A senha cobre a data da guia?
+        if (sDataAut <= g1ISO && sValidade >= g1ISO) {
+          senhaParaG1 = sd.senha;
+          idxSaldoG1  = i;
+          break;
+        }
       }
-
-      // Âncora antes do início da autorização → pula esta semana
-      if (diaAncora < dataIniReal) { semAtual = addDays(semAtual, 7); continue; }
-      // Âncora após o fim da autorização → encerra
-      if (diaAncora > dataFimReal) break;
-
-      // ── Ajuste de feriado ─────────────────────────────────────────────
-      // Se o dia cair em feriado:
-      //   • Sexta → recua para quinta (-1 dia)
-      //   • Demais → avança para o próximo dia útil (+1 dia)
-      // Repete até encontrar um dia útil sem feriado.
-      const ajustarFeriado = (d) => {
-        let r = new Date(d);
-        while (isFeriado(dateToISO(r)) || r.getDay() === 0 || r.getDay() === 6) {
-          if (r.getDay() === 5 || (r.getDay() === 6 && isFeriado(dateToISO(addDays(r,-1))))) {
-            // Sexta em feriado → vai para quinta
-            r = addDays(r, -1);
-          } else {
-            // Demais → avança um dia
-            r = addDays(r, 1);
+      // Fallback: senha com validade cobrindo g1ISO mesmo se dataAut > g1ISO
+      if (!senhaParaG1) {
+        for (let i = 0; i < saldos.length; i++) {
+          const sd = saldos[i];
+          if (sd.restantes <= 0) continue;
+          const sValidade = sd.senha.validade || '9999-12-31';
+          if (sValidade >= g1ISO) {
+            senhaParaG1 = sd.senha;
+            idxSaldoG1  = i;
+            break;
           }
         }
-        return r;
-      };
+      }
 
-      // guia1 = dia âncora ajustado por feriado
-      const g1 = ajustarFeriado(diaAncora);
+      if (!senhaParaG1 || saldos[idxSaldoG1].restantes <= 0) {
+        semAtual = addDays(semAtual, 7);
+        continue;
+      }
+
+      // Verifica duplicata guia1
+      const dup1 = GUIAS.some(g =>
+        g.pac === pacNomeReal && g.data === g1ISO &&
+        g.planoId === senhaParaG1.planoId
+      );
+
       let g2ISO = null;
+      let senhaParaG2 = senhaParaG1;
+      let idxSaldoG2  = idxSaldoG1;
 
-      if (is60 && guiasRestantes > 1) {
-        // guia2 = diaAncora + offset (pode ser negativo = mesma semana, antes da âncora)
+      if (is60 && saldos[idxSaldoG1].restantes > (dup1 ? 0 : 1)) {
         const offset = offsetG2(diaAncora.getDay());
-        const g2Raw  = addDays(diaAncora, offset);
-        const g2     = ajustarFeriado(g2Raw);
-        const g2Iso  = dateToISO(g2);
-        const g1Iso2 = dateToISO(g1);
+        const g2Raw  = ajustarFeriado(addDays(diaAncora, offset));
+        const g2ISOtmp = dateToISO(g2Raw);
 
-        // Diferença em dias entre as duas datas (sempre positiva)
         const diffDias = Math.abs(
-          (new Date(g2Iso + 'T12:00:00') - new Date(g1Iso2 + 'T12:00:00')) / 86400000
+          (new Date(g2ISOtmp + 'T12:00:00') - new Date(g1ISO + 'T12:00:00')) / 86400000
         );
 
-        // g2 é válida se:
-        //  1. Está dentro do intervalo [dataIniReal, dataFimReal]
-        //  2. Está dentro do mês
-        //  3. É diferente de g1 (diffDias >= 1)
-        //  4. Caso g2 < g1 (Qui/Sex): g2 >= dataIniReal (não pode cair antes da autorização)
-        //  5. Caso g2 > g1: g2 não pode ultrapassar dataFimReal
-        if (
-          g2 >= dataIniReal &&
-          g2 <= dataFimReal &&
-          g2 >= D_PRIM &&
-          diffDias >= 1
-        ) {
-          g2ISO = g2Iso;
-        } else if (diffDias < 1) {
-          // g2 colide com g1 após ajuste de feriado → avança 1 dia útil a partir de g1
-          const g2Fallback = ajustarFeriado(addDays(g1, 1));
-          if (
-            g2Fallback >= dataIniReal &&
-            g2Fallback <= dataFimReal &&
-            dateToISO(g2Fallback) !== g1Iso2
-          ) {
-            g2ISO = dateToISO(g2Fallback);
+        if (diffDias >= 1 && g2ISOtmp >= ISO_PRIM && g2Raw <= dataFimMes) {
+          // Escolhe senha para g2 (pode ser a mesma ou outra se necessário)
+          for (let i = 0; i < saldos.length; i++) {
+            const sd = saldos[i];
+            if (sd.restantes <= (i === idxSaldoG1 && !dup1 ? 1 : 0)) continue;
+            const sDataAut  = sd.senha.dataAut  || ISO_PRIM;
+            const sValidade = sd.senha.validade || '9999-12-31';
+            if (sDataAut <= g2ISOtmp && sValidade >= g2ISOtmp) {
+              senhaParaG2 = sd.senha;
+              idxSaldoG2  = i;
+              break;
+            }
           }
+          g2ISO = g2ISOtmp;
+        } else if (diffDias < 1) {
+          const g2Fb = ajustarFeriado(addDays(g1Raw, 1));
+          const g2FbISO = dateToISO(g2Fb);
+          if (g2Fb <= dataFimMes && g2FbISO !== g1ISO) g2ISO = g2FbISO;
         }
       }
 
-      if (g1 > dataFimReal || g1 < dataIniReal) { semAtual = addDays(semAtual, 7); continue; }
-      const g1ISO = dateToISO(g1);
-
-      // ── Checa duplicatas ──────────────────────────────────────────────
-      const dup1 = GUIAS.some(g =>
-        matchNome(g.pac, pacNomeReal) && g.data === g1ISO &&
-        !['Cancelado','cancelado'].includes(g.status)
-      );
       const dup2 = g2ISO ? GUIAS.some(g =>
-        matchNome(g.pac, pacNomeReal) && g.data === g2ISO &&
-        !['Cancelado','cancelado'].includes(g.status)
+        g.pac === pacNomeReal && g.data === g2ISO &&
+        g.planoId === (senhaParaG2?.planoId || senhaParaG1.planoId)
       ) : false;
+
+      // Desconta saldo simulado
+      if (!dup1) saldos[idxSaldoG1].restantes--;
+      if (g2ISO && !dup2) saldos[idxSaldoG2].restantes--;
+
       const allDup = dup1 && (!g2ISO || dup2);
 
+      // Semana key para exibição do agendamento
+      const wKey = dateToISO(semAtual);
+      const allApptPorSemana = {};
+      allAppts.forEach(a => {
+        const ds = new Date(a.dataISO + 'T12:00:00');
+        while (ds.getDay() !== 1) ds.setDate(ds.getDate() - 1);
+        const k = dateToISO(ds);
+        if (!allApptPorSemana[k]) allApptPorSemana[k] = a;
+      });
+      const apptSem = appts.find(a => {
+        const ds = new Date(a.dataISO + 'T12:00:00');
+        while (ds.getDay() !== 1) ds.setDate(ds.getDate() - 1);
+        return dateToISO(ds) === wKey;
+      });
+
       _ggParsed.push({
-        senha, plano, profExec, is60, pacNomeReal,
+        senha: senhaParaG1,
+        senhaG2: senhaParaG2,
+        plano, profExec, is60, pacNomeReal,
         appt: apptSem,
         apptDisplay: allApptPorSemana[wKey] || apptSem || null,
         data1ISO: g1ISO,
@@ -9959,11 +9932,10 @@ function previewGuiasAutomaticas() {
         procCod, procDesc, procVal,
         dup1, dup2,
         dataCorte: dataCorte ? dateToISO(dataCorte) : null,
+        // Flag para exibir aviso de senha diferente entre g1 e g2
+        senhasDiferentes: senhaParaG2 && senhaParaG1.id !== senhaParaG2.id,
         status: allDup ? 'dup' : 'ok',
       });
-
-      if (!dup1) guiasRestantes--;
-      if (g2ISO && !dup2) guiasRestantes--;
 
       semAtual = addDays(semAtual, 7);
     }
@@ -10033,6 +10005,13 @@ function renderPreviewGG() {
     const rest   = r.senha.qtdAutorizada - (r.senha.qtdUsada || 0);
     const fmtAut = r.senha.dataAut ? r.senha.dataAut.split('-').reverse().join('/') : '—';
     const fmtVal = r.senha.validade ? r.senha.validade.split('-').reverse().join('/') : '—';
+    // Badge extra quando a guia usa senha de mês anterior
+    const senhaAnteriorBadge = r.senha.dataAut && r.senha.dataAut.slice(0,7) < (document.getElementById('gg-mes')?.value||'')
+      ? `<span style="background:rgba(251,191,36,.15);color:#b45309;font-size:9px;padding:1px 6px;border-radius:99px;border:1px solid rgba(251,191,36,.3);margin-left:4px" title="Usando saldo da senha do mês anterior">↩ saldo ant.</span>`
+      : '';
+    const senhaG2AnteriorBadge = r.senhasDiferentes && r.senhaG2?.dataAut && r.senhaG2.dataAut.slice(0,7) < (document.getElementById('gg-mes')?.value||'')
+      ? `<span style="background:rgba(251,191,36,.15);color:#b45309;font-size:9px;padding:1px 6px;border-radius:99px;border:1px solid rgba(251,191,36,.3);margin-left:4px">↩ saldo ant.</span>`
+      : '';
     const tipo   = r.is60
       ? '<span class="chip blue" style="font-size:9px">60 min · 2</span>'
       : '<span class="chip gray" style="font-size:9px">30 min · 1</span>';
@@ -10073,11 +10052,12 @@ function renderPreviewGG() {
         <input type="checkbox" class="gg-row-chk" data-idx="${idx}" ${isDup?'disabled':'checked'}>
       </td>
       <td style="font-size:12px;font-weight:500">${r.pacNomeReal}${apptInf}</td>
-      <td style="font-size:11px">${r.plano.nome}
+      <td style="font-size:11px">${r.plano.nome}${senhaAnteriorBadge}
         <div style="font-size:10px;color:var(--text-muted);margin-top:2px">
           Aut: ${fmtAut} · Val: ${fmtVal}
           <span style="margin-left:4px;font-weight:600;color:${rest<=2?'var(--danger)':'var(--text-muted)'}">(${rest} restantes)</span>
         </div>
+        ${r.senhasDiferentes ? `<div style="font-size:10px;color:#b45309;margin-top:2px">Guia 2: ${r.senhaG2?.numSenha||''}${senhaG2AnteriorBadge}</div>` : ''}
       </td>
       <td style="padding:4px 8px">${inputD1}</td>
       <td style="padding:4px 8px">${inputD2}</td>
@@ -10127,7 +10107,8 @@ async function gerarGuiasConfirmar() {
     const pacNome  = r.pacNomeReal;
     const carteira = r.senha.carteirinha || '';
 
-    const criarGuia = async (dataISO, isDup) => {
+    // criarGuia aceita a senha específica a ser usada (pode ser diferente para g1 e g2)
+    const criarGuia = async (dataISO, isDup, senhaUsada) => {
       if (!dataISO || isDup) return;
       const guiaNum = proxGuiaNum(r.plano.id);
       const guiaObj = {
@@ -10135,12 +10116,12 @@ async function gerarGuiasConfirmar() {
         pac: pacNome, planoId: r.plano.id, plano: r.plano.nome,
         profId, valor: r.procVal, status: 'Pendente', data: dataISO,
         carteirinha: carteira,
-        numOp: r.senha.numGuiaOp || r.senha.numSenha || '',
-        cid: r.senha.cid || '',
+        numOp: senhaUsada.numGuiaOp || senhaUsada.numSenha || '',
+        cid: senhaUsada.cid || '',
         loteId: null, loteNum: null,
         dados: {
           procs: [{ codigo: r.procCod, desc: r.procDesc, qtd: 1, valor: r.procVal, total: r.procVal }],
-          senha: r.senha.numSenha || '',
+          senha: senhaUsada.numSenha || '',
           profExecNome: PROF_EXEC_GUIA_AUTO,
           durMin: r.appt?.durMin || (r.is60 ? 60 : 30),
         },
@@ -10173,17 +10154,17 @@ async function gerarGuiasConfirmar() {
         if (sb) sb.from('agendamentos').update({ guia: apptLink.guia }).eq('id', apptLink.id);
       }
 
-      // Acumula incremento — NÃO grava no banco aqui, faz em lote depois
-      r.senha.qtdUsada = (r.senha.qtdUsada || 0) + 1;
-      const entry = senhaIncrMap.get(r.senha.id);
+      // Acumula incremento por senha — NÃO grava no banco aqui, faz em lote depois
+      senhaUsada.qtdUsada = (senhaUsada.qtdUsada || 0) + 1;
+      const entry = senhaIncrMap.get(senhaUsada.id);
       if (entry) entry.delta++;
-      else senhaIncrMap.set(r.senha.id, { senha: r.senha, delta: 1 });
+      else senhaIncrMap.set(senhaUsada.id, { senha: senhaUsada, delta: 1 });
 
       geradas++;
     };
 
-    await criarGuia(r.data1ISO, r.dup1);
-    if (r.is60) await criarGuia(r.data2ISO, r.dup2);
+    await criarGuia(r.data1ISO, r.dup1, r.senha);
+    if (r.is60) await criarGuia(r.data2ISO, r.dup2, r.senhaG2 || r.senha);
   }
 
   // Grava qtdUsada consolidado no Supabase — um UPDATE por senha com o total correto
@@ -17138,7 +17119,58 @@ document.addEventListener('DOMContentLoaded', function() {
     if (currentApptId) {
       const temSadt = document.getElementById('sadt-beneficiario')?.value;
       if (temSadt) {
-        const tot = parseFloat((document.getElementById('sadt-total')?.textContent || '0').replace(/[R$\s]/g, '').replace(',', '.')) || 0;
+        // ── Calcula o valor correto independente de o usuário ter aberto a aba SADT ──
+        // Prioridade: 1) campo sadt-total (se preenchido pelo usuário)
+        //             2) valor dos procedimentos executados (sadt-ep-val-*)
+        //             3) valor do procedimento na senha/plano do paciente
+        let tot = parseFloat(
+          (document.getElementById('sadt-total')?.textContent || '0')
+            .replace(/[R$\s]/g, '').replace(',', '.')
+        ) || 0;
+
+        // Se tot ainda é 0, tenta calcular dos campos de proc executados
+        if (tot === 0) {
+          document.querySelectorAll('.sadt-exec-proc-row').forEach(row => {
+            const idx  = row.dataset.eidx;
+            const valEl = document.getElementById(`sadt-ep-val-${idx}`);
+            const qtdEl = document.getElementById(`sadt-ep-qtd-${idx}`);
+            if (!valEl || !valEl.value) return;
+            const raw = valEl.value.replace(/[R$\s.]/g,'').replace(',','.');
+            const qtd = qtdEl ? parseInt(qtdEl.value)||1 : 1;
+            tot += (parseFloat(raw)||0) * qtd;
+          });
+        }
+
+        // Se ainda 0, busca o valor pelo plano + procedimento da senha ativa do paciente
+        if (tot === 0) {
+          const senhaRef = SENHAS_PLANO.find(s =>
+            s.ativa &&
+            s.planoId === dados.planoId &&
+            s.paciente.toLowerCase() === dados.paciente.toLowerCase()
+          );
+          const procsRef = senhaRef?.procs?.length ? senhaRef.procs : [];
+          for (const proc of procsRef) {
+            const procObj = PROCEDIMENTOS.find(p =>
+              (proc.codigo && p.codigo === proc.codigo) ||
+              (proc.desc && p.desc?.toLowerCase().includes((proc.desc||'').toLowerCase().substring(0,10)))
+            );
+            const planoObj = PLANOS.find(p => p.id === dados.planoId);
+            const valPlano = planoObj
+              ? (PROCEDIMENTOS.find(p => p.codigo === (proc.codigo||'') && p.planoId === planoObj.id)?.valPlano
+                 || procObj?.valPlano || procObj?.valPart || 0)
+              : (procObj?.valPart || procObj?.valPlano || 0);
+            tot += valPlano * (proc.qtd || 1);
+          }
+          // Fallback final: valor do 1º procedimento ativo pelo plano do paciente
+          if (tot === 0 && PROCEDIMENTOS.length) {
+            const planoObj = PLANOS.find(p => p.id === dados.planoId);
+            const primeiroProc = planoObj
+              ? PROCEDIMENTOS.find(p => p.planoId === planoObj.id) || PROCEDIMENTOS[0]
+              : PROCEDIMENTOS[0];
+            tot = primeiroProc?.valPlano || primeiroProc?.valPart || 0;
+          }
+        }
+
         const numSenha  = document.getElementById('sadt-senha')?.value || '';
         const numGuiaOp = document.getElementById('sadt-autorizacao')?.value || '';
         dados.guia = { autorizacao: numGuiaOp || numSenha || 'Pendente', total: tot, senha: numSenha };
