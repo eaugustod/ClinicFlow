@@ -1380,6 +1380,12 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 .wa-btn svg{width:11px;height:11px;fill:currentColor;}
 .wa-status-sent    {color:#25d366;font-size:10px;font-weight:600;}
 .wa-status-pending {color:var(--warning);font-size:10px;}
+
+/* ── Badge de Elegibilidade ─────────────────────────── */
+.eleg-badge { display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.1px;cursor:default;white-space:nowrap; }
+.eleg-ok    { background:rgba(52,211,153,.18);color:#059669;border:1px solid rgba(52,211,153,.35); }
+.eleg-nok   { background:rgba(248,113,113,.15);color:#dc2626;border:1px solid rgba(248,113,113,.35); }
+.eleg-pend  { background:rgba(251,191,36,.15);color:#b45309;border:1px solid rgba(251,191,36,.35); }
 .wa-log-item {
   display:flex;align-items:flex-start;gap:10px;
   padding:10px 0;border-bottom:1px solid var(--border);
@@ -7984,10 +7990,19 @@ function buildApptCard(appt, cor) {
       '</div>';
   }
 
-  const waSentTxt = appt.waSent ? '✓ Enviado' : 'WhatsApp';
-  const waBtnHTML = (appt.status === 'agendado' || appt.status === 'confirmado') && h >= 56
-    ? '<div style="margin-top:3px"><button class="wa-btn" onclick="event.stopPropagation();abrirModalWA(' + appt.id + ')">' + waSentTxt + '</button></div>'
-    : '';
+  // Badge de elegibilidade (substitui botão WhatsApp)
+  // Lê do próprio appt se já foi enriquecido pelo join com rpa_elegibilidade
+  let elegBadge = '';
+  if (h >= 48) {
+    if (appt.elegivel === true || appt.statusElegibilidade === 'ELEGIVEL') {
+      elegBadge = '<div style="margin-top:3px"><span class="eleg-badge eleg-ok" title="Elegível — verificado pelo robô">✓ Elegível</span></div>';
+    } else if (appt.elegivel === false || appt.statusElegibilidade === 'INELEGIVEL') {
+      elegBadge = '<div style="margin-top:3px"><span class="eleg-badge eleg-nok" title="Inelegível — paciente não autorizado">✕ Inelegível</span></div>';
+    } else if (appt.statusElegibilidade === 'PENDENTE') {
+      elegBadge = '<div style="margin-top:3px"><span class="eleg-badge eleg-pend" title="Verificação de elegibilidade pendente">⏳ Pendente</span></div>';
+    }
+    // Se null/undefined: sem badge (ainda não verificado)
+  }
 
   return '<div class="appt-card ' + sc + '"' +
     ' draggable="true"' +
@@ -7998,9 +8013,20 @@ function buildApptCard(appt, cor) {
     ' ondragend="agendaDragEnd(event)">' +
     '<div class="appt-patient">' + appt.paciente + guiaIcon + statusLabel + '</div>' +
     '<div class="appt-plan">' + plano + ' · ' + appt.hora + '</div>' +
-    actionsHTML + waBtnHTML +
+    actionsHTML + elegBadge +
     '</div>';
 }
+
+// ── Elegibilidade: atualiza badge de um agendamento em tempo real ───────────
+// Chamado pelo robô (ou manualmente) após gravar em rpa_elegibilidade
+window.atualizarElegibilidade = function(agendamentoId, elegivel, status) {
+  const a = APPOINTMENTS.find(a => String(a.id) === String(agendamentoId));
+  if (!a) return;
+  a.elegivel            = elegivel;
+  a.statusElegibilidade = status;
+  // Re-render só o card afetado, sem redesenhar toda a agenda
+  try { renderDayView(); } catch(_) {}
+};
 
 function updateStatus(id, status) {
   const appt = APPOINTMENTS.find(a => a.id === id);
@@ -16819,7 +16845,7 @@ document.addEventListener('DOMContentLoaded', function() {
     procToDb: p => ({ codigo:p.codigo||null, descricao:p.desc, desc_curta:p.descCurta||null, tipo:p.tipo||'Sessão', val_part:p.valPart||0, val_plano:p.valPlano||0, tabela:p.tabela||'TUSS', plano_id:p.planoId||0, status:p.status||'Ativo', obs:p.obs||null }),
     dbToProc: r => ({ id:r.id, codigo:r.codigo||'', desc:r.descricao||r.desc||'', descCurta:r.desc_curta||'', tipo:r.tipo||'Sessão', valPart:r.val_part||0, valPlano:r.val_plano||0, tabela:r.tabela||'TUSS', planoId:r.plano_id||0, status:r.status||'Ativo', obs:r.obs||'' }),
     apptToDb: a => ({ prof_id:a.profId, paciente:a.paciente, plano:a.plano||'Particular', plano_id:a.planoId||5, hora:a.hora, hora_fim:a.horaFim||null, dur_min:a.durMin||30, data_iso:a.dataISO||null, tipo:a.tipo||'sessao', status:a.status||'agendado', obs:a.obs||null, modalidade:a.modalidade||'presencial', meet_link:a.meetLink||null, wa_sent:a.waSent||false, carteirinha:a.carteirinha||null, guia:a.guia||null }),
-    dbToAppt: r => ({ id:r.id, profId:r.prof_id, paciente:r.paciente, plano:r.plano||'Particular', planoId:r.plano_id, hora:r.hora, horaFim:r.hora_fim||'', durMin:r.dur_min||30, dataISO:r.data_iso||'', tipo:r.tipo||'sessao', status:r.status||'agendado', obs:r.obs||'', modalidade:r.modalidade||'presencial', meetLink:r.meet_link||'', waSent:r.wa_sent||false, carteirinha:r.carteirinha||'', guia:r.guia||null }),
+    dbToAppt: r => ({ id:r.id, profId:r.prof_id, paciente:r.paciente, plano:r.plano||'Particular', planoId:r.plano_id, hora:r.hora, horaFim:r.hora_fim||'', durMin:r.dur_min||30, dataISO:r.data_iso||'', tipo:r.tipo||'sessao', status:r.status||'agendado', obs:r.obs||'', modalidade:r.modalidade||'presencial', meetLink:r.meet_link||'', waSent:r.wa_sent||false, carteirinha:r.carteirinha||'', guia:r.guia||null, elegivel:null, statusElegibilidade:null }),
     guiaToDb: g => ({ num:g.num, pac:g.pac, plano_id:g.planoId, plano:g.plano, prof_id:g.profId, valor:g.valor||0, status:g.status||'Pendente', data:g.data||null, lote_id:g.loteId||null, lote_num:g.loteNum||null, dados:g.dados||null, carteirinha:g.carteirinha||null, num_op:g.numOp||null, cid:g.cid||null }),
     dbToGuia: r => ({ id:r.id, num:r.num, pac:r.pac, planoId:r.plano_id, plano:r.plano, profId:r.prof_id, valor:r.valor||0, status:r.status||'Pendente', data:r.data||'', loteId:r.lote_id||null, loteNum:r.lote_num||null, dados:r.dados||{}, carteirinha:r.carteirinha||'', numOp:r.num_op||'', cid:r.cid||'' }),
     loteToDb: l => ({ num:l.num, competencia:l.competencia, plano_id:l.planoId, plano:l.plano, qtd:l.qtd||0, valor:l.valor||0, status:l.status||'Pendente', data_criacao:l.dataCriacao||null, data_envio:l.dataEnvio||null, obs:l.obs||null, guia_ids:l.guiaIds||[] }),
@@ -16921,12 +16947,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // ══ FASE 2 — dados secundários em paralelo, sem bloquear UI ═══════════
       const safe = (q) => Promise.resolve(q).catch(()=>({data:[]}));
-      const [lo, se, esp, gu, hist] = await Promise.all([
+      const [lo, se, esp, gu, hist, eleg] = await Promise.all([
         safe(sb.from('lotes_tiss').select('*').order('created_at',{ascending:false}).limit(2000)),
         safe(sb.from('senhas_plano').select('*').order('created_at',{ascending:false}).limit(5000)),
         safe(sb.from('lista_espera').select('*').order('created_at',{ascending:false}).limit(2000)),
         safe(sb.from('guias_sadt').select('*').order('created_at',{ascending:false}).limit(5000)),
         safe(sb.from('historico').select('*').order('data',{ascending:false}).limit(5000)),
+        safe(sb.from('rpa_elegibilidade').select('agendamento_id,pac_id,elegivel,status').order('created_at',{ascending:false}).limit(10000)),
       ]);
 
       rep(LOTES,        lo.data,   map.dbToLote);
@@ -16934,6 +16961,20 @@ document.addEventListener('DOMContentLoaded', function() {
       rep(LISTA_ESPERA, esp.data,  map.dbToEspera);
       rep(GUIAS,        gu.data,   map.dbToGuia);
       rep(HISTORICO,    hist.data, map.dbToHist);
+
+      // ── Join elegibilidade → agendamentos ─────────────────────────────────
+      // Cria mapa agendamento_id → {elegivel, status} e aplica nos appointments
+      if (eleg.data && eleg.data.length) {
+        const elegMap = {};
+        eleg.data.forEach(e => { elegMap[String(e.agendamento_id)] = e; });
+        APPOINTMENTS.forEach(a => {
+          const r = elegMap[String(a.id)];
+          if (r) {
+            a.elegivel             = r.elegivel;           // true | false
+            a.statusElegibilidade  = r.status;             // 'ELEGIVEL' | 'INELEGIVEL' | 'PENDENTE'
+          }
+        });
+      }
 
       nextGuiaId   = maxId(GUIAS);   nextLoteId   = maxId(LOTES);
       nextSenhaId  = maxId(SENHAS_PLANO); nextEsperaId = maxId(LISTA_ESPERA);
