@@ -4223,6 +4223,7 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
             <label>Tipo de atendimento</label>
             <select class="form-select" id="ag-tipo">
               <option value="avaliacao">Avaliação Neuro</option>
+              <option value="continua">Continua Neuro</option>
               <option value="devolutiva">Devolutiva Neuro</option>
               <option value="anamnese">Anamnese</option>
               <option value="retorno">Consulta de retorno</option>
@@ -6957,6 +6958,7 @@ function renderRelatorios() {
 // Rótulos legíveis para o campo tipo do agendamento
 const TIPO_AG_LABELS = {
   avaliacao:  'Avaliação Neuro',
+  continua:   'Continua Neuro', 
   devolutiva: 'Devolutiva Neuro',
   anamnese:   'Anamnese',
   retorno:    'Consulta de Retorno',
@@ -19740,6 +19742,8 @@ function renderFechamento() {
 
     // Classifica pelo campo tipo explícito primeiro; fallback para isAval/isDevol por regex
     if (tipoRaw === 'avaliacao' || (tipoRaw === '' && isAvalNeuropsico(a))) {
+      porProf[profId].avals.push(a);
+    } else if (tipoRaw === 'continua' || (tipoRaw === '' && isAvalNeuropsico(a))) {
       porProf[profId].avals.push(a);
     } else if (tipoRaw === 'devolutiva' || (tipoRaw === '' && isDevolutivaNeuropsico(a))) {
       porProf[profId].devolutivas.push(a);
