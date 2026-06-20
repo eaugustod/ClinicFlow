@@ -1,0 +1,9 @@
+# Logs e arquivos locais do sistema
+*.log
+.DS_Store
+
+# Scripts de deploy direto e de banco de dados
+deploy-vps.sh
+rls_and_audit.sql
+supabase_schema.sql
+clinicflow.html
