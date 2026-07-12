@@ -41,7 +41,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActivePage }) => {
-  const { clinicaConfig } = useApp();
+  const { clinicaConfig, user, logout } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [faturamentoOpen, setFaturamentoOpen] = useState(false);
   const [cadastrosOpen, setCadastrosOpen] = useState(false);
@@ -367,18 +367,21 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
         {/* User profile & Info card */}
         <div className="p-4 border-t border-white/[0.04] bg-[#0c0e16]/40 flex flex-col gap-2">
           <div className="flex items-center gap-3 p-2 rounded-xl bg-white/[0.01] border border-white/[0.02] shadow-inner">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-violet-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 border border-indigo-500/20 shadow-lg">
-              ADM
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-violet-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 border border-indigo-500/20 shadow-lg uppercase">
+              {user?.nome ? user.nome.slice(0, 3) : 'ADM'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-[11px] font-bold text-slate-200 truncate">{clinicaConfig.nome || 'Clínica Admin'}</p>
+              <p className="text-[11px] font-bold text-slate-200 truncate">{user?.nome || 'Clínica Admin'}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <Sparkles size={8} className="text-yellow-400 animate-pulse" />
-                <span className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase">Master Account</span>
+                <span className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase">{user?.perfil || 'Master Account'}</span>
               </div>
             </div>
           </div>
-          <button className="flex items-center justify-center gap-2 w-full py-3 mt-1 rounded-xl text-xs font-bold text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 hover:text-rose-300 border border-rose-500/10 hover:border-rose-500/20 transition-all duration-200">
+          <button
+            onClick={logout}
+            className="flex items-center justify-center gap-2 w-full py-3 mt-1 rounded-xl text-xs font-bold text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 hover:text-rose-300 border border-rose-500/10 hover:border-rose-500/20 transition-all duration-200 cursor-pointer"
+          >
             <LogOut size={14} />
             Efetuar Logout
           </button>

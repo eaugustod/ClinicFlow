@@ -48,6 +48,9 @@ interface AppContextType {
   getBaseStatus: (statusName: string) => 'agendado' | 'confirmado' | 'atendido' | 'desmarcado' | 'cancelado';
   getStatusColor: (statusName: string) => string;
   logStatusChange: (apptId: number, newStatus: string) => Promise<void>;
+  user: any | null;
+  login: (email: string, pass: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -92,6 +95,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     { nome: 'Cancelado', cor: '#ef4444', statusAgendamento: 'cancelado', statusHistorico: 'Cancelado' }
   ];
 
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
@@ -99,25 +103,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loadedEspera, setLoadedEspera] = useState(false);
   const [loadedGuias, setLoadedGuias] = useState(false);
 
-  // Restore cache immediately at startup
+  // Restore cache immediately at startup if user is logged in
   useEffect(() => {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      try {
-        const cache = JSON.parse(cached);
-        if (cache.profissionais) setProfissionais(cache.profissionais);
-        if (cache.planos) setPlanos(cache.planos);
-        if (cache.procedimentos) setProcedimentos(cache.procedimentos);
-        if (cache.pacientes) setPacientes(cache.pacientes);
-        if (cache.agendamentos) setAgendamentos(cache.agendamentos);
-        if (cache.clinica) setClinicaConfig(cache.clinica);
-        if (cache.statusAgendamentos) setStatusAgendamentos(cache.statusAgendamentos);
-        setLoading(false);
-      } catch (e) {
-        localStorage.removeItem(CACHE_KEY);
+    const storedUser = localStorage.getItem('cf_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const cache = JSON.parse(cached);
+          if (cache.profissionais) setProfissionais(cache.profissionais);
+          if (cache.planos) setPlanos(cache.planos);
+          if (cache.procedimentos) setProcedimentos(cache.procedimentos);
+          if (cache.pacientes) setPacientes(cache.pacientes);
+          if (cache.agendamentos) setAgendamentos(cache.agendamentos);
+          if (cache.clinica) setClinicaConfig(cache.clinica);
+          if (cache.statusAgendamentos) setStatusAgendamentos(cache.statusAgendamentos);
+          setLoading(false);
+        } catch (e) {
+          localStorage.removeItem(CACHE_KEY);
+        }
       }
+      loadInitialData();
+    } else {
+      setLoading(false);
     }
-    loadInitialData();
   }, []);
 
   const loadInitialData = async () => {
@@ -391,6 +401,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const login = async (email: string, pass: string) => {
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass
+      });
+      if (authErr) {
+        alert('Erro de login: ' + authErr.message);
+        return false;
+      }
+      // Busca perfil na tabela usuarios
+      const { data: users, error: userErr } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('email', email)
+        .limit(1);
+      if (userErr || !users || users.length === 0) {
+        alert('Perfil de usuário não encontrado no sistema.');
+        await supabase.auth.signOut();
+        return false;
+      }
+      const dbUser = users[0];
+      if (dbUser.status !== 'Ativo') {
+        alert('Usuário inativo. Contate o administrador.');
+        await supabase.auth.signOut();
+        return false;
+      }
+      const activeUser = {
+        id: dbUser.id,
+        nome: dbUser.nome || email,
+        email: email,
+        perfil: dbUser.perfil || 'recepcao'
+      };
+      setUser(activeUser);
+      localStorage.setItem('cf_user', JSON.stringify(activeUser));
+      // Carrega dados iniciais após o login
+      setTimeout(loadInitialData, 100);
+      return true;
+    } catch (e: any) {
+      alert('Erro de rede: ' + e.message);
+      return false;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
+    setUser(null);
+    localStorage.removeItem('cf_user');
+    localStorage.removeItem(CACHE_KEY);
+    // Limpa estados de dados
+    setPacientes([]);
+    setProfissionais([]);
+    setPlanos([]);
+    setProcedimentos([]);
+    setAgendamentos([]);
+    setClinicaConfig({
+      nome: 'ClinicFlow',
+      cnpj: '',
+      endereco: '',
+      telefone: '',
+      email: '',
+      codPrestador: '',
+      cnes: ''
+    });
+  };
+
   return (
     <AppContext.Provider value={{
       pacientes,
@@ -419,7 +499,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       refreshAll,
       getBaseStatus,
       getStatusColor,
-      logStatusChange
+      logStatusChange,
+      user,
+      login,
+      logout
     }}>
       {children}
     </AppContext.Provider>

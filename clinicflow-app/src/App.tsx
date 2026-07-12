@@ -22,11 +22,12 @@ import { Conecta } from './pages/Conecta';
 import { StatusAgendamentoPage } from './pages/StatusAgendamento';
 import { ChatPage } from './pages/Chat';
 import { Importador } from './pages/Importador';
+import { Login } from './pages/Login';
 import { useApp } from './context/AppContext';
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
-  const { loading } = useApp();
+  const { loading, user } = useApp();
 
   if (loading) {
     return (
@@ -39,6 +40,10 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return <Login />;
   }
 
   const renderContent = () => {
