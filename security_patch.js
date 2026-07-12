@@ -218,7 +218,7 @@
   }
 
   // =========================================================================
-  // 6. OVERRIDE: doLogin — com rate limiting + bcrypt + audit
+  // 6. OVERRIDE: doLogin — com Supabase Auth + rate limiting + audit
   // =========================================================================
   window.doLogin = async function () {
     const emailInput = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
@@ -257,31 +257,19 @@
               ? window._cfGetOrCreateClient(cfgUrl, cfgKey)
               : window.supabase.createClient(cfgUrl, cfgKey));
 
-        const { data: rows, error } = await _sbLogin
-          .from('usuarios')
-          .select('*')
-          .eq('email', emailInput)
-          .limit(1);
+        // 1. Autenticação nativa no Supabase Auth
+        const { data: authData, error: authError } = await _sbLogin.auth.signInWithPassword({
+          email: emailInput,
+          password: senhaInput
+        });
 
-        if (error) throw error;
-
-        const usuario = rows && rows[0];
-
-        if (!usuario) {
+        if (authError) {
           _incrementAttempt(emailInput);
-          if (errEl) { errEl.textContent = '✗ E-mail não encontrado. Verifique com o administrador.'; errEl.style.display = 'block'; }
-          if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Entrar'; }
-          return;
-        }
-
-        const senhaValida = await _verificarSenha(usuario, senhaInput, _sbLogin);
-
-        if (!senhaValida) {
-          const att = _incrementAttempt(emailInput);
+          const att = _getAttempts(emailInput);
           const restantes = Math.max(0, _CF_MAX_TENTATIVAS - att.count);
           if (errEl) {
             errEl.textContent = restantes > 0
-              ? '✗ Senha incorreta. ' + restantes + ' tentativa(s) restante(s).'
+              ? '✗ Credenciais inválidas. ' + restantes + ' tentativa(s) restante(s).'
               : '⛔ Conta bloqueada por ' + _minutosRestantes(emailInput) + ' minuto(s) por excesso de tentativas.';
             errEl.style.display = 'block';
           }
@@ -289,9 +277,28 @@
           return;
         }
 
+        // 2. Login autenticado com sucesso -> busca perfil do usuário na tabela usuarios
+        const { data: rows, error: dbError } = await _sbLogin
+          .from('usuarios')
+          .select('*')
+          .eq('email', emailInput)
+          .limit(1);
+
+        if (dbError) throw dbError;
+
+        const usuario = rows && rows[0];
+
+        if (!usuario) {
+          if (errEl) { errEl.textContent = '✗ Perfil de usuário não encontrado no sistema. Contate o administrador.'; errEl.style.display = 'block'; }
+          if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Entrar'; }
+          await _sbLogin.auth.signOut();
+          return;
+        }
+
         if ((usuario.status || 'Ativo') !== 'Ativo') {
           if (errEl) { errEl.textContent = '✗ Usuário inativo. Contate o administrador.'; errEl.style.display = 'block'; }
           if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Entrar'; }
+          await _sbLogin.auth.signOut();
           return;
         }
 
@@ -362,12 +369,18 @@
   };
 
   // =========================================================================
-  // 7. OVERRIDE: doLogout — limpa dados sensíveis da memória RAM
+  // 7. OVERRIDE: doLogout — limpa dados sensíveis da memória RAM e desloga do Supabase
   // =========================================================================
   const _origDoLogout = window.doLogout;
-  window.doLogout = function () {
+  window.doLogout = async function () {
     // Registra logout no audit log (antes de limpar currentUser)
     _audit('LOGOUT', 'usuarios', window.currentUser?.id, null, { email: window.currentUser?.nome });
+
+    // Desconecta do Supabase Auth
+    try {
+      const sb = _getSb();
+      if (sb) await sb.auth.signOut();
+    } catch (_) {}
 
     // Zera todos os arrays com dados sensíveis da clínica
     const _sensíveis = [
@@ -388,6 +401,48 @@
     // Chama o logout original (esconde UI, restaura menu, etc.)
     if (_origDoLogout) _origDoLogout.apply(this, arguments);
   };
+
+  // =========================================================================
+  // 7.1. AUTO-LOGIN — Recupera sessão ativa no Supabase ao recarregar a página
+  // =========================================================================
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(async () => {
+      const sb = _getSb();
+      if (!sb) return;
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session && session.user) {
+          console.log('[CF Security] Sessão ativa encontrada para:', session.user.email);
+          const { data: rows } = await sb.from('usuarios')
+            .select('*')
+            .eq('email', session.user.email)
+            .limit(1);
+          const usuario = rows && rows[0];
+          if (usuario && usuario.status === 'Ativo') {
+            const _perfilRaw = (usuario.perfil || '').toLowerCase().trim();
+            const _roleNorm  = _perfilRaw === 'admin' || _perfilRaw === 'administrador' ? 'admin'
+                             : _perfilRaw === 'recepcao' || _perfilRaw === 'recepção'   ? 'recepcao'
+                             : _perfilRaw === 'prof'     || _perfilRaw === 'profissional' ? 'prof'
+                             : _perfilRaw || 'recepcao';
+            _finalizarLogin({
+              nome:     usuario.nome     || session.user.email,
+              role:     _roleNorm,
+              initials: (usuario.nome || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
+              foto:     usuario.foto     || '',
+              id:       usuario.id,
+              perfilId: usuario.perfil_id || usuario.perfilId || null,
+            });
+            // Recarrega do banco de dados do Supabase
+            if (typeof window.loadFromSupabase === 'function') {
+              window.loadFromSupabase();
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[CF Security] Erro ao restaurar sessão:', e.message);
+      }
+    }, 1200);
+  });
 
   // =========================================================================
   // 8. OVERRIDE: _upsertUsuarioSupabase — salva senha com hash para novos usuários
@@ -417,6 +472,61 @@
 
     // Chama a função original com a senha (possivelmente hasheada)
     if (_origUpsert) return _origUpsert.call(this, u);
+  };
+
+  // =========================================================================
+  // 9. MÁSCARAS E VALIDAÇÕES GLOBAIS (CPF/CNPJ)
+  // =========================================================================
+  window.maskCNPJ = function (el) {
+    let v = el.value.replace(/\D/g, '').slice(0, 14);
+    if (v.length > 12) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+    else if (v.length > 8) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
+    else if (v.length > 5) v = v.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    else if (v.length > 2) v = v.replace(/(\d{2})(\d{1,3})/, '$1.$2');
+    el.value = v;
+  };
+
+  window.validarCPF = function (cpf) {
+    cpf = String(cpf || '').replace(/\D/g, '');
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    resto = (soma * 10) % 11;
+    if ((resto === 10) || (resto === 11)) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    resto = (soma * 10) % 11;
+    if ((resto === 10) || (resto === 11)) resto = 0;
+    if (resto !== parseInt(cpf.substring(10, 11))) return false;
+    return true;
+  };
+
+  window.validarCNPJ = function (cnpj) {
+    cnpj = String(cnpj || '').replace(/\D/g, '');
+    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+    let tamanho = cnpj.length - 2;
+    let numeros = cnpj.substring(0, tamanho);
+    let digitos = cnpj.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(0))) return false;
+    tamanho = tamanho + 1;
+    numeros = cnpj.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(1))) return false;
+    return true;
   };
 
   // =========================================================================

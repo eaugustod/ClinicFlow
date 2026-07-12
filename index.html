@@ -3259,10 +3259,10 @@ label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
             <div style="flex:1">
               <div class="form-row cols-2">
                 <div class="form-group"><label>Nome da clínica</label><input class="form-input" id="cfg-nome-clinica"></div>
-                <div class="form-group"><label>CNPJ</label><input class="form-input" id="cfg-cnpj"></div>
+                <div class="form-group"><label>CNPJ</label><input class="form-input" id="cfg-cnpj" oninput="maskCNPJ(this)"></div>
               </div>
               <div class="form-row cols-2">
-                <div class="form-group"><label>Telefone</label><input class="form-input" id="cfg-tel"></div>
+                <div class="form-group"><label>Telefone</label><input class="form-input" id="cfg-tel" oninput="maskTelefone(this)"></div>
                 <div class="form-group"><label>E-mail</label><input class="form-input" id="cfg-email-clinica"></div>
               </div>
               <div class="form-row">
@@ -4845,7 +4845,7 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
           <div class="form-row"><div class="form-group"><label>Nome completo *</label><input class="form-input" id="pac-nome" placeholder="Nome completo do paciente"></div></div>
           <div class="form-row cols-2">
             <div class="form-group"><label>Data de nascimento</label><input class="form-input" type="date" id="pac-nasc"></div>
-            <div class="form-group"><label>CPF</label><input class="form-input" id="pac-cpf" placeholder="000.000.000-00"></div>
+            <div class="form-group"><label>CPF</label><input class="form-input" id="pac-cpf" placeholder="000.000.000-00" oninput="maskCPF(this)"></div>
           </div>
           <div class="form-row cols-2">
             <div class="form-group"><label>Sexo</label><select class="form-select" id="pac-sexo"><option value="">—</option><option>Feminino</option><option>Masculino</option><option>Outro</option></select></div>
@@ -4860,7 +4860,7 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
       </div>
       <div class="section-divider">Contato</div>
       <div class="form-row cols-2">
-        <div class="form-group"><label>Telefone / WhatsApp</label><input class="form-input" id="pac-tel" placeholder="(11) 99999-9999"></div>
+        <div class="form-group"><label>Telefone / WhatsApp</label><input class="form-input" id="pac-tel" placeholder="(11) 99999-9999" oninput="maskTelefone(this)"></div>
         <div class="form-group"><label>E-mail</label><input class="form-input" id="pac-email" placeholder="email do paciente"></div>
       </div>
       <div class="form-row"><div class="form-group"><label>Endereço</label><input class="form-input" id="pac-end" placeholder="Rua, número — Cidade, UF"></div></div>
@@ -4954,7 +4954,7 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
         </div>
       </div>
       <div class="form-row cols-2">
-        <div class="form-group"><label>Telefone</label><input class="form-input" id="prf-tel" placeholder="(11) 99999-9999"></div>
+        <div class="form-group"><label>Telefone</label><input class="form-input" id="prf-tel" placeholder="(11) 99999-9999" oninput="maskTelefone(this)"></div>
         <div class="form-group"><label>E-mail</label><input class="form-input" id="prf-email" placeholder="email profissional"></div>
       </div>
         </div><!-- end flex col for photo layout -->
@@ -5094,13 +5094,13 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
       </div>
       <div class="form-row" style="grid-template-columns:130px 1fr 100px;gap:10px">
         <div class="form-group"><label>Registro ANS *</label><input class="form-input" id="pl-ans" placeholder="000000"></div>
-        <div class="form-group"><label>CNPJ operadora</label><input class="form-input" id="pl-cnpj" placeholder="00.000.000/0001-00"></div>
+        <div class="form-group"><label>CNPJ operadora</label><input class="form-input" id="pl-cnpj" placeholder="00.000.000/0001-00" oninput="maskCNPJ(this)"></div>
         <div class="form-group"><label>Status</label>
           <select class="form-select" id="pl-status"><option value="Ativo">Ativo</option><option value="Inativo">Inativo</option></select>
         </div>
       </div>
       <div class="form-row cols-2">
-        <div class="form-group"><label>Telefone / contato</label><input class="form-input" id="pl-tel" placeholder="(11) 3000-0000"></div>
+        <div class="form-group"><label>Telefone / contato</label><input class="form-input" id="pl-tel" placeholder="(11) 3000-0000" oninput="maskTelefone(this)"></div>
         <div class="form-group"><label>E-mail</label><input class="form-input" id="pl-email" placeholder="email do plano"></div>
       </div>
 
@@ -5589,7 +5589,7 @@ CREATE TABLE IF NOT EXISTS fechamentos_mensais (
       <div class="section-divider" style="margin-top:0">Dados do paciente</div>
       <div class="form-row cols-2">
         <div class="form-group"><label>Nome completo *</label><input class="form-input" id="esp-nome" placeholder="Nome do paciente"></div>
-        <div class="form-group"><label>Telefone / WhatsApp *</label><input class="form-input" id="esp-tel" placeholder="(11) 99999-9999"></div>
+        <div class="form-group"><label>Telefone / WhatsApp *</label><input class="form-input" id="esp-tel" placeholder="(11) 99999-9999" oninput="maskTelefone(this)"></div>
       </div>
       <div class="form-row cols-2">
         <div class="form-group"><label>E-mail</label><input class="form-input" id="esp-email" placeholder="email do paciente"></div>
@@ -5986,16 +5986,19 @@ let SENHAS_PLANO = [];
 let nextSenhaId  = 1;
 let editingSenhaId = null;
 let editingGuiaId = null;
+let loadedSenhas = false;
 
 // ─── LOTES TISS ────────────────────────────────────────────────────────────────
 let LOTES = [];
 let nextLoteId  = 1;
 let editingLoteId = null;
+let loadedGuias = false;
 
 // ─── LISTA DE ESPERA ──────────────────────────────────────────────────────────
 let LISTA_ESPERA = [];
 let nextEsperaId = 1;
 let editingEsperaId = null;
+let loadedEspera = false;
 
 // ─── HISTÓRICO / PRONTUÁRIO ───────────────────────────────────────────────────
 let HISTORICO = [];
@@ -6263,8 +6266,9 @@ function gotoPage(page, el) {
   if (page === 'perfis')    try { renderPerfisLista(); } catch(e) { console.warn(e); }
   if (page === 'usuarios')  try { renderUsuarios(); } catch(e) { console.warn(e); }
   if (page === 'importar')  try { selecionarTipoImport(IMP_TIPO, document.getElementById('imp-tipo-'+IMP_TIPO)); } catch(e) {}
-  if (page === 'senhas')    try { renderSenhas(); } catch(e) {}
-  if (page === 'espera')    try { renderEsperaTable(); } catch(e) {}
+  if (page === 'senhas')    try { if (typeof lazyLoadSenhas === 'function') lazyLoadSenhas(); else renderSenhas(); } catch(e) {}
+  if (page === 'espera')    try { if (typeof lazyLoadEspera === 'function') lazyLoadEspera(); else renderEsperaTable(); } catch(e) {}
+  if (page === 'tiss' || page === 'lotes') try { if (typeof lazyLoadGuias === 'function') lazyLoadGuias(); } catch(e) {}
   if (page === 'historico') try { renderHistPacList(); } catch(e) {}
   if (page === 'dashboard') try { renderDashboard(); } catch(e) {}
   if (page === 'relatorios') try { renderRelatorios(); initRelAtendMensalSelect(); renderRelAtendMensal(); initAuditoriaFiltros(); renderAuditoriaDivergencias(); } catch(e) {}
@@ -6700,19 +6704,19 @@ function renderDashboard() {
       tbody.innerHTML = sorted.map(a => {
         const prof = PROFISSIONAIS.find(p => p.id === a.profId);
         const pac  = PACIENTES.find(p => p.nome === a.paciente);
-        const initials = a.paciente.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+        const initials = escHtml(a.paciente.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase());
         const s   = statusMap[a.status] || {cls:'gray', lbl: a.status};
         const cor = prof ? prof.cor : '#8b92a8';
         const canAct = !['cancelado','desmarcado'].includes(a.status);
         const pacAvatar = pac && pac.foto
-          ? '<div class="avatar-sm" style="overflow:hidden;padding:0;flex-shrink:0"><img src="' + pac.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
+          ? '<div class="avatar-sm" style="overflow:hidden;padding:0;flex-shrink:0"><img src="' + escHtml(pac.foto) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
           : '<div class="avatar-sm" style="background:rgba(79,142,247,0.12);color:var(--accent);flex-shrink:0">' + initials + '</div>';
         return '<tr>' +
-          '<td><span style="font-family:var(--font-mono);color:var(--text-secondary)">' + (a.hora||'—') + '</span></td>' +
-          '<td><div style="display:flex;align-items:center;gap:8px">' + pacAvatar + '<span>' + a.paciente + '</span></div></td>' +
-          '<td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + cor + ';display:inline-block;flex-shrink:0"></span>' + (prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : '—') + '</span></td>' +
-          '<td>' + (a.plano || '—') + '</td>' +
-          '<td><span class="chip ' + s.cls + '">' + s.lbl + '</span></td>' +
+          '<td><span style="font-family:var(--font-mono);color:var(--text-secondary)">' + escHtml(a.hora||'—') + '</span></td>' +
+          '<td><div style="display:flex;align-items:center;gap:8px">' + pacAvatar + '<span>' + escHtml(a.paciente) + '</span></div></td>' +
+          '<td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + escHtml(cor) + ';display:inline-block;flex-shrink:0"></span>' + escHtml(prof ? (prof.nomeAgenda || prof.nome.split(' ')[0]) : '—') + '</span></td>' +
+          '<td>' + escHtml(a.plano || '—') + '</td>' +
+          '<td><span class="chip ' + s.cls + '">' + escHtml(s.lbl) + '</span></td>' +
           '<td><div class="table-actions" style="gap:4px">' +
             (a.status === 'agendado' ?
               '<button class="action-btn dash-btn" data-id="' + a.id + '" data-st="confirmado" title="Confirmar" style="color:var(--success)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>' : '') +
@@ -7633,12 +7637,12 @@ function gerarPDFAuditoria() {
 </body>
 </html>`;
 
-  const win = window.open('','_blank','width=1000,height=700');
-  if (win) { win.document.write(html); win.document.close(); }
-  else {
-    const blob = new Blob([html],{type:'text/html'});
+  const blob = new Blob([html],{type:'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+  const win = window.open(blobUrl,'_blank','width=1000,height=700');
+  if (!win) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = blobUrl;
     a.download = 'auditoria_divergencias_' + (filtroMes||'completo') + '.html';
     a.click();
     showToast('Arquivo baixado — abra no navegador e use Ctrl+P para salvar como PDF','success');
@@ -9203,25 +9207,25 @@ function renderPacientesTable(filter='') {
     : PACIENTES;
   const colors = ['#4f8ef7','#34d399','#f59e0b','#a78bfa','#fb923c','#f87171'];
   document.getElementById('pacientes-tbody').innerHTML = list.map(p => {
-    const initials = p.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
+    const initials = escHtml(p.nome.split(' ').map(n=>n[0]).slice(0,2).join(''));
     const col = colors[p.id % colors.length];
-    const nascFmt = p.nasc ? p.nasc.split('-').reverse().join('/') : '—';
+    const nascFmt = p.nasc ? escHtml(p.nasc.split('-').reverse().join('/')) : '—';
     const avatarHtml = p.foto
-      ? `<div class="avatar-sm" style="overflow:hidden;padding:0"><img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>`
+      ? `<div class="avatar-sm" style="overflow:hidden;padding:0"><img src="${escHtml(p.foto)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>`
       : `<div class="avatar-sm" style="background:${col}22;color:${col}">${initials}</div>`;
     return `<tr style="${p.status==='Inativo'?'opacity:.55':''}" >
       <td><div style="display:flex;align-items:center;gap:8px">
         ${avatarHtml}
-        <div><div>${p.nome}</div>${p.status==='Inativo'?'<div style="font-size:10px;color:var(--danger)">Inativo</div>':''}</div>
+        <div><div>${escHtml(p.nome)}</div>${p.status==='Inativo'?'<div style="font-size:10px;color:var(--danger)">Inativo</div>':''}</div>
       </div></td>
       <td>${nascFmt}</td>
-      <td>${p.tel||'—'}</td>
-      <td><span class="chip ${p.plano==='Particular'?'gray':'blue'}">${p.plano||'—'}</span></td>
-      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">${p.carteirinha||'—'}</td>
-      <td style="color:var(--text-muted)">${p.ultima||'—'}</td>
+      <td>${escHtml(p.tel||'—')}</td>
+      <td><span class="chip ${p.plano==='Particular'?'gray':'blue'}">${escHtml(p.plano||'—')}</span></td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">${escHtml(p.carteirinha||'—')}</td>
+      <td style="color:var(--text-muted)">${escHtml(p.ultima||'—')}</td>
       <td><div class="table-actions">
         <button class="action-btn" title="Editar" onclick="editarPaciente(${p.id})">${EDIT_ICON}</button>
-        <button class="action-btn" title="Agendar" onclick="openNovoAgendamento(null,null,'${p.nome}')">${CAL_ICON}</button>
+        <button class="action-btn" title="Agendar" onclick="openNovoAgendamento(null,null,'${escHtml(p.nome).replace(/'/g, "\\'")}')">${CAL_ICON}</button>
         <button class="action-btn" title="Excluir" style="color:var(--danger)" onclick="excluirPaciente(${p.id})">${DEL_ICON}</button>
       </div></td>
     </tr>`;
@@ -9301,14 +9305,14 @@ function toggleStatusPaciente() {
 // ─── PROFISSIONAIS ───────────────────────────────────────────────────────────
 function renderProfissionaisTable() {
   document.getElementById('profissionais-tbody').innerHTML = PROFISSIONAIS.map(p => {
-    const prfInitials = p.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
+    const prfInitials = escHtml(p.nome.split(' ').map(n=>n[0]).slice(0,2).join(''));
     const prfAvatar = p.foto
-      ? `<div class="avatar-sm" style="overflow:hidden;padding:0"><img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>`
-      : `<div class="avatar-sm" style="background:${p.cor}22;color:${p.cor}">${prfInitials}</div>`;
+      ? `<div class="avatar-sm" style="overflow:hidden;padding:0"><img src="${escHtml(p.foto)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>`
+      : `<div class="avatar-sm" style="background:${escHtml(p.cor)}22;color:${escHtml(p.cor)}">${prfInitials}</div>`;
     // Badge de pagamento
     let pagBadge = '<span style="color:var(--text-muted);font-size:11px">—</span>';
     if ((p.pagarComo||'pix') === 'pix') {
-      const chave = p.pix ? `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary)">${p.pix}</span>` : '<span style="color:var(--danger);font-size:10px">Chave não cadastrada</span>';
+      const chave = p.pix ? `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary)">${escHtml(p.pix)}</span>` : '<span style="color:var(--danger);font-size:10px">Chave não cadastrada</span>';
       pagBadge = `<div style="display:flex;align-items:center;gap:5px">
         <span style="background:rgba(22,163,74,.12);color:#16a34a;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;border:1px solid rgba(22,163,74,.2)">PIX</span>
         ${chave}
@@ -9319,25 +9323,25 @@ function renderProfissionaisTable() {
       const cc    = p.conta   ? ' CC '+p.conta   : '';
       pagBadge = `<div style="display:flex;align-items:center;gap:5px">
         <span style="background:rgba(29,78,216,.1);color:#1d4ed8;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;border:1px solid rgba(29,78,216,.2)">TED</span>
-        <span style="font-size:10px;color:var(--text-secondary)">${banco}${ag}${cc}</span>
+        <span style="font-size:10px;color:var(--text-secondary)">${escHtml(banco)}${escHtml(ag)}${escHtml(cc)}</span>
       </div>`;
     }
     return `<tr style="${p.status==='Inativo'?'opacity:.55':''}">
       <td><div style="display:flex;align-items:center;gap:10px">
         ${prfAvatar}
         <div>
-          <div>${p.nome}</div>
-          ${p.razaoSocial && p.razaoSocial !== p.nome ? `<div style="font-size:10px;color:var(--text-muted)">${p.razaoSocial} · ${p.contaTipo||'PF'}</div>` : ''}
+          <div>${escHtml(p.nome)}</div>
+          ${p.razaoSocial && p.razaoSocial !== p.nome ? `<div style="font-size:10px;color:var(--text-muted)">${escHtml(p.razaoSocial)} · ${escHtml(p.contaTipo||'PF')}</div>` : ''}
           ${p.status==='Inativo'?'<div style="font-size:10px;color:var(--danger)">Inativo</div>':''}
         </div>
       </div></td>
-      <td>${p.esp}</td>
-      <td style="font-family:var(--font-mono);font-size:12px">${p.conselho} ${p.num}/${p.uf}</td>
-      <td style="color:var(--text-muted)">${p.tel||'—'}</td>
+      <td>${escHtml(p.esp)}</td>
+      <td style="font-family:var(--font-mono);font-size:12px">${escHtml(p.conselho)} ${escHtml(p.num)}/${escHtml(p.uf)}</td>
+      <td style="color:var(--text-muted)">${escHtml(p.tel||'—')}</td>
       <td>${pagBadge}</td>
       <td><div style="display:flex;align-items:center;gap:6px">
-        <div style="width:14px;height:14px;border-radius:50%;background:${p.cor}"></div>
-        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">${p.cor}</span>
+        <div style="width:14px;height:14px;border-radius:50%;background:${escHtml(p.cor)}"></div>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">${escHtml(p.cor)}</span>
       </div></td>
       <td>${statusChip(p.status)}</td>
       <td><div class="table-actions">
@@ -11377,10 +11381,10 @@ function printViaIframe(html) {
 
   // Attempt 1: open in new window (most reliable cross-browser)
   const tryWindow = () => {
-    const win = window.open('', '_blank', 'width=1000,height=780');
+    const blob = new Blob([html], {type:'text/html'});
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, '_blank', 'width=1000,height=780');
     if (win) {
-      win.document.write(html);
-      win.document.close();
       setTimeout(() => { try { win.focus(); win.print(); } catch(e){} }, 400);
       return true;
     }
@@ -13006,6 +13010,11 @@ function autoLookupProcModal(input) {
 function salvarPaciente() {
   const nome = document.getElementById('pac-nome').value.trim();
   if (!nome) { showToast('Informe o nome do paciente','error'); return; }
+  const cpfVal = document.getElementById('pac-cpf').value.trim();
+  if (cpfVal && typeof validarCPF === 'function' && !validarCPF(cpfVal)) {
+    showToast('CPF do paciente inválido!', 'error');
+    return;
+  }
   const planoSel = document.getElementById('pac-plano');
   const planoId  = planoSel ? parseInt(planoSel.value) : null;
   const planoObj = PLANOS.find(pl=>pl.id===planoId);
@@ -13097,6 +13106,11 @@ function salvarPlano() {
   const nome = _getPlField('pl-nome').trim();
   const ans  = _getPlField('pl-ans').trim();
   if (!nome) { showToast('Informe o nome do plano','error'); return; }
+  const cnpjVal = _getPlField('pl-cnpj').trim();
+  if (cnpjVal && typeof validarCNPJ === 'function' && !validarCNPJ(cnpjVal)) {
+    showToast('CNPJ da operadora inválido!', 'error');
+    return;
+  }
   const dados = {
     nome,
     nomeGuia:       _getPlField('pl-nome-guia'),
@@ -13811,8 +13825,13 @@ function salvarConfigWA() {
 function salvarConfigClinica() {
   const nome = document.getElementById('cfg-nome-clinica')?.value.trim();
   if (!nome) { showToast('Informe o nome da clínica','error'); return; }
+  const cnpjVal = document.getElementById('cfg-cnpj')?.value.trim();
+  if (cnpjVal && typeof validarCNPJ === 'function' && !validarCNPJ(cnpjVal)) {
+    showToast('CNPJ da clínica inválido!', 'error');
+    return;
+  }
   CLINICA.nome         = nome;
-  CLINICA.cnpj         = document.getElementById('cfg-cnpj')?.value.trim()             || CLINICA.cnpj;
+  CLINICA.cnpj         = cnpjVal             || CLINICA.cnpj;
   CLINICA.endereco     = document.getElementById('cfg-endereco')?.value.trim()          || CLINICA.endereco;
   CLINICA.telefone     = document.getElementById('cfg-tel')?.value.trim()               || CLINICA.telefone;
   CLINICA.email        = document.getElementById('cfg-email-clinica')?.value.trim()     || CLINICA.email;
@@ -14072,10 +14091,14 @@ function selecionarPacienteHist(pacId, nome) {
   abrirHistPaciente(pacId);
 }
 
-function abrirHistPaciente(pacId) {
+async function abrirHistPaciente(pacId) {
   historicoAtualPacId = pacId;
   const p = PACIENTES.find(x=>x.id===pacId);
   if (!p) return;
+
+  if (typeof lazyLoadHistorico === 'function') {
+    await lazyLoadHistorico(pacId);
+  }
 
   // Header
   const header = document.getElementById('hist-pac-header');
@@ -15346,7 +15369,7 @@ function renderSenhas() {
   if (fmEl) {
     const currentMes = fmEl.value;
     const meses = [...new Set(
-      SENHAS_PLANO.map(s => (s.dataAut||s.validade||'').slice(0,7)).filter(Boolean)
+      SENHAS_PLANO.map(s => (s.dataAut || '').slice(0, 7)).filter(Boolean)
     )].sort().reverse();
     fmEl.innerHTML = '<option value="">Todos os períodos</option>' + meses.map(m => {
       const [y,mo] = m.split('-');
@@ -15363,13 +15386,7 @@ function renderSenhas() {
   let list = SENHAS_PLANO;
   if (planoFiltro)  list = list.filter(s => s.planoId === planoFiltro);
   if (mesFiltro)    list = list.filter(s => {
-    // Filtra por mês que cobre o período: dataAut <= fim do mês filtrado E validade >= início do mês filtrado
-    const [y,m] = mesFiltro.split('-').map(Number);
-    const mesIni = `${y}-${String(m).padStart(2,'0')}-01`;
-    const mesUlt = `${y}-${String(m).padStart(2,'0')}-${new Date(y,m,0).getDate()}`;
-    const aut = s.dataAut || '0000-00-00';
-    const val = s.validade || '9999-12-31';
-    return aut <= mesUlt && val >= mesIni;
+    return s.dataAut && s.dataAut.slice(0, 7) === mesFiltro;
   });
   if (statusFiltro) list = list.filter(s => s.status === statusFiltro);
   if (buscaPac)     list = list.filter(s => s.paciente.toLowerCase().includes(buscaPac));
@@ -17056,36 +17073,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }));
       } catch(_) {}
 
-      // ══ FASE 2 — dados secundários em paralelo, sem bloquear UI ═══════════
-      const safe = (q) => Promise.resolve(q).catch(()=>({data:[]}));
-      const [lo, se, esp, gu, hist, eleg] = await Promise.all([
-        safe(sb.from('lotes_tiss').select('*').order('created_at',{ascending:false}).limit(2000)),
-        safe(sb.from('senhas_plano').select('*').order('created_at',{ascending:false}).limit(5000)),
-        safe(sb.from('lista_espera').select('*').order('created_at',{ascending:false}).limit(2000)),
-        safe(sb.from('guias_sadt').select('*').order('created_at',{ascending:false}).limit(5000)),
-        safe(sb.from('historico').select('*').order('data',{ascending:false}).limit(5000)),
-        safe(sb.from('rpa_elegibilidade').select('agendamento_id,pac_id,elegivel,status').order('created_at',{ascending:false}).limit(10000)),
-      ]);
-
-      rep(LOTES,        lo.data,   map.dbToLote);
-      rep(SENHAS_PLANO, se.data,   map.dbToSenha);
-      rep(LISTA_ESPERA, esp.data,  map.dbToEspera);
-      rep(GUIAS,        gu.data,   map.dbToGuia);
-      rep(HISTORICO,    hist.data, map.dbToHist);
-
-      // ── Join elegibilidade → agendamentos ─────────────────────────────────
-      // Cria mapa agendamento_id → {elegivel, status} e aplica nos appointments
-      if (eleg.data && eleg.data.length) {
-        const elegMap = {};
-        eleg.data.forEach(e => { elegMap[String(e.agendamento_id)] = e; });
-        APPOINTMENTS.forEach(a => {
-          const r = elegMap[String(a.id)];
-          if (r) {
-            a.elegivel             = r.elegivel;           // true | false
-            a.statusElegibilidade  = r.status;             // 'ELEGIVEL' | 'INELEGIVEL' | 'PENDENTE'
-          }
-        });
-      }
+      // ══ FASE 2 — dados secundários carregados em background para não bloquear a UI ═══════════
+      loadedSenhas = false;
+      loadedEspera = false;
+      loadedGuias = false;
 
       nextGuiaId   = maxId(GUIAS);   nextLoteId   = maxId(LOTES);
       nextSenhaId  = maxId(SENHAS_PLANO); nextEsperaId = maxId(LISTA_ESPERA);
@@ -17094,13 +17085,117 @@ document.addEventListener('DOMContentLoaded', function() {
       try { await carregarUsuariosSupabase(); } catch(_) {}
       try { renderGuiasList(); renderLotesTable(); renderSenhas(); updateNavBadges(); } catch(_) {}
 
-      showToast('\u2713 Tudo carregado \u2014 ' + PACIENTES.length + ' pac. \u00B7 ' + APPOINTMENTS.length + ' agend. \u00B7 ' + GUIAS.length + ' guias', 'success');
+      showToast('\u2713 Agenda e Pacientes carregados!', 'success');
+
+      setTimeout(async () => {
+        const safe = (q) => Promise.resolve(q).catch(()=>({data:[]}));
+        const sbClient = getDb();
+        if (!sbClient) return;
+        try {
+          const [lo, se, esp, gu, hist, eleg] = await Promise.all([
+            safe(sbClient.from('lotes_tiss').select('*').order('created_at',{ascending:false}).limit(2000)),
+            safe(sbClient.from('senhas_plano').select('*').order('created_at',{ascending:false}).limit(5000)),
+            safe(sbClient.from('lista_espera').select('*').order('created_at',{ascending:false}).limit(2000)),
+            safe(sbClient.from('guias_sadt').select('*').order('created_at',{ascending:false}).limit(5000)),
+            safe(sbClient.from('historico').select('*').order('data',{ascending:false}).limit(5000)),
+            safe(sbClient.from('rpa_elegibilidade').select('agendamento_id,pac_id,elegivel,status').order('created_at',{ascending:false}).limit(10000)),
+          ]);
+
+          if (lo.data) { rep(LOTES, lo.data, map.dbToLote); }
+          if (se.data) { rep(SENHAS_PLANO, se.data, map.dbToSenha); loadedSenhas = true; }
+          if (esp.data) { rep(LISTA_ESPERA, esp.data, map.dbToEspera); loadedEspera = true; }
+          if (gu.data) { rep(GUIAS, gu.data, map.dbToGuia); loadedGuias = true; }
+          if (hist.data) { rep(HISTORICO, hist.data, map.dbToHist); }
+
+          if (eleg.data && eleg.data.length) {
+            const elegMap = {};
+            eleg.data.forEach(e => { elegMap[String(e.agendamento_id)] = e; });
+            APPOINTMENTS.forEach(a => {
+              const r = elegMap[String(a.id)];
+              if (r) {
+                a.elegivel             = r.elegivel;
+                a.statusElegibilidade  = r.status;
+              }
+            });
+          }
+
+          nextGuiaId   = maxId(GUIAS);   nextLoteId   = maxId(LOTES);
+          nextSenhaId  = maxId(SENHAS_PLANO); nextEsperaId = maxId(LISTA_ESPERA);
+          nextHistId   = maxId(HISTORICO);
+
+          try { renderGuiasList(); renderLotesTable(); renderSenhas(); updateNavBadges(); } catch(_) {}
+        } catch(e) {
+          console.error('[ClinicFlow Supabase] erro background load:', e);
+        }
+      }, 1000);
 
     } catch (e) {
       showToast('Erro ao carregar: ' + e.message, 'error');
       console.error('[ClinicFlow Supabase]', e);
     }
   }
+
+  // ── Funções de Lazy Loading On-Demand ───────────────────────────────────────
+  window.lazyLoadSenhas = async function () {
+    if (loadedSenhas) return;
+    const sbClient = getDb();
+    if (!sbClient) return;
+    try {
+      const { data, error } = await sbClient.from('senhas_plano').select('*').order('created_at',{ascending:false}).limit(5000);
+      if (error) throw error;
+      rep(SENHAS_PLANO, data, map.dbToSenha);
+      nextSenhaId = maxId(SENHAS_PLANO);
+      loadedSenhas = true;
+      renderSenhas();
+    } catch(e) { console.error('[LazyLoad] senhas erro:', e); }
+  };
+
+  window.lazyLoadEspera = async function () {
+    if (loadedEspera) return;
+    const sbClient = getDb();
+    if (!sbClient) return;
+    try {
+      const { data, error } = await sbClient.from('lista_espera').select('*').order('created_at',{ascending:false}).limit(2000);
+      if (error) throw error;
+      rep(LISTA_ESPERA, data, map.dbToEspera);
+      nextEsperaId = maxId(LISTA_ESPERA);
+      loadedEspera = true;
+      renderEsperaTable();
+      updateNavBadges();
+    } catch(e) { console.error('[LazyLoad] espera erro:', e); }
+  };
+
+  window.lazyLoadGuias = async function () {
+    if (loadedGuias) return;
+    const sbClient = getDb();
+    if (!sbClient) return;
+    try {
+      const [lo, gu] = await Promise.all([
+        sbClient.from('lotes_tiss').select('*').order('created_at',{ascending:false}).limit(2000),
+        sbClient.from('guias_sadt').select('*').order('created_at',{ascending:false}).limit(5000)
+      ]);
+      rep(LOTES, lo.data, map.dbToLote);
+      rep(GUIAS, gu.data, map.dbToGuia);
+      nextGuiaId = maxId(GUIAS); nextLoteId = maxId(LOTES);
+      loadedGuias = true;
+      renderGuiasList();
+      renderLotesTable();
+      updateNavBadges();
+    } catch(e) { console.error('[LazyLoad] guias erro:', e); }
+  };
+
+  window.lazyLoadHistorico = async function (pacId) {
+    if (!pacId) return;
+    const sbClient = getDb();
+    if (!sbClient) return;
+    try {
+      const { data, error } = await sbClient.from('historico').select('*').eq('pac_id', pacId).order('data',{ascending:false}).limit(5000);
+      if (error) throw error;
+      HISTORICO = HISTORICO.filter(h => h.pacId !== pacId);
+      (data || []).forEach(r => HISTORICO.push(map.dbToHist(r)));
+      nextHistId = maxId(HISTORICO);
+    } catch(e) { console.error('[LazyLoad] historico erro:', e); }
+  };
 
   async function salvarConfigNoDB() {
     const sb = getDb();
@@ -18066,6 +18161,11 @@ document.addEventListener('DOMContentLoaded', function() {
   window._salvarLocatarioSupabase = window.salvarLocatario = async function () {
     const nome = document.getElementById('loc-nome')?.value?.trim();
     if (!nome) { showToast('Nome é obrigatório', 'error'); return; }
+    const cpfVal = document.getElementById('loc-cpf')?.value?.trim();
+    if (cpfVal && typeof validarCPF === 'function' && !validarCPF(cpfVal)) {
+      showToast('CPF do locatário inválido!', 'error');
+      return;
+    }
     const editId = document.getElementById('loc-edit-id')?.value;
     const dados = {
       nome,
@@ -18534,6 +18634,7 @@ function salvarUsuario() {
 
   if (!nome) { showToast('Informe o nome do usuário', 'error'); return; }
   if (!email) { showToast('Informe o e-mail', 'error'); return; }
+  if (cpf && typeof validarCPF === 'function' && !validarCPF(cpf)) { showToast('CPF do usuário inválido!', 'error'); return; }
   if (!_editUsuarioId && !senha) { showToast('Informe a senha', 'error'); return; }
   if (senha && senha !== senhaConf) { showToast('As senhas não coincidem', 'error'); return; }
   if (senha && senha.length < 6) { showToast('A senha deve ter mínimo 6 caracteres', 'error'); return; }
@@ -20357,14 +20458,12 @@ ${pagamentoCards}
 </html>`;
 
   // Abre em nova janela para impressão/PDF
-  const win = window.open('', '_blank', 'width=960,height=750');
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-  } else {
-    const blob = new Blob([html], {type:'text/html'});
+  const blob = new Blob([html], {type:'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+  const win = window.open(blobUrl, '_blank', 'width=960,height=750');
+  if (!win) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = blobUrl;
     a.download = `fechamento_${mesVal}.html`;
     a.click();
     showToast('Arquivo baixado — abra no navegador e use Ctrl+P para imprimir/salvar como PDF','success');
@@ -20480,7 +20579,7 @@ ${pagamentoCards}
       <div class="form-row cols-2">
         <div class="form-group">
           <label>Telefone / WhatsApp</label>
-          <input class="form-input" id="loc-tel" placeholder="(11) 99999-9999">
+          <input class="form-input" id="loc-tel" placeholder="(11) 99999-9999" oninput="maskTelefone(this)">
         </div>
         <div class="form-group">
           <label>E-mail</label>
@@ -20490,7 +20589,7 @@ ${pagamentoCards}
       <div class="form-row cols-2">
         <div class="form-group">
           <label>CPF</label>
-          <input class="form-input" id="loc-cpf" placeholder="000.000.000-00">
+          <input class="form-input" id="loc-cpf" placeholder="000.000.000-00" oninput="maskCPF(this)">
         </div>
         <div class="form-group">
           <label>Conselho / Registro</label>
@@ -21427,6 +21526,11 @@ async function salvarLocatario() {
     if (typeof showToast === 'function') showToast('Nome é obrigatório', 'error');
     return;
   }
+  const cpfVal = document.getElementById('loc-cpf')?.value?.trim();
+  if (cpfVal && typeof validarCPF === 'function' && !validarCPF(cpfVal)) {
+    if (typeof showToast === 'function') showToast('CPF do locatário inválido!', 'error');
+    return;
+  }
   const editId = document.getElementById('loc-edit-id')?.value;
 
   const dados = {
@@ -21846,12 +21950,12 @@ function emitirRelatorioLocacao() {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=900,height=700');
-  if (win) { win.document.write(html); win.document.close(); }
-  else {
-    const blob = new Blob([html], {type:'text/html'});
+  const blob = new Blob([html], {type:'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+  const win = window.open(blobUrl, '_blank', 'width=900,height=700');
+  if (!win) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = blobUrl;
     a.download = `locacao_salas_${mesVal}.html`;
     a.click();
     if (typeof showToast === 'function') showToast('Arquivo baixado — abra no navegador e use Ctrl+P para salvar PDF','success');
@@ -23348,14 +23452,15 @@ window.finRemoverNF = function() {
 window.finVisualizarNF = function(id) {
   const r = FIN_REGISTROS.find(x=>x.id===id);
   if (!r || !r.nfUrl) { showToast('Nenhuma nota fiscal anexada','error'); return; }
-  const win = window.open('','_blank');
-  if (win) {
-    if (r.nfUrl.startsWith('data:image')) {
-      win.document.write('<html><body style="margin:0;background:#000"><img src="'+r.nfUrl+'" style="max-width:100%;"></body></html>');
-    } else {
-      win.document.write('<html><body style="margin:0"><embed src="'+r.nfUrl+'" width="100%" height="100%" type="application/pdf"></body></html>');
-    }
+  let html = '';
+  if (r.nfUrl.startsWith('data:image')) {
+    html = '<html><body style="margin:0;background:#000"><img src="'+r.nfUrl+'" style="max-width:100%;"></body></html>';
+  } else {
+    html = '<html><body style="margin:0"><embed src="'+r.nfUrl+'" width="100%" height="100%" type="application/pdf"></body></html>';
   }
+  const blob = new Blob([html], {type:'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank');
 };
 
 // ── Salvar edição ────────────────────────────────────────────
@@ -23496,9 +23601,10 @@ ${r.obs ? `<div class="section"><div class="section-title">Observacoes</div><p s
 </body>
 </html>`;
 
-  const win = window.open('','_blank','width=820,height:700');
-  if (win) { win.document.write(html); win.document.close(); }
-  else { showToast('Pop-up bloqueado — permita pop-ups para gerar o recibo','error'); }
+  const blob = new Blob([html], {type:'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+  const win = window.open(blobUrl, '_blank', 'width=820,height=700');
+  if (!win) { showToast('Pop-up bloqueado — permita pop-ups para gerar o recibo','error'); }
 };
 
 // ── Exposição global ─────────────────────────────────────────
