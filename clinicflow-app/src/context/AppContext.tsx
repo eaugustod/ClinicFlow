@@ -133,6 +133,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadInitialData = async () => {
     setSyncing(true);
     try {
+      // Refresh user permissions if user is set
+      const storedUser = localStorage.getItem('cf_user');
+      if (storedUser) {
+        const uObj = JSON.parse(storedUser);
+        const { data: dbUserR } = await supabase
+          .from('usuarios')
+          .select('perfil,perfil_id')
+          .eq('id', uObj.id)
+          .maybeSingle();
+        
+        if (dbUserR) {
+          let allowedModulos: string[] = [];
+          if (dbUserR.perfil_id) {
+            const { data: profAccess } = await supabase
+              .from('perfis_acesso')
+              .select('modulos')
+              .eq('id', dbUserR.perfil_id)
+              .maybeSingle();
+            if (profAccess && profAccess.modulos) {
+              allowedModulos = typeof profAccess.modulos === 'string' ? JSON.parse(profAccess.modulos) : profAccess.modulos;
+            }
+          }
+          if (allowedModulos.length === 0) {
+            if (dbUserR.perfil === 'admin') {
+              allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'profissionais', 'planos', 'procedimentos', 'espera', 'historico', 'guias', 'senhas', 'lotes', 'importar', 'relatorios', 'fechamento', 'financeiro', 'ctrlMeses', 'feriados', 'config', 'usuarios', 'perfis'];
+            } else if (dbUserR.perfil === 'recepcao') {
+              allowedModulos = ['dashboard', 'agenda', 'pacientes', 'planos', 'espera', 'senhas'];
+            } else if (dbUserR.perfil === 'profissional') {
+              allowedModulos = ['dashboard', 'agenda', 'historico', 'guias'];
+            }
+          }
+          const updatedUser = { ...uObj, perfil: dbUserR.perfil, permissions: allowedModulos };
+          setUser(updatedUser);
+          localStorage.setItem('cf_user', JSON.stringify(updatedUser));
+        }
+      }
+
       // Phase 1 - Core startup tables
       const [prof, pl, proc, pacR, agR, cfg] = await Promise.all([
         supabase.from('profissionais').select('*').order('nome').limit(500),
@@ -428,11 +465,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await supabase.auth.signOut();
         return false;
       }
+
+      // Query allowed modules
+      let allowedModulos: string[] = [];
+      if (dbUser.perfil_id) {
+        const { data: profAccess } = await supabase
+          .from('perfis_acesso')
+          .select('modulos')
+          .eq('id', dbUser.perfil_id)
+          .maybeSingle();
+        if (profAccess && profAccess.modulos) {
+          allowedModulos = typeof profAccess.modulos === 'string' ? JSON.parse(profAccess.modulos) : profAccess.modulos;
+        }
+      }
+      if (allowedModulos.length === 0) {
+        if (dbUser.perfil === 'admin') {
+          allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'profissionais', 'planos', 'procedimentos', 'espera', 'historico', 'guias', 'senhas', 'lotes', 'importar', 'relatorios', 'fechamento', 'financeiro', 'ctrlMeses', 'feriados', 'config', 'usuarios', 'perfis'];
+        } else if (dbUser.perfil === 'recepcao') {
+          allowedModulos = ['dashboard', 'agenda', 'pacientes', 'planos', 'espera', 'senhas'];
+        } else if (dbUser.perfil === 'profissional') {
+          allowedModulos = ['dashboard', 'agenda', 'historico', 'guias'];
+        }
+      }
+
       const activeUser = {
         id: dbUser.id,
         nome: dbUser.nome || email,
         email: email,
-        perfil: dbUser.perfil || 'recepcao'
+        perfil: dbUser.perfil || 'recepcao',
+        permissions: allowedModulos
       };
       setUser(activeUser);
       localStorage.setItem('cf_user', JSON.stringify(activeUser));

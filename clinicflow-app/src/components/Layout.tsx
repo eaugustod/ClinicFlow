@@ -116,6 +116,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     }
   }, [activePage]);
 
+  const hasPermission = (itemId: string) => {
+    if (!user) return false;
+    // Admins e usuários sem restrição explícita (fallback) têm acesso total
+    if (user.perfil?.toLowerCase() === 'admin') return true;
+    if (!user.permissions) return true;
+
+    // Normaliza IDs específicos para casar com Perfis de Acesso
+    let targetId = itemId;
+    if (itemId === 'atendimento') targetId = 'agenda';
+    if (itemId === 'conecta-agenda') targetId = 'agenda';
+    if (itemId === 'conecta-profissionais') targetId = 'profissionais';
+    if (itemId === 'conecta-fechamento') targetId = 'fechamento';
+    if (itemId.startsWith('importar-')) targetId = 'importar';
+    if (itemId === 'status-agendamento') targetId = 'config';
+
+    return user.permissions.includes(targetId);
+  };
+
   const handleNavClick = (pageId: string) => {
     setActivePage(pageId);
     setSidebarOpen(false);
@@ -161,7 +179,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
 
         {/* Navigation Section */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-thin">
-          {menuItems.map((item) => {
+          {menuItems.filter(item => hasPermission(item.id)).map((item) => {
             const Icon = item.icon;
             const active = activePage === item.id;
             return (
@@ -181,170 +199,178 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           })}
 
           {/* Cadastros Dropdown */}
-          <div className="space-y-1">
-            <button
-              onClick={() => setCadastrosOpen(!cadastrosOpen)}
-              className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
-            >
-              <div className="flex items-center gap-3.5">
-                <ClipboardList size={16} />
-                <span>Cadastros</span>
-              </div>
-              <ChevronDown
-                size={14}
-                className={`transition-transform duration-300 ${
-                  cadastrosOpen ? 'rotate-180 text-indigo-400' : ''
-                }`}
-              />
-            </button>
-            {cadastrosOpen && (
-              <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
-                {cadastroItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = activePage === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
-                        active
-                          ? 'bg-indigo-500/10 text-indigo-400'
-                          : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
-                      }`}
-                    >
-                      <Icon size={13} />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {cadastroItems.filter(item => hasPermission(item.id)).length > 0 && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setCadastrosOpen(!cadastrosOpen)}
+                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+              >
+                <div className="flex items-center gap-3.5">
+                  <ClipboardList size={16} />
+                  <span>Cadastros</span>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-300 ${
+                    cadastrosOpen ? 'rotate-180 text-indigo-400' : ''
+                  }`}
+                />
+              </button>
+              {cadastrosOpen && (
+                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                  {cadastroItems.filter(item => hasPermission(item.id)).map((item) => {
+                    const Icon = item.icon;
+                    const active = activePage === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                          active
+                            ? 'bg-indigo-500/10 text-indigo-400'
+                            : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
+                        }`}
+                      >
+                        <Icon size={13} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Faturamento Dropdown */}
-          <div className="space-y-1">
-            <button
-              onClick={() => setFaturamentoOpen(!faturamentoOpen)}
-              className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
-            >
-              <div className="flex items-center gap-3.5">
-                <FileText size={16} />
-                <span>Faturamento</span>
-              </div>
-              <ChevronDown
-                size={14}
-                className={`transition-transform duration-300 ${
-                  faturamentoOpen ? 'rotate-180 text-indigo-400' : ''
-                }`}
-              />
-            </button>
-            {faturamentoOpen && (
-              <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
-                {fatItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = activePage === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
-                        active
-                          ? 'bg-indigo-500/10 text-indigo-400'
-                          : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
-                      }`}
-                    >
-                      <Icon size={13} />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {fatItems.filter(item => hasPermission(item.id)).length > 0 && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setFaturamentoOpen(!faturamentoOpen)}
+                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+              >
+                <div className="flex items-center gap-3.5">
+                  <FileText size={16} />
+                  <span>Faturamento</span>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-300 ${
+                    faturamentoOpen ? 'rotate-180 text-indigo-400' : ''
+                  }`}
+                />
+              </button>
+              {faturamentoOpen && (
+                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                  {fatItems.filter(item => hasPermission(item.id)).map((item) => {
+                    const Icon = item.icon;
+                    const active = activePage === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                          active
+                            ? 'bg-indigo-500/10 text-indigo-400'
+                            : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
+                        }`}
+                      >
+                        <Icon size={13} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Espaço Conecta Dropdown */}
-          <div className="space-y-1">
-            <button
-              onClick={() => setConectaOpen(!conectaOpen)}
-              className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
-            >
-              <div className="flex items-center gap-3.5">
-                <Building2 size={16} />
-                <span>Espaço Conecta</span>
-              </div>
-              <ChevronDown
-                size={14}
-                className={`transition-transform duration-300 ${
-                  conectaOpen ? 'rotate-180 text-indigo-400' : ''
-                }`}
-              />
-            </button>
-            {conectaOpen && (
-              <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
-                {conectaItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = activePage === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
-                        active
-                          ? 'bg-indigo-500/10 text-indigo-400'
-                          : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
-                      }`}
-                    >
-                      <Icon size={13} />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {conectaItems.filter(item => hasPermission(item.id)).length > 0 && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setConectaOpen(!conectaOpen)}
+                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+              >
+                <div className="flex items-center gap-3.5">
+                  <Building2 size={16} />
+                  <span>Espaço Conecta</span>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-300 ${
+                    conectaOpen ? 'rotate-180 text-indigo-400' : ''
+                  }`}
+                />
+              </button>
+              {conectaOpen && (
+                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                  {conectaItems.filter(item => hasPermission(item.id)).map((item) => {
+                    const Icon = item.icon;
+                    const active = activePage === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                          active
+                            ? 'bg-indigo-500/10 text-indigo-400'
+                            : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
+                        }`}
+                      >
+                        <Icon size={13} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Ferramentas Dropdown */}
-          <div className="space-y-1">
-            <button
-              onClick={() => setFerramentasOpen(!ferramentasOpen)}
-              className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
-            >
-              <div className="flex items-center gap-3.5">
-                <Upload size={16} />
-                <span>Ferramentas</span>
-              </div>
-              <ChevronDown
-                size={14}
-                className={`transition-transform duration-300 ${
-                  ferramentasOpen ? 'rotate-180 text-indigo-400' : ''
-                }`}
-              />
-            </button>
-            {ferramentasOpen && (
-              <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
-                {ferramentasItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = activePage === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
-                        active
-                          ? 'bg-indigo-500/10 text-indigo-400'
-                          : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
-                      }`}
-                    >
-                      <Icon size={13} />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {ferramentasItems.filter(item => hasPermission(item.id)).length > 0 && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setFerramentasOpen(!ferramentasOpen)}
+                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+              >
+                <div className="flex items-center gap-3.5">
+                  <Upload size={16} />
+                  <span>Ferramentas</span>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-300 ${
+                    ferramentasOpen ? 'rotate-180 text-indigo-400' : ''
+                  }`}
+                />
+              </button>
+              {ferramentasOpen && (
+                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                  {ferramentasItems.filter(item => hasPermission(item.id)).map((item) => {
+                    const Icon = item.icon;
+                    const active = activePage === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                          active
+                            ? 'bg-indigo-500/10 text-indigo-400'
+                            : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
+                        }`}
+                      >
+                        <Icon size={13} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-          {otherItems.map((item) => {
+          {otherItems.filter(item => hasPermission(item.id)).map((item) => {
             const Icon = item.icon;
             const active = activePage === item.id;
             return (

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Shield } from 'lucide-react';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Senhas } from './pages/Senhas';
@@ -46,7 +47,33 @@ function App() {
     return <Login />;
   }
 
+  const hasPermission = (pageId: string) => {
+    if (!user) return false;
+    if (user.perfil?.toLowerCase() === 'admin') return true;
+    if (!user.permissions) return true;
+
+    let targetId = pageId;
+    if (pageId === 'atendimento') targetId = 'agenda';
+    if (pageId === 'conecta-agenda') targetId = 'agenda';
+    if (pageId === 'conecta-profissionais') targetId = 'profissionais';
+    if (pageId === 'conecta-fechamento') targetId = 'fechamento';
+    if (pageId.startsWith('importar-')) targetId = 'importar';
+    if (pageId === 'status-agendamento') targetId = 'config';
+
+    return user.permissions.includes(targetId);
+  };
+
   const renderContent = () => {
+    if (!hasPermission(activePage)) {
+      return (
+        <div className="flex flex-col items-center justify-center h-[50vh] text-slate-500">
+          <Shield className="w-12 h-12 text-slate-600 mb-3 animate-pulse" />
+          <p className="text-sm font-medium">Acesso Restrito</p>
+          <p className="text-xs text-slate-600 mt-1">Seu perfil de acesso não tem permissão para esta área.</p>
+        </div>
+      );
+    }
+
     switch (activePage) {
       case 'dashboard':
         return <Dashboard />;
