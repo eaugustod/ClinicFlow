@@ -849,7 +849,7 @@ export const Agenda: React.FC = () => {
                         gridColumn: C,
                         gridRow: `${R} / span ${span}`,
                         height: 'calc(100% - 8px)',
-                        borderLeft: `3px solid ${getStatusColorHex(appt.status)}`,
+                        borderLeft: `6px solid ${getStatusColorHex(appt.status)}`,
                         borderColor: `${getStatusColorHex(appt.status)}30`
                       }}
                     >
@@ -913,7 +913,7 @@ export const Agenda: React.FC = () => {
                           onClick={() => openEditModal(appt)}
                           className={`p-2.5 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all space-y-1.5 ${getStatusColor(appt.status)}`}
                           style={{
-                            borderLeft: `3px solid ${getStatusColorHex(appt.status)}`,
+                            borderLeft: `6px solid ${getStatusColorHex(appt.status)}`,
                             borderColor: `${getStatusColorHex(appt.status)}30`
                           }}
                         >
