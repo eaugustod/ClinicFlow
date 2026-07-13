@@ -477,19 +477,51 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
     fetchData();
   }, []);
 
-  const matchPaciente = (nomeRaw: string) => {
+  const matchPaciente = async (nomeRaw: string) => {
     const normRaw = norm(nomeRaw);
-    return pacientesList.find(p => norm(p.nome) === normRaw || norm(p.nome).includes(normRaw) || normRaw.includes(norm(p.nome)));
+    let found = pacientesList.find(p => norm(p.nome) === normRaw || norm(p.nome).includes(normRaw) || normRaw.includes(norm(p.nome)));
+    if (found) return found;
+
+    try {
+      const { data } = await supabase
+        .from('pacientes')
+        .select('id, nome')
+        .ilike('nome', `%${nomeRaw.trim()}%`);
+      if (data && data.length > 0) {
+        const best = data.find(p => norm(p.nome) === normRaw) || data[0];
+        setPacientesList(prev => [...prev, best]);
+        return best;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return undefined;
   };
 
-  const matchProfissional = (nomeRaw: string) => {
+  const matchProfissional = async (nomeRaw: string) => {
     const normRaw = norm(nomeRaw);
-    return profissionaisList.find(p => 
+    let found = profissionaisList.find(p => 
       norm(p.nome) === normRaw || 
       norm(p.nome_agenda) === normRaw ||
       norm(p.nome).includes(normRaw) || 
       normRaw.includes(norm(p.nome))
     );
+    if (found) return found;
+
+    try {
+      const { data } = await supabase
+        .from('profissionais')
+        .select('id, nome, nome_agenda')
+        .ilike('nome', `%${nomeRaw.trim()}%`);
+      if (data && data.length > 0) {
+        const best = data.find(p => norm(p.nome) === normRaw || norm(p.nome_agenda) === normRaw) || data[0];
+        setProfissionaisList(prev => [...prev, best]);
+        return best;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return undefined;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -570,15 +602,18 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
     setStep(2);
   };
 
-  const handleNextStep2 = () => {
+  const handleNextStep2 = async () => {
     // Validate required fields mapping
     const missing = schema.fields.filter(f => f.required && (mapping[f.key] === undefined || mapping[f.key] < 0));
     if (missing.length > 0) {
       return alert(`Mapeie os campos obrigatórios: ${missing.map(f => f.label).join(', ')}`);
     }
 
-    // Process rows for preview
-    const processed = rawRows.map((row, idx) => {
+    setLoading(true);
+    const processed = [];
+
+    for (let idx = 0; idx < rawRows.length; idx++) {
+      const row = rawRows[idx];
       const payload = schema.mapper(row);
       const warnings: string[] = [];
       const errors: string[] = [];
@@ -592,7 +627,7 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
 
       // Special lookup logic for anamnese / evolucoes
       if (tipo === 'anamnese' || tipo === 'evolucoes') {
-        const pac = matchPaciente(payload.pacienteNome);
+        const pac = await matchPaciente(payload.pacienteNome);
         if (!pac) {
           errors.push(`Paciente não encontrado: "${payload.pacienteNome}"`);
         } else {
@@ -600,7 +635,7 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
         }
 
         if (payload.profissionalNome) {
-          const prof = matchProfissional(payload.profissionalNome);
+          const prof = await matchProfissional(payload.profissionalNome);
           if (prof) {
             payload.profId = prof.id;
           } else {
@@ -609,15 +644,16 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
         }
       }
 
-      return {
+      processed.push({
         linha: idx + 2,
         status: errors.length > 0 ? 'erro' : warnings.length > 0 ? 'aviso' : 'ok',
         msg: errors.length > 0 ? errors.join('; ') : warnings.length > 0 ? warnings.join('; ') : 'OK',
         dados: payload
-      };
-    });
+      });
+    }
 
     setPreviewRows(processed);
+    setLoading(false);
     setStep(3);
   };
 
@@ -821,9 +857,10 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
             </button>
             <button
               onClick={handleNextStep2}
-              className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold"
+              disabled={loading}
+              className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold disabled:opacity-50"
             >
-              Avançar
+              {loading ? 'Processando...' : 'Avançar'}
               <ChevronRight size={12} />
             </button>
           </div>
