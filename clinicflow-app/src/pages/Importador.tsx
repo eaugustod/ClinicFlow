@@ -919,22 +919,34 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.02] font-mono">
-                {previewRows.slice(0, 100).map((row, idx) => (
-                  <tr key={idx} className="hover:bg-white/[0.005]">
-                    <td className="p-3 text-slate-500 font-bold">{row.linha}</td>
-                    <td className="p-3 text-slate-200 font-sans font-bold">
-                      {row.dados?.nome || row.dados?.paciente || row.dados?.num || '—'}
-                    </td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-bold uppercase font-sans ${
-                        row.status === 'ok' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                      }`}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-slate-400 font-sans">{row.msg}</td>
-                  </tr>
-                ))}
+                {(() => {
+                  const rowsToShow = previewRows.filter(row => tipo !== 'evolucoes' || row.status === 'erro');
+                  if (rowsToShow.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={4} className="p-4 text-center text-emerald-400 font-bold font-sans">
+                          ✓ Nenhum erro encontrado! Todos os registros estão prontos para importação.
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return rowsToShow.slice(0, 100).map((row, idx) => (
+                    <tr key={idx} className="hover:bg-white/[0.005]">
+                      <td className="p-3 text-slate-500 font-bold">{row.linha}</td>
+                      <td className="p-3 text-slate-200 font-sans font-bold">
+                        {row.dados?.nome || row.dados?.paciente || row.dados?.pacienteNome || row.dados?.num || '—'}
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-bold uppercase font-sans ${
+                          row.status === 'ok' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                        }`}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-400 font-sans">{row.msg}</td>
+                    </tr>
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
