@@ -483,12 +483,25 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
     if (found) return found;
 
     try {
-      const { data } = await supabase
+      // 1. Busca exatamente como está na planilha
+      let { data } = await supabase
         .from('pacientes')
         .select('id, nome')
         .ilike('nome', `%${nomeRaw.trim()}%`);
+
+      // 2. Se não encontrou, tenta buscar substituindo as vogais por wildcard (_) para contornar acentuação no Postgres
+      if (!data || data.length === 0) {
+        const wildcardName = nomeRaw.trim()
+          .replace(/[aeiouáàâãäéèêëíìîïóòôõöúùûüç]/gi, '_');
+        const res = await supabase
+          .from('pacientes')
+          .select('id, nome')
+          .like('nome', `%${wildcardName}%`);
+        data = res.data;
+      }
+
       if (data && data.length > 0) {
-        const best = data.find(p => norm(p.nome) === normRaw) || data[0];
+        const best = data.find(p => norm(p.nome) === normRaw || norm(p.nome).includes(normRaw) || normRaw.includes(norm(p.nome))) || data[0];
         setPacientesList(prev => [...prev, best]);
         return best;
       }
@@ -509,12 +522,25 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
     if (found) return found;
 
     try {
-      const { data } = await supabase
+      // 1. Busca exatamente como está na planilha
+      let { data } = await supabase
         .from('profissionais')
         .select('id, nome, nome_agenda')
         .ilike('nome', `%${nomeRaw.trim()}%`);
+
+      // 2. Se não encontrou, tenta com wildcard (_)
+      if (!data || data.length === 0) {
+        const wildcardName = nomeRaw.trim()
+          .replace(/[aeiouáàâãäéèêëíìîïóòôõöúùûüç]/gi, '_');
+        const res = await supabase
+          .from('profissionais')
+          .select('id, nome, nome_agenda')
+          .like('nome', `%${wildcardName}%`);
+        data = res.data;
+      }
+
       if (data && data.length > 0) {
-        const best = data.find(p => norm(p.nome) === normRaw || norm(p.nome_agenda) === normRaw) || data[0];
+        const best = data.find(p => norm(p.nome) === normRaw || norm(p.nome_agenda) === normRaw || norm(p.nome).includes(normRaw) || normRaw.includes(norm(p.nome))) || data[0];
         setProfissionaisList(prev => [...prev, best]);
         return best;
       }
