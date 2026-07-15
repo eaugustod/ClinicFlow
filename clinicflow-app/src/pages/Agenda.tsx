@@ -42,6 +42,7 @@ export const Agenda: React.FC = () => {
   const [tipoAtendimento, setTipoAtendimento] = useState('sessao');
   const [status, setStatus] = useState<string>('Agendado');
   const [obs, setObs] = useState('');
+  const [searchPacientes, setSearchPacientes] = useState<any[]>([]);
 
   // Recorrência
   const [hasRecorrencia, setHasRecorrencia] = useState(false);
@@ -103,14 +104,84 @@ export const Agenda: React.FC = () => {
 
   // Sync patient plano when patient is typed/selected
   useEffect(() => {
-    const pacSelected = pacientes.find(p => p.nome === paciente);
-    if (pacSelected) {
-      setPlanoId(pacSelected.planoId);
-      setCarteirinha(pacSelected.carteirinha || '');
-      setSadtBeneficiario(pacSelected.nome);
-      setSadtCns(pacSelected.cpf || '');
+    const fetchPatientData = async () => {
+      const pacSelected = pacientes.find(p => p.nome.trim().toLowerCase() === paciente.trim().toLowerCase()) ||
+                          searchPacientes.find(p => p.nome.trim().toLowerCase() === paciente.trim().toLowerCase());
+      if (pacSelected) {
+        setPlanoId(pacSelected.planoId || pacSelected.plano_id || 5);
+        setCarteirinha(pacSelected.carteirinha || '');
+        setSadtBeneficiario(pacSelected.nome);
+        setSadtCns(pacSelected.cpf || pacSelected.cns || '');
+        return;
+      }
+
+      if (paciente.trim().length >= 3) {
+        try {
+          const { data } = await supabase
+            .from('pacientes')
+            .select('*')
+            .eq('status', 'Ativo')
+            .ilike('nome', paciente.trim())
+            .limit(1);
+
+          if (data && data.length > 0) {
+            const dbPac = data[0];
+            setPlanoId(dbPac.plano_id || 5);
+            setCarteirinha(dbPac.carteirinha || '');
+            setSadtBeneficiario(dbPac.nome);
+            setSadtCns(dbPac.cpf || '');
+          }
+        } catch (err) {
+          console.error('Erro ao buscar dados do paciente no banco:', err);
+        }
+      }
+    };
+
+    fetchPatientData();
+  }, [paciente, pacientes, searchPacientes]);
+
+  // Dynamic database search as they type
+  useEffect(() => {
+    if (!paciente.trim() || paciente.trim().length < 3) {
+      setSearchPacientes([]);
+      return;
     }
+
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from('pacientes')
+          .select('id, nome, plano_id, carteirinha, cpf')
+          .eq('status', 'Ativo')
+          .ilike('nome', `%${paciente.trim()}%`)
+          .limit(10);
+        if (data) {
+          setSearchPacientes(data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
   }, [paciente]);
+
+  const getDatalistOptions = () => {
+    const list = [...pacientes.filter(p => p.status === 'Ativo')];
+    searchPacientes.forEach(sp => {
+      if (!list.some(p => p.id === sp.id)) {
+        list.push({
+          id: sp.id,
+          nome: sp.nome,
+          planoId: sp.plano_id,
+          carteirinha: sp.carteirinha,
+          cpf: sp.cpf,
+          status: 'Ativo'
+        } as any);
+      }
+    });
+    return list;
+  };
 
   // Time slots from 07:00 to 19:30 (30m intervals)
   const timeSlots: string[] = [];
@@ -389,10 +460,15 @@ export const Agenda: React.FC = () => {
       const plName = planos.find(pl => pl.id === Number(planoId))?.nome || 'Particular';
       const totalSadtVal = sadtProcs.reduce((acc, curr) => acc + curr.total, 0);
 
+      // Find the matched patient object from datalist options to get their pacId
+      const matchedPac = getDatalistOptions().find(p => p.nome.trim().toLowerCase() === patientsToSchedule[0]?.trim().toLowerCase());
+      const pacId = matchedPac ? matchedPac.id : null;
+
       if (editId) {
         // Edit flow
         const apptPayload: Partial<Agendamento> = {
           profId: profIdForm,
+          pacId,
           paciente: patientsToSchedule[0],
           plano: plName,
           planoId: Number(planoId),
@@ -497,8 +573,12 @@ export const Agenda: React.FC = () => {
 
         for (const d of datesToSchedule) {
           for (const pacName of patientsToSchedule) {
+            const currentPac = getDatalistOptions().find(p => p.nome.trim().toLowerCase() === pacName.trim().toLowerCase());
+            const currentPacId = currentPac ? currentPac.id : null;
+
             const apptPayload: Partial<Agendamento> = {
               profId: profIdForm,
+              pacId: currentPacId,
               paciente: pacName,
               plano: plName,
               planoId: Number(planoId),
@@ -1236,7 +1316,7 @@ export const Agenda: React.FC = () => {
                               className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white text-xs focus:outline-none"
                             />
                             <datalist id="agenda-pacientes-list">
-                              {pacientes.filter(p => p.status === 'Ativo').map(p => (
+                              {getDatalistOptions().map(p => (
                                 <option key={p.id} value={p.nome} />
                               ))}
                             </datalist>

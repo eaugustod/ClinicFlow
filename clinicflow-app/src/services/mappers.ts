@@ -191,6 +191,7 @@ export const mappers = {
 
   apptToDb: (a: Partial<Agendamento>) => ({
     prof_id: a.profId,
+    pac_id: a.pacId || null,
     paciente: a.paciente,
     plano: a.plano || 'Particular',
     plano_id: a.planoId || 5,
