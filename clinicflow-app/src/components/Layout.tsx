@@ -33,6 +33,7 @@ import {
   Upload
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { ThemeSelector } from './ThemeSelector';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -140,9 +141,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
   };
 
   return (
-    <div className="flex h-screen bg-[#07090e] text-[#f1f5f9] font-sans overflow-hidden relative">
+    <div className="flex h-screen bg-[var(--bg-base)] text-[var(--text-primary)] font-sans overflow-hidden relative transition-colors duration-300">
       {/* Background glowing blobs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[var(--accent)]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-violet-600/10 blur-[120px] pointer-events-none" />
 
       {/* Mobile Sidebar Overlay */}
@@ -155,12 +156,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col w-[256px] bg-[#0c0e16]/80 backdrop-blur-xl border-r border-white/[0.04] transition-transform duration-300 ease-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col w-[256px] bg-[var(--sidebar-bg)] backdrop-blur-xl border-r border-[var(--border)] transition-all duration-300 ease-out lg:static lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Brand Header */}
-        <div className="flex items-center justify-between h-20 px-6 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between h-20 px-6 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
               CF
@@ -417,25 +418,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Header */}
-        <header className="flex items-center justify-between h-20 px-8 border-b border-white/[0.04] bg-[#0c0e16]/20 backdrop-blur-md">
+        <header className="flex items-center justify-between h-20 px-8 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-md transition-colors duration-300">
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 hover:bg-white/5 rounded-lg"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu size={20} className="text-slate-400" />
+              <Menu size={20} className="text-[var(--text-secondary)]" />
             </button>
             <div className="flex flex-col">
-              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Unidade Conectada</span>
-              <h2 className="text-sm font-bold text-white tracking-wide mt-0.5">
+              <span className="text-[10px] text-[var(--accent)] font-bold uppercase tracking-wider">Unidade Conectada</span>
+              <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-wide mt-0.5">
                 {clinicaConfig.nome || 'Painel Principal'}
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Theme Selector */}
+            <ThemeSelector />
+
             {/* Notification button */}
-            <button className="relative p-2.5 rounded-xl text-slate-400 hover:text-slate-100 bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+            <button className="relative p-2.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--border-mid)] transition-all">
               <Bell size={16} />
               <span className="absolute top-2 right-2 w-2 h-2 bg-gradient-to-r from-indigo-400 to-violet-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
             </button>
