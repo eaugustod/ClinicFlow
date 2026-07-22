@@ -418,7 +418,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Header */}
-        <header className="flex items-center justify-between h-20 px-8 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-md transition-colors duration-300">
+        <header className="flex items-center justify-between h-20 px-8 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-md transition-colors duration-300 relative z-50">
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 hover:bg-white/5 rounded-lg"

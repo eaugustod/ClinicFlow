@@ -36,7 +36,7 @@ export const ThemeSelector: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-mid)] shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur-xl">
+        <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-mid)] shadow-[0_25px_60px_rgba(0,0,0,0.7)] p-4 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur-2xl">
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--border)]">
             <div className="flex items-center gap-2">
               <Palette size={16} className="text-[var(--accent)]" />
