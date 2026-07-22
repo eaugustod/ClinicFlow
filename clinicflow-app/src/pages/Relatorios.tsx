@@ -7,7 +7,7 @@ import { Historico } from '../types';
 
 export const Relatorios: React.FC = () => {
   const { agendamentos, profissionais, guias, planos, pacientes, getBaseStatus, loadAgendamentosMes } = useApp();
-  const [selectedMonth, setSelectedMonth] = useState('2026-06');
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'atendimentos' | 'auditoria' | 'faixa-etaria'>('dashboard');
 

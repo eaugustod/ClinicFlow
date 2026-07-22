@@ -7,9 +7,9 @@ export const Dashboard: React.FC = () => {
 
   // Filters
   const [filterType, setFilterType] = useState<'dia' | 'mes' | 'ano'>('dia');
-  const [selectedDate, setSelectedDate] = useState('2026-06-21');
-  const [selectedMonth, setSelectedMonth] = useState('2026-06');
-  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [selectedYear, setSelectedYear] = useState(() => String(new Date().getFullYear()));
 
   // Automatically sync month and year when date changes
   const handleDateChange = (dateVal: string) => {

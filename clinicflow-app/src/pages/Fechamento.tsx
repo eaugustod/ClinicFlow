@@ -19,7 +19,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
   }, [initialTab]);
   
   // Tab 1: Calculo States
-  const [selectedMonth, setSelectedMonth] = useState('2026-06');
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [calculated, setCalculated] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [savingFechamento, setSavingFechamento] = useState(false);
