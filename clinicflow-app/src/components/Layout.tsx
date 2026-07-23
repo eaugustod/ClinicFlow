@@ -48,6 +48,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
   const [cadastrosOpen, setCadastrosOpen] = useState(false);
   const [conectaOpen, setConectaOpen] = useState(false);
   const [ferramentasOpen, setFerramentasOpen] = useState(false);
+  const [fechamentoOpen, setFechamentoOpen] = useState(false);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -73,6 +74,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     { id: 'senhas', label: 'Senhas & Autorizações', icon: Key },
   ];
 
+  const fechamentoItems = [
+    { id: 'analise-fechamento', label: 'Análise por Terapeuta', icon: UserCheck },
+    { id: 'fechamento', label: 'Fechamento Mensal', icon: Calculator },
+    { id: 'financeiro', label: 'Repasses / Pagamentos', icon: CreditCard },
+  ];
+
   const conectaItems = [
     { id: 'conecta-agenda', label: 'Agendamento de Salas', icon: Calendar },
     { id: 'conecta-profissionais', label: 'Profissionais Locatários', icon: Users },
@@ -93,8 +100,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
 
   const otherItems = [
     { id: 'espera', label: 'Lista de Espera', icon: ListOrdered },
-    { id: 'fechamento', label: 'Fechamento Mensal', icon: Calculator },
-    { id: 'financeiro', label: 'Financeiro', icon: CreditCard },
     { id: 'usuarios', label: 'Usuários & Acesso', icon: UsersIcon },
     { id: 'perfis', label: 'Perfis de Acesso', icon: Shield },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
@@ -108,6 +113,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     }
     if (fatItems.some((item) => item.id === activePage)) {
       setFaturamentoOpen(true);
+    }
+    if (fechamentoItems.some((item) => item.id === activePage)) {
+      setFechamentoOpen(true);
     }
     if (conectaItems.some((item) => item.id === activePage)) {
       setConectaOpen(true);
@@ -126,6 +134,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     // Normaliza IDs específicos para casar com Perfis de Acesso
     let targetId = itemId;
     if (itemId === 'atendimento') targetId = 'agenda';
+    if (itemId === 'analise-fechamento') targetId = 'fechamento';
+    if (itemId === 'financeiro') targetId = 'fechamento';
     if (itemId === 'conecta-agenda') targetId = 'agenda';
     if (itemId === 'conecta-profissionais') targetId = 'profissionais';
     if (itemId === 'conecta-fechamento') targetId = 'fechamento';
@@ -263,6 +273,49 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
               {faturamentoOpen && (
                 <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
                   {fatItems.filter(item => hasPermission(item.id)).map((item) => {
+                    const Icon = item.icon;
+                    const active = activePage === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                          active
+                            ? 'bg-indigo-500/10 text-indigo-400'
+                            : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
+                        }`}
+                      >
+                        <Icon size={13} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fechamento Mensal Dropdown */}
+          {fechamentoItems.filter(item => hasPermission(item.id)).length > 0 && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setFechamentoOpen(!fechamentoOpen)}
+                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+              >
+                <div className="flex items-center gap-3.5">
+                  <Calculator size={16} />
+                  <span>Fechamento Mensal</span>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-300 ${
+                    fechamentoOpen ? 'rotate-180 text-indigo-400' : ''
+                  }`}
+                />
+              </button>
+              {fechamentoOpen && (
+                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                  {fechamentoItems.filter(item => hasPermission(item.id)).map((item) => {
                     const Icon = item.icon;
                     const active = activePage === item.id;
                     return (

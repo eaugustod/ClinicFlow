@@ -14,6 +14,7 @@ import { GuiasSadt } from './pages/GuiasSadt';
 import { LotesTiss } from './pages/LotesTiss';
 import { Relatorios } from './pages/Relatorios';
 import { Fechamento } from './pages/Fechamento';
+import { AnaliseFechamento } from './pages/AnaliseFechamento';
 import { ControleMeses } from './pages/ControleMeses';
 import { Feriados } from './pages/Feriados';
 import { Usuarios } from './pages/Usuarios';
@@ -54,6 +55,7 @@ function App() {
 
     let targetId = pageId;
     if (pageId === 'atendimento') targetId = 'agenda';
+    if (pageId === 'analise-fechamento' || pageId === 'financeiro') targetId = 'fechamento';
     if (pageId === 'conecta-agenda') targetId = 'agenda';
     if (pageId === 'conecta-profissionais') targetId = 'profissionais';
     if (pageId === 'conecta-fechamento') targetId = 'fechamento';
@@ -102,6 +104,8 @@ function App() {
         return <LotesTiss />;
       case 'senhas':
         return <Senhas />;
+      case 'analise-fechamento':
+        return <AnaliseFechamento />;
       case 'fechamento':
         return <Fechamento initialTab="calculo" />;
       case 'financeiro':

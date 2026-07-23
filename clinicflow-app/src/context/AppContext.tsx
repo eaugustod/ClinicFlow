@@ -157,7 +157,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           if (allowedModulos.length === 0) {
             if (dbUserR.perfil === 'admin') {
-              allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'profissionais', 'planos', 'procedimentos', 'espera', 'historico', 'guias', 'senhas', 'lotes', 'importar', 'relatorios', 'fechamento', 'financeiro', 'ctrlMeses', 'feriados', 'config', 'usuarios', 'perfis'];
+              allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'profissionais', 'planos', 'procedimentos', 'espera', 'historico', 'guias', 'senhas', 'lotes', 'importar', 'relatorios', 'fechamento', 'financeiro', 'analise-fechamento', 'ctrlMeses', 'feriados', 'config', 'usuarios', 'perfis'];
             } else if (dbUserR.perfil === 'recepcao') {
               allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'planos', 'espera', 'senhas'];
             } else if (dbUserR.perfil === 'profissional') {
@@ -480,7 +480,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (allowedModulos.length === 0) {
         if (dbUser.perfil === 'admin') {
-          allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'profissionais', 'planos', 'procedimentos', 'espera', 'historico', 'guias', 'senhas', 'lotes', 'importar', 'relatorios', 'fechamento', 'financeiro', 'ctrlMeses', 'feriados', 'config', 'usuarios', 'perfis'];
+          allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'profissionais', 'planos', 'procedimentos', 'espera', 'historico', 'guias', 'senhas', 'lotes', 'importar', 'relatorios', 'fechamento', 'financeiro', 'analise-fechamento', 'ctrlMeses', 'feriados', 'config', 'usuarios', 'perfis'];
         } else if (dbUser.perfil === 'recepcao') {
           allowedModulos = ['dashboard', 'agenda', 'chat', 'pacientes', 'planos', 'espera', 'senhas'];
         } else if (dbUser.perfil === 'profissional') {
