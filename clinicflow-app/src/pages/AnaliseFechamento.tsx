@@ -146,6 +146,27 @@ export const AnaliseFechamento: React.FC = () => {
     ? statusAgendamentos.map(s => s.nome)
     : ['Agendado', 'Confirmado', 'Em espera (Chegou)', 'Atendido', 'Desmarcado', 'Cancelado'];
 
+  // Helper to resolve raw DB status (e.g. "desmarcado", "atendido") to mapped status name (e.g. "Desmarcado", "Atendido")
+  const getMatchingStatusName = (rawStatus: string) => {
+    if (!rawStatus) return 'Agendado';
+    const found = statusAgendamentos.find(
+      s => s.nome.toLowerCase() === rawStatus.toLowerCase()
+    );
+    if (found) return found.nome;
+
+    const foundByBase = statusAgendamentos.find(
+      s => s.statusAgendamento.toLowerCase() === rawStatus.toLowerCase()
+    );
+    if (foundByBase) return foundByBase.nome;
+
+    const foundAvailable = availableStatuses.find(
+      st => st.toLowerCase() === rawStatus.toLowerCase()
+    );
+    if (foundAvailable) return foundAvailable;
+
+    return rawStatus;
+  };
+
   return (
     <div className="space-y-6 text-xs animate-fade-in pb-12">
       {/* Toast Notification */}
@@ -283,7 +304,8 @@ export const AnaliseFechamento: React.FC = () => {
                     {/* Patient Appointments Rows */}
                     {group.agendamentos.map((appt) => {
                       const isUpdatingThis = updatingId === appt.id;
-                      const statusColor = getStatusColor(appt.status);
+                      const currentStatusName = getMatchingStatusName(appt.status);
+                      const statusColor = getStatusColor(currentStatusName);
 
                       return (
                         <tr
@@ -310,7 +332,7 @@ export const AnaliseFechamento: React.FC = () => {
                                 </div>
                               ) : (
                                 <select
-                                  value={appt.status}
+                                  value={currentStatusName}
                                   onChange={(e) => handleStatusChange(appt.id, e.target.value)}
                                   style={{
                                     borderColor: `${statusColor}50`,
