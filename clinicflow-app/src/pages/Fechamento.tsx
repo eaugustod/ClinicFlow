@@ -445,14 +445,46 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
     };
 
     try {
-      const { error } = await supabase
+      const dbPayload = mappers.fechamentoToDb(payload);
+      
+      // 1. Try standard upsert
+      let { error } = await supabase
         .from('fechamentos_mensais')
-        .upsert(mappers.fechamentoToDb(payload), { onConflict: 'competencia' });
+        .upsert(dbPayload, { onConflict: 'competencia' });
+
+      // 2. Fallback if upsert fails due to constraint or merge preference
+      if (error) {
+        console.warn('[Fechamento] Upsert falhou, tentando fallback por competência:', error.message);
+        
+        const { data: existing } = await supabase
+          .from('fechamentos_mensais')
+          .select('id')
+          .eq('competencia', selectedMonth)
+          .maybeSingle();
+
+        if (existing) {
+          const { error: updateErr } = await supabase
+            .from('fechamentos_mensais')
+            .update(dbPayload)
+            .eq('competencia', selectedMonth);
+          error = updateErr;
+        } else {
+          const { error: insertErr } = await supabase
+            .from('fechamentos_mensais')
+            .insert([dbPayload]);
+          error = insertErr;
+        }
+      }
+
       if (error) throw error;
       alert(`Sucesso! Fechamento de ${selectedMonth} gravado no banco de dados!`);
-    } catch (e) {
-      console.error(e);
-      alert('Erro ao gravar fechamento mensal.');
+    } catch (e: any) {
+      console.error('[Fechamento] Erro ao gravar fechamento mensal:', e);
+      if (e?.status === 403 || e?.code === '42501' || String(e?.message).includes('403')) {
+        alert('Permissão negada (Erro 403) no Supabase na tabela "fechamentos_mensais".\n\nPor favor, execute o script SQL "fix_fechamentos_mensais_permissions.sql" no Supabase SQL Editor para liberar o acesso.');
+      } else {
+        alert(`Erro ao gravar fechamento mensal: ${e?.message || 'Falha na comunicação com o banco de dados.'}`);
+      }
     } finally {
       setSavingFechamento(false);
     }
