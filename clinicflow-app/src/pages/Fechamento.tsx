@@ -40,9 +40,55 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
   const [modalDataPagamento, setModalDataPagamento] = useState('');
   const [modalNfNome, setModalNfNome] = useState('');
   const [modalNfUrl, setModalNfUrl] = useState('');
-  const [modalObs, setModalObs] = useState('');
-  const [savingPayment, setSavingPayment] = useState(false);
-  const [selectedProfDetail, setSelectedProfDetail] = useState<any | null>(null);
+  const [isManualDiscountOpen, setIsManualDiscountOpen] = useState(false);
+  const [manualProfId, setManualProfId] = useState('');
+  const [manualComp, setManualComp] = useState(new Date().toISOString().substring(0, 7));
+  const [manualValor, setManualValor] = useState('');
+  const [manualObs, setManualObs] = useState('');
+  const [savingManualDiscount, setSavingManualDiscount] = useState(false);
+
+  const handleSaveManualDiscount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualProfId || !manualComp || !manualValor) return;
+    setSavingManualDiscount(true);
+
+    const prof = profissionais.find(p => String(p.id) === String(manualProfId));
+    const val = parseFloat(manualValor);
+
+    const reg: PagamentoTerapeuta = {
+      id: `desc_manual_${Date.now()}`,
+      profissionalId: Number(manualProfId),
+      profissional: prof ? prof.nome : 'Terapeuta',
+      competencia: manualComp,
+      tipo: 'desconto_mes_anterior',
+      qtdPacientes: 0,
+      valor: -Math.abs(val),
+      status: 'pago',
+      valorPago: -Math.abs(val),
+      dataPagamento: new Date().toISOString().split('T')[0],
+      nfUrl: '',
+      nfNome: '',
+      obs: manualObs || 'Ajuste / Desconto manual de repasse'
+    };
+
+    try {
+      const { error } = await supabase
+        .from('pagamentos_terapeutas')
+        .upsert(mappers.pagamentoToDb(reg), { onConflict: 'id' });
+      if (error) throw error;
+
+      setIsManualDiscountOpen(false);
+      setManualValor('');
+      setManualObs('');
+      await loadFinanceiro();
+      alert('Ajuste de desconto cadastrado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar ajuste manual.');
+    } finally {
+      setSavingManualDiscount(false);
+    }
+  };
 
   // Load financeiro records
   const loadFinanceiro = async () => {
@@ -66,6 +112,20 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       loadFinanceiro();
     }
   }, [activeTab]);
+
+  const getPrevMonth = (ym: string): string => {
+    if (!ym || !ym.includes('-')) return '';
+    const [yearStr, monthStr] = ym.split('-');
+    let year = parseInt(yearStr);
+    let month = parseInt(monthStr);
+    if (month === 1) {
+      year -= 1;
+      month = 12;
+    } else {
+      month -= 1;
+    }
+    return `${year}-${String(month).padStart(2, '0')}`;
+  };
 
   // Calculate Fechamento
   const handleCalculate = async () => {
@@ -222,7 +282,38 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
         }
       });
 
-      if (count30 > 0 || count60 > 0 || countDev > 0 || countAval > 0 || countPart > 0 || countDesmarqueApos18 > 0 || pacientesLista.length > 0) {
+      const totalBruto = valor30 + valor60 + valorDev + valorPart + valorDesmarqueApos18Total;
+
+      let valorDescontoMesAnterior = 0;
+      let obsDescontoMesAnterior = '';
+      const prevMonth = getPrevMonth(selectedMonth);
+
+      if (prevMonth) {
+        const prevFinProf = finRegistros.filter(
+          r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === prevMonth
+        );
+        if (prevFinProf.length > 0) {
+          const prevDevido = prevFinProf.reduce((acc, r) => acc + (r.tipo === 'desconto_mes_anterior' ? -r.valor : (r.tipo !== 'avaliacao' ? r.valor : 0)), 0);
+          const prevPago = prevFinProf.filter(r => r.status === 'pago').reduce((acc, r) => acc + (r.valorPago || 0), 0);
+
+          if (prevPago > prevDevido) {
+            valorDescontoMesAnterior = prevPago - prevDevido;
+            obsDescontoMesAnterior = `Excedente de R$ ${valorDescontoMesAnterior.toFixed(2)} pago a maior em ${formatMonthLabel(prevMonth)}`;
+          }
+        }
+
+        const regDescontoAtual = finRegistros.find(
+          r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'desconto_mes_anterior'
+        );
+        if (regDescontoAtual) {
+          valorDescontoMesAnterior = Math.abs(regDescontoAtual.valor);
+          if (regDescontoAtual.obs) obsDescontoMesAnterior = regDescontoAtual.obs;
+        }
+      }
+
+      const totalValor = Math.max(0, totalBruto - valorDescontoMesAnterior);
+
+      if (count30 > 0 || count60 > 0 || countDev > 0 || countAval > 0 || countPart > 0 || countDesmarqueApos18 > 0 || valorDescontoMesAnterior > 0 || pacientesLista.length > 0) {
         terapeutaFechamentos.push({
           prof: p,
           count30,
@@ -236,7 +327,10 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           valorPart,
           countDesmarqueApos18,
           valorDesmarqueApos18Total,
-          totalValor: valor30 + valor60 + valorDev + valorPart + valorDesmarqueApos18Total,
+          valorDescontoMesAnterior,
+          obsDescontoMesAnterior,
+          totalBruto,
+          totalValor,
           totalSessoes: count30 + count60 + countDev + countAval + countPart + countDesmarqueApos18,
           pacientesLista
         });
@@ -919,6 +1013,16 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
                                 <span className="font-mono font-semibold text-amber-400">{tc.countDesmarqueApos18}x <span className="text-slate-500">•</span> R$ {tc.valorDesmarqueApos18Total.toFixed(2)}</span>
                               </div>
                             )}
+                            {tc.valorDescontoMesAnterior > 0 && (
+                              <div className="flex justify-between items-center text-rose-300 bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20 mt-2">
+                                <span className="flex items-center gap-1.5 text-xs font-semibold">
+                                  🔻 Pago a Maior no Mês Anterior (Desconto)
+                                </span>
+                                <span className="font-mono font-bold text-rose-400">
+                                  - R$ {tc.valorDescontoMesAnterior.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-[10px] text-slate-500 pt-2 border-t border-white/[0.04]">
@@ -1133,6 +1237,15 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
                 )}
               </div>
 
+              {modalStatus === 'pago' && modalValorPago > editingPayment.valor && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs leading-relaxed">
+                  💡 <strong>Pagamento a Maior Detectado!</strong>
+                  <p className="text-[11px] mt-0.5 opacity-90">
+                    Foi pago <strong>R$ {(modalValorPago - editingPayment.valor).toFixed(2)}</strong> a mais do que o valor do fechamento (R$ {editingPayment.valor.toFixed(2)}). Esse valor excedente será abatido automaticamente como desconto no próximo mês.
+                  </p>
+                </div>
+              )}
+
               {modalStatus === 'pago' && (
                 <div>
                   <label className="block text-slate-400 font-semibold mb-1">Data do Pagamento</label>
@@ -1343,6 +1456,94 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           </div>
         );
       })()}
+
+      {/* MANUAL DISCOUNT MODAL */}
+      {isManualDiscountOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-white/[0.04] flex justify-between items-center bg-[#131622]/40">
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Cadastrar Ajuste / Desconto Manual
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Lançar valor pago a maior ou abatimento no repasse</p>
+              </div>
+              <button type="button" onClick={() => setIsManualDiscountOpen(false)} className="text-slate-400 hover:text-white">&times;</button>
+            </div>
+            <form onSubmit={handleSaveManualDiscount} className="p-5 space-y-4">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-xs">Profissional / Terapeuta</label>
+                <select
+                  required
+                  value={manualProfId}
+                  onChange={(e) => setManualProfId(e.target.value)}
+                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none text-xs"
+                >
+                  <option value="">Selecione o Terapeuta</option>
+                  {profissionais.map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-xs">Competência</label>
+                  <input
+                    type="month"
+                    required
+                    value={manualComp}
+                    onChange={(e) => setManualComp(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-xs">Valor Desconto (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="Ex: 300.00"
+                    value={manualValor}
+                    onChange={(e) => setManualValor(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none font-mono text-xs text-rose-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-xs">Observação / Motivo</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={manualObs}
+                  onChange={(e) => setManualObs(e.target.value)}
+                  placeholder="Ex: Abatimento de pagamento efetuado a maior no mês anterior"
+                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white resize-none focus:outline-none text-xs"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsManualDiscountOpen(false)}
+                  className="flex-1 py-2 bg-[#161a26] text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingManualDiscount}
+                  className="flex-1 py-2 bg-gradient-to-r from-rose-500 to-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  {savingManualDiscount && <Loader size={12} className="animate-spin" />}
+                  Salvar Desconto
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
