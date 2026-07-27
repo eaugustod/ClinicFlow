@@ -135,8 +135,12 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
         const isFalta = a.status.toLowerCase().includes('falta') || getBaseStatus(a.status) === 'cancelado';
         const isJustificada = a.status.toLowerCase().includes('justific') || a.status.toLowerCase().includes('desmarcado') || getBaseStatus(a.status) === 'desmarcado';
         const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
-        const isDev = a.obs?.toLowerCase().includes('devolutiva') || a.paciente.toLowerCase().includes('devolutiva');
-        const isAval = a.obs?.toLowerCase().includes('avaliação') || a.obs?.toLowerCase().includes('aval');
+        const tipoLower = a.tipo?.toLowerCase() || '';
+        const obsLower = a.obs?.toLowerCase() || '';
+        const pacLower = a.paciente?.toLowerCase() || '';
+
+        const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva') || pacLower.includes('devolutiva');
+        const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
 
         if (isAtendido) {
           if (isParticular) {
@@ -147,7 +151,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
             pacientesMap[pacNome].atendidosAval++;
           } else {
             const dur = a.durMin || 30;
-            if (dur >= 60) {
+            if (dur >= 45) {
               pacientesMap[pacNome].atendidos60++;
             } else {
               pacientesMap[pacNome].atendidos30++;
@@ -187,8 +191,12 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
 
       profAppts.forEach(a => {
         const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
-        const isDev = a.obs?.toLowerCase().includes('devolutiva') || a.paciente.toLowerCase().includes('devolutiva');
-        const isAval = a.obs?.toLowerCase().includes('avaliação') || a.obs?.toLowerCase().includes('aval');
+        const tipoLower = a.tipo?.toLowerCase() || '';
+        const obsLower = a.obs?.toLowerCase() || '';
+        const pacLower = a.paciente?.toLowerCase() || '';
+
+        const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva') || pacLower.includes('devolutiva');
+        const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
 
         if (isParticular) {
           countPart++;
@@ -202,7 +210,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           valorDev += devSessionVal;
         } else {
           const dur = a.durMin || 30;
-          if (dur >= 60) {
+          if (dur >= 45) {
             count60++;
             const sessionVal = parseFloat((p as any).valor60 || 100);
             valor60 += sessionVal;
@@ -536,8 +544,12 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
 
       // Group by: regular session vs devolution vs particular
       const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
-      const isDev = a.obs?.toLowerCase().includes('devolutiva') || a.paciente.toLowerCase().includes('devolutiva');
-      const isAval = a.obs?.toLowerCase().includes('avaliação') || a.obs?.toLowerCase().includes('aval');
+      const tipoLower = a.tipo?.toLowerCase() || '';
+      const obsLower = a.obs?.toLowerCase() || '';
+      const pacLower = a.paciente?.toLowerCase() || '';
+
+      const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva') || pacLower.includes('devolutiva');
+      const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
       const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
       const isDesmarcadoApos18 = isDesmarcado && a.hora >= '18:00';
 
@@ -572,7 +584,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           grupos[key].valor += prof.valorAval || 0;
         } else {
           const dur = a.durMin || 30;
-          const defaultSessionVal = dur >= 60 
+          const defaultSessionVal = dur >= 45 
             ? parseFloat((prof as any).valor60 || 100) 
             : parseFloat((prof as any).valor30 || 60);
           grupos[key].valor += defaultSessionVal;
