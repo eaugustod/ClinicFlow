@@ -185,7 +185,7 @@ export const Configuracoes: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in text-xs max-w-5xl mx-auto">
+    <div className="space-y-8 animate-fade-in text-xs w-full max-w-full">
       {/* Title */}
       <div>
         <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest font-sans">Ajustes Globais</span>

@@ -500,8 +500,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-8 scrollbar-thin w-full max-w-full">
-          <div className="max-w-6xl mx-auto space-y-8 w-full">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 scrollbar-thin w-full max-w-full">
+          <div className="w-full max-w-[1920px] mx-auto space-y-6 lg:space-y-8">
             {children}
           </div>
         </main>
