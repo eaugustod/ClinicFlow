@@ -259,7 +259,7 @@ export interface PagamentoTerapeuta {
   profissionalId: number | null;
   profissional: string;
   competencia: string;
-  tipo: 'sessao' | 'devolutiva' | 'avaliacao' | 'particular' | 'desconto_mes_anterior' | 'ajuste';
+  tipo: 'sessao' | 'devolutiva' | 'avaliacao' | 'particular' | 'desconto_mes_anterior' | 'adicional_mes_anterior' | 'ajuste';
   qtdPacientes: number;
   valor: number;
   status: 'pendente' | 'pago';

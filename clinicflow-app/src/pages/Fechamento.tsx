@@ -44,6 +44,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
   const [savingPayment, setSavingPayment] = useState(false);
   const [selectedProfDetail, setSelectedProfDetail] = useState<any | null>(null);
   const [isManualDiscountOpen, setIsManualDiscountOpen] = useState(false);
+  const [manualTipo, setManualTipo] = useState<'desconto_mes_anterior' | 'adicional_mes_anterior'>('desconto_mes_anterior');
   const [manualProfId, setManualProfId] = useState('');
   const [manualComp, setManualComp] = useState(new Date().toISOString().substring(0, 7));
   const [manualValor, setManualValor] = useState('');
@@ -57,21 +58,23 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
 
     const prof = profissionais.find(p => String(p.id) === String(manualProfId));
     const val = parseFloat(manualValor);
+    const isDesconto = manualTipo === 'desconto_mes_anterior';
+    const finalVal = isDesconto ? -Math.abs(val) : Math.abs(val);
 
     const reg: PagamentoTerapeuta = {
-      id: `desc_manual_${Date.now()}`,
+      id: `ajuste_manual_${Date.now()}`,
       profissionalId: Number(manualProfId),
       profissional: prof ? prof.nome : 'Terapeuta',
       competencia: manualComp,
-      tipo: 'desconto_mes_anterior',
+      tipo: manualTipo,
       qtdPacientes: 0,
-      valor: -Math.abs(val),
+      valor: finalVal,
       status: 'pago',
-      valorPago: -Math.abs(val),
+      valorPago: finalVal,
       dataPagamento: new Date().toISOString().split('T')[0],
       nfUrl: '',
       nfNome: '',
-      obs: manualObs || 'Ajuste / Desconto manual de repasse'
+      obs: manualObs || (isDesconto ? 'Ajuste / Desconto manual de repasse' : 'Ajuste / Adicional manual de repasse')
     };
 
     try {
@@ -84,7 +87,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       setManualValor('');
       setManualObs('');
       await loadFinanceiro();
-      alert('Ajuste de desconto cadastrado com sucesso!');
+      alert('Ajuste cadastrado com sucesso!');
     } catch (err) {
       console.error(err);
       alert('Erro ao salvar ajuste manual.');
@@ -289,6 +292,8 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
 
       let valorDescontoMesAnterior = 0;
       let obsDescontoMesAnterior = '';
+      let valorAdicionalMesAnterior = 0;
+      let obsAdicionalMesAnterior = '';
       const prevMonth = getPrevMonth(selectedMonth);
 
       if (prevMonth) {
@@ -296,12 +301,15 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === prevMonth
         );
         if (prevFinProf.length > 0) {
-          const prevDevido = prevFinProf.reduce((acc, r) => acc + (r.tipo === 'desconto_mes_anterior' ? -r.valor : (r.tipo !== 'avaliacao' ? r.valor : 0)), 0);
+          const prevDevido = prevFinProf.reduce((acc, r) => acc + (r.tipo === 'desconto_mes_anterior' ? -r.valor : (r.tipo === 'adicional_mes_anterior' ? r.valor : (r.tipo !== 'avaliacao' ? r.valor : 0))), 0);
           const prevPago = prevFinProf.filter(r => r.status === 'pago').reduce((acc, r) => acc + (r.valorPago || 0), 0);
 
           if (prevPago > prevDevido) {
             valorDescontoMesAnterior = prevPago - prevDevido;
             obsDescontoMesAnterior = `Excedente de R$ ${valorDescontoMesAnterior.toFixed(2)} pago a maior em ${formatMonthLabel(prevMonth)}`;
+          } else if (prevPago < prevDevido && prevFinProf.some(r => r.status === 'pago')) {
+            valorAdicionalMesAnterior = prevDevido - prevPago;
+            obsAdicionalMesAnterior = `Valor faltante de R$ ${valorAdicionalMesAnterior.toFixed(2)} pago a menor em ${formatMonthLabel(prevMonth)}`;
           }
         }
 
@@ -312,11 +320,19 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           valorDescontoMesAnterior = Math.abs(regDescontoAtual.valor);
           if (regDescontoAtual.obs) obsDescontoMesAnterior = regDescontoAtual.obs;
         }
+
+        const regAdicionalAtual = finRegistros.find(
+          r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'adicional_mes_anterior'
+        );
+        if (regAdicionalAtual) {
+          valorAdicionalMesAnterior = Math.abs(regAdicionalAtual.valor);
+          if (regAdicionalAtual.obs) obsAdicionalMesAnterior = regAdicionalAtual.obs;
+        }
       }
 
-      const totalValor = Math.max(0, totalBruto - valorDescontoMesAnterior);
+      const totalValor = Math.max(0, totalBruto - valorDescontoMesAnterior + valorAdicionalMesAnterior);
 
-      if (count30 > 0 || count60 > 0 || countDev > 0 || countAval > 0 || countPart > 0 || countDesmarqueApos18 > 0 || valorDescontoMesAnterior > 0 || pacientesLista.length > 0) {
+      if (count30 > 0 || count60 > 0 || countDev > 0 || countAval > 0 || countPart > 0 || countDesmarqueApos18 > 0 || valorDescontoMesAnterior > 0 || valorAdicionalMesAnterior > 0 || pacientesLista.length > 0) {
         terapeutaFechamentos.push({
           prof: p,
           count30,
@@ -332,6 +348,8 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           valorDesmarqueApos18Total,
           valorDescontoMesAnterior,
           obsDescontoMesAnterior,
+          valorAdicionalMesAnterior,
+          obsAdicionalMesAnterior,
           totalBruto,
           totalValor,
           totalSessoes: count30 + count60 + countDev + countAval + countPart + countDesmarqueApos18,
@@ -1474,19 +1492,32 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
               <button type="button" onClick={() => setIsManualDiscountOpen(false)} className="text-slate-400 hover:text-white">&times;</button>
             </div>
             <form onSubmit={handleSaveManualDiscount} className="p-5 space-y-4">
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1 text-xs">Profissional / Terapeuta</label>
-                <select
-                  required
-                  value={manualProfId}
-                  onChange={(e) => setManualProfId(e.target.value)}
-                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none text-xs"
-                >
-                  <option value="">Selecione o Terapeuta</option>
-                  {profissionais.map(p => (
-                    <option key={p.id} value={p.id}>{p.nome}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-xs">Tipo de Ajuste</label>
+                  <select
+                    value={manualTipo}
+                    onChange={(e) => setManualTipo(e.target.value as any)}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none text-xs"
+                  >
+                    <option value="desconto_mes_anterior">🔻 Desconto (Pago a Maior)</option>
+                    <option value="adicional_mes_anterior">🔺 Adicional (Pago a Menor)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-xs">Profissional / Terapeuta</label>
+                  <select
+                    required
+                    value={manualProfId}
+                    onChange={(e) => setManualProfId(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none text-xs"
+                  >
+                    <option value="">Selecione o Terapeuta</option>
+                    {profissionais.map(p => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
