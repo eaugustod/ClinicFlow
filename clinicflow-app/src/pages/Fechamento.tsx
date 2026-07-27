@@ -40,6 +40,9 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
   const [modalDataPagamento, setModalDataPagamento] = useState('');
   const [modalNfNome, setModalNfNome] = useState('');
   const [modalNfUrl, setModalNfUrl] = useState('');
+  const [modalObs, setModalObs] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [selectedProfDetail, setSelectedProfDetail] = useState<any | null>(null);
   const [isManualDiscountOpen, setIsManualDiscountOpen] = useState(false);
   const [manualProfId, setManualProfId] = useState('');
   const [manualComp, setManualComp] = useState(new Date().toISOString().substring(0, 7));
