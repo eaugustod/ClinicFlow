@@ -112,6 +112,9 @@ export const ChatPage: React.FC = () => {
 
         if (convErr) {
           console.error('[ClinicFlow Chat] Error selecting conversa:', convErr);
+          if ((convErr as any).status === 403 || convErr.code === '42501' || String(convErr.message).includes('403')) {
+            alert('Aviso de Permissão (Erro 403 Forbidden): A tabela "conversas" no banco Supabase precisa das permissões RLS. Execute o script "fix_chat_rls_policies.sql" no Supabase SQL Editor.');
+          }
         }
 
         let activeConvId = conversa?.id;
