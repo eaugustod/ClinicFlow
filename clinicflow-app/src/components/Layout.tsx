@@ -30,7 +30,8 @@ import {
   Building2,
   Sliders,
   MessageSquare,
-  Upload
+  Upload,
+  ExternalLink
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ThemeSelector } from './ThemeSelector';
@@ -146,6 +147,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
   };
 
   const handleNavClick = (pageId: string) => {
+    if (pageId === 'chat') {
+      const chatUrl = `${window.location.origin}${window.location.pathname}?page=chat`;
+      window.open(chatUrl, '_blank', 'noopener,noreferrer');
+      setSidebarOpen(false);
+      return;
+    }
     setActivePage(pageId);
     setSidebarOpen(false);
   };
@@ -193,18 +200,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           {menuItems.filter(item => hasPermission(item.id)).map((item) => {
             const Icon = item.icon;
             const active = activePage === item.id;
+            const isChat = item.id === 'chat';
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`flex items-center w-full gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                className={`flex items-center w-full gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                   active
                     ? 'bg-gradient-to-r from-indigo-500/15 to-violet-500/5 text-indigo-400 border border-indigo-500/10 shadow-[0_4px_16px_rgba(99,102,241,0.06)]'
                     : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
                 <Icon size={16} className={active ? 'text-indigo-400' : 'text-slate-400'} />
-                {item.label}
+                <span className="flex-1 text-left">{item.label}</span>
+                {isChat && (
+                  <span className="flex items-center gap-1 text-[9px] bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase">
+                    Nova Aba <ExternalLink size={10} />
+                  </span>
+                )}
               </button>
             );
           })}

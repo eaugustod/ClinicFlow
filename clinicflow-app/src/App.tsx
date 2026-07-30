@@ -25,11 +25,17 @@ import { StatusAgendamentoPage } from './pages/StatusAgendamento';
 import { ChatPage } from './pages/Chat';
 import { Importador } from './pages/Importador';
 import { Login } from './pages/Login';
+import { ThemeSelector } from './components/ThemeSelector';
 import { useApp } from './context/AppContext';
 
 function App() {
-  const [activePage, setActivePage] = useState('dashboard');
-  const { loading, user } = useApp();
+  const [activePage, setActivePage] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('page') || 'dashboard';
+  });
+
+  const { loading, user, clinicaConfig } = useApp();
+  const isStandaloneChat = new URLSearchParams(window.location.search).get('page') === 'chat';
 
   if (loading) {
     return (
@@ -46,6 +52,43 @@ function App() {
 
   if (!user) {
     return <Login />;
+  }
+
+  // Standalone Chat Dedicated View
+  if (isStandaloneChat) {
+    return (
+      <div className="flex flex-col h-screen w-screen bg-[var(--bg-base)] text-[var(--text-primary)] font-sans overflow-hidden">
+        {/* Dedicated Standalone Chat Header */}
+        <header className="h-14 px-6 border-b border-[var(--border)] bg-[var(--header-bg)] flex items-center justify-between shrink-0 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white text-xs shadow-lg">
+              CF
+            </div>
+            <div>
+              <h1 className="font-bold text-xs text-[var(--text-primary)]">Chat com Pacientes — {clinicaConfig.nome || 'Kosmos Espaço Terapêutico'}</h1>
+              <p className="text-[9px] text-[var(--accent)] font-bold uppercase tracking-wider">Aba Dedicada de Atendimento em Tempo Real</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <ThemeSelector />
+            <button
+              onClick={() => {
+                window.location.href = window.location.origin + window.location.pathname;
+              }}
+              className="px-3 py-1.5 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border)] text-xs font-bold text-[var(--text-primary)] transition-all cursor-pointer shadow-sm"
+            >
+              Abrir Painel Completo
+            </button>
+          </div>
+        </header>
+
+        {/* Dedicated Standalone Body */}
+        <main className="flex-1 p-3 overflow-hidden">
+          <ChatPage />
+        </main>
+      </div>
+    );
   }
 
   const hasPermission = (pageId: string) => {
