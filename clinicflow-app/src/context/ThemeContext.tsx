@@ -80,6 +80,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
 interface ThemeContextType {
   currentTheme: ThemeId;
   setTheme: (themeId: ThemeId) => void;
+  toggleDarkLight: () => void;
   activeOption: ThemeOption;
   isDark: boolean;
 }
@@ -101,15 +102,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.setAttribute('data-theme', themeId);
   };
 
+  const activeOption = THEME_OPTIONS.find(t => t.id === currentTheme) || THEME_OPTIONS[0];
+  const isDark = activeOption.category === 'dark';
+
+  const toggleDarkLight = () => {
+    if (isDark) {
+      setTheme('light-snow');
+    } else {
+      setTheme('dark-obsidian');
+    }
+  };
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', currentTheme);
   }, [currentTheme]);
 
-  const activeOption = THEME_OPTIONS.find(t => t.id === currentTheme) || THEME_OPTIONS[0];
-  const isDark = activeOption.category === 'dark';
-
   return (
-    <ThemeContext.Provider value={{ currentTheme, setTheme, activeOption, isDark }}>
+    <ThemeContext.Provider value={{ currentTheme, setTheme, toggleDarkLight, activeOption, isDark }}>
       {children}
     </ThemeContext.Provider>
   );

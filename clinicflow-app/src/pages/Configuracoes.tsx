@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Building2, Save, CheckCircle, AlertTriangle, Palette, MessageSquare, Bell, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { Database, Building2, Save, CheckCircle, AlertTriangle, MessageSquare, Bell, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
-
-const THEMES = [
-  { id: 'dark', label: 'Dark Azul', bg: '#0f1117', sidebar: '#161b27', accent: '#4f8ef7' },
-  { id: 'dark-purple', label: 'Dark Roxo', bg: '#0e0f1a', sidebar: '#14162b', accent: '#8b5cf6' },
-  { id: 'dark-green', label: 'Dark Verde', bg: '#0a1210', sidebar: '#0f1f1c', accent: '#10b981' },
-  { id: 'dark-amber', label: 'Dark Cobre', bg: '#110e08', sidebar: '#1c170e', accent: '#f59e0b' },
-  { id: 'light', label: 'Light Azul', bg: '#f0f4fb', sidebar: '#e2e8f4', accent: '#3b82f6' },
-  { id: 'light-neutral', label: 'Light Neutro', bg: '#f8f9fa', sidebar: '#f1f3f5', accent: '#6366f1' },
-];
 
 export const Configuracoes: React.FC = () => {
   const { clinicaConfig, refreshAll } = useApp();
@@ -30,8 +21,7 @@ export const Configuracoes: React.FC = () => {
   const [cnes, setCnes] = useState('');
   const [logo, setLogo] = useState('');
 
-  // Theme & Notifications Form
-  const [activeTheme, setActiveTheme] = useState('dark');
+  // Notifications Form
   const [canalNotif, setCanalNotif] = useState<'whatsapp' | 'chat'>('whatsapp');
   const [waMethod, setWaMethod] = useState<'link' | 'api'>('link');
 
@@ -60,7 +50,6 @@ export const Configuracoes: React.FC = () => {
     setCnes(clinicaConfig.cnes || '');
     setLogo(clinicaConfig.logo || '');
     
-    setActiveTheme(clinicaConfig.theme || localStorage.getItem('cf_tema') || 'dark');
     setCanalNotif(clinicaConfig.canalNotif || 'whatsapp');
     setWaMethod(clinicaConfig.waMethod || 'link');
 
@@ -94,15 +83,6 @@ export const Configuracoes: React.FC = () => {
     }
   };
 
-  const applyTheme = (themeId: string) => {
-    setActiveTheme(themeId);
-    localStorage.setItem('cf_tema', themeId);
-    // Apply class on document element
-    const doc = document.documentElement;
-    doc.className = '';
-    doc.classList.add(`theme-${themeId}`);
-  };
-
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -132,7 +112,6 @@ export const Configuracoes: React.FC = () => {
       codPrestador,
       cnes,
       logo,
-      theme: activeTheme,
       canalNotif,
       waMethod,
       evoUrl,
@@ -190,54 +169,14 @@ export const Configuracoes: React.FC = () => {
       <div>
         <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest font-sans">Ajustes Globais</span>
         <h2 className="text-2xl font-black tracking-wide text-white mt-0.5">Configurações</h2>
-        <p className="text-xs text-slate-400 mt-1">Gerencie a aparência, dados cadastrais, conexões e automações de notificações</p>
+        <p className="text-xs text-slate-400 mt-1">Gerencie dados cadastrais, conexões e automações de notificações</p>
       </div>
 
       <form onSubmit={handleSaveAll} className="space-y-8">
         
-        {/* Row 1: Appearance & Clinic details */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Row 1: Clinic details */}
+        <div className="grid grid-cols-1 gap-8">
           
-          {/* APARÊNCIA */}
-          <div className="p-6 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/15 rounded-xl">
-                <Palette size={18} />
-              </div>
-              <div>
-                <h3 className="font-bold text-white uppercase tracking-wider text-xs">Aparência do Sistema</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Escolha o tema visual do ClinicFlow</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {THEMES.map(t => (
-                <div
-                  key={t.id}
-                  onClick={() => applyTheme(t.id)}
-                  style={{ borderColor: activeTheme === t.id ? t.accent : 'transparent' }}
-                  className={`border-2 rounded-xl overflow-hidden cursor-pointer bg-[#161a26] transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                    activeTheme === t.id ? 'shadow-lg shadow-indigo-500/5' : ''
-                  }`}
-                >
-                  <div style={{ backgroundColor: t.bg }} className="h-12 flex gap-1.5 p-2 border-b border-white/[0.02]">
-                    <div style={{ backgroundColor: t.sidebar }} className="w-4 rounded-sm" />
-                    <div className="flex-1 flex flex-col gap-1">
-                      <div className="h-2 bg-white/5 rounded-sm" />
-                      <div style={{ backgroundColor: t.accent }} className="h-1.5 w-8 rounded-sm" />
-                    </div>
-                  </div>
-                  <div className="p-2 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-300">{t.label}</span>
-                    {activeTheme === t.id && (
-                      <span style={{ color: t.accent }} className="text-xs font-bold">✓</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* DADOS DA CLÍNICA */}
           <div className="p-6 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl space-y-6">
             <div className="flex items-center gap-3">
