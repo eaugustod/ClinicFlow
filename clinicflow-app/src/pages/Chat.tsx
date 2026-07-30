@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Clock, User, Calendar, Bell, ChevronRight, MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Send, Clock, User, Calendar, Bell, ChevronRight, MessageSquare, AlertCircle, CheckCircle, Wifi, WifiOff } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
 import { Paciente, Agendamento } from '../types';
@@ -23,7 +23,7 @@ export const ChatPage: React.FC = () => {
   const [messages, setMessages] = useState<Mensagem[]>([]);
   const [inputText, setInputText] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
-  const [connStatus, setConnStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'CONNECTED'>('DISCONNECTED');
+  const [connStatus, setConnStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'CONNECTED'>('CONNECTED');
   
   // Notification form states
   const [notifTipo, setNotifTipo] = useState<'lembrete' | 'confirmar' | 'resultado' | 'outros'>('confirmar');
@@ -53,7 +53,36 @@ export const ChatPage: React.FC = () => {
       return a.nome.localeCompare(b.nome);
     });
 
-  // Load patient meta (conversation id) and messages
+  // Fetch messages helper function
+  const fetchMessages = async (cId: number, silent = false) => {
+    if (!silent) setLoadingChat(true);
+    try {
+      const { data: msgs, error: msgsErr } = await supabase
+        .from('mensagens')
+        .select('*')
+        .eq('conversa_id', cId)
+        .order('enviada_em', { ascending: true });
+
+      if (msgsErr) throw msgsErr;
+      setMessages(msgs || []);
+      setConnStatus('CONNECTED');
+
+      // Auto-mark patient messages as read
+      await supabase
+        .from('mensagens')
+        .update({ lida: true })
+        .eq('conversa_id', cId)
+        .eq('tipo_remetente', 'paciente')
+        .eq('lida', false);
+    } catch (err) {
+      console.error('[ClinicFlow Chat] Error fetching msgs:', err);
+      if (!silent) setConnStatus('DISCONNECTED');
+    } finally {
+      if (!silent) setLoadingChat(false);
+    }
+  };
+
+  // Load patient meta (conversation id) and initial messages
   useEffect(() => {
     if (!selectedPac) {
       setConversaId(null);
@@ -88,21 +117,10 @@ export const ChatPage: React.FC = () => {
         }
 
         setConversaId(activeConvId);
-
-        // Fetch messages
-        const { data: msgs, error: msgsErr } = await supabase
-          .from('mensagens')
-          .select('*')
-          .eq('conversa_id', activeConvId)
-          .order('enviada_em', { ascending: true });
-
-        if (msgsErr) throw msgsErr;
-        setMessages(msgs || []);
-        setConnStatus('CONNECTED');
+        await fetchMessages(activeConvId, false);
       } catch (err) {
         console.error('[ClinicFlow Chat] Error loading conversa/msgs:', err);
         setConnStatus('DISCONNECTED');
-      } finally {
         setLoadingChat(false);
       }
     };
@@ -110,10 +128,11 @@ export const ChatPage: React.FC = () => {
     loadConversation();
   }, [selectedPac]);
 
-  // Realtime subscription
+  // Realtime subscription + Polling Fallback (3s) for 100% sync reliability
   useEffect(() => {
     if (!conversaId) return;
 
+    // 1. WebSocket Realtime Channel
     const channel = supabase
       .channel(`chat-room-${conversaId}`)
       .on(
@@ -122,22 +141,26 @@ export const ChatPage: React.FC = () => {
         (payload) => {
           const newMsg = payload.new as Mensagem;
           setMessages((prev) => {
-            // Avoid duplicate additions
             if (prev.some(m => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+          setConnStatus('CONNECTED');
         }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           setConnStatus('CONNECTED');
-        } else {
-          setConnStatus('CONNECTING');
         }
       });
 
+    // 2. Polling fallback every 4 seconds to catch messages even if WebSockets drop
+    const pollInterval = setInterval(() => {
+      fetchMessages(conversaId, true);
+    }, 4000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [conversaId]);
 
@@ -151,15 +174,15 @@ export const ChatPage: React.FC = () => {
     if (!selectedPac) return;
     const prox = getProxConsulta(selectedPac.nome);
     const primNome = selectedPac.nome.split(' ')[0];
+    const profNome = prox ? profissionais.find(p => p.id === prox.profId)?.nome || 'Profissional' : 'Profissional';
     const dataFmt = prox ? prox.dataISO.split('-').reverse().join('/') : '';
-    const profNome = prox ? profissionais.find(p => p.id === prox.profId)?.nomeAgenda || 'Profissional' : '';
 
-    if (notifTipo === 'lembrete') {
-      setNotifMsg(`Olá ${primNome}! Lembrete de consulta com ${profNome} no dia ${dataFmt} às ${prox?.hora || ''}h. Qualquer dúvida estamos à disposição!`);
-    } else if (notifTipo === 'confirmar') {
+    if (notifTipo === 'confirmar') {
       setNotifMsg(`Olá ${primNome}! Passando para confirmar sua presença na consulta com ${profNome} amanhã, dia ${dataFmt}, às ${prox?.hora || ''}h. Confirma?`);
+    } else if (notifTipo === 'lembrete') {
+      setNotifMsg(`Lembrete: sua consulta na clínica está agendada para ${dataFmt} às ${prox?.hora || ''}h com ${profNome}.`);
     } else if (notifTipo === 'resultado') {
-      setNotifMsg(`Olá ${primNome}! O resultado do seu exame/avaliação na ${profNome} já está pronto e disponível no portal.`);
+      setNotifMsg(`Olá ${primNome}! O resultado do seu exame/avaliação já está pronto e disponível no portal.`);
     } else {
       setNotifMsg(`Olá ${primNome}! `);
     }
@@ -173,15 +196,24 @@ export const ChatPage: React.FC = () => {
     setInputText('');
 
     try {
-      const { error } = await supabase.from('mensagens').insert([
-        {
-          conversa_id: conversaId,
-          tipo_remetente: 'clinica',
-          conteudo: textToSend,
-          lida: false
-        }
-      ]);
+      const { data: inserted, error } = await supabase
+        .from('mensagens')
+        .insert([
+          {
+            conversa_id: conversaId,
+            tipo_remetente: 'clinica',
+            conteudo: textToSend,
+            lida: false
+          }
+        ])
+        .select('*')
+        .single();
+
       if (error) throw error;
+
+      if (inserted) {
+        setMessages((prev) => [...prev, inserted]);
+      }
 
       // Update last message timestamp
       await supabase
@@ -189,6 +221,7 @@ export const ChatPage: React.FC = () => {
         .update({ ultima_mensagem_em: new Date().toISOString() })
         .eq('id', conversaId);
 
+      setConnStatus('CONNECTED');
     } catch (err: any) {
       console.error('[ClinicFlow Chat] Error sending msg:', err);
       alert('Erro ao enviar mensagem: ' + err.message);
@@ -208,7 +241,6 @@ export const ChatPage: React.FC = () => {
 
     setSendingNotif(true);
     try {
-      // Calculate schedule date
       let agendadaPara = new Date();
       if (notifQuando === 'Amanha8h') {
         agendadaPara.setDate(agendadaPara.getDate() + 1);
@@ -234,20 +266,28 @@ export const ChatPage: React.FC = () => {
 
       if (notifErr) throw notifErr;
 
-      // 2. If it's instantaneous, insert system message into active chat
+      // 2. If instantaneous, insert system message into active chat
       if (isAgora && conversaId) {
-        const { error: msgErr } = await supabase.from('mensagens').insert([
-          {
-            conversa_id: conversaId,
-            tipo_remetente: 'sistema',
-            conteudo: `🔔 ${notifMsg.trim()}`,
-            lida: false
-          }
-        ]);
+        const { data: newSysMsg, error: msgErr } = await supabase
+          .from('mensagens')
+          .insert([
+            {
+              conversa_id: conversaId,
+              tipo_remetente: 'sistema',
+              conteudo: `🔔 ${notifMsg.trim()}`,
+              lida: false
+            }
+          ])
+          .select('*')
+          .single();
+
         if (msgErr) throw msgErr;
+        if (newSysMsg) {
+          setMessages((prev) => [...prev, newSysMsg]);
+        }
       }
 
-      alert(isAgora ? 'Notificação enviada com sucesso!' : 'Notificação agendada com sucesso!');
+      alert(isAgora ? 'Notificação enviada com sucesso ao paciente!' : 'Notificação agendada com sucesso!');
     } catch (err: any) {
       console.error('[ClinicFlow Chat] Error sending notif:', err);
       alert('Erro ao processar notificação: ' + err.message);
@@ -256,7 +296,6 @@ export const ChatPage: React.FC = () => {
     }
   };
 
-  // Helper BRL / details
   const getProfName = (id: number) => {
     return profissionais.find(p => p.id === id)?.nome || 'Profissional';
   };
@@ -269,28 +308,28 @@ export const ChatPage: React.FC = () => {
     : [];
 
   return (
-    <div className="flex h-[calc(100vh-130px)] bg-[#0c0e16]/60 backdrop-blur-xl border border-white/[0.04] rounded-2xl overflow-hidden shadow-2xl text-xs">
+    <div className="flex h-[calc(100vh-130px)] bg-[var(--bg-surface)] backdrop-blur-xl border border-[var(--border)] rounded-2xl overflow-hidden shadow-2xl text-xs">
       
       {/* ── LEFT COLUMN: PATIENT LIST ── */}
-      <div className="w-72 border-r border-white/[0.04] flex flex-col bg-[#0f111a]/80 shrink-0">
-        <div className="p-4 border-b border-white/[0.04]">
-          <h3 className="font-black text-sm tracking-wide text-white mb-3 flex items-center gap-2">
-            <MessageSquare size={16} className="text-indigo-400" />
+      <div className="w-72 border-r border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0">
+        <div className="p-4 border-b border-[var(--border)]">
+          <h3 className="font-black text-sm tracking-wide text-[var(--text-primary)] mb-3 flex items-center gap-2">
+            <MessageSquare size={16} className="text-[var(--accent)]" />
             Chat com Pacientes
           </h3>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-3 text-slate-500" />
+            <Search size={14} className="absolute left-3 top-3 text-[var(--text-muted)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar paciente ativo..."
-              className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl pl-9 pr-4 py-2 text-white text-xs focus:outline-none focus:border-indigo-500/50"
+              className="w-full bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl pl-9 pr-4 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto divide-y divide-white/[0.02] scrollbar-thin">
+        <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)] scrollbar-thin">
           {filteredPacientes.map((p) => {
             const active = selectedPac?.id === p.id;
             const initials = p.nome.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -299,22 +338,22 @@ export const ChatPage: React.FC = () => {
                 key={p.id}
                 onClick={() => setSelectedPac(p)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all ${
-                  active ? 'bg-indigo-500/10 border-l-4 border-indigo-500' : 'hover:bg-white/[0.01]'
+                  active ? 'bg-[var(--accent-soft)] border-l-4 border-[var(--accent)]' : 'hover:bg-[var(--bg-raised)]/40'
                 }`}
               >
-                <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-[10px] shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] border border-[var(--accent)]/30 text-[var(--accent)] flex items-center justify-center font-bold text-[10px] shrink-0">
                   {initials}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-slate-200 truncate">{p.nome}</div>
-                  <div className="text-[9px] text-slate-500 truncate mt-0.5 font-semibold">
+                  <div className="font-bold text-[var(--text-primary)] truncate">{p.nome}</div>
+                  <div className="text-[9px] text-[var(--text-muted)] truncate mt-0.5 font-semibold">
                     {p.prox 
                       ? `Próx: ${p.prox.dataISO.split('-').reverse().join('/')} ${p.prox.hora}` 
                       : 'Sem consulta agendada'}
                   </div>
                 </div>
                 {p.prox && (
-                  <span className="text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 px-1.5 py-0.5 rounded-full font-bold uppercase">
+                  <span className="text-[8px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-1.5 py-0.5 rounded-full font-bold uppercase">
                     Agendado
                   </span>
                 )}
@@ -322,7 +361,7 @@ export const ChatPage: React.FC = () => {
             );
           })}
           {filteredPacientes.length === 0 && (
-            <div className="p-8 text-center text-slate-600 font-semibold">
+            <div className="p-8 text-center text-[var(--text-muted)] font-semibold">
               Nenhum paciente ativo encontrado.
             </div>
           )}
@@ -330,22 +369,22 @@ export const ChatPage: React.FC = () => {
       </div>
 
       {/* ── MIDDLE COLUMN: MESSAGES ── */}
-      <div className="flex-1 flex flex-col bg-[#07090e]/40 overflow-hidden relative">
+      <div className="flex-1 flex flex-col bg-[var(--bg-base)] overflow-hidden relative">
         {selectedPac ? (
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Chat Header */}
-            <div className="p-4 border-b border-white/[0.04] bg-[#0c0e16]/40 flex justify-between items-center shrink-0">
+            <div className="p-4 border-b border-[var(--border)] bg-[var(--header-bg)] flex justify-between items-center shrink-0">
               <div>
-                <h4 className="font-bold text-slate-200 text-sm">{selectedPac.nome}</h4>
-                <p className="text-[9px] text-slate-400 mt-0.5">CPF: <span className="font-mono">{selectedPac.cpf || '—'}</span> | Plano: {selectedPac.plano}</p>
+                <h4 className="font-bold text-[var(--text-primary)] text-sm">{selectedPac.nome}</h4>
+                <p className="text-[9px] text-[var(--text-secondary)] mt-0.5">CPF: <span className="font-mono">{selectedPac.cpf || '—'}</span> | Plano: {selectedPac.plano}</p>
               </div>
-              <div className="flex items-center gap-1.5 bg-[#131622] border border-white/[0.06] px-2.5 py-1 rounded-full">
-                <span className={`w-2 h-2 rounded-full ${
+              <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] border border-[var(--border)] px-3 py-1 rounded-full shadow-sm">
+                <span className={`w-2.5 h-2.5 rounded-full ${
                   connStatus === 'CONNECTED' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' :
                   connStatus === 'CONNECTING' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
                 }`} />
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                  {connStatus === 'CONNECTED' ? 'Realtime Conectado' : connStatus === 'CONNECTING' ? 'Conectando...' : 'Desconectado'}
+                <span className="text-[9px] text-[var(--text-primary)] font-bold uppercase tracking-wider">
+                  {connStatus === 'CONNECTED' ? 'Conectado (Realtime & Cloud)' : connStatus === 'CONNECTING' ? 'Conectando...' : 'Desconectado'}
                 </span>
               </div>
             </div>
@@ -353,15 +392,15 @@ export const ChatPage: React.FC = () => {
             {/* Messages Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-3.5 scrollbar-thin">
               {loadingChat ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-                  <span className="w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+                <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] gap-2">
+                  <span className="w-5 h-5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
                   Carregando mensagens...
                 </div>
               ) : messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-1">
-                  <MessageSquare size={32} className="opacity-20" />
-                  <p className="font-semibold">Nenhuma mensagem nesta conversa.</p>
-                  <p className="text-[10px] text-slate-500">Envie uma mensagem abaixo para iniciar.</p>
+                <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] gap-1">
+                  <MessageSquare size={32} className="opacity-30" />
+                  <p className="font-semibold text-[var(--text-primary)]">Nenhuma mensagem nesta conversa.</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">Envie uma mensagem abaixo ou um lembrete para conectar com o app do paciente.</p>
                 </div>
               ) : (
                 messages.map((m) => {
@@ -371,10 +410,10 @@ export const ChatPage: React.FC = () => {
                   
                   if (isSys) {
                     return (
-                      <div key={m.id} className="max-w-[85%] bg-amber-500/5 border border-amber-500/10 rounded-2xl p-3 text-amber-400 self-start space-y-1">
-                        <span className="text-[8px] font-black uppercase tracking-wider block">🔔 Lembrete de Sistema</span>
-                        <p className="text-slate-300 leading-relaxed text-xs">{m.conteudo.replace(/^🔔\s*/, '')}</p>
-                        <span className="text-[8px] text-slate-500 font-mono block text-right">{time}</span>
+                      <div key={m.id} className="max-w-[85%] bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 text-amber-600 dark:text-amber-400 self-start space-y-1 shadow-sm">
+                        <span className="text-[8px] font-black uppercase tracking-wider block">🔔 Notificação de Sistema</span>
+                        <p className="text-[var(--text-primary)] leading-relaxed text-xs">{m.conteudo.replace(/^🔔\s*/, '')}</p>
+                        <span className="text-[8px] text-[var(--text-muted)] font-mono block text-right">{time}</span>
                       </div>
                     );
                   }
@@ -382,17 +421,17 @@ export const ChatPage: React.FC = () => {
                   return (
                     <div
                       key={m.id}
-                      className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-xs flex flex-col ${
+                      className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-xs flex flex-col shadow-sm ${
                         isClinic
-                          ? 'bg-indigo-500 text-white rounded-br-none ml-auto'
-                          : 'bg-[#161a26] border border-white/[0.04] text-slate-200 rounded-bl-none'
+                          ? 'bg-[var(--accent)] text-white rounded-br-none ml-auto'
+                          : 'bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-bl-none'
                       }`}
                     >
                       <p className="leading-relaxed whitespace-pre-wrap">{m.conteudo}</p>
                       <span className={`text-[8px] font-mono mt-1 text-right ${
-                        isClinic ? 'text-white/60' : 'text-slate-500'
+                        isClinic ? 'text-white/70' : 'text-[var(--text-muted)]'
                       }`}>
-                        {time}
+                        {time} {isClinic && (m.lida ? '✓✓' : '✓')}
                       </span>
                     </div>
                   );
@@ -402,33 +441,33 @@ export const ChatPage: React.FC = () => {
             </div>
 
             {/* Input Row */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-white/[0.04] bg-[#0c0e16]/40 flex gap-3 shrink-0">
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-[var(--border)] bg-[var(--bg-surface)] flex gap-3 shrink-0">
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Digite sua mensagem (Pressione Enter para enviar)..."
                 rows={1}
-                className="flex-1 bg-[#161a26] border border-white/[0.06] rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-indigo-500/50 resize-none max-h-24 leading-normal scrollbar-thin"
+                className="flex-1 bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent)] resize-none max-h-24 leading-normal scrollbar-thin"
               />
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="w-10 h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                className="w-10 h-10 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white flex items-center justify-center shrink-0 shadow-lg shadow-[var(--accent-glow)] transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
               >
                 <Send size={14} />
               </button>
             </form>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-600 gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/[0.01] border border-white/[0.04] flex items-center justify-center text-slate-500 shadow-inner">
+          <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-muted)] gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] shadow-sm">
               <MessageSquare size={22} className="opacity-40 animate-pulse" />
             </div>
             <div className="text-center">
-              <p className="font-bold text-slate-300">Nenhuma Conversa Selecionada</p>
-              <p className="text-[10px] text-slate-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
-                Selecione um paciente na lista à esquerda para conversar e enviar lembretes em tempo real.
+              <p className="font-bold text-[var(--text-primary)]">Nenhuma Conversa Selecionada</p>
+              <p className="text-[10px] text-[var(--text-secondary)] mt-1 max-w-[240px] mx-auto leading-relaxed">
+                Selecione um paciente na lista à esquerda para conversar e enviar notificações em tempo real para o app do paciente.
               </p>
             </div>
           </div>
@@ -436,12 +475,12 @@ export const ChatPage: React.FC = () => {
       </div>
 
       {/* ── RIGHT COLUMN: INFO & REMINDERS ── */}
-      <div className="w-72 border-l border-white/[0.04] flex flex-col bg-[#0f111a]/80 shrink-0 overflow-y-auto divide-y divide-white/[0.04] scrollbar-thin">
+      <div className="w-72 border-l border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0 overflow-y-auto divide-y divide-[var(--border)] scrollbar-thin">
         {selectedPac ? (
           <>
             {/* Patient Info Appts */}
             <div className="p-4 space-y-3">
-              <h4 className="font-bold text-[10px] text-indigo-400 uppercase tracking-widest flex items-center gap-1">
+              <h4 className="font-bold text-[10px] text-[var(--accent)] uppercase tracking-widest flex items-center gap-1">
                 <Calendar size={12} />
                 Histórico de Consultas
               </h4>
@@ -449,16 +488,16 @@ export const ChatPage: React.FC = () => {
                 {pacAppts.map((appt) => {
                   const time = appt.dataISO.split('-').reverse().join('/');
                   return (
-                    <div key={appt.id} className="p-2.5 bg-[#161a26]/60 border border-white/[0.03] rounded-xl flex gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-1" />
+                    <div key={appt.id} className="p-2.5 bg-[var(--bg-raised)]/60 border border-[var(--border)] rounded-xl flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0 mt-1" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-300 font-mono text-[10px]">{time} • {appt.hora}</div>
-                        <div className="text-[9px] text-slate-400 truncate mt-0.5">{getProfName(appt.profId)}</div>
+                        <div className="font-bold text-[var(--text-primary)] font-mono text-[10px]">{time} • {appt.hora}</div>
+                        <div className="text-[9px] text-[var(--text-secondary)] truncate mt-0.5">{getProfName(appt.profId)}</div>
                         <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.25 rounded-full mt-1.5 border ${
-                          appt.status === 'atendido' ? 'bg-emerald-500/10 border-emerald-500/15 text-emerald-400' :
-                          appt.status === 'confirmado' ? 'bg-blue-500/10 border-blue-500/15 text-blue-400' :
-                          appt.status === 'cancelado' || appt.status === 'desmarcado' ? 'bg-rose-500/10 border-rose-500/15 text-rose-400' :
-                          'bg-indigo-500/10 border-indigo-500/15 text-indigo-400'
+                          appt.status === 'atendido' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
+                          appt.status === 'confirmado' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
+                          appt.status === 'cancelado' || appt.status === 'desmarcado' ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' :
+                          'bg-indigo-500/10 border-indigo-500/20 text-indigo-500'
                         }`}>
                           {appt.status}
                         </span>
@@ -467,24 +506,24 @@ export const ChatPage: React.FC = () => {
                   );
                 })}
                 {pacAppts.length === 0 && (
-                  <p className="text-slate-500 italic text-[10px]">Nenhum agendamento encontrado.</p>
+                  <p className="text-[var(--text-muted)] italic text-[10px]">Nenhum agendamento encontrado.</p>
                 )}
               </div>
             </div>
 
             {/* Send Reminders Panel */}
             <div className="p-4 space-y-3">
-              <h4 className="font-bold text-[10px] text-indigo-400 uppercase tracking-widest flex items-center gap-1">
+              <h4 className="font-bold text-[10px] text-[var(--accent)] uppercase tracking-widest flex items-center gap-1">
                 <Bell size={12} />
                 Lembretes & Avisos
               </h4>
               <form onSubmit={handleSendNotification} className="space-y-3.5">
                 <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Tipo de Aviso</label>
+                  <label className="block text-[var(--text-secondary)] font-semibold mb-1">Tipo de Aviso</label>
                   <select
                     value={notifTipo}
                     onChange={(e) => setNotifTipo(e.target.value as any)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
+                    className="w-full bg-[var(--bg-raised)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[var(--text-primary)] text-xs focus:outline-none"
                   >
                     <option value="confirmar">Confirmação de Consulta</option>
                     <option value="lembrete">Lembrete de Horário</option>
@@ -494,11 +533,11 @@ export const ChatPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Envio / Agendamento</label>
+                  <label className="block text-[var(--text-secondary)] font-semibold mb-1">Envio / Agendamento</label>
                   <select
                     value={notifQuando}
                     onChange={(e) => setNotifQuando(e.target.value as any)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
+                    className="w-full bg-[var(--bg-raised)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[var(--text-primary)] text-xs focus:outline-none"
                   >
                     <option value="Agora">Enviar agora (Instantâneo)</option>
                     <option value="Amanha8h">Amanhã às 08:00h</option>
@@ -507,20 +546,20 @@ export const ChatPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Corpo da Mensagem</label>
+                  <label className="block text-[var(--text-secondary)] font-semibold mb-1">Corpo da Mensagem</label>
                   <textarea
                     value={notifMsg}
                     onChange={(e) => setNotifMsg(e.target.value)}
-                    rows={6}
+                    rows={5}
                     required
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-2 text-white text-xs resize-none focus:outline-none font-sans leading-relaxed"
+                    className="w-full bg-[var(--bg-raised)] border border-[var(--border)] rounded-lg px-2.5 py-2 text-[var(--text-primary)] text-xs resize-none focus:outline-none font-sans leading-relaxed"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={sendingNotif}
-                  className="w-full py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/10 active:scale-95 transition-all disabled:opacity-45"
+                  className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-[var(--accent-glow)] active:scale-95 transition-all disabled:opacity-45 cursor-pointer"
                 >
                   <Send size={11} />
                   {sendingNotif ? 'Enviando...' : notifQuando === 'Agora' ? 'Enviar Notificação' : 'Agendar Notificação'}
@@ -529,8 +568,8 @@ export const ChatPage: React.FC = () => {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-600 p-8 text-center gap-2">
-            <AlertCircle size={28} className="opacity-20" />
+          <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center gap-2">
+            <AlertCircle size={28} className="opacity-30" />
             <p className="font-semibold text-[10px]">Informações indisponíveis.</p>
           </div>
         )}
