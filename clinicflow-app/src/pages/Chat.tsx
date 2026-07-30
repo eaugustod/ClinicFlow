@@ -103,12 +103,13 @@ export const ChatPage: React.FC = () => {
       try {
         const pId = Number(selectedPac.id);
         
-        let { data: conversa, error: convErr } = await supabase
+        // Select existing primary conversation (avoiding maybeSingle duplicate errors)
+        let { data: convList, error: convErr } = await supabase
           .from('conversas')
           .select('id')
           .eq('paciente_id', pId)
-          .eq('status', 'ativa')
-          .maybeSingle();
+          .order('id', { ascending: true })
+          .limit(1);
 
         if (convErr) {
           console.error('[ClinicFlow Chat] Error selecting conversa:', convErr);
@@ -117,7 +118,7 @@ export const ChatPage: React.FC = () => {
           }
         }
 
-        let activeConvId = conversa?.id;
+        let activeConvId = convList && convList.length > 0 ? convList[0].id : null;
 
         if (!activeConvId) {
           const { data: newConv, error: insertErr } = await supabase
@@ -219,16 +220,16 @@ export const ChatPage: React.FC = () => {
     // Resolve conversation on-the-fly if needed
     if (!targetConvId) {
       const pId = Number(selectedPac.id);
-      const { data: conv } = await supabase
+      const { data: convList } = await supabase
         .from('conversas')
         .select('id')
         .eq('paciente_id', pId)
-        .eq('status', 'ativa')
-        .maybeSingle();
+        .order('id', { ascending: true })
+        .limit(1);
 
-      if (conv?.id) {
-        targetConvId = conv.id;
-        setConversaId(conv.id);
+      if (convList && convList.length > 0) {
+        targetConvId = convList[0].id;
+        setConversaId(targetConvId);
       } else {
         const { data: newConv } = await supabase
           .from('conversas')
@@ -300,13 +301,13 @@ export const ChatPage: React.FC = () => {
     let targetConvId = conversaId;
     if (!targetConvId) {
       const pId = Number(selectedPac.id);
-      const { data: conv } = await supabase
+      const { data: convList } = await supabase
         .from('conversas')
         .select('id')
         .eq('paciente_id', pId)
-        .eq('status', 'ativa')
-        .maybeSingle();
-      if (conv?.id) targetConvId = conv.id;
+        .order('id', { ascending: true })
+        .limit(1);
+      if (convList && convList.length > 0) targetConvId = convList[0].id;
     }
 
     setSendingNotif(true);
@@ -378,11 +379,11 @@ export const ChatPage: React.FC = () => {
     : [];
 
   return (
-    <div className="flex h-[calc(100vh-130px)] bg-[var(--bg-surface)] backdrop-blur-xl border border-[var(--border)] rounded-2xl overflow-hidden shadow-2xl text-xs">
+    <div className="flex h-[calc(100vh-140px)] min-h-0 bg-[var(--bg-surface)] backdrop-blur-xl border border-[var(--border)] rounded-2xl overflow-hidden shadow-2xl text-xs w-full">
       
       {/* ── LEFT COLUMN: PATIENT LIST ── */}
-      <div className="w-72 border-r border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0">
-        <div className="p-4 border-b border-[var(--border)]">
+      <div className="w-72 h-full border-r border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0 min-h-0 overflow-hidden">
+        <div className="p-4 border-b border-[var(--border)] shrink-0">
           <h3 className="font-black text-sm tracking-wide text-[var(--text-primary)] mb-3 flex items-center gap-2">
             <MessageSquare size={16} className="text-[var(--accent)]" />
             Chat com Pacientes
@@ -439,9 +440,9 @@ export const ChatPage: React.FC = () => {
       </div>
 
       {/* ── MIDDLE COLUMN: MESSAGES ── */}
-      <div className="flex-1 flex flex-col bg-[var(--bg-base)] overflow-hidden relative">
+      <div className="flex-1 h-full flex flex-col bg-[var(--bg-base)] min-h-0 overflow-hidden relative">
         {selectedPac ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 h-full flex flex-col min-h-0 overflow-hidden">
             {/* Chat Header */}
             <div className="p-4 border-b border-[var(--border)] bg-[var(--header-bg)] flex justify-between items-center shrink-0">
               <div>
@@ -545,9 +546,9 @@ export const ChatPage: React.FC = () => {
       </div>
 
       {/* ── RIGHT COLUMN: INFO & REMINDERS ── */}
-      <div className="w-72 border-l border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0 overflow-y-auto divide-y divide-[var(--border)] scrollbar-thin">
+      <div className="w-72 h-full border-l border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0 min-h-0 overflow-hidden">
         {selectedPac ? (
-          <>
+          <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)] scrollbar-thin">
             {/* Patient Info Appts */}
             <div className="p-4 space-y-3">
               <h4 className="font-bold text-[10px] text-[var(--accent)] uppercase tracking-widest flex items-center gap-1">
@@ -636,7 +637,7 @@ export const ChatPage: React.FC = () => {
                 </button>
               </form>
             </div>
-          </>
+          </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center gap-2">
             <AlertCircle size={28} className="opacity-30" />
