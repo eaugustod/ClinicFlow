@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Clock, User, Calendar, Bell, ChevronRight, MessageSquare, AlertCircle, CheckCircle, Wifi, WifiOff } from 'lucide-react';
+import { Search, Send, Clock, User, Calendar, Bell, ChevronRight, MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
 import { Paciente, Agendamento } from '../types';
@@ -60,22 +60,29 @@ export const ChatPage: React.FC = () => {
       const { data: msgs, error: msgsErr } = await supabase
         .from('mensagens')
         .select('*')
-        .eq('conversa_id', cId)
+        .eq('conversa_id', Number(cId))
         .order('enviada_em', { ascending: true });
 
-      if (msgsErr) throw msgsErr;
+      if (msgsErr) {
+        console.error('[ClinicFlow Chat] Error fetching msgs:', msgsErr);
+        if (!silent) setConnStatus('DISCONNECTED');
+        return;
+      }
+
       setMessages(msgs || []);
       setConnStatus('CONNECTED');
 
-      // Auto-mark patient messages as read
-      await supabase
+      // Auto-mark patient messages as read in background without breaking connStatus
+      supabase
         .from('mensagens')
         .update({ lida: true })
-        .eq('conversa_id', cId)
+        .eq('conversa_id', Number(cId))
         .eq('tipo_remetente', 'paciente')
-        .eq('lida', false);
+        .eq('lida', false)
+        .then(() => {});
+
     } catch (err) {
-      console.error('[ClinicFlow Chat] Error fetching msgs:', err);
+      console.error('[ClinicFlow Chat] Exception fetching msgs:', err);
       if (!silent) setConnStatus('DISCONNECTED');
     } finally {
       if (!silent) setLoadingChat(false);
@@ -94,32 +101,44 @@ export const ChatPage: React.FC = () => {
       setLoadingChat(true);
       setConnStatus('CONNECTING');
       try {
-        // Find or create conversa
+        const pId = Number(selectedPac.id);
+        
         let { data: conversa, error: convErr } = await supabase
           .from('conversas')
           .select('id')
-          .eq('paciente_id', selectedPac.id)
+          .eq('paciente_id', pId)
           .eq('status', 'ativa')
           .maybeSingle();
 
-        if (convErr) throw convErr;
+        if (convErr) {
+          console.error('[ClinicFlow Chat] Error selecting conversa:', convErr);
+        }
 
         let activeConvId = conversa?.id;
 
         if (!activeConvId) {
           const { data: newConv, error: insertErr } = await supabase
             .from('conversas')
-            .insert([{ paciente_id: selectedPac.id, status: 'ativa' }])
+            .insert([{ paciente_id: pId, status: 'ativa' }])
             .select('id')
             .single();
-          if (insertErr) throw insertErr;
-          activeConvId = newConv.id;
+
+          if (insertErr) {
+            console.error('[ClinicFlow Chat] Error inserting conversa:', insertErr);
+          }
+          activeConvId = newConv?.id;
         }
 
-        setConversaId(activeConvId);
-        await fetchMessages(activeConvId, false);
+        if (activeConvId) {
+          setConversaId(activeConvId);
+          setConnStatus('CONNECTED');
+          await fetchMessages(activeConvId, false);
+        } else {
+          setConnStatus('DISCONNECTED');
+          setLoadingChat(false);
+        }
       } catch (err) {
-        console.error('[ClinicFlow Chat] Error loading conversa/msgs:', err);
+        console.error('[ClinicFlow Chat] Error loading conversa:', err);
         setConnStatus('DISCONNECTED');
         setLoadingChat(false);
       }
@@ -153,10 +172,10 @@ export const ChatPage: React.FC = () => {
         }
       });
 
-    // 2. Polling fallback every 4 seconds to catch messages even if WebSockets drop
+    // 2. Polling fallback every 3 seconds
     const pollInterval = setInterval(() => {
       fetchMessages(conversaId, true);
-    }, 4000);
+    }, 3000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -190,7 +209,40 @@ export const ChatPage: React.FC = () => {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() || !conversaId) return;
+    if (!inputText.trim() || !selectedPac) return;
+
+    let targetConvId = conversaId;
+
+    // Resolve conversation on-the-fly if needed
+    if (!targetConvId) {
+      const pId = Number(selectedPac.id);
+      const { data: conv } = await supabase
+        .from('conversas')
+        .select('id')
+        .eq('paciente_id', pId)
+        .eq('status', 'ativa')
+        .maybeSingle();
+
+      if (conv?.id) {
+        targetConvId = conv.id;
+        setConversaId(conv.id);
+      } else {
+        const { data: newConv } = await supabase
+          .from('conversas')
+          .insert([{ paciente_id: pId, status: 'ativa' }])
+          .select('id')
+          .single();
+        if (newConv?.id) {
+          targetConvId = newConv.id;
+          setConversaId(newConv.id);
+        }
+      }
+    }
+
+    if (!targetConvId) {
+      alert('Não foi possível conectar com a conversa deste paciente. Tente novamente.');
+      return;
+    }
 
     const textToSend = inputText.trim();
     setInputText('');
@@ -200,7 +252,7 @@ export const ChatPage: React.FC = () => {
         .from('mensagens')
         .insert([
           {
-            conversa_id: conversaId,
+            conversa_id: targetConvId,
             tipo_remetente: 'clinica',
             conteudo: textToSend,
             lida: false
@@ -212,19 +264,22 @@ export const ChatPage: React.FC = () => {
       if (error) throw error;
 
       if (inserted) {
-        setMessages((prev) => [...prev, inserted]);
+        setMessages((prev) => {
+          if (prev.some(m => m.id === inserted.id)) return prev;
+          return [...prev, inserted];
+        });
       }
 
       // Update last message timestamp
       await supabase
         .from('conversas')
         .update({ ultima_mensagem_em: new Date().toISOString() })
-        .eq('id', conversaId);
+        .eq('id', targetConvId);
 
       setConnStatus('CONNECTED');
     } catch (err: any) {
       console.error('[ClinicFlow Chat] Error sending msg:', err);
-      alert('Erro ao enviar mensagem: ' + err.message);
+      alert('Erro ao enviar mensagem: ' + (err.message || err));
     }
   };
 
@@ -238,6 +293,18 @@ export const ChatPage: React.FC = () => {
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPac || !notifMsg.trim()) return;
+
+    let targetConvId = conversaId;
+    if (!targetConvId) {
+      const pId = Number(selectedPac.id);
+      const { data: conv } = await supabase
+        .from('conversas')
+        .select('id')
+        .eq('paciente_id', pId)
+        .eq('status', 'ativa')
+        .maybeSingle();
+      if (conv?.id) targetConvId = conv.id;
+    }
 
     setSendingNotif(true);
     try {
@@ -267,12 +334,12 @@ export const ChatPage: React.FC = () => {
       if (notifErr) throw notifErr;
 
       // 2. If instantaneous, insert system message into active chat
-      if (isAgora && conversaId) {
+      if (isAgora && targetConvId) {
         const { data: newSysMsg, error: msgErr } = await supabase
           .from('mensagens')
           .insert([
             {
-              conversa_id: conversaId,
+              conversa_id: targetConvId,
               tipo_remetente: 'sistema',
               conteudo: `🔔 ${notifMsg.trim()}`,
               lida: false
@@ -337,7 +404,7 @@ export const ChatPage: React.FC = () => {
               <button
                 key={p.id}
                 onClick={() => setSelectedPac(p)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all cursor-pointer ${
                   active ? 'bg-[var(--accent-soft)] border-l-4 border-[var(--accent)]' : 'hover:bg-[var(--bg-raised)]/40'
                 }`}
               >
