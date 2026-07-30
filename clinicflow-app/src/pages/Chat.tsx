@@ -123,7 +123,7 @@ export const ChatPage: React.FC = () => {
         if (!activeConvId) {
           const { data: newConv, error: insertErr } = await supabase
             .from('conversas')
-            .insert([{ paciente_id: pId, status: 'ativa' }])
+            .upsert([{ paciente_id: pId, status: 'ativa' }], { onConflict: 'paciente_id' })
             .select('id')
             .single();
 
