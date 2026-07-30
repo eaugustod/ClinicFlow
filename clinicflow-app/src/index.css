@@ -89,7 +89,7 @@
     --accent-soft: rgba(37, 99, 235, 0.1);
     --header-bg: rgba(255, 255, 255, 0.88);
     --sidebar-bg: #ffffff;
-    --card-bg: rgba(255, 255, 255, 0.9);
+    --card-bg: #ffffff;
     --success: #059669;
     --warning: #d97706;
     --danger: #e11d48;
@@ -112,7 +112,7 @@
     --accent-soft: rgba(5, 150, 105, 0.1);
     --header-bg: rgba(250, 248, 245, 0.88);
     --sidebar-bg: #fffdfa;
-    --card-bg: rgba(255, 255, 255, 0.92);
+    --card-bg: #ffffff;
     --success: #059669;
     --warning: #d97706;
     --danger: #dc2626;
@@ -135,7 +135,7 @@
     --accent-soft: rgba(2, 132, 199, 0.1);
     --header-bg: rgba(240, 247, 255, 0.88);
     --sidebar-bg: #f8fafc;
-    --card-bg: rgba(255, 255, 255, 0.92);
+    --card-bg: #ffffff;
     --success: #0d9488;
     --warning: #d97706;
     --danger: #e11d48;
@@ -147,5 +147,67 @@
     color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', sans-serif;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Suporte Global aos Modos Claros (Light Themes) */
+[data-theme="light-snow"],
+[data-theme="light-warm"],
+[data-theme="light-nordic"] {
+  /* Fundos de cards, caixas e modais */
+  .bg-\[\#131622\],
+  .bg-\[\#131622\]\/50,
+  .bg-\[\#131622\]\/60,
+  .bg-\[\#131622\]\/40,
+  .bg-\[\#131622\]\/20,
+  .bg-\[\#0f1117\],
+  .bg-\[\#0f111a\],
+  .bg-\[\#090b10\],
+  .bg-\[\#111420\],
+  .bg-\[\#07090e\],
+  .bg-\[\#07090e\]\/95 {
+    background-color: var(--bg-surface) !important;
+  }
+
+  /* Fundos elevados ou de entradas/inputs */
+  .bg-\[\#161a26\],
+  .bg-\[\#161a26\]\/40,
+  .bg-\[\#161a26\]\/60,
+  .bg-\[\#181d2d\],
+  .bg-\[\#1c2234\],
+  .bg-\[\#171b26\],
+  .bg-\[\#0c0e16\]\/40,
+  .bg-slate-800\/60 {
+    background-color: var(--bg-raised) !important;
+  }
+
+  /* Bordas escuras estáticas */
+  .border-white\/\[0\.02\],
+  .border-white\/\[0\.03\],
+  .border-white\/\[0\.04\],
+  .border-white\/\[0\.06\],
+  .border-white\/\[0\.08\],
+  .border-white\/5,
+  .border-white\/10 {
+    border-color: var(--border) !important;
+  }
+
+  /* Textos brancos/claros estáticos adaptados ao tema claro */
+  .text-white {
+    color: var(--text-primary) !important;
+  }
+
+  .text-slate-100,
+  .text-slate-200,
+  .text-slate-300 {
+    color: var(--text-primary) !important;
+  }
+
+  .text-slate-400 {
+    color: var(--text-secondary) !important;
+  }
+
+  .text-slate-500 {
+    color: var(--text-muted) !important;
   }
 }

@@ -177,14 +177,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
               CF
             </div>
             <div>
-              <span className="font-bold text-base tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-[#f1f5f9] to-indigo-300">
+              <span className="font-bold text-base tracking-wider text-[var(--text-primary)]">
                 ClinicFlow
               </span>
-              <p className="text-[9px] text-indigo-400 font-semibold tracking-widest uppercase">v2026.1</p>
+              <p className="text-[9px] text-[var(--accent)] font-semibold tracking-widest uppercase">v2026.1</p>
             </div>
           </div>
-          <button className="lg:hidden p-1 hover:bg-white/5 rounded-lg" onClick={() => setSidebarOpen(false)}>
-            <X size={18} className="text-slate-400" />
+          <button className="lg:hidden p-1 hover:bg-[var(--bg-raised)] rounded-lg" onClick={() => setSidebarOpen(false)}>
+            <X size={18} className="text-[var(--text-secondary)]" />
           </button>
         </div>
 

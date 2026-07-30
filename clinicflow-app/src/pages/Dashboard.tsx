@@ -127,18 +127,18 @@ export const Dashboard: React.FC = () => {
       {/* Header and Filter Selector */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest font-semibold">Dashboard Principal</span>
-          <h2 className="text-2xl font-black tracking-wide text-white mt-0.5 font-sans">Visão Geral da Clínica</h2>
-          <p className="text-xs text-slate-400 mt-1">Monitore atendimentos, faturamentos e indicadores de desempenho em tempo real</p>
+          <span className="text-[10px] text-[var(--accent)] font-bold uppercase tracking-widest font-semibold">Dashboard Principal</span>
+          <h2 className="text-2xl font-black tracking-wide text-[var(--text-primary)] mt-0.5 font-sans">Visão Geral da Clínica</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Monitore atendimentos, faturamentos e indicadores de desempenho em tempo real</p>
         </div>
         
         {/* Filters Panel */}
-        <div className="flex items-center gap-2 flex-wrap bg-[#131622]/60 backdrop-blur-md border border-white/[0.04] p-2 rounded-2xl shadow-lg">
-          <div className="flex gap-1 bg-[#161a26] p-1 rounded-xl border border-white/[0.04]">
+        <div className="flex items-center gap-2 flex-wrap bg-[var(--bg-surface)] backdrop-blur-md border border-[var(--border)] p-2 rounded-2xl shadow-lg">
+          <div className="flex gap-1 bg-[var(--bg-raised)] p-1 rounded-xl border border-[var(--border)]">
             <button
               onClick={() => setFilterType('dia')}
               className={`px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all ${
-                filterType === 'dia' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                filterType === 'dia' ? 'bg-[var(--accent)] text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               Dia
@@ -146,7 +146,7 @@ export const Dashboard: React.FC = () => {
             <button
               onClick={() => setFilterType('mes')}
               className={`px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all ${
-                filterType === 'mes' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                filterType === 'mes' ? 'bg-[var(--accent)] text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               Mês
@@ -154,7 +154,7 @@ export const Dashboard: React.FC = () => {
             <button
               onClick={() => setFilterType('ano')}
               className={`px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all ${
-                filterType === 'ano' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                filterType === 'ano' ? 'bg-[var(--accent)] text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               Ano
@@ -167,7 +167,7 @@ export const Dashboard: React.FC = () => {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className="bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-1.5 text-white font-bold font-mono focus:outline-none focus:border-indigo-500/50 text-[10px]"
+                className="bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl px-3 py-1.5 text-[var(--text-primary)] font-bold font-mono focus:outline-none focus:border-[var(--accent)] text-[10px]"
               />
             )}
             {filterType === 'mes' && (
@@ -175,14 +175,14 @@ export const Dashboard: React.FC = () => {
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => handleMonthChange(e.target.value)}
-                className="bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-1.5 text-white font-bold font-mono focus:outline-none focus:border-indigo-500/50 text-[10px]"
+                className="bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl px-3 py-1.5 text-[var(--text-primary)] font-bold font-mono focus:outline-none focus:border-[var(--accent)] text-[10px]"
               />
             )}
             {filterType === 'ano' && (
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-1.5 text-white font-bold font-mono focus:outline-none focus:border-indigo-500/50 text-[10px]"
+                className="bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl px-3 py-1.5 text-[var(--text-primary)] font-bold font-mono focus:outline-none focus:border-[var(--accent)] text-[10px]"
               >
                 <option value="2024">2024</option>
                 <option value="2025">2025</option>
