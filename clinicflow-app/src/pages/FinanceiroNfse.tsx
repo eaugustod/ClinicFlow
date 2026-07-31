@@ -867,6 +867,88 @@ export const FinanceiroNfse: React.FC = () => {
             </div>
           </div>
 
+          <div className="p-4 bg-[#141824] border border-white/10 rounded-xl space-y-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <FileSpreadsheet size={14} /> Script SQL de Migração (Supabase)
+                </h4>
+                <p className="text-[10px] text-slate-400">Execute este script no SQL Editor do Supabase para criar as tabelas <code className="text-emerald-300 font-mono">notas_fiscais</code>, <code className="text-emerald-300 font-mono">config_fiscal_jundiai</code> e <code className="text-emerald-300 font-mono">lotes_rps_jundiai</code>.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const sqlText = `-- CREATION SCRIPT FOR NFS-E JUNDIAÍ SUPABASE TABLES
+CREATE TABLE IF NOT EXISTS public.notas_fiscais (
+    id TEXT PRIMARY KEY,
+    numero_rps TEXT NOT NULL,
+    numero_lote BIGINT,
+    numero_nota TEXT,
+    codigo_verificacao TEXT,
+    data_emissao TIMESTAMPTZ DEFAULT NOW(),
+    paciente_id BIGINT,
+    tomador_nome TEXT NOT NULL,
+    tomador_cpf_cnpj TEXT NOT NULL,
+    tomador_email TEXT,
+    tomador_endereco TEXT,
+    servico_codigo TEXT DEFAULT '04.01',
+    descricao_servico TEXT NOT NULL,
+    valor_servico NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    aliquota_iss NUMERIC(5, 2) NOT NULL DEFAULT 2.00,
+    valor_iss NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    status TEXT NOT NULL DEFAULT 'Rascunho',
+    motivo_rejeicao TEXT,
+    pdf_url TEXT,
+    xml_url TEXT,
+    xml_envio TEXT,
+    xml_resposta TEXT,
+    ambiente TEXT DEFAULT 'Homologação',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.config_fiscal_jundiai (
+    id TEXT PRIMARY KEY DEFAULT 'config_padrao',
+    cnpj_emissor TEXT NOT NULL,
+    inscricao_municipal TEXT NOT NULL,
+    razao_social TEXT NOT NULL,
+    ambiente TEXT DEFAULT 'Homologação',
+    codigo_servico_padrao TEXT DEFAULT '04.01',
+    aliquota_iss_padrao NUMERIC(5, 2) DEFAULT 2.00,
+    optante_simples_nacional BOOLEAN DEFAULT TRUE,
+    token_api TEXT,
+    certificado_validade DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.lotes_rps_jundiai (
+    id TEXT PRIMARY KEY,
+    numero_lote BIGINT UNIQUE NOT NULL,
+    quantidade_rps INTEGER DEFAULT 1,
+    protocolo TEXT,
+    status TEXT DEFAULT 'Processado',
+    xml_lote TEXT,
+    data_transmissao TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.notas_fiscais ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.config_fiscal_jundiai ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lotes_rps_jundiai ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permissao Total NFS-e" ON public.notas_fiscais FOR ALL USING (true);
+CREATE POLICY "Permissao Total Config Fiscal" ON public.config_fiscal_jundiai FOR ALL USING (true);
+CREATE POLICY "Permissao Total Lotes RPS" ON public.lotes_rps_jundiai FOR ALL USING (true);`;
+                  navigator.clipboard.writeText(sqlText);
+                  alert('✅ Script SQL copiado para a área de transferência! Cole no SQL Editor do Supabase.');
+                }}
+                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 font-bold rounded-lg text-xs flex items-center gap-1"
+              >
+                Copiar Script SQL
+              </button>
+            </div>
+          </div>
+
           <div className="flex justify-end pt-4 border-t border-white/[0.06]">
             <button
               type="submit"
@@ -944,6 +1026,20 @@ export const FinanceiroNfse: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => {
+                  const xmlStr = selectedNota.xmlEnvio || nfseJundiaiService.gerarXmlGissLote(selectedNota, config);
+                  const blob = new Blob([xmlStr], { type: 'text/xml' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `GISS_v2_04_${selectedNota.numeroRps}.xml`;
+                  a.click();
+                }}
+                className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 font-bold rounded-xl text-xs flex items-center gap-1.5"
+              >
+                <FileSpreadsheet size={14} /> XML GISS v2.04
+              </button>
               <button
                 onClick={() => alert(`Baixando PDF Oficial NFS-e Nº ${selectedNota.numeroNota} da Prefeitura de Jundiaí...`)}
                 className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 font-bold rounded-xl text-xs flex items-center gap-1.5"

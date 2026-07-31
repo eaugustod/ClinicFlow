@@ -646,6 +646,7 @@ export const mappers = {
   nfToDb: (nf: Partial<import('../types').NotaFiscalJundiai>) => ({
     id: nf.id,
     numero_rps: nf.numeroRps,
+    numero_lote: nf.numeroLote || null,
     numero_nota: nf.numeroNota || null,
     codigo_verificacao: nf.codigoVerificacao || null,
     data_emissao: nf.dataEmissao || new Date().toISOString(),
@@ -663,11 +664,14 @@ export const mappers = {
     motivo_rejeicao: nf.motivoRejeicao || null,
     pdf_url: nf.pdfUrl || null,
     xml_url: nf.xmlUrl || null,
+    xml_envio: nf.xmlEnvio || null,
+    xml_resposta: nf.xmlResposta || null,
     ambiente: nf.ambiente || 'Homologação'
   }),
   dbToNf: (r: any): import('../types').NotaFiscalJundiai => ({
     id: String(r.id),
     numeroRps: r.numero_rps || '',
+    numeroLote: r.numero_lote ? Number(r.numero_lote) : undefined,
     numeroNota: r.numero_nota || undefined,
     codigoVerificacao: r.codigo_verificacao || undefined,
     dataEmissao: r.data_emissao || r.created_at || '',
@@ -685,6 +689,8 @@ export const mappers = {
     motivoRejeicao: r.motivo_rejeicao || undefined,
     pdfUrl: r.pdf_url || undefined,
     xmlUrl: r.xml_url || undefined,
+    xmlEnvio: r.xml_envio || undefined,
+    xmlResposta: r.xml_resposta || undefined,
     ambiente: r.ambiente || 'Homologação',
     created_at: r.created_at || ''
   })

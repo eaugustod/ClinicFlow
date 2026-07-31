@@ -329,6 +329,7 @@ export interface StatusAgendamento {
 export interface NotaFiscalJundiai {
   id: string;
   numeroRps: string;
+  numeroLote?: number;
   numeroNota?: string;
   codigoVerificacao?: string;
   dataEmissao: string;
@@ -346,6 +347,8 @@ export interface NotaFiscalJundiai {
   motivoRejeicao?: string;
   pdfUrl?: string;
   xmlUrl?: string;
+  xmlEnvio?: string;
+  xmlResposta?: string;
   ambiente: 'Homologação' | 'Produção';
   created_at?: string;
 }
