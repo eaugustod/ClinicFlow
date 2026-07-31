@@ -475,6 +475,7 @@ export const mappers = {
       data_nascimento: u.nasc || null,
       perfil: u.perfil,
       status: u.status || 'Ativo',
+      ativo: u.status === 'Ativo',
       foto: u.foto || null,
       prof_id: u.profId || null,
       perfil_id: u.perfilId || null,
@@ -483,22 +484,41 @@ export const mappers = {
     if (u.senha) res.senha = u.senha;
     return res;
   },
-  dbToUsuario: (r: any): Usuario => ({
-    id: r.id,
-    nome: r.nome || '',
-    email: r.email || '',
-    cpf: r.cpf || '',
-    rg: r.rg || '',
-    tel: r.telefone || r.tel || '',
-    nasc: r.data_nascimento || r.nasc || '',
-    perfil: r.perfil || 'admin',
-    perfilId: r.perfil_id || null,
-    status: r.status || 'Ativo',
-    foto: r.foto || r.foto_url || r.avatar || '',
-    senha: r.senha || '',
-    profId: r.prof_id || null,
-    criadoEm: r.created_at || ''
-  }),
+  dbToUsuario: (r: any): Usuario => {
+    const s = r.status !== undefined && r.status !== null ? r.status : r.ativo;
+    let statusVal: 'Ativo' | 'Inativo' = 'Ativo';
+
+    if (
+      s === 'Inativo' ||
+      s === 'inativo' ||
+      s === 'INATIVO' ||
+      s === false ||
+      s === 'false' ||
+      s === 0 ||
+      s === '0' ||
+      s === 'Inativa' ||
+      s === 'inativa'
+    ) {
+      statusVal = 'Inativo';
+    }
+
+    return {
+      id: r.id,
+      nome: r.nome || '',
+      email: r.email || '',
+      cpf: r.cpf || '',
+      rg: r.rg || '',
+      tel: r.telefone || r.tel || '',
+      nasc: r.data_nascimento || r.nasc || '',
+      perfil: r.perfil || 'admin',
+      perfilId: r.perfil_id || null,
+      status: statusVal,
+      foto: r.foto || r.foto_url || r.avatar || '',
+      senha: r.senha || '',
+      profId: r.prof_id || null,
+      criadoEm: r.created_at || ''
+    };
+  },
   perfilToDb: (p: Partial<PerfilAcesso>) => ({
     id: p.id,
     nome: p.nome,
