@@ -1089,7 +1089,56 @@ export const FinanceiroNfse: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  const sqlText = `-- CREATION SCRIPT FOR NFS-E JUNDIAÍ SUPABASE TABLES
+                  const sqlText = `-- ==============================================================================
+-- SCRIPT DE AJUSTE E CRIAÇÃO DE ESTRUTURA COMPLETA SUPABASE - CLINICFLOW
+-- INTEGRATION: NFS-e Jundiaí (SP) - GISS Online / ABRASF v2.04 & Reforma Tributária
+-- ==============================================================================
+
+-- 1. AJUSTES NA TABELA DE PACIENTES (pacientes)
+ALTER TABLE IF EXISTS public.pacientes ADD COLUMN IF NOT EXISTS logradouro TEXT;
+ALTER TABLE IF EXISTS public.pacientes ADD COLUMN IF NOT EXISTS numero TEXT;
+ALTER TABLE IF EXISTS public.pacientes ADD COLUMN IF NOT EXISTS complemento TEXT;
+ALTER TABLE IF EXISTS public.pacientes ADD COLUMN IF NOT EXISTS bairro TEXT;
+ALTER TABLE IF EXISTS public.pacientes ADD COLUMN IF NOT EXISTS cep TEXT;
+ALTER TABLE IF EXISTS public.pacientes ADD COLUMN IF NOT EXISTS cidade TEXT DEFAULT 'Jundiaí';
+ALTER TABLE IF EXISTS public.pacientes ADD COLUMN IF NOT EXISTS uf_end TEXT DEFAULT 'SP';
+
+-- 2. AJUSTES NA TABELA DE PROCEDIMENTOS (procedimentos)
+ALTER TABLE IF EXISTS public.procedimentos ADD COLUMN IF NOT EXISTS codigo_servico_abrasf TEXT DEFAULT '04.01';
+
+-- 3. CRIAÇÃO DA TABELA DE CONFIGURAÇÃO FISCAL (config_fiscal_jundiai)
+CREATE TABLE IF NOT EXISTS public.config_fiscal_jundiai (
+    id TEXT PRIMARY KEY DEFAULT 'config_padrao',
+    cnpj_emissor TEXT NOT NULL,
+    inscricao_municipal TEXT NOT NULL,
+    razao_social TEXT NOT NULL,
+    ambiente TEXT DEFAULT 'Homologação',
+    codigo_servico_padrao TEXT DEFAULT '04.01',
+    aliquota_iss_padrao NUMERIC(5, 2) DEFAULT 2.00,
+    optante_simples_nacional BOOLEAN DEFAULT TRUE,
+    serie_rps TEXT DEFAULT '1',
+    proximo_numero_rps BIGINT DEFAULT 1001,
+    proximo_numero_lote BIGINT DEFAULT 1001,
+    regime_tributario TEXT DEFAULT '6',
+    certificado_nome_arquivo TEXT,
+    certificado_base64 TEXT,
+    certificado_senha TEXT,
+    destacar_ibs_cbs BOOLEAN DEFAULT TRUE,
+    aliquota_ibs_padrao NUMERIC(5, 4) DEFAULT 0.1000,
+    aliquota_cbs_padrao NUMERIC(5, 4) DEFAULT 0.9000,
+    reducao_saude_ibs_cbs NUMERIC(5, 2) DEFAULT 60.00,
+    token_api TEXT,
+    certificado_validade DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.config_fiscal_jundiai ADD COLUMN IF NOT EXISTS serie_rps TEXT DEFAULT '1';
+ALTER TABLE public.config_fiscal_jundiai ADD COLUMN IF NOT EXISTS proximo_numero_rps BIGINT DEFAULT 1001;
+ALTER TABLE public.config_fiscal_jundiai ADD COLUMN IF NOT EXISTS proximo_numero_lote BIGINT DEFAULT 1001;
+ALTER TABLE public.config_fiscal_jundiai ADD COLUMN IF NOT EXISTS regime_tributario TEXT DEFAULT '6';
+
+-- 4. CRIAÇÃO DA TABELA DE NOTAS FISCAIS (notas_fiscais)
 CREATE TABLE IF NOT EXISTS public.notas_fiscais (
     id TEXT PRIMARY KEY,
     numero_rps TEXT NOT NULL,
@@ -1107,6 +1156,13 @@ CREATE TABLE IF NOT EXISTS public.notas_fiscais (
     valor_servico NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     aliquota_iss NUMERIC(5, 2) NOT NULL DEFAULT 2.00,
     valor_iss NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    cst_ibs_cbs TEXT DEFAULT '01',
+    c_class_trib TEXT DEFAULT '040100',
+    aliquota_ibs NUMERIC(5, 4) DEFAULT 0.1000,
+    valor_ibs NUMERIC(12, 2) DEFAULT 0.00,
+    aliquota_cbs NUMERIC(5, 4) DEFAULT 0.9000,
+    valor_cbs NUMERIC(12, 2) DEFAULT 0.00,
+    p_redutor_ibs_cbs NUMERIC(5, 2) DEFAULT 60.00,
     status TEXT NOT NULL DEFAULT 'Rascunho',
     motivo_rejeicao TEXT,
     pdf_url TEXT,
@@ -1118,21 +1174,7 @@ CREATE TABLE IF NOT EXISTS public.notas_fiscais (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS public.config_fiscal_jundiai (
-    id TEXT PRIMARY KEY DEFAULT 'config_padrao',
-    cnpj_emissor TEXT NOT NULL,
-    inscricao_municipal TEXT NOT NULL,
-    razao_social TEXT NOT NULL,
-    ambiente TEXT DEFAULT 'Homologação',
-    codigo_servico_padrao TEXT DEFAULT '04.01',
-    aliquota_iss_padrao NUMERIC(5, 2) DEFAULT 2.00,
-    optante_simples_nacional BOOLEAN DEFAULT TRUE,
-    token_api TEXT,
-    certificado_validade DATE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
+-- 5. CRIAÇÃO DA TABELA DE LOTES RPS TRANSMITIDOS (lotes_rps_jundiai)
 CREATE TABLE IF NOT EXISTS public.lotes_rps_jundiai (
     id TEXT PRIMARY KEY,
     numero_lote BIGINT UNIQUE NOT NULL,
@@ -1147,11 +1189,12 @@ CREATE TABLE IF NOT EXISTS public.lotes_rps_jundiai (
 ALTER TABLE public.notas_fiscais ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.config_fiscal_jundiai ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lotes_rps_jundiai ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Permissao Total NFS-e" ON public.notas_fiscais FOR ALL USING (true);
-CREATE POLICY "Permissao Total Config Fiscal" ON public.config_fiscal_jundiai FOR ALL USING (true);
-CREATE POLICY "Permissao Total Lotes RPS" ON public.lotes_rps_jundiai FOR ALL USING (true);`;
+
+CREATE POLICY "Acesso Total NFS-e" ON public.notas_fiscais FOR ALL USING (true);
+CREATE POLICY "Acesso Total Config Fiscal" ON public.config_fiscal_jundiai FOR ALL USING (true);
+CREATE POLICY "Acesso Total Lotes RPS" ON public.lotes_rps_jundiai FOR ALL USING (true);`;
                   navigator.clipboard.writeText(sqlText);
-                  alert('✅ Script SQL copiado para a área de transferência! Cole no SQL Editor do Supabase.');
+                  alert('✅ Script SQL de migração copiado! Cole no SQL Editor do Supabase.');
                 }}
                 className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 font-bold rounded-lg text-xs flex items-center gap-1"
               >
