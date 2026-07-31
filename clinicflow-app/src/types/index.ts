@@ -17,6 +17,7 @@ export interface Paciente {
   profissao: string;
   titular: string;
   foto?: string;
+  senhaChat?: string;
 }
 
 export interface Profissional {
@@ -32,6 +33,7 @@ export interface Profissional {
   status: string;
   tel: string;
   email: string;
+  foto?: string;
   instagram?: string;
   linkedin?: string;
   googleCalendarId?: string;

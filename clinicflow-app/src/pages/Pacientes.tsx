@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Edit3, Trash2, CheckCircle2, AlertCircle, Loader } from 'lucide-react';
+import { Search, UserPlus, Edit3, Trash2, CheckCircle2, AlertCircle, Loader, Camera, Key } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Paciente } from '../types';
 import { supabase } from '../services/supabase';
@@ -51,8 +51,21 @@ export const Pacientes: React.FC = () => {
   const [sexo, setSexo] = useState('M');
   const [status, setStatus] = useState('Ativo');
   const [obs, setObs] = useState('');
+  const [foto, setFoto] = useState('');
+  const [senhaChat, setSenhaChat] = useState('');
   
   const [submitting, setSubmitting] = useState(false);
+
+  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Merge context patients and database search results to avoid duplicates
   const allPacientes = [...pacientes];
@@ -81,6 +94,8 @@ export const Pacientes: React.FC = () => {
     setSexo('M');
     setStatus('Ativo');
     setObs('');
+    setFoto('');
+    setSenhaChat('');
     setIsModalOpen(true);
   };
 
@@ -97,6 +112,8 @@ export const Pacientes: React.FC = () => {
     setSexo(p.sexo || 'M');
     setStatus(p.status || 'Ativo');
     setObs(p.obs);
+    setFoto(p.foto || '');
+    setSenhaChat(p.senhaChat || '');
     setIsModalOpen(true);
   };
 
@@ -117,7 +134,9 @@ export const Pacientes: React.FC = () => {
       carteirinha,
       sexo,
       status,
-      obs
+      obs,
+      foto,
+      senhaChat
     };
 
     try {
@@ -214,8 +233,23 @@ export const Pacientes: React.FC = () => {
               {filteredPacientes.map((p) => (
                 <tr key={p.id} className="hover:bg-white/[0.01] transition-colors group">
                   <td className="p-4">
-                    <p className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">{p.nome}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{p.email || 'Sem e-mail'}</p>
+                    <div className="flex items-center gap-3">
+                      {p.foto ? (
+                        <img
+                          src={p.foto}
+                          alt={p.nome}
+                          className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-[10px] shrink-0">
+                          {p.nome.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">{p.nome}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{p.email || 'Sem e-mail'}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="p-4">
                     <p className="font-semibold text-slate-300">{p.plano}</p>
@@ -276,6 +310,49 @@ export const Pacientes: React.FC = () => {
             
             <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Foto do Paciente */}
+                <div className="md:col-span-2 space-y-2 bg-[#161a26]/50 p-3 rounded-xl border border-white/[0.06]">
+                  <label className="block text-slate-400 font-semibold text-xs">Foto do Paciente</label>
+                  <div className="flex items-center gap-4">
+                    {foto ? (
+                      <img src={foto} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500 shadow-md shrink-0" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-[#1c2234] border border-white/10 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
+                        Sem Foto
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="text"
+                        placeholder="URL da foto ou escolha um arquivo..."
+                        value={foto}
+                        onChange={(e) => setFoto(e.target.value)}
+                        className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all">
+                        <Camera size={12} />
+                        <span>Escolher Foto do Computador</span>
+                        <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Senha do Chat */}
+                <div className="md:col-span-2">
+                  <label className="block text-slate-400 font-semibold mb-1">Senha de Acesso ao Chat / App (`senha_chat`)</label>
+                  <div className="relative">
+                    <Key size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cadastrar ou alterar senha do paciente para o Chat/App..."
+                      value={senhaChat}
+                      onChange={(e) => setSenhaChat(e.target.value)}
+                      className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg pl-9 pr-3 py-2 text-white focus:outline-none focus:border-indigo-500 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-slate-400 font-semibold mb-1">Nome Completo</label>
                   <input

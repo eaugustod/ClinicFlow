@@ -598,9 +598,17 @@ export const ChatPage: React.FC = () => {
                 }`}
               >
                 <div className="relative shrink-0">
-                  <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] border border-[var(--accent)]/30 text-[var(--accent)] flex items-center justify-center font-bold text-[10px]">
-                    {initials}
-                  </div>
+                  {p.foto ? (
+                    <img
+                      src={p.foto}
+                      alt={p.nome}
+                      className="w-8 h-8 rounded-full object-cover border border-[var(--accent)]/30 shrink-0 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] border border-[var(--accent)]/30 text-[var(--accent)] flex items-center justify-center font-bold text-[10px]">
+                      {initials}
+                    </div>
+                  )}
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-[var(--sidebar-bg)] shadow-sm animate-pulse">
                       {unreadCount > 9 ? '9+' : unreadCount}
@@ -658,9 +666,22 @@ export const ChatPage: React.FC = () => {
           <div className="flex-1 h-full flex flex-col min-h-0 overflow-hidden">
             {/* Chat Header */}
             <div className="p-4 border-b border-[var(--border)] bg-[var(--header-bg)] flex justify-between items-center shrink-0">
-              <div>
-                <h4 className="font-bold text-[var(--text-primary)] text-sm">{selectedPac.nome}</h4>
-                <p className="text-[9px] text-[var(--text-secondary)] mt-0.5">CPF: <span className="font-mono">{selectedPac.cpf || '—'}</span> | Plano: {selectedPac.plano}</p>
+              <div className="flex items-center gap-3">
+                {selectedPac.foto ? (
+                  <img
+                    src={selectedPac.foto}
+                    alt={selectedPac.nome}
+                    className="w-9 h-9 rounded-full object-cover border border-[var(--accent)]/40 shadow-sm shrink-0"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-[var(--accent-soft)] border border-[var(--accent)]/30 text-[var(--accent)] flex items-center justify-center font-bold text-xs shrink-0">
+                    {selectedPac.nome.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h4 className="font-bold text-[var(--text-primary)] text-sm">{selectedPac.nome}</h4>
+                  <p className="text-[9px] text-[var(--text-secondary)] mt-0.5">CPF: <span className="font-mono">{selectedPac.cpf || '—'}</span> | Plano: {selectedPac.plano}</p>
+                </div>
               </div>
               <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] border border-[var(--border)] px-3 py-1 rounded-full shadow-sm">
                 <span className={`w-2.5 h-2.5 rounded-full ${

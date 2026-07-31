@@ -8,7 +8,7 @@ interface AtendimentoProps {
 }
 
 export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
-  const { agendamentos, profissionais, statusAgendamentos, getStatusColor, logStatusChange, refreshAll } = useApp();
+  const { pacientes, agendamentos, profissionais, statusAgendamentos, getStatusColor, logStatusChange, refreshAll } = useApp();
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedProfId, setSelectedProfId] = useState<number | 'all'>('all');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
@@ -189,6 +189,9 @@ export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
               ) : (
                 dailyAppts.map((appt) => {
                   const prof = profissionais.find(p => p.id === appt.profId);
+                  const pacObj = appt.pacId 
+                    ? pacientes.find(p => p.id === appt.pacId) 
+                    : pacientes.find(p => p.nome.toLowerCase().trim() === appt.paciente.toLowerCase().trim());
                   const patientInitials = getInitials(appt.paciente);
                   const isUpdating = updatingId === appt.id;
 
@@ -207,9 +210,17 @@ export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
                       {/* Paciente */}
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-[10px] shrink-0 shadow-sm ${getAvatarBg(patientInitials)}`}>
-                            {patientInitials}
-                          </div>
+                          {pacObj?.foto ? (
+                            <img
+                              src={pacObj.foto}
+                              alt={appt.paciente}
+                              className="w-7 h-7 rounded-lg object-cover border border-white/10 shrink-0 shadow-sm"
+                            />
+                          ) : (
+                            <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-[10px] shrink-0 shadow-sm ${getAvatarBg(patientInitials)}`}>
+                              {patientInitials}
+                            </div>
+                          )}
                           <span className="font-semibold text-slate-200 text-xs truncate max-w-[200px]" title={appt.paciente}>
                             {appt.paciente}
                           </span>

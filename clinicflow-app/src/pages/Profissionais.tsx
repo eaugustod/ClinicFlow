@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark } from 'lucide-react';
+import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark, Camera } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Profissional } from '../types';
 import { supabase } from '../services/supabase';
@@ -24,6 +24,7 @@ export const Profissionais: React.FC = () => {
   const [email, setEmail] = useState('');
   const [cor, setCor] = useState('#4f8ef7');
   const [status, setStatus] = useState('Ativo');
+  const [foto, setFoto] = useState('');
   
   // Form State - Financeiro / Valores & Pagamento
   const [valor30, setValor30] = useState<number>(0);
@@ -40,6 +41,17 @@ export const Profissionais: React.FC = () => {
   const [conta, setConta] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
+
+  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const filteredProfissionais = profissionais.filter(p =>
     p.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -60,6 +72,7 @@ export const Profissionais: React.FC = () => {
     setEmail('');
     setCor('#4f8ef7');
     setStatus('Ativo');
+    setFoto('');
     
     // Reset financial
     setValor30(0);
@@ -91,6 +104,7 @@ export const Profissionais: React.FC = () => {
     setEmail(p.email);
     setCor(p.cor || '#4f8ef7');
     setStatus(p.status || 'Ativo');
+    setFoto(p.foto || '');
     
     // Set financial
     setValor30(p.valor30 || 0);
@@ -124,6 +138,7 @@ export const Profissionais: React.FC = () => {
       email,
       cor,
       status,
+      foto,
       valor30,
       valor60,
       valorAval,
@@ -204,10 +219,20 @@ export const Profissionais: React.FC = () => {
             <div>
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-4 h-4 rounded-full border border-white/10"
-                    style={{ backgroundColor: p.cor }}
-                  />
+                  {p.foto ? (
+                    <img
+                      src={p.foto}
+                      alt={p.nome}
+                      className="w-10 h-10 rounded-full object-cover border border-white/20 shadow-md shrink-0"
+                    />
+                  ) : (
+                    <div
+                      className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-sm"
+                      style={{ backgroundColor: p.cor || '#4f8ef7' }}
+                    >
+                      {p.nome.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <h3 className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors text-xs">
                       {p.nome}
@@ -326,6 +351,34 @@ export const Profissionais: React.FC = () => {
                 /* TAB 1: CADASTRO */
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Foto do Profissional */}
+                    <div className="md:col-span-2 space-y-2 bg-[#161a26]/50 p-3 rounded-xl border border-white/[0.06]">
+                      <label className="block text-slate-400 font-semibold text-xs">Foto do Profissional</label>
+                      <div className="flex items-center gap-4">
+                        {foto ? (
+                          <img src={foto} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500 shadow-md shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-[#1c2234] border border-white/10 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
+                            Sem Foto
+                          </div>
+                        )}
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            placeholder="URL da foto ou escolha um arquivo..."
+                            value={foto}
+                            onChange={(e) => setFoto(e.target.value)}
+                            className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                          />
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all">
+                            <Camera size={12} />
+                            <span>Escolher Foto do Computador</span>
+                            <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="md:col-span-2">
                       <label className="block text-slate-400 font-semibold mb-1">Nome Completo</label>
                       <input
