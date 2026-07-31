@@ -140,7 +140,9 @@ export const mappers = {
     status: p.status || 'Ativo',
     juntar_guia: p.juntarGuia !== false,
     nome_plano_guia: p.nomePlanoGuia || null,
-    logo: p.logo || null
+    logo: p.logo || p.foto || null,
+    foto: p.logo || p.foto || null,
+    foto_url: p.logo || p.foto || null
   }),
   dbToPlano: (r: any): PlanoSaude => ({
     id: r.id,
@@ -164,7 +166,8 @@ export const mappers = {
     pacientes: r.pacientes || 0,
     juntarGuia: r.juntar_guia !== false,
     nomePlanoGuia: r.nome_plano_guia || '',
-    logo: r.logo || ''
+    logo: r.logo || r.foto || r.foto_url || '',
+    foto: r.foto || r.logo || r.foto_url || ''
   }),
 
   procToDb: (p: Partial<Procedimento>) => ({

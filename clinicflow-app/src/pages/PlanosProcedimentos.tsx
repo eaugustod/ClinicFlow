@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, HeartHandshake, DollarSign, Plus, Edit3, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, HeartHandshake, DollarSign, Plus, Edit3, CheckCircle2, AlertCircle, Camera } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PlanoSaude, Procedimento } from '../types';
 import { supabase } from '../services/supabase';
@@ -36,6 +36,17 @@ export const PlanosProcedimentos: React.FC = () => {
   const [planoEmail, setPlanoEmail] = useState('');
   const [planoObs, setPlanoObs] = useState('');
   const [planoSubmitting, setPlanoSubmitting] = useState(false);
+
+  const handlePlanoLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPlanoLogo(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Procedimento Form state
   const [procCodigo, setProcCodigo] = useState('');
@@ -103,7 +114,7 @@ export const PlanosProcedimentos: React.FC = () => {
     setPlanoNomeContratado(p.nomeContratado || '');
     setPlanoNumGuiaInicial(p.numGuiaInicial);
     setPlanoNomePlanoGuia(p.nomePlanoGuia || '');
-    setPlanoLogo(p.logo || '');
+    setPlanoLogo(p.logo || p.foto || (p as any).foto_url || '');
     setPlanoTel(p.tel || '');
     setPlanoEmail(p.email || '');
     setPlanoObs(p.obs || '');
@@ -327,9 +338,27 @@ export const PlanosProcedimentos: React.FC = () => {
             >
               <div>
                 <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors text-xs">
-                    {pl.nome}
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    {(pl.logo || pl.foto) ? (
+                      <img
+                        src={pl.logo || pl.foto}
+                        alt={pl.nome}
+                        className="w-10 h-10 rounded-xl object-contain bg-white/5 p-1 border border-white/10 shrink-0 shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                        {pl.nome.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors text-xs">
+                        {pl.nome}
+                      </h3>
+                      <p className="text-[10px] text-slate-400 font-semibold tracking-wide mt-0.5">
+                        ANS: <span className="font-mono text-slate-300">{pl.ans || '—'}</span>
+                      </p>
+                    </div>
+                  </div>
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
                     pl.status === 'Ativo'
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/15'
@@ -431,6 +460,46 @@ export const PlanosProcedimentos: React.FC = () => {
               {/* DADOS BÁSICOS */}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Logomarca / Foto do Plano */}
+                  <div className="md:col-span-2 space-y-2 bg-[#161a26]/50 p-3 rounded-xl border border-white/[0.06]">
+                    <label className="block text-slate-400 font-semibold text-xs">Logomarca / Foto do Plano de Saúde</label>
+                    <div className="flex items-center gap-4">
+                      {planoLogo ? (
+                        <img src={planoLogo} alt="Preview" className="w-12 h-12 rounded-xl object-contain bg-white/5 p-1 border-2 border-indigo-500 shadow-md shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-[#1c2234] border border-white/10 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
+                          Sem Logo
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-slate-400">Cole a URL da logomarca ou selecione um arquivo do computador</span>
+                          {planoLogo && (
+                            <button
+                              type="button"
+                              onClick={() => setPlanoLogo('')}
+                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer"
+                            >
+                              Remover Logo
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="URL da logomarca ou escolha um arquivo..."
+                          value={planoLogo}
+                          onChange={(e) => setPlanoLogo(e.target.value)}
+                          className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                        />
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all">
+                          <Camera size={12} />
+                          <span>Escolher Logomarca do Computador</span>
+                          <input type="file" accept="image/*" onChange={handlePlanoLogoChange} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">Nome do Plano</label>
                     <input

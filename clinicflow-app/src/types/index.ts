@@ -74,6 +74,7 @@ export interface PlanoSaude {
   juntarGuia: boolean;
   nomePlanoGuia?: string;
   logo?: string;
+  foto?: string;
 }
 
 export interface Procedimento {
