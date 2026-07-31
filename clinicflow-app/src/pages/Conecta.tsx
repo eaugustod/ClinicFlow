@@ -921,6 +921,14 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
                     <div className="flex items-center gap-3">
                       <span className="text-[10px] text-slate-500 font-bold">👥 Cap. {sala.capacidade}</span>
                       <button
+                        onClick={() => handleOpenSalaEdit(sala)}
+                        className="px-2 py-1 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white rounded-lg text-[9px] font-bold flex items-center gap-1 transition-all"
+                        title="Editar cadastro desta sala"
+                      >
+                        <Edit size={10} />
+                        Editar
+                      </button>
+                      <button
                         onClick={() => handleOpenReservaAdd(sala.id)}
                         className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-lg text-[9px]"
                       >
@@ -1272,84 +1280,160 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
       {/* ── MODAL: GERENCIAR SALAS ── */}
       {isSalaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-fade-in text-xs">
+          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-fade-in text-xs max-h-[90vh]">
             <div className="p-5 border-b border-white/[0.04] bg-[#131622]/40 flex justify-between items-center">
               <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">{editSalaId ? 'Editar Sala' : 'Adicionar Nova Sala'}</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Preencha os dados cadastrais da sala</p>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Building2 size={16} className="text-indigo-400" />
+                  Gerenciar Cadastro de Salas
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Cadastre, edite ou altere as salas de atendimento do Espaço Conecta</p>
               </div>
               <button onClick={() => setIsSalaModalOpen(false)} className="text-slate-400 hover:text-white text-base">&times;</button>
             </div>
 
-            <form onSubmit={handleSalaSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Nome da Sala *</label>
-                <input
-                  type="text"
-                  required
-                  value={salaNome}
-                  onChange={(e) => setSalaNome(e.target.value)}
-                  placeholder="Ex: Sala 1, Sala de Fono..."
-                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
-                />
+            <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 overflow-y-auto scrollbar-thin">
+              {/* LISTA DE SALAS CADASTRADAS (ESQUERDA - 6 COLS) */}
+              <div className="md:col-span-6 space-y-3 border-b md:border-b-0 md:border-r border-white/[0.06] pb-4 md:pb-0 md:pr-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider">Salas Cadastradas ({salas.length})</h4>
+                  <button
+                    onClick={handleOpenSalaAdd}
+                    className="text-[10px] font-bold text-indigo-400 hover:underline flex items-center gap-1"
+                  >
+                    <Plus size={10} /> Nova Sala
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {salas.length === 0 ? (
+                    <p className="text-slate-500 text-[11px] py-4 text-center">Nenhuma sala cadastrada ainda.</p>
+                  ) : (
+                    salas.map((s) => (
+                      <div
+                        key={s.id}
+                        className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                          editSalaId === s.id
+                            ? 'bg-indigo-500/10 border-indigo-500/50 shadow-md'
+                            : 'bg-[#141824] border-white/5 hover:border-white/10'
+                        }`}
+                      >
+                        <div className="space-y-0.5 pr-2">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase inline-block ${getSalaColorClass(s.cor)}`}>
+                            🚪 {s.nome}
+                          </span>
+                          <p className="text-[10px] text-slate-400 truncate max-w-[160px]">{s.descricao || 'Sem descrição'}</p>
+                          <span className="text-[9px] text-slate-500 block">Capacidade: {s.capacidade} pessoas</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenSalaEdit(s)}
+                            className="p-1.5 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 rounded-lg transition-all"
+                            title="Editar esta sala"
+                          >
+                            <Edit size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleSalaDelete(s.id)}
+                            className="p-1.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-all"
+                            title="Excluir esta sala"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* FORMULÁRIO DE EDIÇÃO / ADIÇÃO (DIREITA - 6 COLS) */}
+              <form onSubmit={handleSalaSubmit} className="md:col-span-6 space-y-4">
+                <div className="flex justify-between items-center pb-1 border-b border-white/[0.04]">
+                  <h4 className="font-bold text-white text-xs">
+                    {editSalaId ? '✏️ Alterar Sala Selecionada' : '➕ Cadastrar Nova Sala'}
+                  </h4>
+                  {editSalaId && (
+                    <button
+                      type="button"
+                      onClick={handleOpenSalaAdd}
+                      className="text-[9px] font-bold text-slate-400 hover:text-white"
+                    >
+                      Cancelar Edição
+                    </button>
+                  )}
+                </div>
+
                 <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Capacidade (Pessoas)</label>
+                  <label className="block text-slate-400 font-semibold mb-1">Nome da Sala *</label>
                   <input
-                    type="number"
-                    min={1}
-                    value={salaCap}
-                    onChange={(e) => setSalaCap(Number(e.target.value))}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white font-mono"
+                    type="text"
+                    required
+                    value={salaNome}
+                    onChange={(e) => setSalaNome(e.target.value)}
+                    placeholder="Ex: Sala 1, Sala Atendimento..."
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Identificação / Cor</label>
-                  <select
-                    value={salaCor}
-                    onChange={(e) => setSalaCor(e.target.value)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
-                  >
-                    <option value="sala1">Azul</option>
-                    <option value="sala2">Roxo</option>
-                    <option value="sala3">Verde</option>
-                    <option value="sala4">Amarelo</option>
-                    <option value="sala5">Vermelho</option>
-                    <option value="sala6">Ciano</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Capacidade</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={salaCap}
+                      onChange={(e) => setSalaCap(Number(e.target.value))}
+                      className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Identificação / Cor</label>
+                    <select
+                      value={salaCor}
+                      onChange={(e) => setSalaCor(e.target.value)}
+                      className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
+                    >
+                      <option value="sala1">Azul</option>
+                      <option value="sala2">Roxo</option>
+                      <option value="sala3">Verde</option>
+                      <option value="sala4">Amarelo</option>
+                      <option value="sala5">Vermelho</option>
+                      <option value="sala6">Ciano</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Descrição</label>
-                <input
-                  type="text"
-                  value={salaDesc}
-                  onChange={(e) => setSalaDesc(e.target.value)}
-                  placeholder="Ex: Sala individual com ar-condicionado e divã..."
-                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Descrição</label>
+                  <textarea
+                    rows={3}
+                    value={salaDesc}
+                    onChange={(e) => setSalaDesc(e.target.value)}
+                    placeholder="Ex: Sala individual com divã, poltronas e ar-condicionado..."
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none text-xs"
+                  />
+                </div>
 
-              <div className="pt-4 border-t border-white/[0.04] flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsSalaModalOpen(false)}
-                  className="px-4 py-2 border border-white/[0.06] rounded-xl text-slate-300 font-bold hover:bg-white/5 transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg"
-                >
-                  Salvar Sala
-                </button>
-              </div>
-            </form>
+                <div className="pt-3 border-t border-white/[0.04] flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsSalaModalOpen(false)}
+                    className="px-4 py-2 border border-white/[0.06] rounded-xl text-slate-300 font-bold hover:bg-white/5 transition-all"
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg"
+                  >
+                    {editSalaId ? 'Salvar Alterações' : 'Cadastrar Sala'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
