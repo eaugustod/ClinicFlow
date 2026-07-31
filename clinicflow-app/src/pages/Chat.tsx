@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Clock, User, Calendar, Bell, ChevronRight, MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Send, Clock, User, Calendar, Bell, ChevronRight, MessageSquare, AlertCircle, CheckCircle, Filter, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
 import { Paciente, Agendamento } from '../types';
@@ -15,7 +15,9 @@ interface Mensagem {
 
 export const ChatPage: React.FC = () => {
   const { pacientes, agendamentos, profissionais } = useApp();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [unreadMap, setUnreadMap] = useState<Record<number, number>>({});
   const [selectedPac, setSelectedPac] = useState<Paciente | null>(null);
   
   // Chat States
@@ -33,6 +35,71 @@ export const ChatPage: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Fetch unread messages count per patient
+  const fetchUnreadCounts = async () => {
+    try {
+      const { data: convs, error: convErr } = await supabase
+        .from('conversas')
+        .select('id, paciente_id');
+
+      if (convErr || !convs || convs.length === 0) {
+        setUnreadMap({});
+        return;
+      }
+
+      const convIds = convs.map(c => c.id);
+      const { data: unreadMsgs, error: msgsErr } = await supabase
+        .from('mensagens')
+        .select('conversa_id')
+        .in('conversa_id', convIds)
+        .eq('tipo_remetente', 'paciente')
+        .eq('lida', false);
+
+      if (msgsErr) return;
+
+      const convToPac: Record<number, number> = {};
+      convs.forEach(c => {
+        convToPac[c.id] = Number(c.paciente_id);
+      });
+
+      const counts: Record<number, number> = {};
+      if (unreadMsgs) {
+        unreadMsgs.forEach(m => {
+          const pId = convToPac[m.conversa_id];
+          if (pId) {
+            counts[pId] = (counts[pId] || 0) + 1;
+          }
+        });
+      }
+      setUnreadMap(counts);
+    } catch (err) {
+      console.error('[ClinicFlow Chat] Error fetching unread counts:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCounts();
+    const interval = setInterval(fetchUnreadCounts, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Clear active search if input is emptied
+  useEffect(() => {
+    if (searchInput.trim() === '') {
+      setSearchQuery('');
+    }
+  }, [searchInput]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchQuery(searchInput.trim());
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchQuery('');
+  };
+
   // Filter patients
   const todayStr = new Date().toISOString().split('T')[0];
   const getProxConsulta = (nome: string) => {
@@ -41,13 +108,26 @@ export const ChatPage: React.FC = () => {
     return pAppts[0] || null;
   };
 
+  const isSearching = searchQuery.trim().length > 0;
+
   const filteredPacientes = pacientes
-    .filter(p => p.status === 'Ativo' && p.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter(p => {
+      if (p.status !== 'Ativo') return false;
+      if (isSearching) {
+        return p.nome.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      } else {
+        // Ao abrir a tela sem busca ativa, exibir apenas quem tem mensagens não lidas
+        const unreadCount = unreadMap[Number(p.id)] || 0;
+        return unreadCount > 0;
+      }
+    })
     .map(p => ({
       ...p,
-      prox: getProxConsulta(p.nome)
+      prox: getProxConsulta(p.nome),
+      unreadCount: unreadMap[Number(p.id)] || 0
     }))
     .sort((a, b) => {
+      if (b.unreadCount !== a.unreadCount) return b.unreadCount - a.unreadCount;
       if (a.prox && !b.prox) return -1;
       if (!a.prox && b.prox) return 1;
       return a.nome.localeCompare(b.nome);
@@ -79,7 +159,15 @@ export const ChatPage: React.FC = () => {
         .eq('conversa_id', Number(cId))
         .eq('tipo_remetente', 'paciente')
         .eq('lida', false)
-        .then(() => {});
+        .then(() => {
+          if (selectedPac) {
+            setUnreadMap(prev => {
+              const next = { ...prev };
+              delete next[Number(selectedPac.id)];
+              return next;
+            });
+          }
+        });
 
     } catch (err) {
       console.error('[ClinicFlow Chat] Exception fetching msgs:', err);
@@ -382,58 +470,136 @@ export const ChatPage: React.FC = () => {
     <div className="flex h-[calc(100vh-140px)] min-h-0 bg-[var(--bg-surface)] backdrop-blur-xl border border-[var(--border)] rounded-2xl overflow-hidden shadow-2xl text-xs w-full">
       
       {/* ── LEFT COLUMN: PATIENT LIST ── */}
-      <div className="w-72 h-full border-r border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0 min-h-0 overflow-hidden">
-        <div className="p-4 border-b border-[var(--border)] shrink-0">
-          <h3 className="font-black text-sm tracking-wide text-[var(--text-primary)] mb-3 flex items-center gap-2">
-            <MessageSquare size={16} className="text-[var(--accent)]" />
-            Chat com Pacientes
-          </h3>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-3 text-[var(--text-muted)]" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar paciente ativo..."
-              className="w-full bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl pl-9 pr-4 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent)]"
-            />
+      <div className="w-80 h-full border-r border-[var(--border)] flex flex-col bg-[var(--sidebar-bg)] shrink-0 min-h-0 overflow-hidden">
+        <div className="p-3.5 border-b border-[var(--border)] shrink-0 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-black text-xs tracking-wide text-[var(--text-primary)] flex items-center gap-1.5 uppercase">
+              <MessageSquare size={15} className="text-[var(--accent)]" />
+              Chat com Pacientes
+            </h3>
+            {!isSearching && (
+              <span className="text-[9px] bg-rose-500/10 text-rose-500 border border-rose-500/20 px-2 py-0.5 rounded-full font-bold">
+                {Object.values(unreadMap).reduce((a, b) => a + b, 0)} não lida(s)
+              </span>
+            )}
           </div>
+
+          {/* Form de Busca com Botão 'Buscar' */}
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <Search size={13} className="absolute left-2.5 top-2.5 text-[var(--text-muted)]" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Nome do paciente..."
+                className="w-full bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl pl-8 pr-6 py-1.5 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--text-muted)]"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-2 top-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer text-xs font-bold"
+                  title="Limpar busca"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold rounded-xl text-xs flex items-center gap-1 shrink-0 transition-all cursor-pointer shadow-sm active:scale-95"
+              title="Buscar paciente por nome"
+            >
+              <Search size={12} />
+              <span>Buscar</span>
+            </button>
+          </form>
+
+          {/* Status do Filtro */}
+          {isSearching ? (
+            <div className="flex items-center justify-between bg-[var(--accent-soft)] text-[var(--accent)] px-2.5 py-1 rounded-lg text-[10px] font-bold">
+              <span className="truncate">Busca: "{searchQuery}"</span>
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] underline cursor-pointer ml-1 shrink-0"
+              >
+                Limpar
+              </button>
+            </div>
+          ) : (
+            <div className="text-[10px] text-[var(--text-muted)] font-medium flex items-center gap-1">
+              <Filter size={11} className="text-[var(--accent)]" />
+              <span>Exibindo <strong>apenas mensagens não lidas</strong></span>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)] scrollbar-thin">
           {filteredPacientes.map((p) => {
             const active = selectedPac?.id === p.id;
             const initials = p.nome.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+            const unreadCount = p.unreadCount;
+
             return (
               <button
                 key={p.id}
                 onClick={() => setSelectedPac(p)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-all cursor-pointer ${
                   active ? 'bg-[var(--accent-soft)] border-l-4 border-[var(--accent)]' : 'hover:bg-[var(--bg-raised)]/40'
                 }`}
               >
-                <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] border border-[var(--accent)]/30 text-[var(--accent)] flex items-center justify-center font-bold text-[10px] shrink-0">
-                  {initials}
+                <div className="relative shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] border border-[var(--accent)]/30 text-[var(--accent)] flex items-center justify-center font-bold text-[10px]">
+                    {initials}
+                  </div>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-[var(--sidebar-bg)] shadow-sm animate-pulse">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </div>
+
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[var(--text-primary)] truncate">{p.nome}</div>
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="font-bold text-[var(--text-primary)] truncate text-xs">{p.nome}</div>
+                    {unreadCount > 0 && (
+                      <span className="text-[8px] bg-rose-500/10 text-rose-500 border border-rose-500/20 px-1.5 py-0.5 rounded-full font-black uppercase shrink-0">
+                        Não lida
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[9px] text-[var(--text-muted)] truncate mt-0.5 font-semibold">
                     {p.prox 
                       ? `Próx: ${p.prox.dataISO.split('-').reverse().join('/')} ${p.prox.hora}` 
                       : 'Sem consulta agendada'}
                   </div>
                 </div>
-                {p.prox && (
-                  <span className="text-[8px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-1.5 py-0.5 rounded-full font-bold uppercase">
-                    Agendado
-                  </span>
-                )}
               </button>
             );
           })}
           {filteredPacientes.length === 0 && (
-            <div className="p-8 text-center text-[var(--text-muted)] font-semibold">
-              Nenhum paciente ativo encontrado.
+            <div className="p-6 text-center text-[var(--text-muted)] space-y-2">
+              <MessageSquare size={24} className="mx-auto opacity-30 text-[var(--accent)]" />
+              {isSearching ? (
+                <>
+                  <p className="font-bold text-[var(--text-primary)] text-xs">Nenhum paciente encontrado</p>
+                  <p className="text-[10px] leading-relaxed">Não encontramos pacientes ativos correspondentes a "{searchQuery}".</p>
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="mt-2 px-3 py-1 bg-[var(--bg-raised)] border border-[var(--border)] rounded-lg text-[10px] font-bold text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-all cursor-pointer"
+                  >
+                    Ver mensagens não lidas
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-[var(--text-primary)] text-xs">Sem mensagens não lidas</p>
+                  <p className="text-[10px] leading-relaxed">Todas as conversas estão lidas. Digite o nome no campo acima e clique em <strong>Buscar</strong> para localizar um paciente.</p>
+                </>
+              )}
             </div>
           )}
         </div>
