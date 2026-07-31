@@ -5,6 +5,31 @@ import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
 import { Usuario, PerfilAcesso } from '../types';
 
+const UserAvatar: React.FC<{ foto?: string; nome: string }> = ({ foto, nome }) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [foto]);
+
+  if (foto && foto.trim() !== '' && !hasError) {
+    return (
+      <img
+        src={foto}
+        alt={nome}
+        onError={() => setHasError(true)}
+        className="w-8 h-8 rounded-full object-cover border border-indigo-500/40 shadow-sm shrink-0"
+      />
+    );
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+      {nome ? nome[0].toUpperCase() : 'U'}
+    </div>
+  );
+};
+
 export const Usuarios: React.FC = () => {
   const { profissionais, refreshAll } = useApp();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -201,7 +226,7 @@ export const Usuarios: React.FC = () => {
 
       alert(editId ? 'Usuário atualizado com sucesso!' : 'Usuário cadastrado com sucesso!');
       setIsOpen(false);
-      loadData();
+      await loadData();
     } catch (err: any) {
       console.error(err);
       alert(`Erro ao salvar usuário: ${err.message}`);
@@ -330,16 +355,12 @@ export const Usuarios: React.FC = () => {
                 </tr>
               ) : filteredUsers.map((u) => {
                 const associatedProf = u.profId ? profissionais.find(p => p.id === u.profId) : null;
+                const userFoto = u.foto || (associatedProf ? associatedProf.foto : '') || '';
+
                 return (
                   <tr key={u.id} className="hover:bg-white/[0.01] transition-colors group">
                     <td className="p-4">
-                      {u.foto ? (
-                        <img src={u.foto} alt={u.nome} className="w-8 h-8 rounded-full object-cover border border-indigo-500/40 shadow-sm shrink-0" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs shrink-0">
-                          {u.nome[0]?.toUpperCase()}
-                        </div>
-                      )}
+                      <UserAvatar foto={userFoto} nome={u.nome} />
                     </td>
                     <td className="p-4 font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">{u.nome}</td>
                     <td className="p-4 text-slate-400">{u.email}</td>
