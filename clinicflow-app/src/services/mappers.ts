@@ -476,7 +476,6 @@ export const mappers = {
       perfil: u.perfil,
       status: u.status || 'Ativo',
       foto: u.foto || null,
-      foto_url: u.foto || null,
       prof_id: u.profId || null,
       perfil_id: u.perfilId || null,
       created_at: u.criadoEm || new Date().toISOString()
