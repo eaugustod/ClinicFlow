@@ -475,7 +475,6 @@ export const mappers = {
       data_nascimento: u.nasc || null,
       perfil: u.perfil,
       status: u.status || 'Ativo',
-      ativo: u.status === 'Ativo',
       foto: u.foto || null,
       prof_id: u.profId || null,
       perfil_id: u.perfilId || null,
@@ -485,7 +484,7 @@ export const mappers = {
     return res;
   },
   dbToUsuario: (r: any): Usuario => {
-    const s = r.status !== undefined && r.status !== null ? r.status : r.ativo;
+    const s = r.status;
     let statusVal: 'Ativo' | 'Inativo' = 'Ativo';
 
     if (
