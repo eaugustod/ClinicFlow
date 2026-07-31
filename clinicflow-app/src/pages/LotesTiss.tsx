@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { LoteTiss, GuiaSadt } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+import { financeiroFluxoCaixaService } from '../services/financeiroFluxoCaixaService';
 
 const TISS_CONSELHOS: { [key: string]: string } = {
   'CRESS': '01', 'COREN': '02', 'CRF': '03', 'CREFONO': '04', 'CREFITO': '05',
@@ -217,6 +218,25 @@ export const LotesTiss: React.FC = () => {
             .eq('id', g.id)
         )
       );
+
+      // 4. Auto-sync Lote to Contas a Receber if status is Enviado or Faturado
+      if (editingStatus === 'Enviado' || editingStatus === 'Faturado') {
+        try {
+          await financeiroFluxoCaixaService.salvarContaReceber({
+            id: `rec_lote_${editingLote.num}`,
+            pacienteNome: `Faturamento ${plano.nome}`,
+            descricao: `Faturamento Lote TISS #${editingLote.num} - ${plano.nome} (${selectedIds.length} guias)`,
+            valor: totalVal,
+            dataVencimento: new Date(Date.now() + 86400000 * 30).toISOString().substring(0, 10),
+            status: editingStatus === 'Faturado' ? 'Recebido' : 'Pendente',
+            formaPagamento: 'Convenio',
+            categoriaId: 'cat_rec_2',
+            categoriaNome: 'Faturamento Convênios (TISS)'
+          });
+        } catch (syncErr) {
+          console.warn('[Lotes TISS] Erro ao sincronizar Contas a Receber:', syncErr);
+        }
+      }
 
       setEditingLote(null);
       await refreshAll();

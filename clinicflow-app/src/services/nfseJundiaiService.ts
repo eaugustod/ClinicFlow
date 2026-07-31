@@ -142,7 +142,7 @@ export const nfseJundiaiService = {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped = data.map(mappers.dbToNf);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
         return mapped;
@@ -158,63 +158,7 @@ export const nfseJundiaiService = {
       } catch (_) {}
     }
 
-    const initialMocks: NotaFiscalJundiai[] = [
-      {
-        id: 'nf_1001',
-        numeroRps: 'RPS-2026-001',
-        numeroLote: 1001,
-        numeroNota: 'NFS-2026/0482',
-        codigoVerificacao: 'JUND-9821-X7',
-        dataEmissao: new Date(Date.now() - 86400000 * 2).toISOString(),
-        tomadorNome: 'Eduardo Augusto Donato',
-        tomadorCpfCnpj: '255.250.148-66',
-        tomadorEmail: 'eadonato@gmail.com',
-        tomadorEndereco: 'Rua do Retiro, 1200 - Anhangabaú, Jundiaí - SP',
-        servicoCodigo: '04.01',
-        descricaoServico: 'Prestação de Serviços de Psicologia Clínica e Acompanhamento Terapêutico referente ao mês de Julho/2026.',
-        valorServico: 350.00,
-        aliquotaIss: 2.0,
-        valorIss: 7.00,
-        aliquotaIbs: 0.10,
-        valorIbs: 0.35,
-        aliquotaCbs: 0.90,
-        valorCbs: 3.15,
-        reducaoBaseIbsCbs: 60,
-        cstIbsCbs: '01',
-        status: 'Aprovada',
-        pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-        ambiente: 'Homologação'
-      },
-      {
-        id: 'nf_1002',
-        numeroRps: 'RPS-2026-002',
-        numeroLote: 1002,
-        numeroNota: 'NFS-2026/0483',
-        codigoVerificacao: 'JUND-7412-B9',
-        dataEmissao: new Date(Date.now() - 86400000).toISOString(),
-        tomadorNome: 'Maria Cecilia Benessuti Donato',
-        tomadorCpfCnpj: '277.001.968-69',
-        tomadorEmail: 'mceciliadonato@gmail.com',
-        tomadorEndereco: 'Av. 9 de Julho, 2500 - Jundiaí - SP',
-        servicoCodigo: '04.01',
-        descricaoServico: 'Consulta e Atendimento de Fonoaudiologia Especializada.',
-        valorServico: 280.00,
-        aliquotaIss: 2.0,
-        valorIss: 5.60,
-        aliquotaIbs: 0.10,
-        valorIbs: 0.28,
-        aliquotaCbs: 0.90,
-        valorCbs: 2.52,
-        reducaoBaseIbsCbs: 60,
-        cstIbsCbs: '01',
-        status: 'Aprovada',
-        pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-        ambiente: 'Homologação'
-      }
-    ];
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialMocks));
-    return initialMocks;
+    return [];
   },
 
   emitirNota: async (payload: Omit<NotaFiscalJundiai, 'id' | 'numeroRps' | 'status' | 'valorIss'>): Promise<NotaFiscalJundiai> => {

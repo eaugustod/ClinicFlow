@@ -3,6 +3,7 @@ import { Calculator, DollarSign, Users, Award, Printer, Check, ShieldAlert, Arro
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+import { financeiroFluxoCaixaService } from '../services/financeiroFluxoCaixaService';
 import { PagamentoTerapeuta, FechamentoMensal } from '../types';
 
 interface FechamentoProps {
@@ -600,7 +601,30 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       }
 
       if (error) throw error;
-      alert(`Sucesso! Fechamento de ${selectedMonth} gravado no banco de dados!`);
+
+      // Automatically sync each professional's repasse to Contas a Pagar
+      try {
+        for (const tc of terapeutasCalculados) {
+          if (tc.totalValor > 0) {
+            await financeiroFluxoCaixaService.salvarContaPagar({
+              id: `pag_fech_${selectedMonth}_${tc.prof.id}`,
+              fornecedorNome: tc.prof.nome,
+              profId: tc.prof.id,
+              descricao: `Repasse Profissional (${formatMonthLabel(selectedMonth)}) - ${tc.totalSessoes} atendimentos`,
+              valor: tc.totalValor,
+              dataVencimento: new Date(Date.now() + 86400000 * 5).toISOString().substring(0, 10),
+              status: 'Pendente',
+              formaPagamento: 'PIX',
+              categoriaId: 'cat_desp_1',
+              categoriaNome: 'Repasse a Médicos e Psicólogos'
+            });
+          }
+        }
+      } catch (syncErr) {
+        console.warn('[Fechamento] Erro ao sincronizar contas a pagar:', syncErr);
+      }
+
+      alert(`Sucesso! Fechamento de ${selectedMonth} gravado no banco de dados e repasses adicionados em Contas a Pagar!`);
     } catch (e: any) {
       console.error('[Fechamento] Erro ao gravar fechamento mensal:', e);
       if (e?.status === 403 || e?.code === '42501' || String(e?.message).includes('403')) {

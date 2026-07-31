@@ -24,10 +24,12 @@ export const financeiroFluxoCaixaService = {
   listCategorias: async (): Promise<CategoriaFinanceira[]> => {
     try {
       const { data, error } = await supabase.from('categorias_financeiras').select('*').order('nome');
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped = data.map(mappers.dbToCategoria);
-        localStorage.setItem(STORAGE_KEY_CATEGORIAS, JSON.stringify(mapped));
-        return mapped;
+        if (mapped.length > 0) {
+          localStorage.setItem(STORAGE_KEY_CATEGORIAS, JSON.stringify(mapped));
+          return mapped;
+        }
       }
     } catch (_) {}
 
@@ -42,6 +44,38 @@ export const financeiroFluxoCaixaService = {
     return defaultCategorias;
   },
 
+  salvarCategoria: async (item: Partial<CategoriaFinanceira>): Promise<CategoriaFinanceira> => {
+    const isEdit = Boolean(item.id);
+    const id = item.id || `cat_${Date.now()}`;
+    const payload: CategoriaFinanceira = {
+      id,
+      nome: item.nome || 'Nova Categoria',
+      tipo: item.tipo || 'Despesa',
+      cor: item.cor || '#6366f1',
+      icone: item.icone || 'Tag'
+    };
+
+    try {
+      await supabase.from('categorias_financeiras').upsert(mappers.categoriaToDb(payload));
+    } catch (_) {}
+
+    const current = await financeiroFluxoCaixaService.listCategorias();
+    const updated = isEdit ? current.map(c => c.id === id ? payload : c) : [payload, ...current];
+    localStorage.setItem(STORAGE_KEY_CATEGORIAS, JSON.stringify(updated));
+    return payload;
+  },
+
+  excluirCategoria: async (id: string): Promise<boolean> => {
+    try {
+      await supabase.from('categorias_financeiras').delete().eq('id', id);
+    } catch (_) {}
+
+    const current = await financeiroFluxoCaixaService.listCategorias();
+    const updated = current.filter(c => c.id !== id);
+    localStorage.setItem(STORAGE_KEY_CATEGORIAS, JSON.stringify(updated));
+    return true;
+  },
+
   // --------------------------------------------------------------------------
   // CONTAS A RECEBER
   // --------------------------------------------------------------------------
@@ -52,7 +86,7 @@ export const financeiroFluxoCaixaService = {
         .select('*')
         .order('data_vencimento', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped = data.map(mappers.dbToContaReceber);
         localStorage.setItem(STORAGE_KEY_RECEBER, JSON.stringify(mapped));
         return mapped;
@@ -66,52 +100,7 @@ export const financeiroFluxoCaixaService = {
       } catch (_) {}
     }
 
-    const todayIso = new Date().toISOString().substring(0, 10);
-    const initialMocks: ContaReceber[] = [
-      {
-        id: 'rec_1001',
-        pacienteId: 1,
-        pacienteNome: 'Eduardo Augusto Donato',
-        descricao: 'Sessão de Psicologia Clínica & Acompanhamento Terapêutico',
-        valor: 350.00,
-        valorRecebido: 350.00,
-        dataVencimento: todayIso,
-        dataRecebimento: new Date().toISOString(),
-        status: 'Recebido',
-        formaPagamento: 'PIX',
-        categoriaId: 'cat_rec_1',
-        categoriaNome: 'Consultas Particulares'
-      },
-      {
-        id: 'rec_1002',
-        pacienteId: 2,
-        pacienteNome: 'Maria Cecilia Benessuti Donato',
-        descricao: 'Atendimento Especializado Fonoaudiologia',
-        valor: 280.00,
-        valorRecebido: 0,
-        dataVencimento: new Date(Date.now() + 86400000 * 3).toISOString().substring(0, 10),
-        status: 'Pendente',
-        formaPagamento: 'Cartao_Credito',
-        categoriaId: 'cat_rec_1',
-        categoriaNome: 'Consultas Particulares'
-      },
-      {
-        id: 'rec_1003',
-        pacienteId: 3,
-        pacienteNome: 'Juliana Paes de Oliveira',
-        descricao: 'Guia SADT Lote TISS #482 (Convênio Bradesco Saúde)',
-        valor: 1450.00,
-        valorRecebido: 0,
-        dataVencimento: new Date(Date.now() + 86400000 * 10).toISOString().substring(0, 10),
-        status: 'Pendente',
-        formaPagamento: 'Convenio',
-        categoriaId: 'cat_rec_2',
-        categoriaNome: 'Faturamento Convênios (TISS)'
-      }
-    ];
-
-    localStorage.setItem(STORAGE_KEY_RECEBER, JSON.stringify(initialMocks));
-    return initialMocks;
+    return [];
   },
 
   salvarContaReceber: async (item: Partial<ContaReceber>): Promise<ContaReceber> => {
@@ -141,6 +130,17 @@ export const financeiroFluxoCaixaService = {
     const updated = isEdit ? list.map(c => c.id === id ? payload : c) : [payload, ...list];
     localStorage.setItem(STORAGE_KEY_RECEBER, JSON.stringify(updated));
     return payload;
+  },
+
+  excluirContaReceber: async (id: string): Promise<boolean> => {
+    try {
+      await supabase.from('contas_receber').delete().eq('id', id);
+    } catch (_) {}
+
+    const list = await financeiroFluxoCaixaService.listContasReceber();
+    const updated = list.filter(c => c.id !== id);
+    localStorage.setItem(STORAGE_KEY_RECEBER, JSON.stringify(updated));
+    return true;
   },
 
   darBaixaReceber: async (id: string, valorRecebido?: number): Promise<boolean> => {
@@ -175,7 +175,7 @@ export const financeiroFluxoCaixaService = {
         .select('*')
         .order('data_vencimento', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped = data.map(mappers.dbToContaPagar);
         localStorage.setItem(STORAGE_KEY_PAGAR, JSON.stringify(mapped));
         return mapped;
@@ -189,50 +189,7 @@ export const financeiroFluxoCaixaService = {
       } catch (_) {}
     }
 
-    const todayIso = new Date().toISOString().substring(0, 10);
-    const initialMocks: ContaPagar[] = [
-      {
-        id: 'pag_2001',
-        fornecedorNome: 'Imobiliária Jundiaí Centro',
-        descricao: 'Aluguel do Consultório Clínico - Julho/2026',
-        valor: 3200.00,
-        valorPago: 3200.00,
-        dataVencimento: todayIso,
-        dataPagamento: new Date().toISOString(),
-        status: 'Pago',
-        formaPagamento: 'PIX',
-        categoriaId: 'cat_desp_2',
-        categoriaNome: 'Aluguel e Condomínio'
-      },
-      {
-        id: 'pag_2002',
-        fornecedorNome: 'Dra. Patricia Lima (Psicóloga)',
-        profId: 101,
-        descricao: 'Repasse Profissional referente aos atendimentos de Julho/2026',
-        valor: 1850.00,
-        valorPago: 0,
-        dataVencimento: new Date(Date.now() + 86400000 * 5).toISOString().substring(0, 10),
-        status: 'Pendente',
-        formaPagamento: 'PIX',
-        categoriaId: 'cat_desp_1',
-        categoriaNome: 'Repasse a Médicos e Psicólogos'
-      },
-      {
-        id: 'pag_2003',
-        fornecedorNome: 'Dental & Med Jundiaí Ltda',
-        descricao: 'Insumos Médicos, Luvas e Material de Higienização',
-        valor: 480.00,
-        valorPago: 0,
-        dataVencimento: new Date(Date.now() + 86400000 * 2).toISOString().substring(0, 10),
-        status: 'Pendente',
-        formaPagamento: 'Boleto',
-        categoriaId: 'cat_desp_3',
-        categoriaNome: 'Insumos e Materiais Médicos'
-      }
-    ];
-
-    localStorage.setItem(STORAGE_KEY_PAGAR, JSON.stringify(initialMocks));
-    return initialMocks;
+    return [];
   },
 
   salvarContaPagar: async (item: Partial<ContaPagar>): Promise<ContaPagar> => {
@@ -262,6 +219,17 @@ export const financeiroFluxoCaixaService = {
     const updated = isEdit ? list.map(c => c.id === id ? payload : c) : [payload, ...list];
     localStorage.setItem(STORAGE_KEY_PAGAR, JSON.stringify(updated));
     return payload;
+  },
+
+  excluirContaPagar: async (id: string): Promise<boolean> => {
+    try {
+      await supabase.from('contas_pagar').delete().eq('id', id);
+    } catch (_) {}
+
+    const list = await financeiroFluxoCaixaService.listContasPagar();
+    const updated = list.filter(c => c.id !== id);
+    localStorage.setItem(STORAGE_KEY_PAGAR, JSON.stringify(updated));
+    return true;
   },
 
   darBaixaPagar: async (id: string, valorPago?: number): Promise<boolean> => {

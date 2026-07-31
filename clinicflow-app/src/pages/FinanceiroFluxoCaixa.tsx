@@ -22,7 +22,9 @@ import {
   RefreshCw,
   FileSpreadsheet,
   Download,
-  Check
+  Check,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ContaReceber, ContaPagar, CategoriaFinanceira, ResumoFluxoCaixa } from '../types';
@@ -53,7 +55,14 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
 
   // Modal States
   const [isReceberModalOpen, setIsReceberModalOpen] = useState(false);
+  const [editingReceberId, setEditingReceberId] = useState<string | null>(null);
+
   const [isPagarModalOpen, setIsPagarModalOpen] = useState(false);
+  const [editingPagarId, setEditingPagarId] = useState<string | null>(null);
+
+  const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
+  const [editingCategoriaId, setEditingCategoriaId] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
 
   // Form States - Conta a Receber
@@ -73,6 +82,11 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
   const [pagVencimento, setPagVencimento] = useState(new Date().toISOString().substring(0, 10));
   const [pagFormaPag, setPagFormaPag] = useState<'PIX' | 'Transferencia' | 'Boleto' | 'Cartao' | 'Dinheiro'>('PIX');
   const [pagCategoriaId, setPagCategoriaId] = useState('cat_desp_1');
+
+  // Form States - Categoria
+  const [catNome, setCatNome] = useState('');
+  const [catTipo, setCatTipo] = useState<'Receita' | 'Despesa'>('Despesa');
+  const [catCor, setCatCor] = useState('#6366f1');
 
   useEffect(() => {
     loadAllData();
@@ -98,7 +112,27 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
     }
   };
 
-  const handleCreateReceber = async (e: React.FormEvent) => {
+  // --------------------------------------------------------------------------
+  // HANDLERS CONTAS A RECEBER
+  // --------------------------------------------------------------------------
+  const handleOpenNewReceber = () => {
+    resetReceberForm();
+    setIsReceberModalOpen(true);
+  };
+
+  const handleOpenEditReceber = (item: ContaReceber) => {
+    setEditingReceberId(item.id);
+    setRecPacienteId(item.pacienteId || null);
+    setRecPacienteNome(item.pacienteNome);
+    setRecDescricao(item.descricao);
+    setRecValor(item.valor);
+    setRecVencimento(item.dataVencimento);
+    setRecFormaPag(item.formaPagamento);
+    setRecCategoriaId(item.categoriaId || 'cat_rec_1');
+    setIsReceberModalOpen(true);
+  };
+
+  const handleCreateOrUpdateReceber = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!recPacienteNome || !recDescricao || !recValor || Number(recValor) <= 0) {
       alert('Preencha os campos obrigatórios.');
@@ -109,6 +143,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
     try {
       const catObj = categorias.find(c => c.id === recCategoriaId);
       await financeiroFluxoCaixaService.salvarContaReceber({
+        id: editingReceberId || undefined,
         pacienteId: recPacienteId,
         pacienteNome: recPacienteNome,
         descricao: recDescricao,
@@ -120,18 +155,52 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
         categoriaNome: catObj?.nome || 'Consultas Particulares'
       });
 
-      alert('✅ Conta a Receber cadastrada com sucesso!');
+      alert(editingReceberId ? '✅ Conta a Receber atualizada com sucesso!' : '✅ Conta a Receber cadastrada com sucesso!');
       setIsReceberModalOpen(false);
       resetReceberForm();
       await loadAllData();
     } catch (err: any) {
-      alert(`Erro ao cadastrar: ${err.message}`);
+      alert(`Erro ao salvar: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCreatePagar = async (e: React.FormEvent) => {
+  const handleDeleteReceber = async (id: string) => {
+    if (confirm('Deseja realmente excluir este lançamento de receita?')) {
+      await financeiroFluxoCaixaService.excluirContaReceber(id);
+      await loadAllData();
+    }
+  };
+
+  const handleBaixaReceber = async (id: string) => {
+    if (confirm('Confirmar o recebimento desta conta?')) {
+      await financeiroFluxoCaixaService.darBaixaReceber(id);
+      await loadAllData();
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // HANDLERS CONTAS A PAGAR
+  // --------------------------------------------------------------------------
+  const handleOpenNewPagar = () => {
+    resetPagarForm();
+    setIsPagarModalOpen(true);
+  };
+
+  const handleOpenEditPagar = (item: ContaPagar) => {
+    setEditingPagarId(item.id);
+    setPagFornecedor(item.fornecedorNome);
+    setPagProfId(item.profId || null);
+    setPagDescricao(item.descricao);
+    setPagValor(item.valor);
+    setPagVencimento(item.dataVencimento);
+    setPagFormaPag(item.formaPagamento);
+    setPagCategoriaId(item.categoriaId || 'cat_desp_1');
+    setIsPagarModalOpen(true);
+  };
+
+  const handleCreateOrUpdatePagar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pagFornecedor || !pagDescricao || !pagValor || Number(pagValor) <= 0) {
       alert('Preencha os campos obrigatórios.');
@@ -142,6 +211,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
     try {
       const catObj = categorias.find(c => c.id === pagCategoriaId);
       await financeiroFluxoCaixaService.salvarContaPagar({
+        id: editingPagarId || undefined,
         fornecedorNome: pagFornecedor,
         profId: pagProfId,
         descricao: pagDescricao,
@@ -153,20 +223,20 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
         categoriaNome: catObj?.nome || 'Despesas Gerais'
       });
 
-      alert('✅ Conta a Pagar cadastrada com sucesso!');
+      alert(editingPagarId ? '✅ Conta a Pagar atualizada com sucesso!' : '✅ Conta a Pagar cadastrada com sucesso!');
       setIsPagarModalOpen(false);
       resetPagarForm();
       await loadAllData();
     } catch (err: any) {
-      alert(`Erro ao cadastrar despesa: ${err.message}`);
+      alert(`Erro ao salvar despesa: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleBaixaReceber = async (id: string) => {
-    if (confirm('Confirmar o recebimento desta conta?')) {
-      await financeiroFluxoCaixaService.darBaixaReceber(id);
+  const handleDeletePagar = async (id: string) => {
+    if (confirm('Deseja realmente excluir este lançamento de despesa?')) {
+      await financeiroFluxoCaixaService.excluirContaPagar(id);
       await loadAllData();
     }
   };
@@ -178,7 +248,60 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
     }
   };
 
+  // --------------------------------------------------------------------------
+  // HANDLERS CATEGORIAS
+  // --------------------------------------------------------------------------
+  const handleOpenNewCategoria = () => {
+    setEditingCategoriaId(null);
+    setCatNome('');
+    setCatTipo('Despesa');
+    setCatCor('#6366f1');
+    setIsCategoriaModalOpen(true);
+  };
+
+  const handleOpenEditCategoria = (cat: CategoriaFinanceira) => {
+    setEditingCategoriaId(cat.id);
+    setCatNome(cat.nome);
+    setCatTipo(cat.tipo);
+    setCatCor(cat.cor);
+    setIsCategoriaModalOpen(true);
+  };
+
+  const handleSaveCategoria = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catNome) {
+      alert('Informe o nome da categoria.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await financeiroFluxoCaixaService.salvarCategoria({
+        id: editingCategoriaId || undefined,
+        nome: catNome,
+        tipo: catTipo,
+        cor: catCor
+      });
+
+      alert(editingCategoriaId ? '✅ Categoria atualizada!' : '✅ Categoria cadastrada com sucesso!');
+      setIsCategoriaModalOpen(false);
+      await loadAllData();
+    } catch (err: any) {
+      alert(`Erro ao salvar categoria: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteCategoria = async (id: string) => {
+    if (confirm('Deseja realmente excluir esta categoria?')) {
+      await financeiroFluxoCaixaService.excluirCategoria(id);
+      await loadAllData();
+    }
+  };
+
   const resetReceberForm = () => {
+    setEditingReceberId(null);
     setRecPacienteId(null);
     setRecPacienteNome('');
     setRecDescricao('');
@@ -189,6 +312,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
   };
 
   const resetPagarForm = () => {
+    setEditingPagarId(null);
     setPagFornecedor('');
     setPagProfId(null);
     setPagDescricao('');
@@ -237,7 +361,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
         {/* HEADER ACTIONS */}
         <div className="flex flex-wrap items-center gap-2 relative z-10">
           <button
-            onClick={() => setIsReceberModalOpen(true)}
+            onClick={handleOpenNewReceber}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all text-xs active:scale-95"
           >
             <Plus size={16} />
@@ -245,7 +369,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
           </button>
           
           <button
-            onClick={() => setIsPagarModalOpen(true)}
+            onClick={handleOpenNewPagar}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg shadow-rose-500/20 transition-all text-xs active:scale-95"
           >
             <Plus size={16} />
@@ -379,7 +503,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
             }`}
           >
             <Tag size={14} />
-            Categorias & DRE
+            Categorias & DRE ({categorias.length})
           </button>
         </div>
 
@@ -414,7 +538,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
       {/* TAB 1: VISÃO GERAL & FLUXO DE CAIXA */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* PROJEÇÃO FLUXO DE CAIXA (BAR CHART VISUALIZATION) */}
+          {/* PROJEÇÃO FLUXO DE CAIXA */}
           <div className="bg-[#121625]/80 border border-white/[0.08] p-6 rounded-2xl shadow-xl space-y-4">
             <div className="flex justify-between items-center">
               <div>
@@ -466,22 +590,26 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
                 <ArrowUpRight size={16} /> Próximos Recebimentos (Contas a Receber)
               </h4>
               <div className="space-y-2">
-                {contasReceber.slice(0, 4).map((rec) => (
-                  <div key={rec.id} className="p-3 bg-[#161a28] rounded-xl flex justify-between items-center border border-white/5">
-                    <div>
-                      <strong className="text-xs text-white block">{rec.pacienteNome}</strong>
-                      <span className="text-[10px] text-slate-400">{rec.descricao} • Venc: {rec.dataVencimento}</span>
+                {contasReceber.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-4 text-center">Nenhum lançamento a receber cadastrado.</p>
+                ) : (
+                  contasReceber.slice(0, 4).map((rec) => (
+                    <div key={rec.id} className="p-3 bg-[#161a28] rounded-xl flex justify-between items-center border border-white/5">
+                      <div>
+                        <strong className="text-xs text-white block">{rec.pacienteNome}</strong>
+                        <span className="text-[10px] text-slate-400">{rec.descricao} • Venc: {rec.dataVencimento}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-emerald-400 font-mono block">R$ {rec.valor.toFixed(2)}</span>
+                        {rec.status === 'Pendente' && (
+                          <button onClick={() => handleBaixaReceber(rec.id)} className="text-[9px] text-indigo-400 hover:underline">
+                            Dar Baixa
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-emerald-400 font-mono block">R$ {rec.valor.toFixed(2)}</span>
-                      {rec.status === 'Pendente' && (
-                        <button onClick={() => handleBaixaReceber(rec.id)} className="text-[9px] text-indigo-400 hover:underline">
-                          Dar Baixa
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -491,22 +619,26 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
                 <ArrowDownRight size={16} /> Próximos Pagamentos (Contas a Pagar)
               </h4>
               <div className="space-y-2">
-                {contasPagar.slice(0, 4).map((pag) => (
-                  <div key={pag.id} className="p-3 bg-[#161a28] rounded-xl flex justify-between items-center border border-white/5">
-                    <div>
-                      <strong className="text-xs text-white block">{pag.fornecedorNome}</strong>
-                      <span className="text-[10px] text-slate-400">{pag.descricao} • Venc: {pag.dataVencimento}</span>
+                {contasPagar.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-4 text-center">Nenhum lançamento a pagar cadastrado.</p>
+                ) : (
+                  contasPagar.slice(0, 4).map((pag) => (
+                    <div key={pag.id} className="p-3 bg-[#161a28] rounded-xl flex justify-between items-center border border-white/5">
+                      <div>
+                        <strong className="text-xs text-white block">{pag.fornecedorNome}</strong>
+                        <span className="text-[10px] text-slate-400">{pag.descricao} • Venc: {pag.dataVencimento}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-rose-400 font-mono block">R$ {pag.valor.toFixed(2)}</span>
+                        {pag.status === 'Pendente' && (
+                          <button onClick={() => handleBaixaPagar(pag.id)} className="text-[9px] text-indigo-400 hover:underline">
+                            Dar Baixa
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-rose-400 font-mono block">R$ {pag.valor.toFixed(2)}</span>
-                      {pag.status === 'Pendente' && (
-                        <button onClick={() => handleBaixaPagar(pag.id)} className="text-[9px] text-indigo-400 hover:underline">
-                          Dar Baixa
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -537,42 +669,65 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
-                {filteredReceber.map((item) => (
-                  <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="p-3.5 font-bold text-white">{item.pacienteNome}</td>
-                    <td className="p-3.5 text-slate-300">{item.descricao}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20 text-[10px]">
-                        {item.categoriaNome || 'Geral'}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-400">{item.dataVencimento}</td>
-                    <td className="p-3.5 text-right font-mono font-bold text-emerald-400">
-                      R$ {item.valor.toFixed(2)}
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
-                        item.status === 'Recebido'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : item.status === 'Atrasado'
-                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-center">
-                      {item.status === 'Pendente' && (
-                        <button
-                          onClick={() => handleBaixaReceber(item.id)}
-                          className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-bold transition-all"
-                        >
-                          Confirmar Recebimento
-                        </button>
-                      )}
+                {filteredReceber.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                      Nenhum lançamento a receber encontrado.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredReceber.map((item) => (
+                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="p-3.5 font-bold text-white">{item.pacienteNome}</td>
+                      <td className="p-3.5 text-slate-300">{item.descricao}</td>
+                      <td className="p-3.5">
+                        <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20 text-[10px]">
+                          {item.categoriaNome || 'Geral'}
+                        </span>
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-400">{item.dataVencimento}</td>
+                      <td className="p-3.5 text-right font-mono font-bold text-emerald-400">
+                        R$ {item.valor.toFixed(2)}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                          item.status === 'Recebido'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : item.status === 'Atrasado'
+                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-center flex items-center justify-center gap-1.5">
+                        {item.status === 'Pendente' && (
+                          <button
+                            onClick={() => handleBaixaReceber(item.id)}
+                            className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-bold transition-all"
+                            title="Dar baixa no recebimento"
+                          >
+                            Dar Baixa
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenEditReceber(item)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-400 transition-colors"
+                          title="Alterar lançamento"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteReceber(item.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                          title="Excluir receita"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -603,42 +758,65 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
-                {filteredPagar.map((item) => (
-                  <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="p-3.5 font-bold text-white">{item.fornecedorNome}</td>
-                    <td className="p-3.5 text-slate-300">{item.descricao}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded-md border border-rose-500/20 text-[10px]">
-                        {item.categoriaNome || 'Despesa'}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-400">{item.dataVencimento}</td>
-                    <td className="p-3.5 text-right font-mono font-bold text-rose-400">
-                      R$ {item.valor.toFixed(2)}
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
-                        item.status === 'Pago'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : item.status === 'Atrasado'
-                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-center">
-                      {item.status === 'Pendente' && (
-                        <button
-                          onClick={() => handleBaixaPagar(item.id)}
-                          className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-bold transition-all"
-                        >
-                          Confirmar Pagamento
-                        </button>
-                      )}
+                {filteredPagar.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                      Nenhum lançamento a pagar encontrado.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredPagar.map((item) => (
+                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="p-3.5 font-bold text-white">{item.fornecedorNome}</td>
+                      <td className="p-3.5 text-slate-300">{item.descricao}</td>
+                      <td className="p-3.5">
+                        <span className="px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded-md border border-rose-500/20 text-[10px]">
+                          {item.categoriaNome || 'Despesa'}
+                        </span>
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-400">{item.dataVencimento}</td>
+                      <td className="p-3.5 text-right font-mono font-bold text-rose-400">
+                        R$ {item.valor.toFixed(2)}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                          item.status === 'Pago'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : item.status === 'Atrasado'
+                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-center flex items-center justify-center gap-1.5">
+                        {item.status === 'Pendente' && (
+                          <button
+                            onClick={() => handleBaixaPagar(item.id)}
+                            className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-bold transition-all"
+                            title="Dar baixa no pagamento"
+                          >
+                            Dar Baixa
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenEditPagar(item)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-400 transition-colors"
+                          title="Alterar despesa"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePagar(item.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                          title="Excluir despesa"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -649,9 +827,18 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
       {activeTab === 'categorias' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-[#121625]/80 border border-white/[0.08] p-5 rounded-2xl space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Tag className="text-amber-400" size={16} /> Categorias de Receitas e Despesas
-            </h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Tag className="text-amber-400" size={16} /> Categorias de Receitas e Despesas
+              </h3>
+              <button
+                onClick={handleOpenNewCategoria}
+                className="px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+              >
+                <Plus size={14} /> Nova Categoria
+              </button>
+            </div>
+
             <div className="space-y-2">
               {categorias.map(cat => (
                 <div key={cat.id} className="p-3 bg-[#161a28] rounded-xl flex justify-between items-center border border-white/5">
@@ -659,11 +846,27 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
                     <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.cor }} />
                     <span className="text-xs text-white font-semibold">{cat.nome}</span>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    cat.tipo === 'Receita' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
-                  }`}>
-                    {cat.tipo}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      cat.tipo === 'Receita' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                    }`}>
+                      {cat.tipo}
+                    </span>
+                    <button
+                      onClick={() => handleOpenEditCategoria(cat)}
+                      className="p-1 text-slate-400 hover:text-indigo-400 transition-colors"
+                      title="Editar categoria"
+                    >
+                      <Edit3 size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategoria(cat.id)}
+                      className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
+                      title="Excluir categoria"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -696,18 +899,18 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: NOVA CONTA A RECEBER */}
+      {/* MODAL: CONTA A RECEBER (CRIAR / EDITAR) */}
       {isReceberModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0e111a] border border-white/10 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <TrendingUp className="text-emerald-400" size={18} /> Nova Conta a Receber
+                <TrendingUp className="text-emerald-400" size={18} /> {editingReceberId ? 'Alterar Conta a Receber' : 'Nova Conta a Receber'}
               </h3>
               <button onClick={() => setIsReceberModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <form onSubmit={handleCreateReceber} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateOrUpdateReceber} className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-400 font-semibold mb-1">Selecionar Paciente (Opcional)</label>
                 <select
@@ -833,18 +1036,18 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: NOVA CONTA A PAGAR */}
+      {/* MODAL: CONTA A PAGAR (CRIAR / EDITAR) */}
       {isPagarModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0e111a] border border-white/10 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <TrendingDown className="text-rose-400" size={18} /> Nova Conta a Pagar (Despesa)
+                <TrendingDown className="text-rose-400" size={18} /> {editingPagarId ? 'Alterar Conta a Pagar' : 'Nova Conta a Pagar (Despesa)'}
               </h3>
               <button onClick={() => setIsPagarModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <form onSubmit={handleCreatePagar} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateOrUpdatePagar} className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-400 font-semibold mb-1">Fornecedor / Favorecido *</label>
                 <input
@@ -939,6 +1142,76 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
                   className="px-6 py-2 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold rounded-xl text-xs shadow-lg"
                 >
                   {submitting ? 'Salvando...' : 'Salvar Despesa'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CATEGORIA (CRIAR / EDITAR) */}
+      {isCategoriaModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0e111a] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <Tag className="text-amber-400" size={18} /> {editingCategoriaId ? 'Editar Categoria' : 'Nova Categoria Financeira'}
+              </h3>
+              <button onClick={() => setIsCategoriaModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveCategoria} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Nome da Categoria *</label>
+                <input
+                  type="text"
+                  required
+                  value={catNome}
+                  onChange={(e) => setCatNome(e.target.value)}
+                  placeholder="Ex: Consultas Especializadas, Manutenção de Equipamentos"
+                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Tipo de Categoria *</label>
+                <select
+                  value={catTipo}
+                  onChange={(e) => setCatTipo(e.target.value as any)}
+                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white"
+                >
+                  <option value="Receita">Receita (+ Entradas)</option>
+                  <option value="Despesa">Despesa (- Saídas)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Cor do Indicador</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={catCor}
+                    onChange={(e) => setCatCor(e.target.value)}
+                    className="w-10 h-9 bg-transparent border-0 cursor-pointer rounded-lg"
+                  />
+                  <span className="font-mono text-slate-400">{catCor}</span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCategoriaModalOpen(false)}
+                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold rounded-xl text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold rounded-xl text-xs shadow-lg"
+                >
+                  {submitting ? 'Salvando...' : 'Salvar Categoria'}
                 </button>
               </div>
             </form>
