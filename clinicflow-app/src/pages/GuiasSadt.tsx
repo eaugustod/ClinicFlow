@@ -743,6 +743,21 @@ export const GuiasSadt: React.FC = () => {
     }
   };
 
+  const handleDeleteGuia = async (id: number | string, numGuia: string) => {
+    if (!confirm(`Deseja realmente excluir a Guia SADT Nº ${numGuia}?`)) return;
+
+    try {
+      const { error } = await supabase.from('guias_sadt').delete().eq('id', id);
+      if (error) throw error;
+
+      await refreshAll();
+      alert(`Guia SADT Nº ${numGuia} excluída com sucesso!`);
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro ao excluir guia SADT: ' + (err?.message || err));
+    }
+  };
+
   const handlePrint = (g: GuiaSadt) => {
     const plano = planos.find(p => p.id === g.planoId);
     const prof = profissionais.find(p => p.id === g.profId);
@@ -1070,6 +1085,7 @@ export const GuiasSadt: React.FC = () => {
                     <button
                       onClick={() => openEditModal(g)}
                       className="p-1.5 bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] rounded-lg text-slate-300 transition-all"
+                      title="Editar Guia"
                     >
                       <Edit3 size={11} />
                     </button>
@@ -1079,6 +1095,13 @@ export const GuiasSadt: React.FC = () => {
                       title="Imprimir Guia"
                     >
                       <Printer size={11} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGuia(g.id, g.num)}
+                      className="p-1.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg transition-all"
+                      title="Excluir Guia"
+                    >
+                      <Trash2 size={11} />
                     </button>
                   </td>
                 </tr>
@@ -1350,31 +1373,47 @@ export const GuiasSadt: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/[0.04] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-white/[0.06] rounded-xl text-slate-300 font-bold hover:bg-white/[0.02]"
-                >
-                  Cancelar
-                </button>
-                {editingGuia && (
+              <div className="pt-4 border-t border-white/[0.04] flex justify-between items-center">
+                {editingGuia ? (
                   <button
                     type="button"
-                    onClick={() => handlePrint(editingGuia)}
-                    className="px-4 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl text-white font-bold flex items-center gap-1.5"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      handleDeleteGuia(editingGuia.id, editingGuia.num);
+                    }}
+                    className="px-4 py-2 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
                   >
-                    <Printer size={13} />
-                    Imprimir
+                    <Trash2 size={13} />
+                    Excluir Guia
                   </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold transition-all disabled:opacity-50"
-                >
-                  {submitting ? 'Salvando...' : 'Salvar'}
-                </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 border border-white/[0.06] rounded-xl text-slate-300 font-bold hover:bg-white/[0.02]"
+                  >
+                    Cancelar
+                  </button>
+                  {editingGuia && (
+                    <button
+                      type="button"
+                      onClick={() => handlePrint(editingGuia)}
+                      className="px-4 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl text-white font-bold flex items-center gap-1.5"
+                    >
+                      <Printer size={13} />
+                      Imprimir
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold transition-all disabled:opacity-50"
+                  >
+                    {submitting ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
