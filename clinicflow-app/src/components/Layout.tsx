@@ -31,7 +31,8 @@ import {
   Sliders,
   MessageSquare,
   Upload,
-  ExternalLink
+  ExternalLink,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ThemeSelector } from './ThemeSelector';
@@ -76,6 +77,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
   ];
 
   const fechamentoItems = [
+    { id: 'financeiro-fluxo-caixa', label: 'Fluxo de Caixa & Contas', icon: Wallet },
     { id: 'analise-fechamento', label: 'Análise por Terapeuta', icon: UserCheck },
     { id: 'fechamento', label: 'Fechamento Mensal', icon: Calculator },
     { id: 'financeiro', label: 'Repasses / Pagamentos', icon: CreditCard },

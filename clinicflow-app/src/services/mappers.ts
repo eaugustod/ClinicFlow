@@ -723,6 +723,90 @@ export const mappers = {
     xmlResposta: r.xml_resposta || undefined,
     ambiente: r.ambiente || 'Homologação',
     created_at: r.created_at || ''
+  }),
+
+  // Financial Management Mappers
+  contaReceberToDb: (c: Partial<import('../types').ContaReceber>) => ({
+    id: c.id,
+    paciente_id: c.pacienteId || null,
+    paciente_nome: c.pacienteNome,
+    descricao: c.descricao,
+    valor: c.valor || 0,
+    valor_recebido: c.valorRecebido || 0,
+    data_vencimento: c.dataVencimento,
+    data_recebimento: c.dataRecebimento || null,
+    status: c.status || 'Pendente',
+    forma_pagamento: c.formaPagamento || 'PIX',
+    categoria_id: c.categoriaId || null,
+    categoria_nome: c.categoriaNome || null,
+    observacoes: c.observacoes || null,
+    nota_fiscal_id: c.notaFiscalId || null
+  }),
+  dbToContaReceber: (r: any): import('../types').ContaReceber => ({
+    id: String(r.id),
+    pacienteId: r.paciente_id || null,
+    pacienteNome: r.paciente_nome || 'Cliente Diversos',
+    descricao: r.descricao || '',
+    valor: Number(r.valor) || 0,
+    valorRecebido: Number(r.valor_recebido) || 0,
+    dataVencimento: r.data_vencimento || '',
+    dataRecebimento: r.data_recebimento || undefined,
+    status: r.status || 'Pendente',
+    formaPagamento: r.forma_pagamento || 'PIX',
+    categoriaId: r.categoria_id || undefined,
+    categoriaNome: r.categoria_nome || 'Geral',
+    observacoes: r.observacoes || undefined,
+    notaFiscalId: r.nota_fiscal_id || undefined,
+    created_at: r.created_at || ''
+  }),
+
+  contaPagarToDb: (c: Partial<import('../types').ContaPagar>) => ({
+    id: c.id,
+    fornecedor_nome: c.fornecedorNome,
+    prof_id: c.profId || null,
+    descricao: c.descricao,
+    valor: c.valor || 0,
+    valor_pago: c.valorPago || 0,
+    data_vencimento: c.dataVencimento,
+    data_pagamento: c.dataPagamento || null,
+    status: c.status || 'Pendente',
+    forma_pagamento: c.formaPagamento || 'PIX',
+    categoria_id: c.categoriaId || null,
+    categoria_nome: c.categoriaNome || null,
+    comprovante_url: c.comprovanteUrl || null,
+    observacoes: c.observacoes || null
+  }),
+  dbToContaPagar: (r: any): import('../types').ContaPagar => ({
+    id: String(r.id),
+    fornecedorNome: r.fornecedor_nome || 'Fornecedor Diversos',
+    profId: r.prof_id || null,
+    descricao: r.descricao || '',
+    valor: Number(r.valor) || 0,
+    valorPago: Number(r.valor_pago) || 0,
+    dataVencimento: r.data_vencimento || '',
+    dataPagamento: r.data_pagamento || undefined,
+    status: r.status || 'Pendente',
+    formaPagamento: r.forma_pagamento || 'PIX',
+    categoriaId: r.categoria_id || undefined,
+    categoriaNome: r.categoria_nome || 'Geral',
+    comprovanteUrl: r.comprovante_url || undefined,
+    observacoes: r.observacoes || undefined,
+    created_at: r.created_at || ''
+  }),
+
+  categoriaToDb: (cat: Partial<import('../types').CategoriaFinanceira>) => ({
+    id: cat.id,
+    nome: cat.nome,
+    tipo: cat.tipo || 'Despesa',
+    cor: cat.cor || '#6366f1',
+    icone: cat.icone || 'Tag'
+  }),
+  dbToCategoria: (r: any): import('../types').CategoriaFinanceira => ({
+    id: String(r.id),
+    nome: r.nome || '',
+    tipo: r.tipo || 'Despesa',
+    cor: r.cor || '#6366f1',
+    icone: r.icone || 'Tag'
   })
 };
 

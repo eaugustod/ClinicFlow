@@ -380,7 +380,7 @@ export interface ConfiguracaoFiscalJundiai {
   serieRps?: string;
   proximoNumeroRps?: number;
   proximoNumeroLote?: number;
-  regimeTributario?: '1' | '2' | '3' | '5' | '6'; // 1-Microempresa, 2-Estimativa, 3-Sociedade Profissionais, 5-MEI, 6-ME/EPP Simples Nacional
+  regimeTributario?: '1' | '2' | '3' | '5' | '6';
   certificadoNomeArquivo?: string;
   certificadoBase64?: string;
   certificadoSenha?: string;
@@ -390,6 +390,60 @@ export interface ConfiguracaoFiscalJundiai {
   reducaoSaudeIbsCbs?: number;
   tokenApi?: string;
   certificadoValidade?: string;
+}
+
+export interface CategoriaFinanceira {
+  id: string;
+  nome: string;
+  tipo: 'Receita' | 'Despesa';
+  cor: string;
+  icone?: string;
+}
+
+export interface ContaReceber {
+  id: string;
+  pacienteId?: number | null;
+  pacienteNome: string;
+  descricao: string;
+  valor: number;
+  valorRecebido?: number;
+  dataVencimento: string;
+  dataRecebimento?: string;
+  status: 'Pendente' | 'Recebido' | 'Atrasado' | 'Cancelado';
+  formaPagamento: 'PIX' | 'Cartao_Credito' | 'Cartao_Debito' | 'Boleto' | 'Dinheiro' | 'Convenio';
+  categoriaId?: string;
+  categoriaNome?: string;
+  observacoes?: string;
+  notaFiscalId?: string;
+  created_at?: string;
+}
+
+export interface ContaPagar {
+  id: string;
+  fornecedorNome: string;
+  profId?: number | null;
+  descricao: string;
+  valor: number;
+  valorPago?: number;
+  dataVencimento: string;
+  dataPagamento?: string;
+  status: 'Pendente' | 'Pago' | 'Atrasado' | 'Cancelado';
+  formaPagamento: 'PIX' | 'Transferencia' | 'Boleto' | 'Cartao' | 'Dinheiro';
+  categoriaId?: string;
+  categoriaNome?: string;
+  comprovanteUrl?: string;
+  observacoes?: string;
+  created_at?: string;
+}
+
+export interface ResumoFluxoCaixa {
+  saldoAtual: number;
+  totalReceberMes: number;
+  totalPagarMes: number;
+  resultadoLiquido: number;
+  taxaInadimplencia: number;
+  entradasRecebidas: number;
+  saidasPagas: number;
 }
 
 
