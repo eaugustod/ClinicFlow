@@ -24,7 +24,8 @@ import {
   Download,
   Check,
   Edit3,
-  Trash2
+  Trash2,
+  PieChart
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ContaReceber, ContaPagar, CategoriaFinanceira, ResumoFluxoCaixa } from '../types';
@@ -348,6 +349,61 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
   const entradasRealizadasPct = totalEntradas > 0 ? (resumo.entradasRecebidas / totalEntradas) * 100 : 0;
   const saidasPagasPct = totalSaidas > 0 ? (resumo.saidasPagas / totalSaidas) * 100 : 0;
 
+  // Category breakdown math for Donut Chart (Base 100% = Entradas Recebidas)
+  const totalEntradasRecebidas = resumo.entradasRecebidas;
+
+  const paidExpenses = contasPagar.filter(p => {
+    const isPaid = p.status === 'Pago';
+    const matchesMonth = selectedMonth === 'todos' || (p.dataPagamento && p.dataPagamento.startsWith(selectedMonth)) || (p.dataVencimento && p.dataVencimento.startsWith(selectedMonth));
+    return isPaid && matchesMonth;
+  });
+
+  const expensesByCategoryMap: { [catKey: string]: { nome: string; valorTotal: number; cor: string } } = {};
+
+  paidExpenses.forEach(p => {
+    const cat = categorias.find(c => c.id === p.categoriaId) || { nome: 'Outras Despesas', cor: '#64748b' };
+    const key = cat.nome || 'Outras Despesas';
+    if (!expensesByCategoryMap[key]) {
+      expensesByCategoryMap[key] = {
+        nome: cat.nome,
+        valorTotal: 0,
+        cor: cat.cor && cat.cor !== '#6366f1' ? cat.cor : '#64748b'
+      };
+    }
+    expensesByCategoryMap[key].valorTotal += (p.valorPago || p.valor);
+  });
+
+  const fallbackColors = ['#f43f5e', '#8b5cf6', '#f59e0b', '#3b82f6', '#ec4899', '#06b6d4', '#14b8a6', '#eab308'];
+
+  const categorySlices = Object.values(expensesByCategoryMap).map((cat, idx) => {
+    const pctOfIncome = totalEntradasRecebidas > 0 ? (cat.valorTotal / totalEntradasRecebidas) * 100 : 0;
+    return {
+      nome: cat.nome,
+      valor: cat.valorTotal,
+      pct: pctOfIncome,
+      cor: cat.cor && cat.cor !== '#64748b' ? cat.cor : fallbackColors[idx % fallbackColors.length]
+    };
+  }).sort((a, b) => b.valor - a.valor);
+
+  const totalDespesasPagas = categorySlices.reduce((acc, c) => acc + c.valor, 0);
+  const saldoRemanescente = Math.max(0, totalEntradasRecebidas - totalDespesasPagas);
+  const saldoRemanescentePct = totalEntradasRecebidas > 0 ? (saldoRemanescente / totalEntradasRecebidas) * 100 : 100;
+
+  const allDonutSlices = [
+    ...categorySlices,
+    ...(totalEntradasRecebidas > 0 && saldoRemanescente > 0 ? [{
+      nome: 'Saldo Remanescente (Em Caixa)',
+      valor: saldoRemanescente,
+      pct: saldoRemanescentePct,
+      cor: '#10b981' // Green
+    }] : totalEntradasRecebidas === 0 ? [{
+      nome: 'Sem Entradas no Período',
+      valor: 0,
+      pct: 100,
+      cor: '#334155'
+    }] : [])
+  ];
+
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen text-slate-100 font-sans">
       
@@ -670,6 +726,136 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-rose-500/30 border border-rose-500/50" /> Pendente A Pagar
                 </span>
+              </div>
+            </div>
+
+            {/* GRÁFICO ROSCA DE CONSUMO DAS ENTRADAS POR CATEGORIA */}
+            <div className="bg-[#121625]/80 border border-white/[0.08] p-6 rounded-2xl shadow-xl space-y-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <PieChart className="text-indigo-400" size={18} /> Consumo das Entradas por Categoria de Despesa
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Base 100% = Entradas Recebidas (R$ {totalEntradasRecebidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}). Veja o comprometimento de cada gasto e o saldo remanescente.
+                  </p>
+                </div>
+                <div className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-400 text-xs font-mono font-bold">
+                  Total Recebido: R$ {totalEntradasRecebidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                {/* SVG DONUT CHART (LEFT - 5 COLS) */}
+                <div className="lg:col-span-5 flex flex-col items-center justify-center relative py-2">
+                  <div className="relative w-64 h-64 flex items-center justify-center">
+                    <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
+                      {/* Background Track */}
+                      <circle
+                        cx="100"
+                        cy="100"
+                        r="70"
+                        fill="transparent"
+                        stroke="#1e293b"
+                        strokeWidth="24"
+                      />
+
+                      {/* Donut Slices */}
+                      {(() => {
+                        let offset = 0;
+                        const circum = 2 * Math.PI * 70; // 439.82
+                        return allDonutSlices.map((slice, i) => {
+                          const dash = (slice.pct / 100) * circum;
+                          const currentOffset = offset;
+                          offset += dash;
+                          return (
+                            <circle
+                              key={i}
+                              cx="100"
+                              cy="100"
+                              r="70"
+                              fill="transparent"
+                              stroke={slice.cor}
+                              strokeWidth="24"
+                              strokeDasharray={`${dash} ${circum - dash}`}
+                              strokeDashoffset={-currentOffset}
+                              className="transition-all duration-700 hover:opacity-80 cursor-pointer"
+                            >
+                              <title>{`${slice.nome}: R$ ${slice.valor.toFixed(2)} (${slice.pct.toFixed(1)}%)`}</title>
+                            </circle>
+                          );
+                        });
+                      })()}
+                    </svg>
+
+                    {/* Donut Inner Text */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                      <span className="text-2xl font-black text-emerald-400 font-mono tracking-tight">
+                        {saldoRemanescentePct.toFixed(1)}%
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                        Saldo Livre
+                      </span>
+                      <span className="text-xs font-bold text-white font-mono mt-1">
+                        R$ {saldoRemanescente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CATEGORY BREAKDOWN LEGEND (RIGHT - 7 COLS) */}
+                <div className="lg:col-span-7 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-white/5 pb-2">
+                    Detalhamento dos Gastos vs. Saldo Remanescente
+                  </h4>
+
+                  {/* SALDO REMANESCENTE ITEM (GREEN) */}
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-1.5">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-emerald-400 flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                        Saldo Remanescente (Em Caixa)
+                      </span>
+                      <span className="text-emerald-400 font-mono">
+                        R$ {saldoRemanescente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ({saldoRemanescentePct.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-900/60 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, saldoRemanescentePct)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* CATEGORY EXPENSES LIST */}
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {categorySlices.length === 0 ? (
+                      <p className="text-xs text-slate-500 py-3 text-center">Nenhuma despesa paga registrada neste período.</p>
+                    ) : (
+                      categorySlices.map((cat, idx) => (
+                        <div key={idx} className="p-2.5 bg-[#161a28] border border-white/5 rounded-xl space-y-1 hover:border-white/10 transition-all">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-200 font-semibold flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.cor }} />
+                              {cat.nome}
+                            </span>
+                            <div className="text-right font-mono">
+                              <span className="text-white font-bold">R$ {cat.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                              <span className="text-slate-400 text-[11px] ml-2">({cat.pct.toFixed(1)}% do recebido)</span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-slate-900/80 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min(100, cat.pct)}%`, backgroundColor: cat.cor }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
