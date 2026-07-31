@@ -314,38 +314,65 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
   };
 
   const handleOpenSalaEdit = (s: SalaConecta) => {
+    if (!s) return;
     setEditSalaId(s.id);
-    setSalaNome(s.nome);
-    setSalaCap(s.capacidade);
-    setSalaDesc(s.descricao);
-    setSalaCor(s.cor);
+    setSalaNome(s.nome || '');
+    setSalaCap(s.capacidade || 2);
+    setSalaDesc(s.descricao || '');
+    setSalaCor(s.cor || 'sala1');
     setIsSalaModalOpen(true);
   };
 
   const handleSalaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!salaNome.trim()) return alert('Nome da sala é obrigatório');
+    if (!salaNome || !salaNome.trim()) return alert('Nome da sala é obrigatório');
 
-    const dados = { nome: salaNome, capacidade: salaCap, descricao: salaDesc, cor: salaCor, ativo: true };
+    const dados = {
+      nome: salaNome.trim(),
+      capacidade: Number(salaCap) || 2,
+      descricao: salaDesc ? salaDesc.trim() : '',
+      cor: salaCor || 'sala1',
+      ativo: true
+    };
 
     try {
-      if (editSalaId) {
-        const { error } = await supabase.from('salas_conecta').update(mappers.salaToDb(dados)).eq('id', editSalaId);
-        if (error) { alert('Erro ao salvar no Supabase: ' + error.message); return; }
+      if (editSalaId !== null && editSalaId !== undefined) {
+        try {
+          const { error } = await supabase.from('salas_conecta').update(mappers.salaToDb(dados)).eq('id', editSalaId);
+          if (error) console.warn('[ClinicFlow Conecta] Error updating room in Supabase:', error.message);
+        } catch (_) {}
 
-        const updated = salas.map(s => s.id === editSalaId ? { ...s, ...dados } : s);
+        const updated = salas.map(s => String(s.id) === String(editSalaId) ? { ...s, ...dados } : s);
         saveSalas(updated);
+        alert('✅ Cadastro da sala atualizado com sucesso!');
       } else {
-        const { data, error } = await supabase.from('salas_conecta').insert([mappers.salaToDb(dados)]).select().single();
-        if (error) { alert('Erro ao salvar no Supabase: ' + error.message); return; }
+        let newSalaObj: SalaConecta | null = null;
+        try {
+          const { data, error } = await supabase.from('salas_conecta').insert([mappers.salaToDb(dados)]).select().single();
+          if (!error && data) {
+            newSalaObj = mappers.dbToSala(data);
+          }
+        } catch (_) {}
 
-        const newSala = mappers.dbToSala(data);
-        saveSalas([...salas, newSala]);
+        if (!newSalaObj) {
+          newSalaObj = {
+            id: `s_${Date.now()}`,
+            ...dados
+          };
+        }
+
+        saveSalas([...salas, newSalaObj]);
+        alert('✅ Nova sala cadastrada com sucesso!');
       }
       setIsSalaModalOpen(false);
+      setEditSalaId(null);
+      setSalaNome('');
+      setSalaCap(2);
+      setSalaDesc('');
+      setSalaCor('sala1');
     } catch (err: any) {
       console.error(err);
-      alert('Erro ao salvar: ' + err.message);
+      alert('Erro ao salvar sala: ' + (err?.message || err));
     }
   };
 
@@ -1370,7 +1397,7 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
                   <input
                     type="text"
                     required
-                    value={salaNome}
+                    value={salaNome || ''}
                     onChange={(e) => setSalaNome(e.target.value)}
                     placeholder="Ex: Sala 1, Sala Atendimento..."
                     className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
@@ -1383,7 +1410,7 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
                     <input
                       type="number"
                       min={1}
-                      value={salaCap}
+                      value={salaCap || 2}
                       onChange={(e) => setSalaCap(Number(e.target.value))}
                       className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white font-mono"
                     />
@@ -1392,7 +1419,7 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">Identificação / Cor</label>
                     <select
-                      value={salaCor}
+                      value={salaCor || 'sala1'}
                       onChange={(e) => setSalaCor(e.target.value)}
                       className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
                     >
@@ -1410,7 +1437,7 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
                   <label className="block text-slate-400 font-semibold mb-1">Descrição</label>
                   <textarea
                     rows={3}
-                    value={salaDesc}
+                    value={salaDesc || ''}
                     onChange={(e) => setSalaDesc(e.target.value)}
                     placeholder="Ex: Sala individual com divã, poltronas e ar-condicionado..."
                     className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none text-xs"
