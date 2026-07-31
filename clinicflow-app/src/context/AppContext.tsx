@@ -63,6 +63,45 @@ export const useApp = () => {
 
 const CACHE_KEY = 'cf_cache_v3';
 
+const safeSaveCache = (key: string, data: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e: any) {
+    if (e?.name === 'QuotaExceededError' || e?.code === 22 || e?.code === 1014) {
+      console.warn('[ClinicFlow Context] LocalStorage quota exceeded. Clearing legacy keys and caching core data.');
+      try {
+        const keysToKeep = [key, 'cf_auth_session', 'sb-supabase-auth-token'];
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && !keysToKeep.includes(k) && k.startsWith('cf_')) {
+            localStorage.removeItem(k);
+          }
+        }
+        const trimmedData = {
+          ...data,
+          agendamentos: Array.isArray(data.agendamentos) ? data.agendamentos.slice(0, 150) : [],
+          pacientes: Array.isArray(data.pacientes) ? data.pacientes.slice(0, 300) : []
+        };
+        localStorage.setItem(key, JSON.stringify(trimmedData));
+      } catch (_) {
+        try {
+          const minimalData = {
+            profissionais: data.profissionais || [],
+            planos: data.planos || [],
+            procedimentos: data.procedimentos || [],
+            clinica: data.clinica || {},
+            statusAgendamentos: data.statusAgendamentos || [],
+            ts: Date.now()
+          };
+          localStorage.setItem(key, JSON.stringify(minimalData));
+        } catch (_) {
+          console.warn('[ClinicFlow Context] Storage quota limit reached. Bypassing offline cache.');
+        }
+      }
+    }
+  }
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
@@ -204,8 +243,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setClinicaConfig(cfg.data[0].dados || {});
       }
 
-      // Save to Cache
-      localStorage.setItem(CACHE_KEY, JSON.stringify({
+      // Save to Cache (Safely handled to prevent QuotaExceededError)
+      safeSaveCache(CACHE_KEY, {
         profissionais: mappedProf,
         planos: mappedPlanos,
         procedimentos: mappedProcs,
@@ -214,7 +253,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clinica: cfg.data?.[0]?.dados || {},
         statusAgendamentos: mappedStatus,
         ts: Date.now()
-      }));
+      });
 
       // Non-blocking deferred loading for Phase 2 background loading
       setTimeout(loadBackgroundData, 1000);
