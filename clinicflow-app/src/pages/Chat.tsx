@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Send, Clock, User, Calendar, Bell, ChevronRight, MessageSquare, AlertCircle, CheckCircle, Filter, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
+import { mappers } from '../services/mappers';
 import { Paciente, Agendamento } from '../types';
 
 interface Mensagem {
@@ -17,6 +18,8 @@ export const ChatPage: React.FC = () => {
   const { pacientes, agendamentos, profissionais } = useApp();
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dbSearchResults, setDbSearchResults] = useState<Paciente[]>([]);
+  const [searchingDb, setSearchingDb] = useState(false);
   const [unreadMap, setUnreadMap] = useState<Record<number, number>>({});
   const [selectedPac, setSelectedPac] = useState<Paciente | null>(null);
   
@@ -83,10 +86,42 @@ export const ChatPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Search directly in Supabase when searchQuery is entered
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setDbSearchResults([]);
+      return;
+    }
+
+    const searchDb = async () => {
+      setSearchingDb(true);
+      try {
+        const clean = searchQuery.trim();
+        const { data, error } = await supabase
+          .from('pacientes')
+          .select('*')
+          .or(`nome.ilike.%${clean}%,cpf.like.%${clean}%,tel.like.%${clean}%`)
+          .limit(100);
+
+        if (!error && data) {
+          const mapped = data.map(mappers.dbToPac);
+          setDbSearchResults(mapped);
+        }
+      } catch (err) {
+        console.error('[ClinicFlow Chat] Error searching DB patients:', err);
+      } finally {
+        setSearchingDb(false);
+      }
+    };
+
+    searchDb();
+  }, [searchQuery]);
+
   // Clear active search if input is emptied
   useEffect(() => {
     if (searchInput.trim() === '') {
       setSearchQuery('');
+      setDbSearchResults([]);
     }
   }, [searchInput]);
 
@@ -98,6 +133,7 @@ export const ChatPage: React.FC = () => {
   const handleClearSearch = () => {
     setSearchInput('');
     setSearchQuery('');
+    setDbSearchResults([]);
   };
 
   // Filter patients
@@ -110,11 +146,22 @@ export const ChatPage: React.FC = () => {
 
   const isSearching = searchQuery.trim().length > 0;
 
-  const filteredPacientes = pacientes
+  // Merge context patients with DB search results
+  const allPacientes = [...pacientes];
+  dbSearchResults.forEach(dp => {
+    if (!allPacientes.some(p => String(p.id) === String(dp.id))) {
+      allPacientes.push(dp);
+    }
+  });
+
+  const filteredPacientes = allPacientes
     .filter(p => {
-      if (p.status !== 'Ativo') return false;
       if (isSearching) {
-        return p.nome.toLowerCase().includes(searchQuery.toLowerCase().trim());
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = p.nome?.toLowerCase().includes(q);
+        const matchesCpf = p.cpf?.includes(q);
+        const matchesTel = p.tel?.includes(q);
+        return matchesName || matchesCpf || matchesTel;
       } else {
         // Ao abrir a tela sem busca ativa, exibir apenas quem tem mensagens não lidas
         const unreadCount = unreadMap[Number(p.id)] || 0;
