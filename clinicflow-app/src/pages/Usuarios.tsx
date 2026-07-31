@@ -334,9 +334,9 @@ export const Usuarios: React.FC = () => {
                   <tr key={u.id} className="hover:bg-white/[0.01] transition-colors group">
                     <td className="p-4">
                       {u.foto ? (
-                        <img src={u.foto} alt={u.nome} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+                        <img src={u.foto} alt={u.nome} className="w-8 h-8 rounded-full object-cover border border-indigo-500/40 shadow-sm shrink-0" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-slate-400">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs shrink-0">
                           {u.nome[0]?.toUpperCase()}
                         </div>
                       )}
@@ -412,8 +412,8 @@ export const Usuarios: React.FC = () => {
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               {/* Photo Upload Row */}
-              <div className="flex items-center gap-4">
-                <div className="relative group w-14 h-14 rounded-full border border-white/10 bg-slate-800/50 overflow-hidden flex items-center justify-center">
+              <div className="flex items-center gap-4 bg-[#161a26]/50 p-3 rounded-xl border border-white/[0.06]">
+                <div className="relative group w-14 h-14 rounded-full border-2 border-indigo-500/40 bg-slate-800/50 overflow-hidden flex items-center justify-center shrink-0 shadow-md">
                   {foto ? (
                     <img src={foto} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
@@ -424,9 +424,31 @@ export const Usuarios: React.FC = () => {
                     <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
                   </label>
                 </div>
-                <div className="flex-1">
-                  <span className="font-bold text-slate-200 text-xs block">Avatar / Foto de Perfil</span>
-                  <span className="text-[10px] text-slate-500 mt-0.5">Selecione uma imagem ou anexe um arquivo jpeg/png</span>
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-200 text-xs block">Avatar / Foto de Perfil</span>
+                    {foto && (
+                      <button
+                        type="button"
+                        onClick={() => setFoto('')}
+                        className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer"
+                      >
+                        Remover Foto
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="URL da foto ou escolha um arquivo..."
+                    value={foto}
+                    onChange={(e) => setFoto(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  />
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all">
+                    <Camera size={12} />
+                    <span>Escolher Foto do Computador</span>
+                    <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
+                  </label>
                 </div>
               </div>
 

@@ -473,6 +473,7 @@ export const mappers = {
       perfil: u.perfil,
       status: u.status || 'Ativo',
       foto: u.foto || null,
+      foto_url: u.foto || null,
       prof_id: u.profId || null,
       perfil_id: u.perfilId || null,
       created_at: u.criadoEm || new Date().toISOString()
@@ -486,12 +487,12 @@ export const mappers = {
     email: r.email || '',
     cpf: r.cpf || '',
     rg: r.rg || '',
-    tel: r.telefone || '',
-    nasc: r.data_nascimento || '',
+    tel: r.telefone || r.tel || '',
+    nasc: r.data_nascimento || r.nasc || '',
     perfil: r.perfil || 'admin',
     perfilId: r.perfil_id || null,
     status: r.status || 'Ativo',
-    foto: r.foto || '',
+    foto: r.foto || r.foto_url || r.avatar || '',
     senha: r.senha || '',
     profId: r.prof_id || null,
     criadoEm: r.created_at || ''
