@@ -257,9 +257,14 @@ export const financeiroFluxoCaixaService = {
   // --------------------------------------------------------------------------
   // CÁLCULO DE DASHBOARD E FLUXO DE CAIXA
   // --------------------------------------------------------------------------
-  getResumoCaixa: async (): Promise<ResumoFluxoCaixa> => {
-    const receber = await financeiroFluxoCaixaService.listContasReceber();
-    const pagar = await financeiroFluxoCaixaService.listContasPagar();
+  getResumoCaixa: async (mesAno?: string): Promise<ResumoFluxoCaixa> => {
+    let receber = await financeiroFluxoCaixaService.listContasReceber();
+    let pagar = await financeiroFluxoCaixaService.listContasPagar();
+
+    if (mesAno && mesAno !== 'todos') {
+      receber = receber.filter(r => (r.dataVencimento && r.dataVencimento.startsWith(mesAno)) || (r.dataRecebimento && r.dataRecebimento.startsWith(mesAno)));
+      pagar = pagar.filter(p => (p.dataVencimento && p.dataVencimento.startsWith(mesAno)) || (p.dataPagamento && p.dataPagamento.startsWith(mesAno)));
+    }
 
     const entradasRecebidas = receber
       .filter(r => r.status === 'Recebido')

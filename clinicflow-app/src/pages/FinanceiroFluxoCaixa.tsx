@@ -37,6 +37,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().substring(0, 7));
 
   // Data States
   const [resumo, setResumo] = useState<ResumoFluxoCaixa>({
@@ -89,14 +90,14 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
   const [catCor, setCatCor] = useState('#6366f1');
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    loadAllData(selectedMonth);
+  }, [selectedMonth]);
 
-  const loadAllData = async () => {
+  const loadAllData = async (monthStr = selectedMonth) => {
     setLoading(true);
     try {
       const [res, recList, pagList, catList] = await Promise.all([
-        financeiroFluxoCaixaService.getResumoCaixa(),
+        financeiroFluxoCaixaService.getResumoCaixa(monthStr),
         financeiroFluxoCaixaService.listContasReceber(),
         financeiroFluxoCaixaService.listContasPagar(),
         financeiroFluxoCaixaService.listCategorias()
@@ -325,13 +326,15 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
   const filteredReceber = contasReceber.filter(c => {
     const matchesQuery = c.pacienteNome.toLowerCase().includes(searchQuery.toLowerCase()) || c.descricao.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'todos' || c.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesQuery && matchesStatus;
+    const matchesMonth = selectedMonth === 'todos' || (c.dataVencimento && c.dataVencimento.startsWith(selectedMonth)) || (c.dataRecebimento && c.dataRecebimento.startsWith(selectedMonth));
+    return matchesQuery && matchesStatus && matchesMonth;
   });
 
   const filteredPagar = contasPagar.filter(c => {
     const matchesQuery = c.fornecedorNome.toLowerCase().includes(searchQuery.toLowerCase()) || c.descricao.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'todos' || c.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesQuery && matchesStatus;
+    const matchesMonth = selectedMonth === 'todos' || (c.dataVencimento && c.dataVencimento.startsWith(selectedMonth)) || (c.dataPagamento && c.dataPagamento.startsWith(selectedMonth));
+    return matchesQuery && matchesStatus && matchesMonth;
   });
 
   return (
@@ -360,6 +363,26 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
 
         {/* HEADER ACTIONS */}
         <div className="flex flex-wrap items-center gap-2 relative z-10">
+          {/* FILTRO MÊS E ANO */}
+          <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-2 rounded-xl shadow-inner">
+            <Calendar size={14} className="text-indigo-400" />
+            <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Mês Ref:</span>
+            <input
+              type="month"
+              value={selectedMonth === 'todos' ? '' : selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value || 'todos')}
+              className="bg-transparent text-white text-xs font-mono focus:outline-none cursor-pointer"
+            />
+            <button
+              onClick={() => setSelectedMonth('todos')}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                selectedMonth === 'todos' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-slate-400 hover:text-white'
+              }`}
+            >
+              Todos
+            </button>
+          </div>
+
           <button
             onClick={handleOpenNewReceber}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all text-xs active:scale-95"
@@ -377,7 +400,7 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
           </button>
 
           <button
-            onClick={loadAllData}
+            onClick={() => loadAllData(selectedMonth)}
             className="p-2.5 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] rounded-xl text-slate-300 transition-all"
             title="Atualizar dados financeiro"
           >
