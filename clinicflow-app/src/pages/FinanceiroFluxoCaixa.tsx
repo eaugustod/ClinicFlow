@@ -337,6 +337,17 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
     return matchesQuery && matchesStatus && matchesMonth;
   });
 
+  // Scale calculations for horizontal bar chart
+  const totalEntradas = resumo.entradasRecebidas + resumo.totalReceberMes;
+  const totalSaidas = resumo.saidasPagas + resumo.totalPagarMes;
+  const maxTotal = Math.max(totalEntradas, totalSaidas, 0.01);
+
+  const widthEntradasPct = (totalEntradas / maxTotal) * 100;
+  const widthSaidasPct = (totalSaidas / maxTotal) * 100;
+
+  const entradasRealizadasPct = totalEntradas > 0 ? (resumo.entradasRecebidas / totalEntradas) * 100 : 0;
+  const saidasPagasPct = totalSaidas > 0 ? (resumo.saidasPagas / totalSaidas) * 100 : 0;
+
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen text-slate-100 font-sans">
       
@@ -561,49 +572,106 @@ export const FinanceiroFluxoCaixa: React.FC = () => {
       {/* TAB 1: VISÃO GERAL & FLUXO DE CAIXA */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* PROJEÇÃO FLUXO DE CAIXA */}
-          <div className="bg-[#121625]/80 border border-white/[0.08] p-6 rounded-2xl shadow-xl space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <TrendingUp className="text-indigo-400" size={18} /> Projeção de Fluxo de Caixa (Realizado vs. Previsto)
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Comparativo das entradas e saídas financeiras da clínica.</p>
-              </div>
-              <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                Liquidez Saudável
-              </span>
-            </div>
-
-            {/* BAR PROGRESS PROJECTION */}
-            <div className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-emerald-400">Entradas Totais Previstas (R$ {(resumo.entradasRecebidas + resumo.totalReceberMes).toFixed(2)})</span>
-                  <span className="text-slate-400">{(resumo.entradasRecebidas + resumo.totalReceberMes) > 0 ? '100%' : '0%'}</span>
+            {/* PROJEÇÃO FLUXO DE CAIXA */}
+            <div className="bg-[#121625]/80 border border-white/[0.08] p-6 rounded-2xl shadow-xl space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <TrendingUp className="text-indigo-400" size={18} /> Projeção de Fluxo de Caixa (Entradas vs. Saídas)
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Comparativo proporcional de volume financeiro (a maior barra representa 100% da escala).</p>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, ((resumo.entradasRecebidas / (resumo.entradasRecebidas + resumo.totalReceberMes || 1)) * 100))}%` }}
-                  />
-                </div>
+                <span className={`text-xs font-mono px-3 py-1 rounded-full border ${
+                  totalEntradas >= totalSaidas
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                    : 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                }`}>
+                  {totalEntradas >= totalSaidas ? 'Superávit Previsto' : 'Déficit Previsto'}
+                </span>
               </div>
 
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-rose-400">Saídas Totais Previstas (R$ {(resumo.saidasPagas + resumo.totalPagarMes).toFixed(2)})</span>
-                  <span className="text-slate-400">{(resumo.saidasPagas + resumo.totalPagarMes) > 0 ? 'Comprometido' : '0%'}</span>
+              {/* ESCALA E RÉGUA DE VALORES */}
+              <div className="flex justify-between text-[10px] font-mono text-slate-400 px-1 border-b border-white/5 pb-1">
+                <span>R$ 0,00</span>
+                <span>R$ {(maxTotal / 2).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                <span>R$ {maxTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              </div>
+
+              {/* BARRAS PROPORCIONAIS COMPARATIVAS */}
+              <div className="space-y-4 pt-1">
+                {/* BARRA DE ENTRADAS (VERDE) */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-emerald-400 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      Entradas Totais Previstas: <strong className="font-mono">R$ {totalEntradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                    </span>
+                    <span className="text-slate-400 text-[11px] font-mono">
+                      Realizado: R$ {resumo.entradasRecebidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ({entradasRealizadasPct.toFixed(0)}%)
+                    </span>
+                  </div>
+                  
+                  {/* CONTAINER TRILHO TOTAL */}
+                  <div className="w-full bg-slate-900/60 rounded-lg h-5 p-0.5 overflow-hidden flex items-center border border-white/5">
+                    <div
+                      className="h-full bg-emerald-500/25 rounded-md flex overflow-hidden transition-all duration-700 relative"
+                      style={{ width: `${Math.max(totalEntradas > 0 ? 1 : 0, widthEntradasPct)}%` }}
+                    >
+                      {/* PARTE REALIZADA (VERDE SÓLIDO) */}
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-md transition-all duration-700 shadow-sm"
+                        style={{ width: `${entradasRealizadasPct}%` }}
+                        title={`Entradas Realizadas: R$ ${resumo.entradasRecebidas.toFixed(2)}`}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-rose-500 to-pink-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, ((resumo.saidasPagas / (resumo.saidasPagas + resumo.totalPagarMes || 1)) * 100))}%` }}
-                  />
+
+                {/* BARRA DE SAÍDAS (VERMELHO) */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-rose-400 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                      Saídas Totais Previstas: <strong className="font-mono">R$ {totalSaidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                    </span>
+                    <span className="text-slate-400 text-[11px] font-mono">
+                      Pago: R$ {resumo.saidasPagas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ({saidasPagasPct.toFixed(0)}%)
+                    </span>
+                  </div>
+
+                  {/* CONTAINER TRILHO TOTAL */}
+                  <div className="w-full bg-slate-900/60 rounded-lg h-5 p-0.5 overflow-hidden flex items-center border border-white/5">
+                    <div
+                      className="h-full bg-rose-500/25 rounded-md flex overflow-hidden transition-all duration-700 relative"
+                      style={{ width: `${Math.max(totalSaidas > 0 ? 1 : 0, widthSaidasPct)}%` }}
+                    >
+                      {/* PARTE PAGA (VERMELHO SÓLIDO) */}
+                      <div
+                        className="bg-gradient-to-r from-rose-500 to-pink-500 h-full rounded-md transition-all duration-700 shadow-sm"
+                        style={{ width: `${saidasPagasPct}%` }}
+                        title={`Saídas Pagas: R$ ${resumo.saidasPagas.toFixed(2)}`}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* LEGENDA DA PROJEÇÃO */}
+              <div className="flex flex-wrap items-center gap-4 text-[10px] text-slate-400 pt-2 border-t border-white/5">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Realizado (Recebido)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500/30 border border-emerald-500/50" /> Pendente A Receber
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Pago (Efetuado)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500/30 border border-rose-500/50" /> Pendente A Pagar
+                </span>
+              </div>
             </div>
-          </div>
 
           {/* DRE RESUMIDO & CATEGORIAS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
