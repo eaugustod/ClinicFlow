@@ -24,6 +24,7 @@ import { Conecta } from './pages/Conecta';
 import { StatusAgendamentoPage } from './pages/StatusAgendamento';
 import { ChatPage } from './pages/Chat';
 import { Importador } from './pages/Importador';
+import { FinanceiroNfse } from './pages/FinanceiroNfse';
 import { Login } from './pages/Login';
 import { ThemeSelector } from './components/ThemeSelector';
 import { useApp } from './context/AppContext';
@@ -153,6 +154,8 @@ function App() {
         return <Fechamento initialTab="calculo" />;
       case 'financeiro':
         return <Fechamento initialTab="financeiro" />;
+      case 'financeiro-nfse':
+        return <FinanceiroNfse />;
 
       case 'espera':
         return <Espera />;

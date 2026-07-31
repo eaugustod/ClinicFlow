@@ -79,6 +79,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     { id: 'analise-fechamento', label: 'Análise por Terapeuta', icon: UserCheck },
     { id: 'fechamento', label: 'Fechamento Mensal', icon: Calculator },
     { id: 'financeiro', label: 'Repasses / Pagamentos', icon: CreditCard },
+    { id: 'financeiro-nfse', label: 'NFS-e (Prefeitura Jundiaí)', icon: Building2 },
   ];
 
   const conectaItems = [

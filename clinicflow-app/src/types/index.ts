@@ -326,4 +326,40 @@ export interface StatusAgendamento {
   createdAt?: string;
 }
 
+export interface NotaFiscalJundiai {
+  id: string;
+  numeroRps: string;
+  numeroNota?: string;
+  codigoVerificacao?: string;
+  dataEmissao: string;
+  pacienteId?: number | null;
+  tomadorNome: string;
+  tomadorCpfCnpj: string;
+  tomadorEmail: string;
+  tomadorEndereco: string;
+  servicoCodigo: string;
+  descricaoServico: string;
+  valorServico: number;
+  aliquotaIss: number;
+  valorIss: number;
+  status: 'Rascunho' | 'Processando' | 'Aprovada' | 'Cancelada' | 'Rejeitada';
+  motivoRejeicao?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  ambiente: 'Homologação' | 'Produção';
+  created_at?: string;
+}
+
+export interface ConfiguracaoFiscalJundiai {
+  cnpjEmissor: string;
+  inscricaoMunicipal: string;
+  razaoSocial: string;
+  ambiente: 'Homologação' | 'Produção';
+  codigoServicoPadrao: string;
+  aliquotaIssPadrao: number;
+  optanteSimplesNacional: boolean;
+  tokenApi?: string;
+  certificadoValidade?: string;
+}
+
 
