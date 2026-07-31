@@ -10,6 +10,7 @@ interface AtendimentoProps {
 export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
   const { agendamentos, profissionais, statusAgendamentos, getStatusColor, logStatusChange, refreshAll } = useApp();
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedProfId, setSelectedProfId] = useState<number | 'all'>('all');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   // Navigate days
@@ -44,9 +45,13 @@ export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
     }
   };
 
-  // Filter daily agendamentos
+  // Filter daily agendamentos by date and selected therapist
   const dailyAppts = agendamentos
-    .filter(a => a.dataISO === selectedDate)
+    .filter(a => {
+      const matchDate = a.dataISO === selectedDate;
+      const matchProf = selectedProfId === 'all' || Number(a.profId) === Number(selectedProfId);
+      return matchDate && matchProf;
+    })
     .sort((a, b) => a.hora.localeCompare(b.hora));
 
   // Get initials for avatar
@@ -109,14 +114,31 @@ export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
             <p className="text-xs text-slate-400 mt-1">Monitore e atualize o status das consultas diárias de forma rápida e eficiente</p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <h3 className="text-xs font-bold text-slate-200 font-sans">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Seletor de Terapeuta / Profissional */}
+            <div className="flex items-center gap-2 bg-[#0d0f17]/80 border border-white/[0.06] rounded-xl px-3 py-1.5 shadow-lg">
+              <UserCheck size={13} className="text-indigo-400 shrink-0" />
+              <select
+                value={selectedProfId}
+                onChange={(e) => setSelectedProfId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                className="bg-transparent text-[11px] font-bold text-slate-200 focus:outline-none cursor-pointer pr-1 font-sans"
+              >
+                <option value="all" className="bg-[#131622] text-slate-200">Todos os Terapeutas</option>
+                {profissionais.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-[#131622] text-slate-200">
+                    {p.nomeAgenda || p.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <h3 className="text-xs font-bold text-slate-200 font-sans hidden sm:block">
               {formatDateTitle(selectedDate)}
             </h3>
             
             {/* Date Navigator */}
             <div className="flex items-center bg-[#0d0f17]/80 border border-white/[0.06] rounded-xl overflow-hidden shadow-lg">
-              <button onClick={handlePrevDay} className="p-2 hover:bg-white/5 border-r border-white/[0.04] text-slate-400 transition-all">
+              <button onClick={handlePrevDay} className="p-2 hover:bg-white/5 border-r border-white/[0.04] text-slate-400 transition-all cursor-pointer">
                 <ChevronLeft size={13} />
               </button>
               <input 
@@ -125,14 +147,14 @@ export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="bg-transparent text-[10px] font-bold text-slate-300 font-mono px-3 py-1 focus:outline-none cursor-pointer [color-scheme:dark]"
               />
-              <button onClick={handleNextDay} className="p-2 hover:bg-white/5 border-l border-white/[0.04] text-slate-400 transition-all">
+              <button onClick={handleNextDay} className="p-2 hover:bg-white/5 border-l border-white/[0.04] text-slate-400 transition-all cursor-pointer">
                 <ChevronRight size={13} />
               </button>
             </div>
 
             <button
               onClick={() => onNavigate('agenda')}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] text-slate-200 rounded-xl font-bold transition-all text-[10px]"
+              className="flex items-center gap-1.5 px-4 py-2 bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] text-slate-200 rounded-xl font-bold transition-all text-[10px] cursor-pointer"
             >
               Ver agenda <ArrowRight size={12} />
             </button>
@@ -159,7 +181,9 @@ export const Atendimento: React.FC<AtendimentoProps> = ({ onNavigate }) => {
               {dailyAppts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-12 text-center text-slate-500 font-medium font-sans">
-                    Nenhum agendamento encontrado para esta data.
+                    {selectedProfId !== 'all' 
+                      ? `Nenhum agendamento encontrado para este terapeuta nesta data.`
+                      : `Nenhum agendamento encontrado para esta data.`}
                   </td>
                 </tr>
               ) : (
