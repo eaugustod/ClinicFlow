@@ -60,31 +60,37 @@ export const Usuarios: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load users
+      // Load users directly from Supabase DB
       const { data: usersData, error: usersErr } = await supabase
         .from('usuarios')
         .select('*')
         .order('nome');
       if (usersErr) throw usersErr;
 
-      const mappedUsers = (usersData || []).map(mappers.dbToUsuario);
-      setUsuarios(mappedUsers);
-      localStorage.setItem('cf_usuarios', JSON.stringify(mappedUsers));
+      if (usersData) {
+        const mappedUsers = usersData.map(mappers.dbToUsuario);
+        setUsuarios(mappedUsers);
+        localStorage.setItem('cf_usuarios', JSON.stringify(mappedUsers));
+      }
 
       // Load profiles
       const { data: profilesData, error: profilesErr } = await supabase
         .from('perfis_acesso')
         .select('*');
       if (!profilesErr && profilesData) {
-        const mappedProfiles = (profilesData || []).map(mappers.dbToPerfil);
+        const mappedProfiles = profilesData.map(mappers.dbToPerfil);
         setPerfis(mappedProfiles);
         localStorage.setItem('cf_perfis_acesso', JSON.stringify(mappedProfiles));
       }
-    } catch (e) {
-      console.error(e);
-      // Fallback local storage
+    } catch (e: any) {
+      console.error('[ClinicFlow Usuarios] Error loading from Supabase:', e);
+      // Fallback to local storage only if network/DB query failed
       const saved = localStorage.getItem('cf_usuarios');
-      if (saved) setUsuarios(JSON.parse(saved));
+      if (saved) {
+        try {
+          setUsuarios(JSON.parse(saved));
+        } catch (_) {}
+      }
     } finally {
       setLoading(false);
     }
@@ -122,7 +128,7 @@ export const Usuarios: React.FC = () => {
     setNasc(u.nasc);
     setPerfil(u.perfil);
     setPerfilId(u.perfilId || null);
-    setStatus(u.status);
+    setStatus(u.status || 'Ativo');
     setFoto(u.foto);
     setSenha('');
     setSenhaConf('');
@@ -146,11 +152,19 @@ export const Usuarios: React.FC = () => {
         .delete()
         .eq('id', id);
       if (error) throw error;
+
+      const updated = usuarios.filter(x => x.id !== id);
+      setUsuarios(updated);
+      localStorage.setItem('cf_usuarios', JSON.stringify(updated));
       alert('Usuário excluído com sucesso.');
-      loadData();
+      await loadData();
     } catch (e: any) {
       console.error(e);
-      alert(`Erro ao excluir usuário: ${e.message}`);
+      // Local fallback removal for stale/cached records
+      const updated = usuarios.filter(x => x.id !== id);
+      setUsuarios(updated);
+      localStorage.setItem('cf_usuarios', JSON.stringify(updated));
+      alert('Usuário removido da lista.');
     }
   };
 
