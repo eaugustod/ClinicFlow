@@ -23,6 +23,7 @@ import {
   Check,
   Sliders,
   UserCheck,
+  Upload,
   Calendar,
   Sparkles
 } from 'lucide-react';
@@ -73,6 +74,13 @@ export const FinanceiroNfse: React.FC = () => {
   const [cfgAmbiente, setCfgAmbiente] = useState<'Homologação' | 'Produção'>('Homologação');
   const [cfgCodServ, setCfgCodServ] = useState('04.01');
   const [cfgAliqIss, setCfgAliqIss] = useState(2.0);
+  const [cfgSerieRps, setCfgSerieRps] = useState('1');
+  const [cfgProximoRps, setCfgProximoRps] = useState(1001);
+  const [cfgProximoLote, setCfgProximoLote] = useState(1001);
+  const [cfgRegimeTributario, setCfgRegimeTributario] = useState<'1' | '2' | '3' | '5' | '6'>('6');
+  const [cfgCertNome, setCfgCertNome] = useState('');
+  const [cfgCertBase64, setCfgCertBase64] = useState('');
+  const [cfgCertSenha, setCfgCertSenha] = useState('');
   const [cfgDestacarIbsCbs, setCfgDestacarIbsCbs] = useState(true);
   const [cfgAliqIbs, setCfgAliqIbs] = useState(0.10);
   const [cfgAliqCbs, setCfgAliqCbs] = useState(0.90);
@@ -96,6 +104,13 @@ export const FinanceiroNfse: React.FC = () => {
       setCfgAmbiente(cfg.ambiente);
       setCfgCodServ(cfg.codigoServicoPadrao);
       setCfgAliqIss(cfg.aliquotaIssPadrao);
+      setCfgSerieRps(cfg.serieRps || '1');
+      setCfgProximoRps(cfg.proximoNumeroRps || 1001);
+      setCfgProximoLote(cfg.proximoNumeroLote || 1001);
+      setCfgRegimeTributario(cfg.regimeTributario || '6');
+      setCfgCertNome(cfg.certificadoNomeArquivo || '');
+      setCfgCertBase64(cfg.certificadoBase64 || '');
+      setCfgCertSenha(cfg.certificadoSenha || '');
       setCfgDestacarIbsCbs(cfg.destacarIbsCbs !== false);
       setCfgAliqIbs(cfg.aliquotaIbsPadrao || 0.10);
       setCfgAliqCbs(cfg.aliquotaCbsPadrao || 0.90);
@@ -221,6 +236,13 @@ export const FinanceiroNfse: React.FC = () => {
       ambiente: cfgAmbiente,
       codigoServicoPadrao: cfgCodServ,
       aliquotaIssPadrao: cfgAliqIss,
+      serieRps: cfgSerieRps,
+      proximoNumeroRps: cfgProximoRps,
+      proximoNumeroLote: cfgProximoLote,
+      regimeTributario: cfgRegimeTributario,
+      certificadoNomeArquivo: cfgCertNome,
+      certificadoBase64: cfgCertBase64,
+      certificadoSenha: cfgCertSenha,
       destacarIbsCbs: cfgDestacarIbsCbs,
       aliquotaIbsPadrao: cfgAliqIbs,
       aliquotaCbsPadrao: cfgAliqCbs,
@@ -228,7 +250,20 @@ export const FinanceiroNfse: React.FC = () => {
     };
     nfseJundiaiService.saveConfig(updated);
     setConfig(updated);
-    alert('Configurações Fiscais de Jundiaí e Reforma Tributária (IBS/CBS) salvas com sucesso!');
+    alert('Configurações Fiscais de Jundiaí e Certificado Digital A1 salvos com sucesso!');
+  };
+
+  const handleCertUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCfgCertNome(file.name);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCfgCertBase64(reader.result as string);
+        alert(`Certificado ${file.name} carregado com sucesso! Insira a senha abaixo e clique em Salvar.`);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleConfirmCancelar = async () => {
@@ -927,6 +962,51 @@ export const FinanceiroNfse: React.FC = () => {
             </div>
 
             <div>
+              <label className="block text-slate-400 font-semibold mb-1">Regime Especial de Tributação</label>
+              <select
+                value={cfgRegimeTributario}
+                onChange={(e) => setCfgRegimeTributario(e.target.value as any)}
+                className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs"
+              >
+                <option value="6">6 - ME/EPP (Optante pelo Simples Nacional)</option>
+                <option value="1">1 - Microempresa Municipal</option>
+                <option value="2">2 - Estimativa</option>
+                <option value="3">3 - Sociedade de Profissionais (Médicos/Psicólogos)</option>
+                <option value="5">5 - MEI (Microempreendedor Individual)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">Série do RPS</label>
+              <input
+                type="text"
+                value={cfgSerieRps}
+                onChange={(e) => setCfgSerieRps(e.target.value)}
+                className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs font-mono uppercase"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">Próximo Número do RPS</label>
+              <input
+                type="number"
+                value={cfgProximoRps}
+                onChange={(e) => setCfgProximoRps(Number(e.target.value))}
+                className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">Próximo Número de Lote</label>
+              <input
+                type="number"
+                value={cfgProximoLote}
+                onChange={(e) => setCfgProximoLote(Number(e.target.value))}
+                className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs font-mono"
+              />
+            </div>
+
+            <div>
               <label className="block text-slate-400 font-semibold mb-1">Alíquota ISS Padrão (%)</label>
               <input
                 type="number"
@@ -960,12 +1040,40 @@ export const FinanceiroNfse: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-xl space-y-2">
+          {/* PAINEL DE CERTIFICADO DIGITAL A1 */}
+          <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-xl space-y-3">
             <h4 className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
-              <ShieldCheck size={14} /> Status do Certificado Digital A1
+              <ShieldCheck size={14} /> Certificado Digital A1 (.PFX / .P12) - Emissão Oficial Jundiaí
             </h4>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-300">Certificado Instalado: <strong className="text-emerald-400">Ativo (.PFX / Jundiaí)</strong></span>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Upload do Arquivo do Certificado (.pfx)</label>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer px-3 py-2 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all">
+                    <Upload size={14} /> Selecionar Arquivo .PFX
+                    <input type="file" accept=".pfx,.p12" onChange={handleCertUpload} className="hidden" />
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono truncate">
+                    {cfgCertNome || 'Nenhum certificado selecionado'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Senha do Certificado Digital</label>
+                <input
+                  type="password"
+                  value={cfgCertSenha}
+                  onChange={(e) => setCfgCertSenha(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-xs pt-2 border-t border-white/5">
+              <span className="text-slate-300">Status do Certificado: <strong className={cfgCertBase64 ? "text-emerald-400" : "text-amber-400"}>{cfgCertBase64 ? "✅ Certificado Carregado" : "⚠️ Pendente de Upload"}</strong></span>
               <span className="text-slate-400 font-mono text-[10px]">Validade: 31/12/2027</span>
             </div>
           </div>

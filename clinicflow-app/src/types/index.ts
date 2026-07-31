@@ -6,6 +6,13 @@ export interface Paciente {
   tel: string;
   email: string;
   end: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cep?: string;
+  cidade?: string;
+  ufEnd?: string;
   planoId: number;
   plano: string;
   carteirinha: string;
@@ -87,6 +94,7 @@ export interface Procedimento {
   valPlano: number;
   tabela: string;
   planoId: number;
+  codigoServicoAbrasf?: string;
   status: string;
   obs: string;
 }
@@ -369,6 +377,13 @@ export interface ConfiguracaoFiscalJundiai {
   codigoServicoPadrao: string;
   aliquotaIssPadrao: number;
   optanteSimplesNacional: boolean;
+  serieRps?: string;
+  proximoNumeroRps?: number;
+  proximoNumeroLote?: number;
+  regimeTributario?: '1' | '2' | '3' | '5' | '6'; // 1-Microempresa, 2-Estimativa, 3-Sociedade Profissionais, 5-MEI, 6-ME/EPP Simples Nacional
+  certificadoNomeArquivo?: string;
+  certificadoBase64?: string;
+  certificadoSenha?: string;
   destacarIbsCbs?: boolean;
   aliquotaIbsPadrao?: number;
   aliquotaCbsPadrao?: number;

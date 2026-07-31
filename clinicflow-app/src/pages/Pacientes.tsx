@@ -46,6 +46,13 @@ export const Pacientes: React.FC = () => {
   const [tel, setTel] = useState('');
   const [email, setEmail] = useState('');
   const [end, setEnd] = useState('');
+  const [logradouro, setLogradouro] = useState('');
+  const [numero, setNumero] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cep, setCep] = useState('');
+  const [cidade, setCidade] = useState('Jundiaí');
+  const [ufEnd, setUfEnd] = useState('SP');
   const [planoId, setPlanoId] = useState<number>(5);
   const [carteirinha, setCarteirinha] = useState('');
   const [sexo, setSexo] = useState('M');
@@ -89,6 +96,13 @@ export const Pacientes: React.FC = () => {
     setTel('');
     setEmail('');
     setEnd('');
+    setLogradouro('');
+    setNumero('');
+    setComplemento('');
+    setBairro('');
+    setCep('');
+    setCidade('Jundiaí');
+    setUfEnd('SP');
     setPlanoId(planos[0]?.id || 5);
     setCarteirinha('');
     setSexo('M');
@@ -107,6 +121,13 @@ export const Pacientes: React.FC = () => {
     setTel(p.tel);
     setEmail(p.email);
     setEnd(p.end);
+    setLogradouro(p.logradouro || '');
+    setNumero(p.numero || '');
+    setComplemento(p.complemento || '');
+    setBairro(p.bairro || '');
+    setCep(p.cep || '');
+    setCidade(p.cidade || 'Jundiaí');
+    setUfEnd(p.ufEnd || 'SP');
     setPlanoId(p.planoId);
     setCarteirinha(p.carteirinha);
     setSexo(p.sexo || 'M');
@@ -122,13 +143,22 @@ export const Pacientes: React.FC = () => {
     setSubmitting(true);
 
     const plano = planos.find(pl => pl.id === Number(planoId))?.nome || 'Particular';
+    const fullEnd = logradouro ? `${logradouro}, ${numero || 'S/N'}${complemento ? ` (${complemento})` : ''} - ${bairro || ''}, ${cidade} - ${ufEnd}` : end;
+
     const payload: Partial<Paciente> = {
       nome,
       nasc,
       cpf,
       tel,
       email,
-      end,
+      end: fullEnd,
+      logradouro,
+      numero,
+      complemento,
+      bairro,
+      cep,
+      cidade,
+      ufEnd,
       planoId: Number(planoId),
       plano,
       carteirinha,
@@ -407,14 +437,86 @@ export const Pacientes: React.FC = () => {
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-slate-400 font-semibold mb-1">Endereço</label>
-                  <input
-                    type="text"
-                    value={end}
-                    onChange={(e) => setEnd(e.target.value)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
-                  />
+                {/* ENDEREÇO ESTRUTURADO PARA NFS-E */}
+                <div className="md:col-span-2 p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl space-y-3">
+                  <span className="text-xs font-bold text-indigo-400 block uppercase tracking-wider">Endereço Fiscal (Tomador da NFS-e)</span>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Logradouro (Rua / Av)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Rua do Retiro"
+                        value={logradouro}
+                        onChange={(e) => setLogradouro(e.target.value)}
+                        className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Número</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: 1200"
+                        value={numero}
+                        onChange={(e) => setNumero(e.target.value)}
+                        className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Complemento</label>
+                      <input
+                        type="text"
+                        placeholder="Apto / Bloco"
+                        value={complemento}
+                        onChange={(e) => setComplemento(e.target.value)}
+                        className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Bairro</label>
+                      <input
+                        type="text"
+                        placeholder="Anhangabaú"
+                        value={bairro}
+                        onChange={(e) => setBairro(e.target.value)}
+                        className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1 text-[11px]">CEP</label>
+                      <input
+                        type="text"
+                        placeholder="13209-000"
+                        value={cep}
+                        onChange={(e) => setCep(e.target.value)}
+                        className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Cidade / UF</label>
+                      <div className="flex gap-1">
+                        <input
+                          type="text"
+                          value={cidade}
+                          onChange={(e) => setCidade(e.target.value)}
+                          className="w-3/4 bg-[#161a26] border border-white/[0.06] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={ufEnd}
+                          onChange={(e) => setUfEnd(e.target.value.toUpperCase())}
+                          maxLength={2}
+                          className="w-1/4 bg-[#161a26] border border-white/[0.06] rounded-lg px-1 text-center text-white text-xs font-mono uppercase focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

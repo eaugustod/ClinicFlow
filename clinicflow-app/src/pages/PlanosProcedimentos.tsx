@@ -57,6 +57,7 @@ export const PlanosProcedimentos: React.FC = () => {
   const [procValPlano, setProcValPlano] = useState<number>(0);
   const [procTabela, setProcTabela] = useState('TUSS');
   const [procPlanoId, setProcPlanoId] = useState<number>(0);
+  const [procCodigoServicoAbrasf, setProcCodigoServicoAbrasf] = useState('04.01');
   const [procStatus, setProcStatus] = useState('Ativo');
   const [procObs, setProcObs] = useState('');
   const [procSubmitting, setProcSubmitting] = useState(false);
@@ -101,20 +102,20 @@ export const PlanosProcedimentos: React.FC = () => {
   const openEditPlano = (p: PlanoSaude) => {
     setEditingPlano(p);
     setPlanoNome(p.nome);
-    setPlanoCnpj(p.cnpj);
-    setPlanoAns(p.ans);
-    setPlanoTabela(p.tabela);
-    setPlanoCodPrestador(p.codPrestador);
-    setPlanoCNES(p.cnes);
-    setPlanoUsaTiss(p.usaTiss);
-    setPlanoAplicaTodos(p.aplicaTodos);
-    setPlanoVersaoTiss(p.versaoTiss);
-    setPlanoTipoId(p.tipoId);
-    setPlanoJuntarGuia(p.juntarGuia);
+    setPlanoCnpj(p.cnpj || '');
+    setPlanoAns(p.ans || '');
+    setPlanoTabela(p.tabela || 'CBHPM');
+    setPlanoCodPrestador(p.codPrestador || '');
+    setPlanoCNES(p.cnes || '');
+    setPlanoUsaTiss(p.usaTiss !== false);
+    setPlanoAplicaTodos(p.aplicaTodos !== false);
+    setPlanoVersaoTiss(p.versaoTiss || '4.02.00');
+    setPlanoTipoId(p.tipoId || 'Código');
+    setPlanoJuntarGuia(p.juntarGuia !== false);
     setPlanoNomeContratado(p.nomeContratado || '');
-    setPlanoNumGuiaInicial(p.numGuiaInicial);
+    setPlanoNumGuiaInicial(p.numGuiaInicial || 1);
     setPlanoNomePlanoGuia(p.nomePlanoGuia || '');
-    setPlanoLogo(p.logo || p.foto || (p as any).foto_url || '');
+    setPlanoLogo(p.logo || p.foto || '');
     setPlanoTel(p.tel || '');
     setPlanoEmail(p.email || '');
     setPlanoObs(p.obs || '');
@@ -140,38 +141,33 @@ export const PlanosProcedimentos: React.FC = () => {
       numGuiaInicial: planoNumGuiaInicial,
       nomePlanoGuia: planoNomePlanoGuia,
       logo: planoLogo,
+      foto: planoLogo,
       tel: planoTel,
       email: planoEmail,
-      obs: planoObs,
-      status: 'Ativo'
+      obs: planoObs
     };
 
     try {
       if (editingPlano) {
-        const { error } = await supabase.from('planos_saude').update(mappers.planoToDb(payload)).eq('id', editingPlano.id);
+        const { error } = await supabase
+          .from('planos_saude')
+          .update(mappers.planoToDb(payload))
+          .eq('id', editingPlano.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('planos_saude').insert([mappers.planoToDb(payload)]);
+        const { error } = await supabase
+          .from('planos_saude')
+          .insert(mappers.planoToDb(payload));
         if (error) throw error;
       }
+      alert('Plano de saúde salvo com sucesso!');
       setIsPlanoModalOpen(false);
-      await refreshAll();
-    } catch (err) {
+      refreshAll();
+    } catch (err: any) {
       console.error(err);
       alert('Erro ao salvar plano de saúde');
     } finally {
       setPlanoSubmitting(false);
-    }
-  };
-
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPlanoLogo(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -186,6 +182,7 @@ export const PlanosProcedimentos: React.FC = () => {
     setProcValPlano(0);
     setProcTabela('TUSS');
     setProcPlanoId(0);
+    setProcCodigoServicoAbrasf('04.01');
     setProcStatus('Ativo');
     setProcObs('');
     setIsProcModalOpen(true);
@@ -201,6 +198,7 @@ export const PlanosProcedimentos: React.FC = () => {
     setProcValPlano(pr.valPlano);
     setProcTabela(pr.tabela || 'TUSS');
     setProcPlanoId(pr.planoId);
+    setProcCodigoServicoAbrasf(pr.codigoServicoAbrasf || '04.01');
     setProcStatus(pr.status || 'Ativo');
     setProcObs(pr.obs || '');
     setIsProcModalOpen(true);
@@ -218,6 +216,7 @@ export const PlanosProcedimentos: React.FC = () => {
       valPlano: procValPlano,
       tabela: procTabela,
       planoId: procPlanoId,
+      codigoServicoAbrasf: procCodigoServicoAbrasf,
       status: procStatus,
       obs: procObs
     };
@@ -699,7 +698,7 @@ export const PlanosProcedimentos: React.FC = () => {
                         <input
                           type="file"
                           accept="image/png, image/jpeg, image/svg+xml"
-                          onChange={handleLogoChange}
+                          onChange={handlePlanoLogoChange}
                           className="absolute inset-0 opacity-0 cursor-pointer"
                         />
                       </div>
@@ -884,6 +883,21 @@ export const PlanosProcedimentos: React.FC = () => {
                   ))}
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1">Cada plano pode ter sua própria tabela de preços com valores diferentes para o mesmo procedimento.</p>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Código de Serviço Fiscal ABRASF (NFS-e Jundiaí)</label>
+                <select
+                  value={procCodigoServicoAbrasf}
+                  onChange={(e) => setProcCodigoServicoAbrasf(e.target.value)}
+                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500/50"
+                >
+                  <option value="04.01">04.01 - Serviços de Medicina, Psicologia e Fisioterapia</option>
+                  <option value="04.08">04.08 - Terapia Ocupacional, Fonoaudiologia e Nutrição</option>
+                  <option value="04.14">04.14 - Enfermagem e Cuidados de Saúde Integrados</option>
+                  <option value="04.03">04.03 - Hospitais, Clínicas, Laboratórios e Congêneres</option>
+                </select>
+                <p className="text-[10px] text-indigo-400 mt-1">Utilizado automaticamente na geração do XML da NFS-e para a Prefeitura de Jundiaí.</p>
               </div>
 
               <div>
