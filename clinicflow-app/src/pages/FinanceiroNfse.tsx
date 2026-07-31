@@ -307,8 +307,23 @@ export const FinanceiroNfse: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Atendimentos elegíveis para faturar
-  const atendimentosParaFaturar = agendamentos.filter((a) => a.status === 'atendido');
+  // Atendimentos elegíveis para faturar NFS-e (Apenas Consultas de Pacientes/Atendimentos do Plano Particular)
+  const atendimentosParaFaturar = agendamentos.filter((a) => {
+    if (a.status !== 'atendido') return false;
+
+    const patient = pacientes.find((p) => p.id === a.pacId);
+
+    const planoAgendamento = a.plano ? a.plano.toLowerCase() : '';
+    const planoPaciente = patient && patient.plano ? patient.plano.toLowerCase() : '';
+
+    const isParticular =
+      planoAgendamento.includes('particular') ||
+      planoPaciente.includes('particular') ||
+      a.planoId === 1 ||
+      (!a.plano && (!patient || !patient.plano || patient.planoId === 1));
+
+    return isParticular;
+  });
 
   return (
     <div className="space-y-6 animate-fade-in text-xs">
@@ -423,7 +438,7 @@ export const FinanceiroNfse: React.FC = () => {
             }`}
           >
             <Zap size={14} />
-            Faturar Consultas do Mês ({atendimentosParaFaturar.length})
+            Faturar Consultas Particulares ({atendimentosParaFaturar.length})
           </button>
 
           <button
@@ -600,10 +615,10 @@ export const FinanceiroNfse: React.FC = () => {
             <div>
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
                 <Zap size={16} className="text-emerald-400" />
-                Faturar Atendimentos Realizados (Prontos para NFS-e)
+                Faturar Consultas Particulares (Prontos para NFS-e)
               </h3>
               <p className="text-slate-400 text-xs mt-0.5">
-                Selecione as consultas com status "Atendido" para gerar e transmitir as Notas Fiscais em lote para Jundiaí (SP).
+                Selecione as consultas do plano Particular com status "Atendido" para gerar e transmitir as Notas Fiscais em lote para Jundiaí (SP). (Atendimentos por convênio de saúde são faturados via Lote TISS).
               </p>
             </div>
 
@@ -681,8 +696,8 @@ export const FinanceiroNfse: React.FC = () => {
 
                 {atendimentosParaFaturar.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-500">
-                      Nenhum atendimento finalizado pendente de faturamento no momento.
+                    <td colSpan={6} className="py-12 text-center text-slate-500 font-medium">
+                      Nenhuma consulta do plano Particular com status "Atendido" pendente de emissão de NFS-e neste mês.
                     </td>
                   </tr>
                 )}
