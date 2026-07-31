@@ -474,7 +474,7 @@ export const mappers = {
       telefone: u.tel || null,
       data_nascimento: u.nasc || null,
       perfil: u.perfil,
-      status: u.status || 'Ativo',
+      status: u.status !== undefined ? u.status : 'Ativo',
       foto: u.foto || null,
       prof_id: u.profId || null,
       perfil_id: u.perfilId || null,
