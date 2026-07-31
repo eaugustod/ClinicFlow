@@ -25,14 +25,15 @@ import {
   UserCheck,
   Upload,
   Calendar,
-  Sparkles
+  Sparkles,
+  Filter
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { NotaFiscalJundiai, ConfiguracaoFiscalJundiai } from '../types';
 import { nfseJundiaiService, defaultConfigFiscal } from '../services/nfseJundiaiService';
 
 export const FinanceiroNfse: React.FC = () => {
-  const { pacientes, agendamentos } = useApp();
+  const { pacientes, agendamentos, planos } = useApp();
   const [activeTab, setActiveTab] = useState<'lista' | 'faturar_consultas' | 'manual' | 'config'>('lista');
 
   // State
@@ -42,6 +43,7 @@ export const FinanceiroNfse: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [selectedPlanoFilter, setSelectedPlanoFilter] = useState<string>('todos');
 
   // Selected Nota for Preview Modal
   const [selectedNota, setSelectedNota] = useState<NotaFiscalJundiai | null>(null);
@@ -307,6 +309,9 @@ export const FinanceiroNfse: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Planos de Saúde Ativos para o filtro de faturamento
+  const planosAtivos = planos.filter((p) => !p.status || p.status.toLowerCase() === 'ativo' || p.status === '1');
+
   // Atendimentos elegíveis para faturar NFS-e (Apenas Consultas de Pacientes/Atendimentos do Plano Particular)
   const atendimentosParaFaturar = agendamentos.filter((a) => {
     if (a.status !== 'atendido') return false;
@@ -322,7 +327,19 @@ export const FinanceiroNfse: React.FC = () => {
       a.planoId === 1 ||
       (!a.plano && (!patient || !patient.plano || patient.planoId === 1));
 
-    return isParticular;
+    if (!isParticular) return false;
+
+    if (selectedPlanoFilter !== 'todos') {
+      const targetPlano = planos.find((p) => String(p.id) === String(selectedPlanoFilter));
+      if (targetPlano) {
+        const targetNome = targetPlano.nome.toLowerCase();
+        const matchesName = planoAgendamento === targetNome || planoPaciente === targetNome;
+        const matchesId = String(a.planoId) === String(targetPlano.id) || (patient && String(patient.planoId) === String(targetPlano.id));
+        return matchesName || matchesId;
+      }
+    }
+
+    return true;
   });
 
   return (
@@ -618,18 +635,38 @@ export const FinanceiroNfse: React.FC = () => {
                 Faturar Consultas Particulares (Prontos para NFS-e)
               </h3>
               <p className="text-slate-400 text-xs mt-0.5">
-                Selecione as consultas do plano Particular com status "Atendido" para gerar e transmitir as Notas Fiscais em lote para Jundiaí (SP). (Atendimentos por convênio de saúde são faturados via Lote TISS).
+                Selecione as consultas com status "Atendido" para gerar e transmitir as Notas Fiscais em lote para Jundiaí (SP).
               </p>
             </div>
 
-            <button
-              onClick={handleFaturarEmLote}
-              disabled={submitting || selectedApptIds.length === 0}
-              className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all text-xs flex items-center gap-2"
-            >
-              <Check size={14} />
-              Emitir {selectedApptIds.length} NFS-e Agora
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* FILTRO DE PLANOS ATIVOS */}
+              <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-1.5 rounded-xl shadow-inner">
+                <Filter size={14} className="text-emerald-400" />
+                <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Plano:</span>
+                <select
+                  value={selectedPlanoFilter}
+                  onChange={(e) => setSelectedPlanoFilter(e.target.value)}
+                  className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
+                >
+                  <option value="todos">Todos os Planos Particulares Ativos</option>
+                  {planosAtivos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleFaturarEmLote}
+                disabled={submitting || selectedApptIds.length === 0}
+                className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all text-xs flex items-center gap-2"
+              >
+                <Check size={14} />
+                Emitir {selectedApptIds.length} NFS-e Agora
+              </button>
+            </div>
           </div>
 
           <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden">
