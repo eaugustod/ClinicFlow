@@ -33,7 +33,7 @@ import { NotaFiscalJundiai, ConfiguracaoFiscalJundiai } from '../types';
 import { nfseJundiaiService, defaultConfigFiscal } from '../services/nfseJundiaiService';
 
 export const FinanceiroNfse: React.FC = () => {
-  const { pacientes, agendamentos, planos } = useApp();
+  const { pacientes, agendamentos, planos, loadAgendamentosMes } = useApp();
   const [activeTab, setActiveTab] = useState<'lista' | 'faturar_consultas' | 'manual' | 'config'>('lista');
 
   // State
@@ -44,6 +44,7 @@ export const FinanceiroNfse: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [selectedPlanoFilter, setSelectedPlanoFilter] = useState<string>('todos');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().substring(0, 7));
 
   // Selected Nota for Preview Modal
   const [selectedNota, setSelectedNota] = useState<NotaFiscalJundiai | null>(null);
@@ -94,6 +95,14 @@ export const FinanceiroNfse: React.FC = () => {
   useEffect(() => {
     loadNotasAndConfig();
   }, []);
+
+  // Busca agendamentos do mês selecionado direto no Supabase ao alternar aba ou mês
+  useEffect(() => {
+    if (activeTab === 'faturar_consultas' && selectedMonth) {
+      setLoading(true);
+      loadAgendamentosMes(selectedMonth).finally(() => setLoading(false));
+    }
+  }, [activeTab, selectedMonth]);
 
   const loadNotasAndConfig = async () => {
     setLoading(true);
@@ -315,6 +324,9 @@ export const FinanceiroNfse: React.FC = () => {
   // Atendimentos elegíveis para faturar NFS-e (Apenas Consultas de Pacientes/Atendimentos do Plano Particular)
   const atendimentosParaFaturar = agendamentos.filter((a) => {
     if (a.status !== 'atendido') return false;
+
+    // Filtrar por Mês e Ano selecionado (YYYY-MM)
+    if (selectedMonth && a.dataISO && !a.dataISO.startsWith(selectedMonth)) return false;
 
     const patient = pacientes.find((p) => p.id === a.pacId);
 
@@ -640,6 +652,18 @@ export const FinanceiroNfse: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              {/* FILTRO MÊS / ANO (COMPETÊNCIA) */}
+              <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-1.5 rounded-xl shadow-inner">
+                <Calendar size={14} className="text-indigo-400" />
+                <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Mês Ref:</span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-transparent text-white text-xs font-mono focus:outline-none cursor-pointer"
+                />
+              </div>
+
               {/* FILTRO DE PLANOS ATIVOS */}
               <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-1.5 rounded-xl shadow-inner">
                 <Filter size={14} className="text-emerald-400" />
