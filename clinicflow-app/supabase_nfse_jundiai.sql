@@ -2,6 +2,7 @@
 -- SCRIPT DE CRIAÇÃO DE TABELAS E ESTRUTURA PARA EMISSÃO DE NFS-e (JUNDIAÍ - SP)
 -- SISTEMA: ClinicFlow
 -- PADRÃO FISCAL: GISS Online / ABRASF v2.04 (Prefeitura Municipal de Jundiaí/SP)
+-- SUPORTE À REFORMA TRIBUTÁRIA (EC 132/2023): IBS (Estadual/Mun) & CBS (Federal)
 -- ==============================================================================
 
 -- 1. CRIAR TABELA DE NOTAS FISCAIS (notas_fiscais)
@@ -22,6 +23,16 @@ CREATE TABLE IF NOT EXISTS public.notas_fiscais (
     valor_servico NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     aliquota_iss NUMERIC(5, 2) NOT NULL DEFAULT 2.00,
     valor_iss NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    
+    -- COLUNAS REFORMA TRIBUTÁRIA (IBS / CBS)
+    cst_ibs_cbs TEXT DEFAULT '01',
+    c_class_trib TEXT DEFAULT '040100',
+    aliquota_ibs NUMERIC(5, 4) DEFAULT 0.1000,
+    valor_ibs NUMERIC(12, 2) DEFAULT 0.00,
+    aliquota_cbs NUMERIC(5, 4) DEFAULT 0.9000,
+    valor_cbs NUMERIC(12, 2) DEFAULT 0.00,
+    p_redutor_ibs_cbs NUMERIC(5, 2) DEFAULT 60.00,
+
     status TEXT NOT NULL DEFAULT 'Rascunho', -- Rascunho, Processando, Aprovada, Cancelada, Rejeitada
     motivo_rejeicao TEXT,
     pdf_url TEXT,
@@ -43,6 +54,13 @@ CREATE TABLE IF NOT EXISTS public.config_fiscal_jundiai (
     codigo_servico_padrao TEXT DEFAULT '04.01',
     aliquota_iss_padrao NUMERIC(5, 2) DEFAULT 2.00,
     optante_simples_nacional BOOLEAN DEFAULT TRUE,
+    
+    -- CONFIGURAÇÃO REFORMA TRIBUTÁRIA
+    destacar_ibs_cbs BOOLEAN DEFAULT TRUE,
+    aliquota_ibs_padrao NUMERIC(5, 4) DEFAULT 0.1000,
+    aliquota_cbs_padrao NUMERIC(5, 4) DEFAULT 0.9000,
+    reducao_saude_ibs_cbs NUMERIC(5, 2) DEFAULT 60.00,
+
     token_api TEXT,
     certificado_validade DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -61,11 +79,10 @@ CREATE TABLE IF NOT EXISTS public.lotes_rps_jundiai (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. ÍNDICES DE DESEMPENO
+-- 4. ÍNDICES DE DESEMPENHO
 CREATE INDEX IF NOT EXISTS idx_notas_fiscais_status ON public.notas_fiscais(status);
 CREATE INDEX IF NOT EXISTS idx_notas_fiscais_data_emissao ON public.notas_fiscais(data_emissao);
 CREATE INDEX IF NOT EXISTS idx_notas_fiscais_cpf_cnpj ON public.notas_fiscais(tomador_cpf_cnpj);
-CREATE INDEX IF NOT EXISTS idx_notas_fiscais_paciente_id ON public.notas_fiscais(paciente_id);
 
 -- 5. TRIGGER DE ATUALIZAÇÃO AUTOMÁTICA DE updated_at
 CREATE OR REPLACE FUNCTION update_timestamp_column()

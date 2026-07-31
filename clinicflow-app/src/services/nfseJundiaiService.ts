@@ -13,6 +13,10 @@ export const defaultConfigFiscal: ConfiguracaoFiscalJundiai = {
   codigoServicoPadrao: '04.01', // Serviços de psicologia / fisioterapia / medicina
   aliquotaIssPadrao: 2.0, // 2% ISS Jundiaí
   optanteSimplesNacional: true,
+  destacarIbsCbs: true,
+  aliquotaIbsPadrao: 0.10, // 0,10% IBS Transição
+  aliquotaCbsPadrao: 0.90, // 0,90% CBS Transição
+  reducaoSaudeIbsCbs: 60, // 60% Redução de Alíquota para Saúde
   certificadoValidade: '2027-12-31'
 };
 
@@ -37,6 +41,33 @@ export const nfseJundiaiService = {
     const isCnpjTomador = cleanCpfCnpjTomador.length > 11;
     const dataIsoStr = nota.dataEmissao ? nota.dataEmissao.substring(0, 10) : new Date().toISOString().substring(0, 10);
     const numRpsNum = nota.numeroRps.replace(/\D/g, '') || '1';
+
+    const incluirIbsCbs = config.destacarIbsCbs !== false;
+    const cstIbsCbs = nota.cstIbsCbs || '01';
+    const cClassTrib = nota.cClassTribIbsCbs || '040100';
+    const redutorSaude = nota.reducaoBaseIbsCbs || config.reducaoSaudeIbsCbs || 60;
+
+    const blockIbsCbsXml = incluirIbsCbs
+      ? `
+            <p1:IBSCBS>
+              <p1:finNFSe>0</p1:finNFSe>
+              <p1:indFinal>1</p1:indFinal>
+              <p1:cIndOp>01</p1:cIndOp>
+              <p1:tpOper>1</p1:tpOper>
+              <p1:indDest>0</p1:indDest>
+              <p1:valores>
+                <p1:trib>
+                  <p1:gIBSCBS>
+                    <p1:CST>${cstIbsCbs}</p1:CST>
+                    <p1:cClassTrib>${cClassTrib}</p1:cClassTrib>
+                  </p1:gIBSCBS>
+                </p1:trib>
+                <p1:cLocalidadeIncid>3525904</p1:cLocalidadeIncid>
+                <p1:pRedutor>${redutorSaude.toFixed(2)}</p1:pRedutor>
+                <p1:vBC>${nota.valorServico.toFixed(2)}</p1:vBC>
+              </p1:valores>
+            </p1:IBSCBS>`
+      : '';
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <p:EnviarLoteRpsEnvio xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:p="http://www.giss.com.br/enviar-lote-rps-envio-v2_04.xsd" xmlns:p1="http://www.giss.com.br/tipos-v2_04.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -66,7 +97,7 @@ export const nfseJundiaiService = {
             <p1:Valores>
               <p1:ValorServicos>${nota.valorServico.toFixed(2)}</p1:ValorServicos>
               <p1:ValorIss>${nota.valorIss.toFixed(2)}</p1:ValorIss>
-              <p1:Aliquota>${nota.aliquotaIss.toFixed(2)}</p1:Aliquota>
+              <p1:Aliquota>${nota.aliquotaIss.toFixed(2)}</p1:Aliquota>${blockIbsCbsXml}
             </p1:Valores>
             <p1:IssRetido>2</p1:IssRetido>
             <p1:ItemListaServico>${nota.servicoCodigo || config.codigoServicoPadrao}</p1:ItemListaServico>
@@ -140,6 +171,12 @@ export const nfseJundiaiService = {
         valorServico: 350.00,
         aliquotaIss: 2.0,
         valorIss: 7.00,
+        aliquotaIbs: 0.10,
+        valorIbs: 0.35,
+        aliquotaCbs: 0.90,
+        valorCbs: 3.15,
+        reducaoBaseIbsCbs: 60,
+        cstIbsCbs: '01',
         status: 'Aprovada',
         pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
         ambiente: 'Homologação'
@@ -160,6 +197,12 @@ export const nfseJundiaiService = {
         valorServico: 280.00,
         aliquotaIss: 2.0,
         valorIss: 5.60,
+        aliquotaIbs: 0.10,
+        valorIbs: 0.28,
+        aliquotaCbs: 0.90,
+        valorCbs: 2.52,
+        reducaoBaseIbsCbs: 60,
+        cstIbsCbs: '01',
         status: 'Aprovada',
         pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
         ambiente: 'Homologação'
@@ -179,12 +222,23 @@ export const nfseJundiaiService = {
     const valorIss = Number(((payload.valorServico * (payload.aliquotaIss || config.aliquotaIssPadrao)) / 100).toFixed(2));
     const rpsNum = `RPS-${now.getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
+    const aliqIbs = payload.aliquotaIbs !== undefined ? payload.aliquotaIbs : (config.aliquotaIbsPadrao || 0.10);
+    const aliqCbs = payload.aliquotaCbs !== undefined ? payload.aliquotaCbs : (config.aliquotaCbsPadrao || 0.90);
+    const valIbs = Number(((payload.valorServico * aliqIbs) / 100).toFixed(2));
+    const valCbs = Number(((payload.valorServico * aliqCbs) / 100).toFixed(2));
+
     const novaNota: NotaFiscalJundiai = {
       ...payload,
       id: `nf_${timestamp}`,
       numeroRps: rpsNum,
       numeroLote: loteNum,
       valorIss,
+      aliquotaIbs: aliqIbs,
+      valorIbs: valIbs,
+      aliquotaCbs: aliqCbs,
+      valorCbs: valCbs,
+      reducaoBaseIbsCbs: payload.reducaoBaseIbsCbs || config.reducaoSaudeIbsCbs || 60,
+      cstIbsCbs: payload.cstIbsCbs || '01',
       status: 'Processando',
       dataEmissao: now.toISOString(),
       ambiente: config.ambiente
@@ -195,7 +249,7 @@ export const nfseJundiaiService = {
     novaNota.xmlEnvio = xmlGissEnvio;
     novaNota.xmlUrl = `data:text/xml;charset=utf-8,${encodeURIComponent(xmlGissEnvio)}`;
 
-    // Transmission to Prefeitura de Jundiaí FISCONET WebService
+    // Transmission simulation to Prefeitura de Jundiaí FISCONET WebService
     await new Promise((res) => setTimeout(res, 1200));
 
     const numNotaGerada = `NFS-${now.getFullYear()}/${Math.floor(1000 + Math.random() * 9000)}`;

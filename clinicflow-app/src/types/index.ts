@@ -343,6 +343,14 @@ export interface NotaFiscalJundiai {
   valorServico: number;
   aliquotaIss: number;
   valorIss: number;
+  // Reforma Tributária (IBS / CBS)
+  cstIbsCbs?: string;
+  cClassTribIbsCbs?: string;
+  aliquotaIbs?: number;
+  valorIbs?: number;
+  aliquotaCbs?: number;
+  valorCbs?: number;
+  reducaoBaseIbsCbs?: number;
   status: 'Rascunho' | 'Processando' | 'Aprovada' | 'Cancelada' | 'Rejeitada';
   motivoRejeicao?: string;
   pdfUrl?: string;
@@ -361,6 +369,10 @@ export interface ConfiguracaoFiscalJundiai {
   codigoServicoPadrao: string;
   aliquotaIssPadrao: number;
   optanteSimplesNacional: boolean;
+  destacarIbsCbs?: boolean;
+  aliquotaIbsPadrao?: number;
+  aliquotaCbsPadrao?: number;
+  reducaoSaudeIbsCbs?: number;
   tokenApi?: string;
   certificadoValidade?: string;
 }

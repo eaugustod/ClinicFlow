@@ -60,6 +60,12 @@ export const FinanceiroNfse: React.FC = () => {
   const [aliquotaIss, setAliquotaIss] = useState<number>(2.0);
   const [pacienteId, setPacienteId] = useState<number | null>(null);
 
+  // Reforma Tributária (IBS / CBS)
+  const [cstIbsCbs, setCstIbsCbs] = useState('01');
+  const [aliquotaIbs, setAliquotaIbs] = useState<number>(0.10);
+  const [aliquotaCbs, setAliquotaCbs] = useState<number>(0.90);
+  const [reducaoSaude, setReducaoSaude] = useState<number>(60);
+
   // Form State for Fiscal Config
   const [cfgCnpj, setCfgCnpj] = useState('');
   const [cfgInsc, setCfgInsc] = useState('');
@@ -67,6 +73,10 @@ export const FinanceiroNfse: React.FC = () => {
   const [cfgAmbiente, setCfgAmbiente] = useState<'Homologação' | 'Produção'>('Homologação');
   const [cfgCodServ, setCfgCodServ] = useState('04.01');
   const [cfgAliqIss, setCfgAliqIss] = useState(2.0);
+  const [cfgDestacarIbsCbs, setCfgDestacarIbsCbs] = useState(true);
+  const [cfgAliqIbs, setCfgAliqIbs] = useState(0.10);
+  const [cfgAliqCbs, setCfgAliqCbs] = useState(0.90);
+  const [cfgReducaoSaude, setCfgReducaoSaude] = useState(60);
 
   // Selected Patients for Bulk Invoicing
   const [selectedApptIds, setSelectedApptIds] = useState<number[]>([]);
@@ -86,6 +96,10 @@ export const FinanceiroNfse: React.FC = () => {
       setCfgAmbiente(cfg.ambiente);
       setCfgCodServ(cfg.codigoServicoPadrao);
       setCfgAliqIss(cfg.aliquotaIssPadrao);
+      setCfgDestacarIbsCbs(cfg.destacarIbsCbs !== false);
+      setCfgAliqIbs(cfg.aliquotaIbsPadrao || 0.10);
+      setCfgAliqCbs(cfg.aliquotaCbsPadrao || 0.90);
+      setCfgReducaoSaude(cfg.reducaoSaudeIbsCbs || 60);
 
       const list = await nfseJundiaiService.listNotas();
       setNotas(list);
@@ -132,6 +146,10 @@ export const FinanceiroNfse: React.FC = () => {
         descricaoServico: descricaoServico || 'Prestação de Serviços de Saúde.',
         valorServico: Number(valorServico),
         aliquotaIss,
+        cstIbsCbs,
+        aliquotaIbs,
+        aliquotaCbs,
+        reducaoBaseIbsCbs: reducaoSaude,
         ambiente: config.ambiente,
         dataEmissao: new Date().toISOString()
       });
@@ -202,11 +220,15 @@ export const FinanceiroNfse: React.FC = () => {
       razaoSocial: cfgRazao,
       ambiente: cfgAmbiente,
       codigoServicoPadrao: cfgCodServ,
-      aliquotaIssPadrao: cfgAliqIss
+      aliquotaIssPadrao: cfgAliqIss,
+      destacarIbsCbs: cfgDestacarIbsCbs,
+      aliquotaIbsPadrao: cfgAliqIbs,
+      aliquotaCbsPadrao: cfgAliqCbs,
+      reducaoSaudeIbsCbs: cfgReducaoSaude
     };
     nfseJundiaiService.saveConfig(updated);
     setConfig(updated);
-    alert('Configurações Fiscais de Jundiaí salvas com sucesso!');
+    alert('Configurações Fiscais de Jundiaí e Reforma Tributária (IBS/CBS) salvas com sucesso!');
   };
 
   const handleConfirmCancelar = async () => {
@@ -767,6 +789,65 @@ export const FinanceiroNfse: React.FC = () => {
                 className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs focus:outline-none"
               />
             </div>
+
+            {/* SEÇÃO REFORMA TRIBUTÁRIA (IBS & CBS) */}
+            <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                  <Sparkles size={14} /> Reforma Tributária (IBS / CBS - GISS v2.04 Jundiaí)
+                </h4>
+                <span className="text-[10px] text-slate-400 font-mono">EC 132/2023</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-[11px]">CST (Situação Trib.)</label>
+                  <select
+                    value={cstIbsCbs}
+                    onChange={(e) => setCstIbsCbs(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none"
+                  >
+                    <option value="01">01 - Tributado Integral</option>
+                    <option value="02">02 - Alíquota Reduzida (Saúde 60%)</option>
+                    <option value="03">03 - Isenção / Imunidade</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Alíq. IBS (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={aliquotaIbs}
+                    onChange={(e) => setAliquotaIbs(Number(e.target.value))}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs font-mono"
+                  />
+                  <span className="text-[9px] text-slate-500 block mt-0.5">Est. IBS: R$ {((Number(valorServico || 0) * aliquotaIbs) / 100).toFixed(2)}</span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Alíq. CBS (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={aliquotaCbs}
+                    onChange={(e) => setAliquotaCbs(Number(e.target.value))}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs font-mono"
+                  />
+                  <span className="text-[9px] text-slate-500 block mt-0.5">Est. CBS: R$ {((Number(valorServico || 0) * aliquotaCbs) / 100).toFixed(2)}</span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Redutor Saúde (%)</label>
+                  <input
+                    type="number"
+                    value={reducaoSaude}
+                    onChange={(e) => setReducaoSaude(Number(e.target.value))}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white text-xs font-mono"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
@@ -852,6 +933,28 @@ export const FinanceiroNfse: React.FC = () => {
                 step="0.1"
                 value={cfgAliqIss}
                 onChange={(e) => setCfgAliqIss(Number(e.target.value))}
+                className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">Alíquota IBS Padrão (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={cfgAliqIbs}
+                onChange={(e) => setCfgAliqIbs(Number(e.target.value))}
+                className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">Alíquota CBS Padrão (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={cfgAliqCbs}
+                onChange={(e) => setCfgAliqCbs(Number(e.target.value))}
                 className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs font-mono"
               />
             </div>
@@ -1021,6 +1124,22 @@ CREATE POLICY "Permissao Total Lotes RPS" ON public.lotes_rps_jundiai FOR ALL US
                 <div>
                   <span className="text-[10px] text-slate-500 block">Valor ISS</span>
                   <strong className="text-emerald-400">R$ {selectedNota.valorIss.toFixed(2)}</strong>
+                </div>
+              </div>
+
+              {/* REFORMA TRIBUTÁRIA BREAKDOWN (IBS & CBS) */}
+              <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg grid grid-cols-3 gap-2 text-right">
+                <div>
+                  <span className="text-[9px] text-indigo-300 block uppercase">CST / Redutor Saúde</span>
+                  <strong className="text-white text-[11px]">CST {selectedNota.cstIbsCbs || '01'} ({selectedNota.reducaoBaseIbsCbs || 60}% Red.)</strong>
+                </div>
+                <div>
+                  <span className="text-[9px] text-indigo-300 block uppercase">Est. IBS ({selectedNota.aliquotaIbs || 0.1}%)</span>
+                  <strong className="text-indigo-400 text-[11px]">R$ {(selectedNota.valorIbs || (selectedNota.valorServico * 0.001)).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span className="text-[9px] text-indigo-300 block uppercase">Est. CBS ({selectedNota.aliquotaCbs || 0.9}%)</span>
+                  <strong className="text-indigo-400 text-[11px]">R$ {(selectedNota.valorCbs || (selectedNota.valorServico * 0.009)).toFixed(2)}</strong>
                 </div>
               </div>
             </div>
