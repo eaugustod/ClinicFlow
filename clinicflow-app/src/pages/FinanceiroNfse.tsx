@@ -139,7 +139,7 @@ export const FinanceiroNfse: React.FC = () => {
   const loadNotasAndConfig = async () => {
     setLoading(true);
     try {
-      const cfg = nfseJundiaiService.getConfig();
+      const cfg = await nfseJundiaiService.fetchConfig();
       setConfig(cfg);
       setCfgCnpj(cfg.cnpjEmissor);
       setCfgInsc(cfg.inscricaoMunicipal);
@@ -340,31 +340,38 @@ export const FinanceiroNfse: React.FC = () => {
     }
   };
 
-  const handleSaveConfig = (e: React.FormEvent) => {
+  const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updated: ConfiguracaoFiscalJundiai = {
-      ...config,
-      cnpjEmissor: cfgCnpj,
-      inscricaoMunicipal: cfgInsc,
-      razaoSocial: cfgRazao,
-      ambiente: cfgAmbiente,
-      codigoServicoPadrao: cfgCodServ,
-      aliquotaIssPadrao: cfgAliqIss,
-      serieRps: cfgSerieRps,
-      proximoNumeroRps: cfgProximoRps,
-      proximoNumeroLote: cfgProximoLote,
-      regimeTributario: cfgRegimeTributario,
-      certificadoNomeArquivo: cfgCertNome,
-      certificadoBase64: cfgCertBase64,
-      certificadoSenha: cfgCertSenha,
-      destacarIbsCbs: cfgDestacarIbsCbs,
-      aliquotaIbsPadrao: cfgAliqIbs,
-      aliquotaCbsPadrao: cfgAliqCbs,
-      reducaoSaudeIbsCbs: cfgReducaoSaude
-    };
-    nfseJundiaiService.saveConfig(updated);
-    setConfig(updated);
-    alert('Configurações Fiscais de Jundiaí e Certificado Digital A1 salvos com sucesso!');
+    setSubmitting(true);
+    try {
+      const updated: ConfiguracaoFiscalJundiai = {
+        ...config,
+        cnpjEmissor: cfgCnpj,
+        inscricaoMunicipal: cfgInsc,
+        razaoSocial: cfgRazao,
+        ambiente: cfgAmbiente,
+        codigoServicoPadrao: cfgCodServ,
+        aliquotaIssPadrao: cfgAliqIss,
+        serieRps: cfgSerieRps,
+        proximoNumeroRps: cfgProximoRps,
+        proximoNumeroLote: cfgProximoLote,
+        regimeTributario: cfgRegimeTributario,
+        certificadoNomeArquivo: cfgCertNome,
+        certificadoBase64: cfgCertBase64,
+        certificadoSenha: cfgCertSenha,
+        destacarIbsCbs: cfgDestacarIbsCbs,
+        aliquotaIbsPadrao: cfgAliqIbs,
+        aliquotaCbsPadrao: cfgAliqCbs,
+        reducaoSaudeIbsCbs: cfgReducaoSaude
+      };
+      await nfseJundiaiService.saveConfig(updated);
+      setConfig(updated);
+      alert('✅ Configurações Fiscais de Jundiaí e Certificado Digital A1 salvos com sucesso no Supabase!');
+    } catch (err: any) {
+      alert(`Erro ao salvar configurações no Supabase: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCertUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

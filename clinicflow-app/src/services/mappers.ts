@@ -725,6 +725,52 @@ export const mappers = {
     created_at: r.created_at || ''
   }),
 
+  configFiscalToDb: (cfg: Partial<import('../types').ConfiguracaoFiscalJundiai>) => ({
+    id: 'config_padrao',
+    cnpj_emissor: cfg.cnpjEmissor,
+    inscricao_municipal: cfg.inscricaoMunicipal,
+    razao_social: cfg.razaoSocial,
+    ambiente: cfg.ambiente || 'Homologação',
+    codigo_servico_padrao: cfg.codigoServicoPadrao || '04.01',
+    aliquota_iss_padrao: cfg.aliquotaIssPadrao || 2.0,
+    optante_simples_nacional: cfg.optanteSimplesNacional !== false,
+    serie_rps: cfg.serieRps || '1',
+    proximo_numero_rps: cfg.proximoNumeroRps || 1001,
+    proximo_numero_lote: cfg.proximoNumeroLote || 1001,
+    regime_tributario: cfg.regimeTributario || '6',
+    certificado_nome_arquivo: cfg.certificadoNomeArquivo || null,
+    certificado_base64: cfg.certificadoBase64 || null,
+    certificado_senha: cfg.certificadoSenha || null,
+    destacar_ibs_cbs: cfg.destacarIbsCbs !== false,
+    aliquota_ibs_padrao: cfg.aliquotaIbsPadrao || 0.10,
+    aliquota_cbs_padrao: cfg.aliquotaCbsPadrao || 0.90,
+    reducao_saude_ibs_cbs: cfg.reducaoSaudeIbsCbs || 60,
+    certificado_validade: cfg.certificadoValidade || null,
+    updated_at: new Date().toISOString()
+  }),
+
+  dbToConfigFiscal: (r: any): import('../types').ConfiguracaoFiscalJundiai => ({
+    cnpjEmissor: r.cnpj_emissor || '',
+    inscricaoMunicipal: r.inscricao_municipal || '',
+    razaoSocial: r.razao_social || '',
+    ambiente: r.ambiente || 'Homologação',
+    codigoServicoPadrao: r.codigo_servico_padrao || '04.01',
+    aliquotaIssPadrao: Number(r.aliquota_iss_padrao) || 2.0,
+    optanteSimplesNacional: r.optante_simples_nacional !== false,
+    serieRps: r.serie_rps || '1',
+    proximoNumeroRps: Number(r.proximo_numero_rps) || 1001,
+    proximoNumeroLote: Number(r.proximo_numero_lote) || 1001,
+    regimeTributario: r.regime_tributario || '6',
+    certificadoNomeArquivo: r.certificado_nome_arquivo || '',
+    certificadoBase64: r.certificado_base64 || '',
+    certificadoSenha: r.certificado_senha || '',
+    destacarIbsCbs: r.destacar_ibs_cbs !== false,
+    aliquotaIbsPadrao: Number(r.aliquota_ibs_padrao) || 0.10,
+    aliquotaCbsPadrao: Number(r.aliquota_cbs_padrao) || 0.90,
+    reducaoSaudeIbsCbs: Number(r.reducao_saude_ibs_cbs) || 60,
+    certificadoValidade: r.certificado_validade || '2027-12-31'
+  }),
+
   // Financial Management Mappers
   contaReceberToDb: (c: Partial<import('../types').ContaReceber>) => ({
     id: c.id,

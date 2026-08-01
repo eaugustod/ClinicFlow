@@ -35,8 +35,39 @@ export const nfseJundiaiService = {
     return defaultConfigFiscal;
   },
 
-  saveConfig: (config: ConfiguracaoFiscalJundiai) => {
+  fetchConfig: async (): Promise<ConfiguracaoFiscalJundiai> => {
+    try {
+      const { data, error } = await supabase
+        .from('config_fiscal_jundiai')
+        .select('*')
+        .eq('id', 'config_padrao')
+        .maybeSingle();
+
+      if (!error && data) {
+        const mapped = mappers.dbToConfigFiscal(data);
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(mapped));
+        return mapped;
+      }
+    } catch (e) {
+      console.warn('[NFS-e Jundiaí] Fallback config local storage:', e);
+    }
+    return nfseJundiaiService.getConfig();
+  },
+
+  saveConfig: async (config: ConfiguracaoFiscalJundiai): Promise<void> => {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    try {
+      const dbObj = mappers.configFiscalToDb(config);
+      const { error } = await supabase
+        .from('config_fiscal_jundiai')
+        .upsert(dbObj);
+
+      if (error) {
+        console.error('[NFS-e Jundiaí] Erro ao salvar config no Supabase:', error);
+      }
+    } catch (e) {
+      console.warn('[NFS-e Jundiaí] Could not save config to DB, saved to local storage:', e);
+    }
   },
 
   gerarXmlGissLote: (nota: NotaFiscalJundiai, config: ConfiguracaoFiscalJundiai): string => {
