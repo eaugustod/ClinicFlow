@@ -91,6 +91,38 @@ export const FinanceiroNfse: React.FC = () => {
 
   // Selected Patients for Bulk Invoicing
   const [selectedApptIds, setSelectedApptIds] = useState<number[]>([]);
+  const [valoresEstimados, setValoresEstimados] = useState<Record<number, number>>({});
+  const [valorPadraoLote, setValorPadraoLote] = useState<number | ''>('');
+
+  const getValorEstimado = (apptId: number) => {
+    if (valoresEstimados[apptId] !== undefined) {
+      return valoresEstimados[apptId];
+    }
+    return 150;
+  };
+
+  const handleValorEstimadoChange = (apptId: number, valStr: string) => {
+    const num = parseFloat(valStr);
+    setValoresEstimados((prev) => ({
+      ...prev,
+      [apptId]: isNaN(num) ? 0 : num
+    }));
+  };
+
+  const handleAplicarValorPadraoEmLote = () => {
+    if (valorPadraoLote === '' || Number(valorPadraoLote) < 0) {
+      alert('Informe um valor válido para aplicar em lote.');
+      return;
+    }
+    const valNum = Number(valorPadraoLote);
+    const novosValores = { ...valoresEstimados };
+    const idsParaAplicar = selectedApptIds.length > 0 ? selectedApptIds : atendimentosParaFaturar.map((a) => a.id);
+    idsParaAplicar.forEach((id) => {
+      novosValores[id] = valNum;
+    });
+    setValoresEstimados(novosValores);
+    alert(`Valor de R$ ${valNum.toFixed(2)} aplicado para ${idsParaAplicar.length} consultas.`);
+  };
 
   useEffect(() => {
     loadNotasAndConfig();
@@ -192,40 +224,111 @@ export const FinanceiroNfse: React.FC = () => {
     }
   };
 
+  const formatDataBr = (dataIsoStr?: string) => {
+    if (!dataIsoStr) return 'Data não informada';
+    if (dataIsoStr.includes('/')) return dataIsoStr;
+    const parts = dataIsoStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dataIsoStr;
+  };
+
   const handleFaturarEmLote = async () => {
     if (selectedApptIds.length === 0) {
       alert('Selecione ao menos um atendimento para faturar.');
       return;
     }
 
-    if (!confirm(`Deseja emitir ${selectedApptIds.length} NFS-e integradas com a Prefeitura de Jundiaí?`)) return;
+    const aglutinar = confirm(
+      `Foram selecionadas ${selectedApptIds.length} consultas.\n\n` +
+      `Deseja AGLUTINAR (agrupar) as sessões do mesmo paciente em uma ÚNICA Nota Fiscal?\n\n` +
+      `• [OK / SIM]: Aglutina as sessões por paciente em 1 nota fiscal, somando os valores e listando todas as datas na descrição.\n` +
+      `• [CANCELAR / NÃO]: Gera 1 Nota Fiscal individual para cada sessão selecionada.`
+    );
 
     setSubmitting(true);
+    let notasGeradasCount = 0;
+
     try {
       const targetAppts = agendamentos.filter((a) => selectedApptIds.includes(a.id));
 
-      for (const appt of targetAppts) {
-        const p = appt.pacId ? pacientes.find((x) => x.id === appt.pacId) : null;
-        const nomeTomador = p ? p.nome : appt.paciente;
-        const cpfTomador = p?.cpf || '000.000.000-00';
-        const val = 150;
+      if (aglutinar) {
+        // Agrupar por paciente (pacId ou chave nome+cpf)
+        const grupos: { [key: string]: typeof targetAppts } = {};
 
-        await nfseJundiaiService.emitirNota({
-          pacienteId: appt.pacId || undefined,
-          tomadorNome: nomeTomador,
-          tomadorCpfCnpj: cpfTomador,
-          tomadorEmail: p?.email || '',
-          tomadorEndereco: p?.end || 'Jundiaí - SP',
-          servicoCodigo: config.codigoServicoPadrao,
-          descricaoServico: `Atendimento Clínico realizado em ${appt.dataISO || 'Data agendada'} (${appt.tipo || 'Sessão de Saúde'}).`,
-          valorServico: val,
-          aliquotaIss: config.aliquotaIssPadrao,
-          ambiente: config.ambiente,
-          dataEmissao: new Date().toISOString()
-        });
+        for (const appt of targetAppts) {
+          const p = appt.pacId ? pacientes.find((x) => x.id === appt.pacId) : null;
+          const key = p ? `id_${p.id}` : `nome_${appt.paciente.trim().toLowerCase()}`;
+          if (!grupos[key]) {
+            grupos[key] = [];
+          }
+          grupos[key].push(appt);
+        }
+
+        const keys = Object.keys(grupos);
+        for (const key of keys) {
+          const apptsDoPaciente = grupos[key];
+          const rep = apptsDoPaciente[0];
+          const p = rep.pacId ? pacientes.find((x) => x.id === rep.pacId) : null;
+          const nomeTomador = p ? p.nome : rep.paciente;
+          const cpfTomador = p?.cpf || '000.000.000-00';
+
+          // Soma dos valores de todas as sessões do paciente
+          const valorTotalAgrupado = apptsDoPaciente.reduce((acc, a) => acc + getValorEstimado(a.id), 0);
+
+          // Datas ordenadas e sem duplicidade
+          const datasFormatadas = apptsDoPaciente
+            .map((a) => formatDataBr(a.dataISO))
+            .filter((v, i, self) => self.indexOf(v) === i)
+            .join(', ');
+
+          const desc = `Sessões de psicologia realizadas nas datas: ${datasFormatadas}, referente ao paciente ${nomeTomador}, CPF: ${cpfTomador}.`;
+
+          await nfseJundiaiService.emitirNota({
+            pacienteId: rep.pacId || undefined,
+            tomadorNome: nomeTomador,
+            tomadorCpfCnpj: cpfTomador,
+            tomadorEmail: p?.email || '',
+            tomadorEndereco: p?.end || 'Jundiaí - SP',
+            servicoCodigo: config.codigoServicoPadrao,
+            descricaoServico: desc,
+            valorServico: valorTotalAgrupado,
+            aliquotaIss: config.aliquotaIssPadrao,
+            ambiente: config.ambiente,
+            dataEmissao: new Date().toISOString()
+          });
+
+          notasGeradasCount++;
+        }
+      } else {
+        // Gerar 1 Nota Fiscal individual para cada sessão
+        for (const appt of targetAppts) {
+          const p = appt.pacId ? pacientes.find((x) => x.id === appt.pacId) : null;
+          const nomeTomador = p ? p.nome : appt.paciente;
+          const cpfTomador = p?.cpf || '000.000.000-00';
+          const val = getValorEstimado(appt.id);
+          const dataFormatada = formatDataBr(appt.dataISO);
+
+          const desc = `Sessão de psicologia realizada na data ${dataFormatada}, referente ao paciente ${nomeTomador}, CPF: ${cpfTomador}.`;
+
+          await nfseJundiaiService.emitirNota({
+            pacienteId: appt.pacId || undefined,
+            tomadorNome: nomeTomador,
+            tomadorCpfCnpj: cpfTomador,
+            tomadorEmail: p?.email || '',
+            tomadorEndereco: p?.end || 'Jundiaí - SP',
+            servicoCodigo: config.codigoServicoPadrao,
+            descricaoServico: desc,
+            valorServico: val,
+            aliquotaIss: config.aliquotaIssPadrao,
+            ambiente: config.ambiente,
+            dataEmissao: new Date().toISOString()
+          });
+
+          notasGeradasCount++;
+        }
       }
 
-      alert(`🎉 ${selectedApptIds.length} Notas Fiscais emitidas e aprovadas na Prefeitura de Jundiaí!`);
+      alert(`🎉 ${notasGeradasCount} Nota(s) Fiscal(is) emitida(s) e transmitida(s) com sucesso para a Prefeitura de Jundiaí!`);
       setSelectedApptIds([]);
       setActiveTab('lista');
       await loadNotasAndConfig();
@@ -640,56 +743,96 @@ export const FinanceiroNfse: React.FC = () => {
       {/* TAB 2: FATURAR ATENDIMENTOS EM LOTE */}
       {activeTab === 'faturar_consultas' && (
         <div className="space-y-4">
-          <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Zap size={16} className="text-emerald-400" />
-                Faturar Consultas Particulares (Prontos para NFS-e)
-              </h3>
-              <p className="text-slate-400 text-xs mt-0.5">
-                Selecione as consultas com status "Atendido" para gerar e transmitir as Notas Fiscais em lote para Jundiaí (SP).
-              </p>
+          <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                  <Zap size={16} className="text-emerald-400" />
+                  Faturar Consultas Particulares (Prontos para NFS-e)
+                </h3>
+                <p className="text-slate-400 text-xs mt-0.5">
+                  Edite o valor da consulta diretamente na tabela ou aplique um valor rápido em lote para transmitir as Notas Fiscais para Jundiaí (SP).
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* FILTRO MÊS / ANO (COMPETÊNCIA) */}
+                <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-1.5 rounded-xl shadow-inner">
+                  <Calendar size={14} className="text-indigo-400" />
+                  <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Mês Ref:</span>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="bg-transparent text-white text-xs font-mono focus:outline-none cursor-pointer"
+                  />
+                </div>
+
+                {/* FILTRO DE PLANOS ATIVOS */}
+                <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-1.5 rounded-xl shadow-inner">
+                  <Filter size={14} className="text-emerald-400" />
+                  <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Plano:</span>
+                  <select
+                    value={selectedPlanoFilter}
+                    onChange={(e) => setSelectedPlanoFilter(e.target.value)}
+                    className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
+                  >
+                    <option value="todos">Todos os Planos Particulares Ativos</option>
+                    {planosAtivos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleFaturarEmLote}
+                  disabled={submitting || selectedApptIds.length === 0}
+                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all text-xs flex items-center gap-2"
+                >
+                  <Check size={14} />
+                  Emitir {selectedApptIds.length} NFS-e Agora
+                </button>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {/* FILTRO MÊS / ANO (COMPETÊNCIA) */}
-              <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-1.5 rounded-xl shadow-inner">
-                <Calendar size={14} className="text-indigo-400" />
-                <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Mês Ref:</span>
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="bg-transparent text-white text-xs font-mono focus:outline-none cursor-pointer"
-                />
-              </div>
-
-              {/* FILTRO DE PLANOS ATIVOS */}
-              <div className="flex items-center gap-2 bg-[#141824] border border-white/[0.08] px-3 py-1.5 rounded-xl shadow-inner">
-                <Filter size={14} className="text-emerald-400" />
-                <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Plano:</span>
-                <select
-                  value={selectedPlanoFilter}
-                  onChange={(e) => setSelectedPlanoFilter(e.target.value)}
-                  className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
+            {/* APLICAÇÃO DE VALOR PADRÃO EM LOTE */}
+            <div className="p-3 bg-[#131622]/80 border border-white/[0.06] rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-slate-300 font-semibold">💡 Alterar valor rápido em lote:</span>
+                <div className="flex items-center gap-1 bg-[#161a26] border border-white/10 px-2 py-1 rounded-lg">
+                  <span className="text-slate-400 font-bold text-[11px]">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="150.00"
+                    value={valorPadraoLote}
+                    onChange={(e) => setValorPadraoLote(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-20 bg-transparent text-white font-mono font-bold focus:outline-none text-xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAplicarValorPadraoEmLote}
+                  className="px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 hover:bg-indigo-500/30 text-indigo-300 font-bold rounded-lg text-xs transition-all active:scale-95"
                 >
-                  <option value="todos">Todos os Planos Particulares Ativos</option>
-                  {planosAtivos.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
+                  Aplicar aos Selecionados ({selectedApptIds.length > 0 ? selectedApptIds.length : atendimentosParaFaturar.length})
+                </button>
               </div>
 
-              <button
-                onClick={handleFaturarEmLote}
-                disabled={submitting || selectedApptIds.length === 0}
-                className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all text-xs flex items-center gap-2"
-              >
-                <Check size={14} />
-                Emitir {selectedApptIds.length} NFS-e Agora
-              </button>
+              <div className="flex items-center gap-4 text-xs font-mono">
+                <span className="text-slate-400">
+                  Selecionados: <strong className="text-white">{selectedApptIds.length}</strong>
+                </span>
+                <span className="text-emerald-400 font-bold text-sm">
+                  Total Lote: R${' '}
+                  {atendimentosParaFaturar
+                    .filter((a) => selectedApptIds.includes(a.id))
+                    .reduce((acc, a) => acc + getValorEstimado(a.id), 0)
+                    .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -714,15 +857,15 @@ export const FinanceiroNfse: React.FC = () => {
                   <th className="p-4">Data / Hora</th>
                   <th className="p-4">Paciente (Tomador)</th>
                   <th className="p-4">Plano / Convênio</th>
-                  <th className="p-4 text-right">Valor Estimado</th>
-                  <th className="p-4 text-right">Imposto ISS (2%)</th>
+                  <th className="p-4 text-right">Valor da Consulta (Editável)</th>
+                  <th className="p-4 text-right">Imposto ISS ({config.aliquotaIssPadrao || 2}%)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.02] text-xs">
                 {atendimentosParaFaturar.map((a) => {
                   const isSelected = selectedApptIds.includes(a.id);
-                  const val = 150;
-                  const iss = val * 0.02;
+                  const val = getValorEstimado(a.id);
+                  const iss = val * ((config.aliquotaIssPadrao || 2) / 100);
 
                   return (
                     <tr key={a.id} className={`hover:bg-white/[0.01] transition-colors ${isSelected ? 'bg-emerald-500/5' : ''}`}>
@@ -746,7 +889,17 @@ export const FinanceiroNfse: React.FC = () => {
                       <td className="p-4 font-bold text-white">{a.paciente}</td>
                       <td className="p-4 text-slate-400">{a.plano || 'Particular'}</td>
                       <td className="p-4 text-right font-mono font-bold text-emerald-400">
-                        R$ {val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-slate-500 font-normal text-[11px]">R$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={valoresEstimados[a.id] !== undefined ? valoresEstimados[a.id] : 150}
+                            onChange={(e) => handleValorEstimadoChange(a.id, e.target.value)}
+                            className="w-24 bg-[#161a26] border border-emerald-500/30 hover:border-emerald-500/60 focus:border-emerald-500 rounded-lg px-2 py-1 text-right text-emerald-400 font-bold focus:outline-none font-mono text-xs shadow-inner transition-colors"
+                            title="Clique para editar o valor desta consulta"
+                          />
+                        </div>
                       </td>
                       <td className="p-4 text-right font-mono text-amber-400">
                         R$ {iss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
