@@ -24,6 +24,7 @@ const PERIODOS_OPCOES = [
 export const Espera: React.FC = () => {
   const { espera, lazyLoadEspera, refreshAll } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mesFiltro, setMesFiltro] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ListaEspera | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -44,6 +45,31 @@ export const Espera: React.FC = () => {
   useEffect(() => {
     lazyLoadEspera();
   }, []);
+
+  const extractAnoMes = (dtStr?: string) => {
+    if (!dtStr) return '';
+    const s = dtStr.trim();
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts.length === 3) {
+        const ano = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+        const mes = parts[1].padStart(2, '0');
+        return `${ano}-${mes}`;
+      }
+    }
+    if (s.includes('-')) {
+      const parts = s.split('-');
+      if (parts.length === 3) {
+        if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}`;
+        if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}`;
+      }
+    }
+    return '';
+  };
+
+  const mesesDisponiveis = Array.from(new Set(
+    espera.map(e => extractAnoMes(e.dataCadastro || e.dataEntrada)).filter(Boolean)
+  )).sort().reverse();
 
   const formatDataBr = (str?: string) => {
     if (!str) return '—';
@@ -71,14 +97,24 @@ export const Espera: React.FC = () => {
     return telStr;
   };
 
-  const filteredEspera = espera.filter(e =>
-    e.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (e.tel && e.tel.includes(searchQuery)) ||
-    (e.especialidade && e.especialidade.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (e.periodo && e.periodo.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (e.plano && e.plano.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (e.dias && e.dias.some(d => d.toLowerCase().includes(searchQuery.toLowerCase())))
-  );
+  const filteredEspera = espera.filter(e => {
+    if (mesFiltro) {
+      const ym = extractAnoMes(e.dataCadastro || e.dataEntrada);
+      if (ym !== mesFiltro) return false;
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const match =
+        e.nome.toLowerCase().includes(q) ||
+        (e.tel && e.tel.includes(q)) ||
+        (e.especialidade && e.especialidade.toLowerCase().includes(q)) ||
+        (e.periodo && e.periodo.toLowerCase().includes(q)) ||
+        (e.plano && e.plano.toLowerCase().includes(q)) ||
+        (e.dias && e.dias.some(d => d.toLowerCase().includes(q)));
+      if (!match) return false;
+    }
+    return true;
+  });
 
   const toggleDia = (diaFull: string) => {
     setDias(prev => prev.includes(diaFull) ? prev.filter(d => d !== diaFull) : [...prev, diaFull]);
@@ -239,16 +275,39 @@ export const Espera: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex items-center gap-3 shadow-lg">
-        <Search size={16} className="text-slate-400 ml-1 shrink-0" />
-        <input
-          type="text"
-          placeholder="Buscar por nome, telefone, especialidade, dia da semana ou período..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 bg-transparent border-0 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-0"
-        />
+      {/* Search Bar & Month/Year Filter */}
+      <div className="p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col sm:flex-row items-center gap-3 shadow-lg">
+        <div className="flex-1 flex items-center gap-2 w-full">
+          <Search size={16} className="text-slate-400 ml-1 shrink-0" />
+          <input
+            type="text"
+            placeholder="Buscar por nome, telefone, especialidade, dia da semana ou período..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent border-0 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-0"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
+          <Calendar size={14} className="text-indigo-400 shrink-0" />
+          <select
+            value={mesFiltro}
+            onChange={(e) => setMesFiltro(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
+          >
+            <option value="">Todos os meses / anos</option>
+            {mesesDisponiveis.map(m => {
+              const [y, mo] = m.split('-');
+              const date = new Date(Number(y), Number(mo) - 1, 1);
+              const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+              return (
+                <option key={m} value={m}>
+                  {label.charAt(0).toUpperCase() + label.slice(1)}
+                </option>
+              );
+            })}
+          </select>
+        </div>
       </div>
 
       {/* Table Section */}
