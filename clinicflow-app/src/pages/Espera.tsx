@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter, Users, UserCheck, Printer } from 'lucide-react';
+import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter, Users, UserCheck, Printer, Wand2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ListaEspera } from '../types';
 import { supabase } from '../services/supabase';
@@ -24,12 +24,99 @@ const DIAS_OPCOES = [
   { full: 'Sábado', short: 'Sáb' }
 ];
 
-const PERIODOS_OPCOES = [
-  'Manhã (08h-12h)',
-  'Tarde (12h-18h)',
-  'Noite (18h-21h)',
-  'Online'
+const POSICOES_AGENDA_OPCOES = [
+  { id: 'Primeiro Horário', label: '🌅 Primeiro Horário' },
+  { id: 'Último Horário', label: '🌆 Último Horário / Final do Dia' },
+  { id: 'Primeiro ou Último', label: '↔️ Primeiro ou Último' },
+  { id: 'Manhã (08h-12h)', label: '☀️ Manhã (08h-12h)' },
+  { id: 'Tarde (12h-18h)', label: '⛅ Tarde (12h-18h)' },
+  { id: 'Noite (18h-21h)', label: '🌙 Noite (18h-21h)' },
+  { id: 'Online', label: '💻 Online / Remoto' }
 ];
+
+const HORARIOS_ESPECIFICOS_OPCOES = [
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '14:00',
+  '14:30',
+  '15:00',
+  '16:00',
+  '17:00',
+  '17:30',
+  '18:00',
+  '19:00'
+];
+
+export const parsePreferencesFromText = (text: string): { dias: string[]; periodos: string[] } => {
+  if (!text) return { dias: [], periodos: [] };
+  const raw = text.toLowerCase().trim();
+
+  const foundDias: Set<string> = new Set();
+  const foundPeriodos: Set<string> = new Set();
+
+  // 1. Dias da Semana
+  if (raw.includes('seg') || raw.includes('segunda')) foundDias.add('Segunda');
+  if (raw.includes('ter') || raw.includes('terca') || raw.includes('terça')) foundDias.add('Terça');
+  if (raw.includes('qua') || raw.includes('quarta')) foundDias.add('Quarta');
+  if (raw.includes('qui') || raw.includes('quinta')) foundDias.add('Quinta');
+  if (raw.includes('sex') || raw.includes('sexta')) foundDias.add('Sexta');
+  if (raw.includes('sab') || raw.includes('sáb') || raw.includes('sabado') || raw.includes('sábado')) foundDias.add('Sábado');
+
+  // 2. Posições na Agenda
+  if (raw.includes('prim ou ult') || raw.includes('primeiro ou ult') || raw.includes('primeiro ou último')) {
+    foundPeriodos.add('Primeiro ou Último');
+  } else {
+    if (raw.includes('primeiro') || raw.includes('prim ')) foundPeriodos.add('Primeiro Horário');
+    if (raw.includes('ultimo') || raw.includes('último') || raw.includes('final do dia')) foundPeriodos.add('Último Horário');
+  }
+
+  // 3. Janelas de horário "Após Xh" / "A partir das Xh" / "Até Xh"
+  const aposMatch = raw.match(/(?:após|apos|a partir|partir das?)\s*as?\s*(\d{1,2})(?::(\d{2}))?h?/i);
+  if (aposMatch) {
+    const hora = aposMatch[1].padStart(2, '0');
+    const min = aposMatch[2] || '00';
+    foundPeriodos.add(`Após ${hora}:${min}`);
+  }
+
+  const ateMatch = raw.match(/(?:até|ate|ate as?)\s*as?\s*(\d{1,2})(?::(\d{2}))?h?/i);
+  if (ateMatch) {
+    const hora = ateMatch[1].padStart(2, '0');
+    const min = ateMatch[2] || '00';
+    foundPeriodos.add(`Até ${hora}:${min}`);
+  }
+
+  // 4. Horários exatos (ex: 08h, 09h, 14:00, 15:00, 17:30, 18h, 19h)
+  const horaMatches = Array.from(raw.matchAll(/\b(\d{1,2})(?::(\d{2}))?\s*h(?:oras?)?\b|\b(\d{1,2}):(\d{2})\b/gi));
+  horaMatches.forEach(m => {
+    let horaStr = '';
+    if (m[1]) {
+      const h = m[1].padStart(2, '0');
+      const min = m[2] ? m[2].padStart(2, '0') : '00';
+      horaStr = `${h}:${min}`;
+    } else if (m[3]) {
+      const h = m[3].padStart(2, '0');
+      const min = m[4].padStart(2, '0');
+      horaStr = `${h}:${min}`;
+    }
+
+    if (horaStr && !foundPeriodos.has(`Após ${horaStr}`) && !foundPeriodos.has(`Até ${horaStr}`)) {
+      foundPeriodos.add(horaStr);
+    }
+  });
+
+  // 5. Turnos Gerais básicos
+  if (raw.includes('manhã') || raw.includes('manha')) foundPeriodos.add('Manhã (08h-12h)');
+  if (raw.includes('tarde')) foundPeriodos.add('Tarde (12h-18h)');
+  if (raw.includes('noite')) foundPeriodos.add('Noite (18h-21h)');
+  if (raw.includes('online')) foundPeriodos.add('Online');
+
+  return {
+    dias: Array.from(foundDias),
+    periodos: Array.from(foundPeriodos)
+  };
+};
 
 export const Espera: React.FC = () => {
   const { espera, lazyLoadEspera, refreshAll } = useApp();
@@ -246,6 +333,53 @@ export const Espera: React.FC = () => {
     } catch (e) {
       console.error(e);
       alert('Erro ao remover paciente da lista.');
+    }
+  };
+
+  const handleMigrateExistingData = async () => {
+    if (espera.length === 0) {
+      alert('Nenhum registro na lista de espera para processar.');
+      return;
+    }
+
+    if (!confirm('Deseja analisar e converter automaticamente as observações e horários de texto antigos em seleções estruturadas de dias e horários?')) {
+      return;
+    }
+
+    setSubmitting(true);
+    let updatedCount = 0;
+
+    try {
+      for (const item of espera) {
+        const textToAnalyze = `${item.obs || ''} ${item.periodo || ''} ${item.especialidade || ''}`;
+        const parsed = parsePreferencesFromText(textToAnalyze);
+
+        const currentDias = Array.isArray(item.dias) ? item.dias : [];
+        const currentPeriodos = Array.isArray(item.periodos) ? item.periodos : [];
+
+        const newDias = Array.from(new Set([...currentDias, ...parsed.dias]));
+        const newPeriodos = Array.from(new Set([...currentPeriodos, ...parsed.periodos]));
+
+        if (newDias.length > currentDias.length || newPeriodos.length > currentPeriodos.length) {
+          const { error } = await supabase
+            .from('lista_espera')
+            .update({
+              dias: newDias,
+              periodos: newPeriodos
+            })
+            .eq('id', item.id);
+
+          if (!error) updatedCount++;
+        }
+      }
+
+      await refreshAll();
+      alert(`✨ Processamento concluído! ${updatedCount} paciente(s) da lista de espera foram atualizados com dias e horários estruturados.`);
+    } catch (err: any) {
+      console.error(err);
+      alert(`Erro ao ajustar dados: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -561,8 +695,18 @@ export const Espera: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={handleMigrateExistingData}
+            disabled={submitting}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 rounded-xl font-bold transition-all active:scale-95 cursor-pointer shrink-0 disabled:opacity-50 text-xs"
+            title="Converter automaticamente observações de texto antigas em seleções estruturadas de dias e horários"
+          >
+            <Wand2 size={15} className="text-indigo-400" />
+            <span className="hidden sm:inline">Ajustar Dados Existentes</span>
+          </button>
+
+          <button
             onClick={generatePDFReport}
-            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-200 rounded-xl font-bold transition-all active:scale-95 cursor-pointer shrink-0"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-200 rounded-xl font-bold transition-all active:scale-95 cursor-pointer shrink-0 text-xs"
             title="Gerar e imprimir relatório PDF separado por especialidade, idade e ordenado por data"
           >
             <Printer size={15} className="text-indigo-400" />
@@ -571,7 +715,7 @@ export const Espera: React.FC = () => {
 
           <button
             onClick={openAddModal}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0 text-xs"
           >
             <Plus size={16} />
             <span>Adicionar Paciente</span>
@@ -948,7 +1092,7 @@ export const Espera: React.FC = () => {
                   <Calendar size={13} className="text-indigo-400" />
                   <span>Dias da Semana com Preferência</span>
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {DIAS_OPCOES.map((d) => {
                     const selected = dias.includes(d.full);
                     return (
@@ -969,30 +1113,56 @@ export const Espera: React.FC = () => {
                 </div>
               </div>
 
-              {/* Preferência de Horários / Períodos */}
-              <div>
+              {/* Preferência de Horários / Posições na Agenda */}
+              <div className="space-y-2">
                 <label className="block text-slate-400 font-semibold mb-1.5 flex items-center gap-1.5">
                   <Watch size={13} className="text-violet-400" />
-                  <span>Horários / Períodos de Preferência</span>
+                  <span>Turnos e Posições Preferenciais na Agenda</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {PERIODOS_OPCOES.map((p) => {
-                    const selected = periodos.includes(p);
+
+                {/* Turnos / Posições Especiais */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {POSICOES_AGENDA_OPCOES.map((p) => {
+                    const selected = periodos.includes(p.id);
                     return (
                       <button
-                        key={p}
+                        key={p.id}
                         type="button"
-                        onClick={() => togglePeriodo(p)}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left border ${
+                        onClick={() => togglePeriodo(p.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left border ${
                           selected
                             ? 'bg-violet-600/30 text-violet-200 border-violet-500 shadow-md shadow-violet-500/20'
                             : 'bg-[#161a26] text-slate-400 border-white/[0.06] hover:bg-white/[0.04] hover:text-slate-200'
                         }`}
                       >
-                        ⏱️ {p}
+                        {p.label}
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Horários Específicos */}
+                <div className="pt-2 border-t border-white/[0.04]">
+                  <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Ou Selecione Horários Específicos:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {HORARIOS_ESPECIFICOS_OPCOES.map((h) => {
+                      const selected = periodos.includes(h);
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => togglePeriodo(h)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
+                            selected
+                              ? 'bg-indigo-500 text-white border-indigo-400 shadow-md shadow-indigo-500/20'
+                              : 'bg-[#161a26] text-slate-400 border-white/[0.06] hover:bg-white/[0.04] hover:text-slate-200'
+                          }`}
+                        >
+                          ⏰ {h}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
