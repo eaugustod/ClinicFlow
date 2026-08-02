@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch } from 'lucide-react';
+import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ListaEspera } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+
+const ESPECIALIDADES_OPCOES = [
+  'AN',
+  'Psicologia',
+  'Fonoterapia',
+  'Terapia Ocupacional',
+  'ABA',
+  'Psicopedagogia',
+  'Musicoterapia'
+];
 
 const DIAS_OPCOES = [
   { full: 'Segunda', short: 'Seg' },
@@ -25,6 +35,7 @@ export const Espera: React.FC = () => {
   const { espera, lazyLoadEspera, refreshAll } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [mesFiltro, setMesFiltro] = useState('');
+  const [especialidadeFiltro, setEspecialidadeFiltro] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ListaEspera | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -33,7 +44,7 @@ export const Espera: React.FC = () => {
   const [nome, setNome] = useState('');
   const [tel, setTel] = useState('');
   const [email, setEmail] = useState('');
-  const [especialidade, setEspecialidade] = useState('');
+  const [especialidades, setEspecialidades] = useState<string[]>([]);
   const [idade, setIdade] = useState('');
   const [periodo, setPeriodo] = useState('Ambos');
   const [dias, setDias] = useState<string[]>([]);
@@ -102,6 +113,11 @@ export const Espera: React.FC = () => {
       const ym = extractAnoMes(e.dataCadastro || e.dataEntrada);
       if (ym !== mesFiltro) return false;
     }
+    if (especialidadeFiltro) {
+      if (!e.especialidade || !e.especialidade.toLowerCase().includes(especialidadeFiltro.toLowerCase())) {
+        return false;
+      }
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const match =
@@ -116,6 +132,10 @@ export const Espera: React.FC = () => {
     return true;
   });
 
+  const toggleEspecialidade = (spec: string) => {
+    setEspecialidades(prev => prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec]);
+  };
+
   const toggleDia = (diaFull: string) => {
     setDias(prev => prev.includes(diaFull) ? prev.filter(d => d !== diaFull) : [...prev, diaFull]);
   };
@@ -129,7 +149,7 @@ export const Espera: React.FC = () => {
     setNome('');
     setTel('');
     setEmail('');
-    setEspecialidade('');
+    setEspecialidades([]);
     setIdade('');
     setPeriodo('Ambos');
     setDias([]);
@@ -145,7 +165,15 @@ export const Espera: React.FC = () => {
     setNome(item.nome || '');
     setTel(item.tel || '');
     setEmail(item.email || '');
-    setEspecialidade(item.especialidade || '');
+
+    // Parse item.especialidade into array if string
+    const rawSpec = item.especialidade || '';
+    const parsedSpecs = rawSpec
+      .split(/[,/]+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    setEspecialidades(parsedSpecs);
+
     setIdade(item.idade || '');
     setPeriodo(item.periodo || 'Ambos');
     setDias(Array.isArray(item.dias) ? item.dias : []);
@@ -189,11 +217,13 @@ export const Espera: React.FC = () => {
     e.preventDefault();
     setSubmitting(true);
 
+    const especialidadeString = especialidades.join(', ');
+
     const payload: Partial<ListaEspera> = {
       nome,
       tel,
       email,
-      especialidade,
+      especialidade: especialidadeString,
       idade,
       periodo,
       dias,
@@ -250,11 +280,11 @@ export const Espera: React.FC = () => {
     return s.includes('sulamerica') || s.includes('sul américa') || s.includes('bradesco') || s.includes('amil') || s.includes('particular') || s.includes('unimed');
   };
 
-  const cleanSpecDisplay = (specVal?: string) => {
-    if (!specVal) return 'Geral';
-    if (isPlanoName(specVal)) return 'Geral';
-    if (specVal.length > 25) return 'Geral';
-    return specVal;
+  const cleanSpecList = (specVal?: string) => {
+    if (!specVal) return ['Geral'];
+    if (isPlanoName(specVal)) return ['Geral'];
+    const parts = specVal.split(/[,/]+/).map(s => s.trim()).filter(Boolean);
+    return parts.length > 0 ? parts : ['Geral'];
   };
 
   return (
@@ -275,8 +305,9 @@ export const Espera: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Bar & Month/Year Filter */}
-      <div className="p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col sm:flex-row items-center gap-3 shadow-lg">
+      {/* Search Bar & Filters */}
+      <div className="p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col md:flex-row items-center gap-3 shadow-lg">
+        {/* Input Search */}
         <div className="flex-1 flex items-center gap-2 w-full">
           <Search size={16} className="text-slate-400 ml-1 shrink-0" />
           <input
@@ -288,36 +319,55 @@ export const Espera: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
-          <Calendar size={14} className="text-indigo-400 shrink-0" />
-          <select
-            value={mesFiltro}
-            onChange={(e) => setMesFiltro(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
-          >
-            <option value="">Todos os meses / anos</option>
-            {mesesDisponiveis.map(m => {
-              const [y, mo] = m.split('-');
-              const date = new Date(Number(y), Number(mo) - 1, 1);
-              const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-              return (
-                <option key={m} value={m}>
-                  {label.charAt(0).toUpperCase() + label.slice(1)}
-                </option>
-              );
-            })}
-          </select>
+        {/* Filters Area */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-white/[0.04]">
+          {/* Especialidade Filter */}
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <Filter size={13} className="text-violet-400 shrink-0" />
+            <select
+              value={especialidadeFiltro}
+              onChange={(e) => setEspecialidadeFiltro(e.target.value)}
+              className="w-full sm:w-auto px-3 py-2 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
+            >
+              <option value="">Todas Especialidades</option>
+              {ESPECIALIDADES_OPCOES.map(sp => (
+                <option key={sp} value={sp}>{sp}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Month/Year Filter */}
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <Calendar size={13} className="text-indigo-400 shrink-0" />
+            <select
+              value={mesFiltro}
+              onChange={(e) => setMesFiltro(e.target.value)}
+              className="w-full sm:w-auto px-3 py-2 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
+            >
+              <option value="">Todos os meses / anos</option>
+              {mesesDisponiveis.map(m => {
+                const [y, mo] = m.split('-');
+                const date = new Date(Number(y), Number(mo) - 1, 1);
+                const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                return (
+                  <option key={m} value={m}>
+                    {label.charAt(0).toUpperCase() + label.slice(1)}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Table Section (Redimensionada Horizontal e Verticalmente) */}
+      {/* Table Section */}
       <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden w-full">
         <div className="overflow-auto max-h-[calc(100vh-240px)] min-h-[350px] scrollbar-thin">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.06] bg-[#161a26] sticky top-0 z-10 shadow-md">
                 <th className="py-3.5 px-3">Paciente</th>
-                <th className="py-3.5 px-3">Especialidade / Idade</th>
+                <th className="py-3.5 px-3">Especialidades / Idade</th>
                 <th className="py-3.5 px-3">Preferência</th>
                 <th className="py-3.5 px-3">Contato / Convênio</th>
                 <th className="py-3.5 px-3 text-center whitespace-nowrap">Data Cad.</th>
@@ -328,7 +378,7 @@ export const Espera: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-white/[0.02] text-xs">
               {filteredEspera.map((e) => {
-                const specDisplay = cleanSpecDisplay(e.especialidade);
+                const specsList = cleanSpecList(e.especialidade);
                 const planoDisplay = e.plano || (isPlanoName(e.especialidade) ? e.especialidade : 'Particular');
                 const temDias = Array.isArray(e.dias) && e.dias.length > 0;
                 const temPeriodos = Array.isArray(e.periodos) && e.periodos.length > 0;
@@ -341,11 +391,15 @@ export const Espera: React.FC = () => {
                       <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{e.email || 'Sem e-mail'}</p>
                     </td>
 
-                    {/* Especialidade / Idade */}
+                    {/* Especialidades / Idade */}
                     <td className="py-3 px-3">
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 mb-0.5">
-                        {specDisplay}
-                      </span>
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {specsList.map((sp, idx) => (
+                          <span key={idx} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            {sp}
+                          </span>
+                        ))}
+                      </div>
                       <p className="text-[10px] text-slate-400">{cleanIdadeDisplay(e.idade, e.nome)}</p>
                     </td>
 
@@ -486,24 +540,39 @@ export const Espera: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Especialidade</label>
-                  <select
-                    value={especialidade}
-                    onChange={(e) => setEspecialidade(e.target.value)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-2.5 py-2 text-white text-xs focus:outline-none focus:border-indigo-500/50 cursor-pointer"
-                  >
-                    <option value="">— Selecione —</option>
-                    <option value="AN">AN</option>
-                    <option value="Psicologia">Psicologia</option>
-                    <option value="Fonoterapia">Fonoterapia</option>
-                    <option value="Terapia Ocupacional">Terapia Ocupacional</option>
-                    <option value="ABA">ABA</option>
-                    <option value="Psicopedagogia">Psicopedagogia</option>
-                    <option value="Musicoterapia">Musicoterapia</option>
-                  </select>
+              {/* Multi-Seleção de Especialidades */}
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-indigo-400" />
+                    <span>Especialidades Desejadas (Selecione 1 ou mais)</span>
+                  </span>
+                  {especialidades.length > 0 && (
+                    <span className="text-[10px] text-indigo-400 font-bold">{especialidades.length} selecionada(s)</span>
+                  )}
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ESPECIALIDADES_OPCOES.map((spec) => {
+                    const selected = especialidades.includes(spec);
+                    return (
+                      <button
+                        key={spec}
+                        type="button"
+                        onClick={() => toggleEspecialidade(spec)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                          selected
+                            ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-indigo-400 shadow-md shadow-indigo-500/20'
+                            : 'bg-[#161a26] text-slate-400 border-white/[0.06] hover:bg-white/[0.04] hover:text-slate-200'
+                        }`}
+                      >
+                        {spec}
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-400 font-semibold mb-1">Idade</label>
                   <input
@@ -511,7 +580,7 @@ export const Espera: React.FC = () => {
                     placeholder="Ex: 8 anos"
                     value={idade}
                     onChange={(e) => setIdade(e.target.value)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-2.5 py-2 text-white text-xs focus:outline-none focus:border-indigo-500/50"
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500/50"
                   />
                 </div>
                 <div>
@@ -519,7 +588,7 @@ export const Espera: React.FC = () => {
                   <select
                     value={periodo}
                     onChange={(e) => setPeriodo(e.target.value)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-2.5 py-2 text-white text-xs focus:outline-none focus:border-indigo-500/50 cursor-pointer"
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500/50 cursor-pointer"
                   >
                     <option value="Manhã">Manhã</option>
                     <option value="Tarde">Tarde</option>
