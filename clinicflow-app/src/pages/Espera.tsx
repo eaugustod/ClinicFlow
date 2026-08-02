@@ -108,6 +108,37 @@ export const Espera: React.FC = () => {
     return telStr;
   };
 
+  const parseDateToTimestamp = (e: ListaEspera) => {
+    const dtStr = e.dataCadastro || e.dataEntrada;
+    if (!dtStr) return e.id || 0;
+    const s = dtStr.trim();
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+        const ts = new Date(`${year}-${month}-${day}`).getTime();
+        return isNaN(ts) ? e.id || 0 : ts;
+      }
+    }
+    if (s.includes('-')) {
+      const parts = s.split('-');
+      if (parts.length === 3) {
+        let yyyy = parts[0];
+        let mm = parts[1];
+        let dd = parts[2];
+        if (parts[2].length === 4) {
+          yyyy = parts[2];
+          dd = parts[0];
+        }
+        const ts = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`).getTime();
+        return isNaN(ts) ? e.id || 0 : ts;
+      }
+    }
+    return e.id || 0;
+  };
+
   const filteredEspera = espera.filter(e => {
     if (mesFiltro) {
       const ym = extractAnoMes(e.dataCadastro || e.dataEntrada);
@@ -130,6 +161,11 @@ export const Espera: React.FC = () => {
       if (!match) return false;
     }
     return true;
+  }).sort((a, b) => {
+    const timeA = parseDateToTimestamp(a);
+    const timeB = parseDateToTimestamp(b);
+    if (timeA !== timeB) return timeB - timeA; // Descending order (most recent first)
+    return (b.id || 0) - (a.id || 0); // Fallback by ID descending
   });
 
   const toggleEspecialidade = (spec: string) => {
@@ -326,13 +362,13 @@ export const Espera: React.FC = () => {
   const convertidoCount = filteredEspera.filter(e => e.status === 'Convertido').length;
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs max-w-full overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="flex flex-col h-[calc(100vh-100px)] space-y-3.5 animate-fade-in text-xs max-w-full overflow-hidden">
+      {/* Header (Shrink-0) */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 shrink-0">
         <div>
           <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Fila de Atendimento</span>
-          <h2 className="text-2xl font-black tracking-wide text-white mt-0.5">Lista de Espera</h2>
-          <p className="text-xs text-slate-400 mt-1">Gerencie os pacientes que aguardam por vagas na agenda dos profissionais</p>
+          <h2 className="text-xl md:text-2xl font-black tracking-wide text-white mt-0.5">Lista de Espera</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Gerencie os pacientes que aguardam por vagas na agenda dos profissionais</p>
         </div>
         <button
           onClick={openAddModal}
@@ -343,30 +379,30 @@ export const Espera: React.FC = () => {
         </button>
       </div>
 
-      {/* Cards de Resumo e Métricas (Dinâmicos com os Filtros) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Cards de Resumo e Métricas (Shrink-0) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
         {/* Card 1: Total Geral */}
-        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex items-center gap-3.5">
-          <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400 shrink-0">
-            <Users size={22} />
+        <div className="p-3.5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400 shrink-0">
+            <Users size={20} />
           </div>
           <div>
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total na Fila</span>
-            <div className="text-2xl font-black text-white mt-0.5">{totalPacientes}</div>
+            <div className="text-xl font-black text-white mt-0.5">{totalPacientes}</div>
             <p className="text-[10px] text-indigo-300/80 font-medium">Pacientes filtrados</p>
           </div>
         </div>
 
         {/* Card 2: Por Especialidade */}
-        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={15} className="text-violet-400" />
+        <div className="p-3.5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Sparkles size={14} className="text-violet-400" />
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Por Especialidade</span>
           </div>
-          <div className="flex flex-wrap gap-1 max-h-[55px] overflow-y-auto scrollbar-thin">
+          <div className="flex flex-wrap gap-1 max-h-[48px] overflow-y-auto scrollbar-thin">
             {Object.keys(especCounts).length > 0 ? (
               Object.entries(especCounts).map(([sp, count]) => (
-                <span key={sp} className="px-2 py-0.5 bg-violet-500/15 text-violet-200 border border-violet-500/20 rounded-md text-[10px] font-bold">
+                <span key={sp} className="px-2 py-0.5 bg-violet-500/15 text-violet-200 border border-violet-500/20 rounded-md text-[9px] font-bold">
                   {sp}: {count}
                 </span>
               ))
@@ -377,12 +413,12 @@ export const Espera: React.FC = () => {
         </div>
 
         {/* Card 3: Por Faixa Etária */}
-        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-2">
-            <UserCheck size={15} className="text-emerald-400" />
+        <div className="p-3.5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-1.5">
+            <UserCheck size={14} className="text-emerald-400" />
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Por Faixa Etária</span>
           </div>
-          <div className="flex flex-wrap gap-1 text-[10px] font-semibold">
+          <div className="flex flex-wrap gap-1 text-[9px] font-semibold">
             <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-md">
               0-7 anos: {criancasAte7}
             </span>
@@ -396,16 +432,16 @@ export const Espera: React.FC = () => {
         </div>
 
         {/* Card 4: Status da Fila */}
-        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex items-center justify-between">
-          <div className="space-y-1.5 w-full">
+        <div className="p-3.5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex items-center justify-between">
+          <div className="space-y-1 w-full">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status da Fila</span>
-            <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
-                <Clock size={12} />
+            <div className="flex items-center justify-between gap-2 text-[10px] font-bold">
+              <div className="flex items-center gap-1 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
+                <Clock size={11} />
                 <span>{aguardandoCount} Fila</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                <CheckCircle2 size={12} />
+              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                <CheckCircle2 size={11} />
                 <span>{convertidoCount} Agendados</span>
               </div>
             </div>
@@ -413,11 +449,11 @@ export const Espera: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Bar & Filters */}
-      <div className="p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col md:flex-row items-center gap-3 shadow-lg">
+      {/* Search Bar & Filters (Shrink-0) */}
+      <div className="p-3 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col md:flex-row items-center gap-3 shadow-lg shrink-0">
         {/* Input Search */}
         <div className="flex-1 flex items-center gap-2 w-full">
-          <Search size={16} className="text-slate-400 ml-1 shrink-0" />
+          <Search size={15} className="text-slate-400 ml-1 shrink-0" />
           <input
             type="text"
             placeholder="Buscar por nome, telefone, especialidade, dia da semana ou período..."
@@ -435,7 +471,7 @@ export const Espera: React.FC = () => {
             <select
               value={especialidadeFiltro}
               onChange={(e) => setEspecialidadeFiltro(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
+              className="w-full sm:w-auto px-3 py-1.5 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
             >
               <option value="">Todas Especialidades</option>
               {ESPECIALIDADES_OPCOES.map(sp => (
@@ -450,7 +486,7 @@ export const Espera: React.FC = () => {
             <select
               value={mesFiltro}
               onChange={(e) => setMesFiltro(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
+              className="w-full sm:w-auto px-3 py-1.5 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 cursor-pointer font-medium"
             >
               <option value="">Todos os meses / anos</option>
               {mesesDisponiveis.map(m => {
@@ -468,9 +504,9 @@ export const Espera: React.FC = () => {
         </div>
       </div>
 
-      {/* Table Section */}
-      <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden w-full">
-        <div className="overflow-auto max-h-[calc(100vh-240px)] min-h-[350px] scrollbar-thin">
+      {/* Table Section (Flex-1: Enquadrada Perfeitamente na Janela sem Scroll de Página) */}
+      <div className="flex-1 min-h-0 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden flex flex-col">
+        <div className="overflow-auto flex-1 scrollbar-thin">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.06] bg-[#161a26] sticky top-0 z-10 shadow-md">
