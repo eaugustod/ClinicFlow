@@ -14,7 +14,8 @@ import {
   Calendar, 
   User, 
   FileSpreadsheet, 
-  XCircle 
+  XCircle,
+  Download
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
@@ -470,8 +471,31 @@ export const Historico: React.FC = () => {
                               </div>
                             </div>
                           ) : (
-                            <div className="space-y-1 text-[11px]">
+                            <div className="space-y-2 text-[11px]">
                               {renderMarkdown(item.conteudo.texto || item.conteudo.obs || '')}
+                              
+                              {/* Renderização de Anexo no Prontuário */}
+                              {item.conteudo?.anexoUrl && (
+                                <div className="mt-3 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2 overflow-hidden">
+                                    <FileText size={20} className="text-indigo-400 shrink-0" />
+                                    <div className="truncate">
+                                      <p className="font-bold text-xs text-white truncate">{item.conteudo.anexoNome || 'Documento Anexado'}</p>
+                                      <span className="text-[9px] text-slate-400 font-mono">Origem: {item.conteudo.origem || item.fonte || 'Chat / Prontuário'}</span>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={item.conteudo.anexoUrl}
+                                    download={item.conteudo.anexoNome || 'anexo_prontuario'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
+                                  >
+                                    <Download size={13} />
+                                    <span>Baixar / Visualizar Anexo</span>
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

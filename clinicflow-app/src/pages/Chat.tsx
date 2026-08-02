@@ -393,34 +393,63 @@ const encodeMessageContent = (text: string, file?: { base64: string; name: strin
   return `[ANEXO_JSON]${JSON.stringify(payload)}[/ANEXO_JSON]`;
 };
 
-const parseMessageContent = (conteudo: string, msgAnexoUrl?: string | null, msgAnexoNome?: string | null, msgAnexoTipo?: string | null) => {
+const parseMessageContent = (conteudo: any, msgAnexoUrl?: string | null, msgAnexoNome?: string | null, msgAnexoTipo?: string | null) => {
+  // 1. Se colunas de anexo na tabela existirem
   if (msgAnexoUrl) {
     return {
-      text: conteudo || '',
+      text: typeof conteudo === 'string' ? conteudo.replace(/\[ANEXO_JSON\].*?(\[\/ANEXO_JSON\]|$)/g, '').trim() : '',
       anexoUrl: msgAnexoUrl,
       anexoNome: msgAnexoNome || 'Anexo',
       anexoTipo: msgAnexoTipo || 'application/octet-stream'
     };
   }
 
-  if (typeof conteudo === 'string' && conteudo.startsWith('[ANEXO_JSON]')) {
+  // 2. Se o objeto de conteudo ja for um JSON (ex: do historico/prontuario)
+  if (conteudo && typeof conteudo === 'object' && !Array.isArray(conteudo)) {
+    return {
+      text: conteudo.texto || conteudo.text || '',
+      anexoUrl: conteudo.anexoUrl || conteudo.aUrl || null,
+      anexoNome: conteudo.anexoNome || conteudo.aNome || 'Anexo',
+      anexoTipo: conteudo.anexoTipo || conteudo.aTipo || 'application/octet-stream'
+    };
+  }
+
+  // 3. Se a string contiver a tag [ANEXO_JSON]
+  if (typeof conteudo === 'string' && conteudo.includes('[ANEXO_JSON]')) {
     try {
+      const startIdx = conteudo.indexOf('[ANEXO_JSON]');
       const endIdx = conteudo.indexOf('[/ANEXO_JSON]');
-      const jsonStr = conteudo.slice('[ANEXO_JSON]'.length, endIdx > 0 ? endIdx : undefined);
-      const parsed = JSON.parse(jsonStr);
+
+      let rawJson = '';
+      if (endIdx > startIdx) {
+        rawJson = conteudo.substring(startIdx + '[ANEXO_JSON]'.length, endIdx);
+      } else {
+        rawJson = conteudo.substring(startIdx + '[ANEXO_JSON]'.length);
+      }
+
+      const parsed = JSON.parse(rawJson);
+      const textClean = (conteudo.substring(0, startIdx) + (parsed.t || '')).trim();
+
       return {
-        text: parsed.t || '',
+        text: textClean,
         anexoUrl: parsed.aUrl || null,
         anexoNome: parsed.aNome || 'Anexo',
         anexoTipo: parsed.aTipo || 'application/octet-stream'
       };
     } catch (e) {
-      console.error('[ClinicFlow Chat] Error parsing ANEXO_JSON:', e);
+      console.warn('[ClinicFlow Chat] Error parsing ANEXO_JSON:', e);
+      const cleanText = conteudo.replace(/\[ANEXO_JSON\].*?(\[\/ANEXO_JSON\]|$)/g, '').trim();
+      return {
+        text: cleanText || '📎 Anexo Enviado',
+        anexoUrl: null,
+        anexoNome: null,
+        anexoTipo: null
+      };
     }
   }
 
   return {
-    text: conteudo || '',
+    text: typeof conteudo === 'string' ? conteudo : '',
     anexoUrl: null,
     anexoNome: null,
     anexoTipo: null
