@@ -24,6 +24,10 @@ WITH CHECK (true);
 GRANT ALL ON TABLE public.conversas TO anon, authenticated, service_role;
 
 -- 3. Tabela MENSAGENS
+ALTER TABLE public.mensagens ADD COLUMN IF NOT EXISTS anexo_url text;
+ALTER TABLE public.mensagens ADD COLUMN IF NOT EXISTS anexo_nome text;
+ALTER TABLE public.mensagens ADD COLUMN IF NOT EXISTS anexo_tipo text;
+
 ALTER TABLE public.mensagens ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Permitir acesso completo a mensagens" ON public.mensagens;

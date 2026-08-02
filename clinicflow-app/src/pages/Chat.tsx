@@ -382,6 +382,51 @@ export const ChatPage: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+const encodeMessageContent = (text: string, file?: { base64: string; name: string; type: string } | null): string => {
+  if (!file) return text;
+  const payload = {
+    t: text || '',
+    aUrl: file.base64,
+    aNome: file.name,
+    aTipo: file.type
+  };
+  return `[ANEXO_JSON]${JSON.stringify(payload)}[/ANEXO_JSON]`;
+};
+
+const parseMessageContent = (conteudo: string, msgAnexoUrl?: string | null, msgAnexoNome?: string | null, msgAnexoTipo?: string | null) => {
+  if (msgAnexoUrl) {
+    return {
+      text: conteudo || '',
+      anexoUrl: msgAnexoUrl,
+      anexoNome: msgAnexoNome || 'Anexo',
+      anexoTipo: msgAnexoTipo || 'application/octet-stream'
+    };
+  }
+
+  if (typeof conteudo === 'string' && conteudo.startsWith('[ANEXO_JSON]')) {
+    try {
+      const endIdx = conteudo.indexOf('[/ANEXO_JSON]');
+      const jsonStr = conteudo.slice('[ANEXO_JSON]'.length, endIdx > 0 ? endIdx : undefined);
+      const parsed = JSON.parse(jsonStr);
+      return {
+        text: parsed.t || '',
+        anexoUrl: parsed.aUrl || null,
+        anexoNome: parsed.aNome || 'Anexo',
+        anexoTipo: parsed.aTipo || 'application/octet-stream'
+      };
+    } catch (e) {
+      console.error('[ClinicFlow Chat] Error parsing ANEXO_JSON:', e);
+    }
+  }
+
+  return {
+    text: conteudo || '',
+    anexoUrl: null,
+    anexoNome: null,
+    anexoTipo: null
+  };
+};
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if ((!inputText.trim() && !selectedFile) || !selectedPac) return;
@@ -421,6 +466,7 @@ export const ChatPage: React.FC = () => {
 
     const textToSend = inputText.trim();
     const fileToUpload = selectedFile;
+    const formattedContent = encodeMessageContent(textToSend, fileToUpload);
 
     setInputText('');
     setSelectedFile(null);
@@ -433,11 +479,8 @@ export const ChatPage: React.FC = () => {
           {
             conversa_id: targetConvId,
             tipo_remetente: 'clinica',
-            conteudo: textToSend || (fileToUpload ? `📎 Anexo: ${fileToUpload.name}` : ''),
-            lida: false,
-            anexo_url: fileToUpload?.base64 || null,
-            anexo_nome: fileToUpload?.name || null,
-            anexo_tipo: fileToUpload?.type || null
+            conteudo: formattedContent,
+            lida: false
           }
         ])
         .select('*')
@@ -809,7 +852,8 @@ export const ChatPage: React.FC = () => {
                     );
                   }
 
-                  const isImg = m.anexo_tipo?.startsWith('image/') || m.anexo_url?.startsWith('data:image');
+                  const parsed = parseMessageContent(m.conteudo, m.anexo_url, m.anexo_nome, m.anexo_tipo);
+                  const isImg = parsed.anexoTipo?.startsWith('image/') || parsed.anexoUrl?.startsWith('data:image');
 
                   return (
                     <div
@@ -821,14 +865,14 @@ export const ChatPage: React.FC = () => {
                       }`}
                     >
                       {/* Renderização de Anexo se existir */}
-                      {m.anexo_url && (
+                      {parsed.anexoUrl && (
                         <div className="mb-2">
                           {isImg ? (
                             <div
                               className="rounded-xl overflow-hidden cursor-pointer border border-black/10 hover:opacity-90 transition-opacity"
-                              onClick={() => setPreviewImage(m.anexo_url || null)}
+                              onClick={() => setPreviewImage(parsed.anexoUrl || null)}
                             >
-                              <img src={m.anexo_url} alt={m.anexo_nome || 'Anexo'} className="max-h-48 w-full object-cover rounded-xl" />
+                              <img src={parsed.anexoUrl} alt={parsed.anexoNome || 'Anexo'} className="max-h-48 w-full object-cover rounded-xl" />
                             </div>
                           ) : (
                             <div className={`flex items-center justify-between p-2.5 rounded-xl border ${
@@ -837,13 +881,13 @@ export const ChatPage: React.FC = () => {
                               <div className="flex items-center gap-2 overflow-hidden mr-2">
                                 <FileText size={18} className={isClinic ? 'text-indigo-200 shrink-0' : 'text-[var(--accent)] shrink-0'} />
                                 <div className="truncate">
-                                  <p className="font-bold text-[11px] truncate">{m.anexo_nome || 'Documento'}</p>
+                                  <p className="font-bold text-[11px] truncate">{parsed.anexoNome || 'Documento'}</p>
                                   <span className="text-[9px] opacity-75 font-mono">Arquivo / PDF</span>
                                 </div>
                               </div>
                               <a
-                                href={m.anexo_url}
-                                download={m.anexo_nome || 'documento'}
+                                href={parsed.anexoUrl}
+                                download={parsed.anexoNome || 'documento'}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={`p-1.5 rounded-lg transition-colors shrink-0 ${
@@ -859,8 +903,8 @@ export const ChatPage: React.FC = () => {
                       )}
 
                       {/* Texto da mensagem */}
-                      {m.conteudo && (
-                        <p className="leading-relaxed whitespace-pre-wrap">{m.conteudo}</p>
+                      {parsed.text && (
+                        <p className="leading-relaxed whitespace-pre-wrap">{parsed.text}</p>
                       )}
 
                       <span className={`text-[8px] font-mono mt-1 text-right ${
