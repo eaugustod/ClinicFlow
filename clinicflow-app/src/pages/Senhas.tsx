@@ -9,6 +9,8 @@ export const Senhas: React.FC = () => {
   const { senhas, lazyLoadSenhas, planos, pacientes, procedimentos, refreshAll } = useApp();
 
   const [buscaPac, setBuscaPac] = useState('');
+  const [buscaSenha, setBuscaSenha] = useState('');
+  const [buscaGuia, setBuscaGuia] = useState('');
   const [planoFiltro, setPlanoFiltro] = useState('');
   const [mesFiltro, setMesFiltro] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
@@ -56,7 +58,19 @@ export const Senhas: React.FC = () => {
   }
   if (buscaPac.trim()) {
     const q = buscaPac.toLowerCase().trim();
-    filtered = filtered.filter(s => s.paciente.toLowerCase().includes(q));
+    filtered = filtered.filter(s =>
+      s.paciente.toLowerCase().includes(q) ||
+      (s.numSenha && s.numSenha.toLowerCase().includes(q)) ||
+      (s.numGuiaOp && s.numGuiaOp.toLowerCase().includes(q))
+    );
+  }
+  if (buscaSenha.trim()) {
+    const q = buscaSenha.toLowerCase().trim();
+    filtered = filtered.filter(s => s.numSenha && s.numSenha.toLowerCase().includes(q));
+  }
+  if (buscaGuia.trim()) {
+    const q = buscaGuia.toLowerCase().trim();
+    filtered = filtered.filter(s => s.numGuiaOp && s.numGuiaOp.toLowerCase().includes(q));
   }
 
   // Stats calculation
@@ -245,22 +259,38 @@ export const Senhas: React.FC = () => {
             <span>Filtros Rápidos</span>
           </div>
 
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 min-w-[240px] relative">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex-1 min-w-[220px] relative">
               <Search size={14} className="absolute left-3.5 top-3 text-slate-500" />
               <input
                 type="text"
-                placeholder="Pesquisar por nome do paciente..."
+                placeholder="Pesquisar paciente, nº da senha ou guia..."
                 value={buscaPac}
                 onChange={(e) => setBuscaPac(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none transition-all duration-200"
               />
             </div>
 
+            <input
+              type="text"
+              placeholder="Filtrar por Nº Guia..."
+              value={buscaGuia}
+              onChange={(e) => setBuscaGuia(e.target.value)}
+              className="px-3.5 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none font-mono transition-all w-44"
+            />
+
+            <input
+              type="text"
+              placeholder="Filtrar por Nº Senha..."
+              value={buscaSenha}
+              onChange={(e) => setBuscaSenha(e.target.value)}
+              className="px-3.5 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none font-mono transition-all w-44"
+            />
+
             <select
               value={planoFiltro}
               onChange={(e) => setPlanoFiltro(e.target.value)}
-              className="px-4 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white focus:outline-none transition-all cursor-pointer"
+              className="px-3.5 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white focus:outline-none transition-all cursor-pointer"
             >
               <option value="">Todos os planos</option>
               {planos.filter(p => p.status === 'Ativo').map(p => (
@@ -271,7 +301,7 @@ export const Senhas: React.FC = () => {
             <select
               value={mesFiltro}
               onChange={(e) => setMesFiltro(e.target.value)}
-              className="px-4 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white focus:outline-none transition-all cursor-pointer"
+              className="px-3.5 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white focus:outline-none transition-all cursor-pointer"
             >
               <option value="">Todos os períodos</option>
               {meses.map(m => {
@@ -289,7 +319,7 @@ export const Senhas: React.FC = () => {
             <select
               value={statusFiltro}
               onChange={(e) => setStatusFiltro(e.target.value)}
-              className="px-4 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white focus:outline-none transition-all cursor-pointer"
+              className="px-3.5 py-2.5 bg-[#0f1118]/60 border border-white/[0.04] focus:border-indigo-500/50 rounded-xl text-xs text-white focus:outline-none transition-all cursor-pointer"
             >
               <option value="">Todos os status</option>
               <option value="Ativa">Ativa</option>
@@ -309,7 +339,8 @@ export const Senhas: React.FC = () => {
               <tr className="sticky top-0 z-10 border-b border-white/[0.04] text-slate-400 font-bold uppercase tracking-wider text-[9px] pb-3 bg-[#131622]">
                 <th className="pb-3 px-2">Paciente</th>
                 <th className="pb-3 px-2">Plano</th>
-                <th className="pb-3 px-2">Nº Senha</th>
+                <th className="pb-3 px-2">Nº Guia Operadora</th>
+                <th className="pb-3 px-2">Nº Senha / Aut.</th>
                 <th className="pb-3 px-2 text-center">Qtd. Autorizada</th>
                 <th className="pb-3 px-2 text-center">Qtd. Usada</th>
                 <th className="pb-3 px-4 text-center">Data Aut.</th>
@@ -326,11 +357,12 @@ export const Senhas: React.FC = () => {
                   <tr key={s.id} className="hover:bg-white/[0.01] transition-colors group">
                     <td className="py-4 px-2 font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">{s.paciente}</td>
                     <td className="py-4 px-2 text-slate-400 font-semibold">{plan?.nome || 'Particular'}</td>
-                    <td className="py-4 px-2 text-slate-200 font-mono tracking-wider">{s.numSenha}</td>
+                    <td className="py-4 px-2 text-indigo-300 font-mono tracking-wider font-semibold">{s.numGuiaOp || '—'}</td>
+                    <td className="py-4 px-2 text-slate-200 font-mono tracking-wider font-bold">{s.numSenha}</td>
                     <td className="py-4 px-2 text-center text-slate-300 font-medium">{s.qtdAutorizada}</td>
                     <td className="py-4 px-2 text-center text-slate-300 font-medium">{s.qtdUsada}</td>
-                    <td className="py-4 px-4 text-center text-slate-400 font-semibold font-mono">{s.dataAut.split('-').reverse().join('/')}</td>
-                    <td className="py-4 px-4 text-center text-slate-400 font-semibold font-mono">{s.validade.split('-').reverse().join('/')}</td>
+                    <td className="py-4 px-4 text-center text-slate-400 font-semibold font-mono">{s.dataAut ? s.dataAut.split('-').reverse().join('/') : '—'}</td>
+                    <td className="py-4 px-4 text-center text-slate-400 font-semibold font-mono">{s.validade ? s.validade.split('-').reverse().join('/') : '—'}</td>
                     <td className="py-4 px-2">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${color}`}>
                         {s.status}
@@ -357,8 +389,8 @@ export const Senhas: React.FC = () => {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[#555d74] font-medium">
-                    Nenhuma senha encontrada para os filtros selecionados.
+                  <td colSpan={10} className="py-12 text-center text-[#555d74] font-medium">
+                    Nenhuma senha ou guia encontrada para os filtros selecionados.
                   </td>
                 </tr>
               )}
