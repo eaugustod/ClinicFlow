@@ -258,14 +258,22 @@ export const ChatPage: React.FC = () => {
         if (!activeConvId) {
           const { data: newConv, error: insertErr } = await supabase
             .from('conversas')
-            .upsert([{ paciente_id: pId, status: 'ativa' }], { onConflict: 'paciente_id' })
+            .insert([{ paciente_id: pId, status: 'ativa' }])
             .select('id')
-            .single();
+            .maybeSingle();
 
-          if (insertErr) {
-            console.error('[ClinicFlow Chat] Error inserting conversa:', insertErr);
+          if (newConv?.id) {
+            activeConvId = newConv.id;
+          } else {
+            const { data: retryList } = await supabase
+              .from('conversas')
+              .select('id')
+              .eq('paciente_id', pId)
+              .limit(1);
+            if (retryList && retryList.length > 0) {
+              activeConvId = retryList[0].id;
+            }
           }
-          activeConvId = newConv?.id;
         }
 
         if (activeConvId) {
