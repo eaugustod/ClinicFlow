@@ -310,12 +310,12 @@ export const Espera: React.FC = () => {
         </div>
       </div>
 
-      {/* Table Section */}
+      {/* Table Section (Redimensionada Horizontal e Verticalmente) */}
       <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden w-full">
-        <div className="overflow-x-auto scrollbar-thin">
+        <div className="overflow-auto max-h-[calc(100vh-240px)] min-h-[350px] scrollbar-thin">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-white/[0.02]">
+              <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.06] bg-[#161a26] sticky top-0 z-10 shadow-md">
                 <th className="py-3.5 px-3">Paciente</th>
                 <th className="py-3.5 px-3">Especialidade / Idade</th>
                 <th className="py-3.5 px-3">Preferência</th>
