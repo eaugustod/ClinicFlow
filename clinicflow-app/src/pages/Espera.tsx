@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter, Users, UserCheck } from 'lucide-react';
+import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter, Users, UserCheck, Printer } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ListaEspera } from '../types';
 import { supabase } from '../services/supabase';
@@ -361,6 +361,187 @@ export const Espera: React.FC = () => {
   const aguardandoCount = filteredEspera.filter(e => e.status === 'Aguardando').length;
   const convertidoCount = filteredEspera.filter(e => e.status === 'Convertido').length;
 
+  const isAdulto = (idadeStr?: string) => {
+    if (!idadeStr) return false;
+    const match = idadeStr.match(/\d+/);
+    if (!match) return false;
+    const num = parseInt(match[0], 10);
+    return num >= 18;
+  };
+
+  const generatePDFReport = () => {
+    if (filteredEspera.length === 0) {
+      alert('Nenhum paciente na lista de espera para os filtros selecionados.');
+      return;
+    }
+
+    // 1. Agrupar por especialidade -> crianças vs adultos
+    const agrupado: Record<string, { criancas: ListaEspera[]; adultos: ListaEspera[] }> = {};
+
+    filteredEspera.forEach(e => {
+      const rawSpec = e.especialidade || 'Geral';
+      const specList = isPlanoName(rawSpec)
+        ? ['Geral']
+        : rawSpec.split(/[,/]+/).map(s => s.trim()).filter(Boolean);
+
+      const specsToUse = specList.length > 0 ? specList : ['Geral'];
+      const ehAdulto = isAdulto(e.idade);
+
+      specsToUse.forEach(sp => {
+        if (!agrupado[sp]) {
+          agrupado[sp] = { criancas: [], adultos: [] };
+        }
+        if (ehAdulto) {
+          agrupado[sp].adultos.push(e);
+        } else {
+          agrupado[sp].criancas.push(e);
+        }
+      });
+    });
+
+    // 2. Ordenar por data de cadastro descendente em cada subgrupo
+    Object.keys(agrupado).forEach(sp => {
+      agrupado[sp].criancas.sort((a, b) => parseDateToTimestamp(b) - parseDateToTimestamp(a));
+      agrupado[sp].adultos.sort((a, b) => parseDateToTimestamp(b) - parseDateToTimestamp(a));
+    });
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Por favor, permita janelas pop-up para visualizar e imprimir o PDF.');
+      return;
+    }
+
+    const dataAtual = new Date().toLocaleString('pt-BR');
+    const filtroTexto = [
+      searchQuery ? `Busca: "${searchQuery}"` : '',
+      especialidadeFiltro ? `Especialidade: ${especialidadeFiltro}` : '',
+      mesFiltro ? `Mês/Ano: ${mesFiltro}` : ''
+    ].filter(Boolean).join(' | ') || 'Todos os registros (sem filtros)';
+
+    const renderTableHTML = (lista: ListaEspera[]) => {
+      let rows = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 5%;">#</th>
+              <th style="width: 12%;">Data Cad.</th>
+              <th style="width: 25%;">Paciente</th>
+              <th style="width: 10%;">Idade</th>
+              <th style="width: 15%;">Contato / Convênio</th>
+              <th style="width: 18%;">Preferência Horário/Dias</th>
+              <th style="width: 15%;">Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      lista.forEach((item, idx) => {
+        const prefDias = Array.isArray(item.dias) && item.dias.length > 0 ? item.dias.join(', ') : 'Qualquer dia';
+        const prefPeriodos = Array.isArray(item.periodos) && item.periodos.length > 0 ? item.periodos.join(', ') : (item.periodo || 'Ambos');
+        const prefTexto = `${prefDias} (${prefPeriodos})`;
+
+        rows += `
+          <tr>
+            <td style="font-weight: bold; text-align: center;">${idx + 1}</td>
+            <td style="font-family: monospace;">${formatDataBr(item.dataCadastro || item.dataEntrada)}</td>
+            <td><strong>${item.nome}</strong>${item.email ? `<br/><span style="font-size:8.5px; color:#64748b;">${item.email}</span>` : ''}</td>
+            <td>${cleanIdadeDisplay(item.idade, item.nome)}</td>
+            <td><span style="font-family: monospace;">${formatTelefone(item.tel)}</span><br/><span style="font-size:8.5px; color:#64748b;">${item.plano || 'Particular'}</span></td>
+            <td style="font-size: 8.5px;">${prefTexto}</td>
+            <td style="font-size: 8.5px; color: #475569;">${item.obs || '—'}</td>
+          </tr>
+        `;
+      });
+
+      rows += `
+          </tbody>
+        </table>
+      `;
+
+      return rows;
+    };
+
+    let htmlBody = '';
+
+    Object.entries(agrupado).forEach(([spec, { criancas, adultos }]) => {
+      if (criancas.length === 0 && adultos.length === 0) return;
+
+      htmlBody += `<div class="spec-title">📋 Especialidade: ${spec} (${criancas.length + adultos.length} paciente(s))</div>`;
+
+      if (criancas.length > 0) {
+        htmlBody += `<div class="group-title">🧒 Crianças / Adolescentes (< 18 anos) — Total: ${criancas.length}</div>`;
+        htmlBody += renderTableHTML(criancas);
+      }
+
+      if (adultos.length > 0) {
+        htmlBody += `<div class="group-title">🧑 Adultos (18+ anos) — Total: ${adultos.length}</div>`;
+        htmlBody += renderTableHTML(adultos);
+      }
+    });
+
+    const fullHTML = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatório de Lista de Espera - ClinicFlow</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; margin: 0; padding: 0; font-size: 10.5px; line-height: 1.35; }
+          .header { border-bottom: 2.5px solid #4f46e5; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .title { font-size: 18px; font-weight: 800; color: #1e1b4b; margin: 0; }
+          .subtitle { font-size: 10px; color: #64748b; margin-top: 2px; }
+          .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 9.5px; color: #334155; }
+          .spec-title { font-size: 13px; font-weight: 800; color: #4338ca; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 3px; margin-top: 18px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; page-break-after: avoid; }
+          .group-title { font-size: 11px; font-weight: 700; color: #1e293b; background: #f1f5f9; padding: 5px 8px; border-left: 4px solid #6366f1; border-radius: 4px; margin-top: 10px; margin-bottom: 6px; page-break-after: avoid; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+          tr { page-break-inside: avoid; }
+          th { background: #1e293b; color: #ffffff; font-weight: 700; font-size: 8.5px; text-transform: uppercase; padding: 5px 6px; text-align: left; }
+          td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; vertical-align: top; }
+          tr:nth-child(even) td { background: #f8fafc; }
+          .footer { margin-top: 24px; text-align: center; font-size: 8.5px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="title">Relatório de Lista de Espera</h1>
+            <div class="subtitle">Kosmos Espaço Terapêutico &bull; Sistema ClinicFlow</div>
+          </div>
+          <div style="text-align: right; font-size: 9.5px; color: #64748b;">
+            <strong>Emissão:</strong> ${dataAtual}<br/>
+            <strong>Total Registros:</strong> ${totalPacientes} paciente(s)
+          </div>
+        </div>
+
+        <div class="meta-box">
+          <strong>Filtros Ativos:</strong> ${filtroTexto}<br/>
+          <strong>Agrupamento:</strong> Por Especialidade &rarr; Por Idade (Crianças vs Adultos)<br/>
+          <strong>Ordenação:</strong> Data de Cadastro Descendente (Mais recentes primeiro)
+        </div>
+
+        ${htmlBody}
+
+        <div class="footer">
+          Documento gerado pelo sistema ClinicFlow &bull; Kosmos Espaço Terapêutico
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(fullHTML);
+    printWindow.document.close();
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] space-y-3.5 animate-fade-in text-xs max-w-full overflow-hidden">
       {/* Header (Shrink-0) */}
@@ -370,13 +551,24 @@ export const Espera: React.FC = () => {
           <h2 className="text-xl md:text-2xl font-black tracking-wide text-white mt-0.5">Lista de Espera</h2>
           <p className="text-xs text-slate-400 mt-0.5">Gerencie os pacientes que aguardam por vagas na agenda dos profissionais</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0"
-        >
-          <Plus size={16} />
-          Adicionar Paciente
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={generatePDFReport}
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-200 rounded-xl font-bold transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Gerar e imprimir relatório PDF separado por especialidade, idade e ordenado por data"
+          >
+            <Printer size={15} className="text-indigo-400" />
+            <span>Gerar PDF</span>
+          </button>
+
+          <button
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0"
+          >
+            <Plus size={16} />
+            <span>Adicionar Paciente</span>
+          </button>
+        </div>
       </div>
 
       {/* Cards de Resumo e Métricas (Shrink-0) */}
