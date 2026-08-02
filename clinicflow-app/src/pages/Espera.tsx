@@ -210,7 +210,7 @@ export const Espera: React.FC = () => {
       .filter(Boolean);
     setEspecialidades(parsedSpecs);
 
-    setIdade(item.idade || '');
+    setIdade(getCleanIdade(item.idade, item.nome));
     setPeriodo(item.periodo || 'Ambos');
     setDias(Array.isArray(item.dias) ? item.dias : []);
     setPeriodos(Array.isArray(item.periodos) ? item.periodos : []);
@@ -296,18 +296,26 @@ export const Espera: React.FC = () => {
     }
   };
 
-  const cleanIdadeDisplay = (idadeVal?: string, nomeVal?: string) => {
-    if (!idadeVal) return 'Idade não inf.';
+  const getCleanIdade = (idadeVal?: string, nomeVal?: string) => {
+    if (!idadeVal) return '';
     const val = idadeVal.trim();
     if (val.toLowerCase().startsWith('idade:')) {
-      const rest = val.substring(6).trim();
-      return cleanIdadeDisplay(rest, nomeVal);
+      return getCleanIdade(val.substring(6).trim(), nomeVal);
     }
-    if (nomeVal && val.toLowerCase().includes(nomeVal.toLowerCase().split(' ')[0]) && val.length > 4) {
-      return 'Idade não inf.';
+    if (nomeVal) {
+      const primeiroNome = nomeVal.trim().split(' ')[0].toLowerCase();
+      if (primeiroNome.length > 2 && val.toLowerCase().includes(primeiroNome)) {
+        return '';
+      }
     }
-    if (val.length > 15) return 'Idade não inf.';
-    return `Idade: ${val}`;
+    if (val.length > 20) return '';
+    return val;
+  };
+
+  const cleanIdadeDisplay = (idadeVal?: string, nomeVal?: string) => {
+    const clean = getCleanIdade(idadeVal, nomeVal);
+    if (!clean) return 'Idade não inf.';
+    return `Idade: ${clean}`;
   };
 
   const isPlanoName = (str?: string) => {
