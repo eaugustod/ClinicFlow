@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter } from 'lucide-react';
+import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter, Users, UserCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ListaEspera } from '../types';
 import { supabase } from '../services/supabase';
@@ -287,6 +287,44 @@ export const Espera: React.FC = () => {
     return parts.length > 0 ? parts : ['Geral'];
   };
 
+  // Metric calculation based strictly on filteredEspera
+  const totalPacientes = filteredEspera.length;
+
+  const especCounts: Record<string, number> = {};
+  filteredEspera.forEach(e => {
+    const list = cleanSpecList(e.especialidade);
+    list.forEach(sp => {
+      especCounts[sp] = (especCounts[sp] || 0) + 1;
+    });
+  });
+
+  const parseIdadeNum = (idadeStr?: string) => {
+    if (!idadeStr) return null;
+    const match = idadeStr.match(/\d+/);
+    return match ? parseInt(match[0], 10) : null;
+  };
+
+  let criancasAte7 = 0;
+  let criancas8a12 = 0;
+  let mais13 = 0;
+  let idadeNaoInf = 0;
+
+  filteredEspera.forEach(e => {
+    const n = parseIdadeNum(e.idade);
+    if (n === null) {
+      idadeNaoInf++;
+    } else if (n <= 7) {
+      criancasAte7++;
+    } else if (n <= 12) {
+      criancas8a12++;
+    } else {
+      mais13++;
+    }
+  });
+
+  const aguardandoCount = filteredEspera.filter(e => e.status === 'Aguardando').length;
+  const convertidoCount = filteredEspera.filter(e => e.status === 'Convertido').length;
+
   return (
     <div className="space-y-6 animate-fade-in text-xs max-w-full overflow-hidden">
       {/* Header */}
@@ -303,6 +341,76 @@ export const Espera: React.FC = () => {
           <Plus size={16} />
           Adicionar Paciente
         </button>
+      </div>
+
+      {/* Cards de Resumo e Métricas (Dinâmicos com os Filtros) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Geral */}
+        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex items-center gap-3.5">
+          <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400 shrink-0">
+            <Users size={22} />
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total na Fila</span>
+            <div className="text-2xl font-black text-white mt-0.5">{totalPacientes}</div>
+            <p className="text-[10px] text-indigo-300/80 font-medium">Pacientes filtrados</p>
+          </div>
+        </div>
+
+        {/* Card 2: Por Especialidade */}
+        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles size={15} className="text-violet-400" />
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Por Especialidade</span>
+          </div>
+          <div className="flex flex-wrap gap-1 max-h-[55px] overflow-y-auto scrollbar-thin">
+            {Object.keys(especCounts).length > 0 ? (
+              Object.entries(especCounts).map(([sp, count]) => (
+                <span key={sp} className="px-2 py-0.5 bg-violet-500/15 text-violet-200 border border-violet-500/20 rounded-md text-[10px] font-bold">
+                  {sp}: {count}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] text-slate-500">Nenhum registro</span>
+            )}
+          </div>
+        </div>
+
+        {/* Card 3: Por Faixa Etária */}
+        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-2">
+            <UserCheck size={15} className="text-emerald-400" />
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Por Faixa Etária</span>
+          </div>
+          <div className="flex flex-wrap gap-1 text-[10px] font-semibold">
+            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-md">
+              0-7 anos: {criancasAte7}
+            </span>
+            <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-md">
+              8-12 anos: {criancas8a12}
+            </span>
+            <span className="px-2 py-0.5 bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-md">
+              13+ anos: {mais13}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Status da Fila */}
+        <div className="p-4 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-lg flex items-center justify-between">
+          <div className="space-y-1.5 w-full">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status da Fila</span>
+            <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
+                <Clock size={12} />
+                <span>{aguardandoCount} Fila</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                <CheckCircle2 size={12} />
+                <span>{convertidoCount} Agendados</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search Bar & Filters */}
