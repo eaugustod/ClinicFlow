@@ -209,6 +209,7 @@ export interface ListaEspera {
   carteirinha: string;
   especialidade?: string;
   idade?: string;
+  periodo?: string;
   obs: string;
   dias: string[];
   periodos: string[];

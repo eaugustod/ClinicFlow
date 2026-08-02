@@ -438,6 +438,7 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
         { key: 'email', label: 'E-mail', required: false, aliases: ['email', 'e_mail', 'email_address'] },
         { key: 'especialidade', label: 'Especialidade', required: false, aliases: ['especialidade', 'area', 'terapia', 'especialidade_terapia', 'specialty'] },
         { key: 'idade', label: 'Idade', required: false, aliases: ['idade', 'age', 'idade_paciente'] },
+        { key: 'periodo', label: 'Período', required: false, aliases: ['periodo', 'período', 'turno', 'horario', 'period'] },
         { key: 'plano', label: 'Convênio / Plano', required: false, aliases: ['convenio', 'convênio', 'plano', 'plano_saude', 'health_plan'] },
         { key: 'obs', label: 'Observações', required: false, aliases: ['observacao', 'observações', 'obs', 'notes', 'comentarios'] }
       ],
@@ -451,12 +452,13 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
           email: getCell(row, 'email'),
           especialidade: getCell(row, 'especialidade'),
           idade: getCell(row, 'idade'),
+          periodo: getCell(row, 'periodo') || 'Ambos',
           plano: getCell(row, 'plano') || 'Particular',
           obs: getCell(row, 'obs'),
           status: 'Aguardando'
         };
       },
-      demo: "Data Cadastro,Nome,Telefone,Email,Especialidade,Idade,Convenio,Observacao\n02/08/2026,Lucas Oliveira,(11) 99999-8888,lucas@email.com,Psicologia,8 anos,Bradesco Saúde,Aguardando vaga no período da tarde\n02/08/2026,Sophia Santos,(11) 97777-6666,,Fonoterapia,5 anos,Particular,Preferência para terças-feiras"
+      demo: "Data Cadastro,Nome,Telefone,Email,Especialidade,Idade,Periodo,Convenio,Observacao\n02/08/2026,Lucas Oliveira,(11) 99999-8888,lucas@email.com,Psicologia,8 anos,Tarde,Bradesco Saúde,Aguardando vaga no período da tarde\n02/08/2026,Sophia Santos,(11) 97777-6666,,Fonoterapia,5 anos,Manhã,Particular,Preferência para terças-feiras"
     }
   };
 

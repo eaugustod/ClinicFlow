@@ -16,6 +16,7 @@ export const Espera: React.FC = () => {
   const [email, setEmail] = useState('');
   const [especialidade, setEspecialidade] = useState('');
   const [idade, setIdade] = useState('');
+  const [periodo, setPeriodo] = useState('Ambos');
   const [obs, setObs] = useState('');
   const [plano, setPlano] = useState('Particular');
   const [carteirinha, setCarteirinha] = useState('');
@@ -27,7 +28,8 @@ export const Espera: React.FC = () => {
   const filteredEspera = espera.filter(e =>
     e.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.tel.includes(searchQuery) ||
-    (e.especialidade && e.especialidade.toLowerCase().includes(searchQuery.toLowerCase()))
+    (e.especialidade && e.especialidade.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (e.periodo && e.periodo.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const openAddModal = () => {
@@ -36,6 +38,7 @@ export const Espera: React.FC = () => {
     setEmail('');
     setEspecialidade('');
     setIdade('');
+    setPeriodo('Ambos');
     setObs('');
     setPlano('Particular');
     setCarteirinha('');
@@ -65,6 +68,7 @@ export const Espera: React.FC = () => {
       email,
       especialidade,
       idade,
+      periodo,
       obs,
       plano,
       carteirinha,
@@ -108,7 +112,7 @@ export const Espera: React.FC = () => {
         <Search size={16} className="text-slate-400 ml-1" />
         <input
           type="text"
-          placeholder="Buscar por nome, telefone ou especialidade..."
+          placeholder="Buscar por nome, telefone, especialidade ou período..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 bg-transparent border-0 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-0"
@@ -123,6 +127,7 @@ export const Espera: React.FC = () => {
               <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-white/[0.01]">
                 <th className="p-4">Paciente</th>
                 <th className="p-4">Especialidade / Idade</th>
+                <th className="p-4">Período Desejado</th>
                 <th className="p-4">Contato / Plano</th>
                 <th className="p-4 text-center">Data Cadastro</th>
                 <th className="p-4">Observações</th>
@@ -140,6 +145,11 @@ export const Espera: React.FC = () => {
                   <td className="p-4">
                     <p className="text-indigo-300 font-semibold">{e.especialidade || 'Geral'}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">{e.idade ? `Idade: ${e.idade}` : 'Idade não inf.'}</p>
+                  </td>
+                  <td className="p-4">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/15">
+                      ⏱️ {e.periodo || 'Ambos'}
+                    </span>
                   </td>
                   <td className="p-4">
                     <p className="text-slate-300 font-semibold">{e.tel}</p>
@@ -183,7 +193,7 @@ export const Espera: React.FC = () => {
               ))}
               {filteredEspera.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#555d74] font-medium">
+                  <td colSpan={8} className="py-12 text-center text-[#555d74] font-medium">
                     Nenhum paciente aguardando vaga.
                   </td>
                 </tr>
@@ -215,13 +225,13 @@ export const Espera: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-400 font-semibold mb-1">Especialidade</label>
                   <select
                     value={especialidade}
                     onChange={(e) => setEspecialidade(e.target.value)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-2 text-white text-xs"
                   >
                     <option value="">— Selecione —</option>
                     <option value="AN">AN</option>
@@ -240,8 +250,21 @@ export const Espera: React.FC = () => {
                     placeholder="Ex: 8 anos"
                     value={idade}
                     onChange={(e) => setIdade(e.target.value)}
-                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-2 text-white text-xs"
                   />
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Período *</label>
+                  <select
+                    value={periodo}
+                    onChange={(e) => setPeriodo(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-2 text-white text-xs"
+                  >
+                    <option value="Manhã">Manhã</option>
+                    <option value="Tarde">Tarde</option>
+                    <option value="Ambos">Ambos</option>
+                    <option value="Online">Online</option>
+                  </select>
                 </div>
               </div>
 
