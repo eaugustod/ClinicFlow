@@ -437,13 +437,18 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
         { key: 'tel', label: 'Telefone', required: false, aliases: ['telefone', 'fone', 'phone', 'celular', 'whatsapp', 'tel'] },
         { key: 'email', label: 'E-mail', required: false, aliases: ['email', 'e_mail', 'email_address'] },
         { key: 'especialidade', label: 'Especialidade', required: false, aliases: ['especialidade', 'area', 'terapia', 'especialidade_terapia', 'specialty'] },
-        { key: 'idade', label: 'Idade', required: false, aliases: ['idade', 'age', 'idade_paciente'] },
+        { key: 'idade', label: 'Idade', required: false, aliases: ['idade', 'age', 'idade_paciente', 'anos'] },
+        { key: 'nasc', label: 'Data de Nascimento', required: false, aliases: ['nasc', 'nascimento', 'data_nasc', 'dt_nasc', 'birthday'] },
         { key: 'periodo', label: 'Período', required: false, aliases: ['periodo', 'período', 'turno', 'horario', 'period'] },
         { key: 'plano', label: 'Convênio / Plano', required: false, aliases: ['convenio', 'convênio', 'plano', 'plano_saude', 'health_plan'] },
         { key: 'obs', label: 'Observações', required: false, aliases: ['observacao', 'observações', 'obs', 'notes', 'comentarios'] }
       ],
       mapper: (row) => {
         const dtStr = parseDate(getCell(row, 'dataCadastro')) || new Date().toLocaleDateString('pt-BR');
+        const valIdade = getCell(row, 'idade');
+        const valNasc = getCell(row, 'nasc');
+        const finalIdade = valIdade || (valNasc ? parseDate(valNasc) : '');
+
         return {
           dataCadastro: dtStr,
           dataEntrada: dtStr,
@@ -451,7 +456,8 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
           tel: cleanFone(getCell(row, 'tel')),
           email: getCell(row, 'email'),
           especialidade: getCell(row, 'especialidade'),
-          idade: getCell(row, 'idade'),
+          idade: finalIdade,
+          nasc: parseDate(valNasc),
           periodo: getCell(row, 'periodo') || 'Ambos',
           plano: getCell(row, 'plano') || 'Particular',
           obs: getCell(row, 'obs'),
@@ -468,18 +474,36 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
   const autoDetectColumns = (headerList: string[]) => {
     const newMapping: { [key: string]: number } = {};
     schema.fields.forEach((field) => {
-      const matchIdx = headerList.findIndex((h) => {
+      // 1. Tentar correspondência exata primeiro
+      let matchIdx = headerList.findIndex((h) => {
         const normH = norm(h);
-        return field.aliases.some((alias) => {
-          const normA = norm(alias);
-          return normH.includes(normA) || normA.includes(normH);
-        });
+        return field.aliases.some((alias) => norm(alias) === normH);
       });
-      if (matchIdx >= 0) {
-        newMapping[field.key] = matchIdx;
-      } else {
-        newMapping[field.key] = -1;
+
+      // 2. Se não encontrou exata, tentar contida com proteção estrita para 'idade'
+      if (matchIdx < 0) {
+        matchIdx = headerList.findIndex((h) => {
+          const normH = norm(h);
+          return field.aliases.some((alias) => {
+            const normA = norm(alias);
+
+            // Proteção estrita: 'idade' não pode casar com 'unidade', 'cidade', 'validade', 'quantidade', etc.
+            if (field.key === 'idade' || normA === 'idade') {
+              if (['unidade', 'cidade', 'validade', 'quantidade', 'qualidade', 'oportunidade'].some(w => normH.includes(w))) {
+                return false;
+              }
+            }
+
+            if (normA.length < 3) {
+              return normH === normA;
+            }
+
+            return normH.includes(normA);
+          });
+        });
       }
+
+      newMapping[field.key] = matchIdx >= 0 ? matchIdx : -1;
     });
     setMapping(newMapping);
   };
@@ -895,12 +919,17 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
                 </div>
                 <select
                   value={mapping[field.key] !== undefined ? mapping[field.key] : -1}
-                  onChange={(e) => setMapping({ ...mapping, [field.key]: parseInt(e.target.value) })}
-                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white focus:outline-none"
+                  onChange={(e) => {
+                    const selIdx = parseInt(e.target.value);
+                    setMapping(prev => ({ ...prev, [field.key]: selIdx }));
+                  }}
+                  className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none cursor-pointer"
                 >
                   <option value={-1}>— Não importar este campo —</option>
                   {headers.map((h, idx) => (
-                    <option key={idx} value={idx}>{h}</option>
+                    <option key={idx} value={idx}>
+                      Coluna {idx + 1}: {h}
+                    </option>
                   ))}
                 </select>
               </div>
