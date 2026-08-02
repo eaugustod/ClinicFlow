@@ -1,9 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2 } from 'lucide-react';
+import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ListaEspera } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+
+const DIAS_OPCOES = [
+  { full: 'Segunda', short: 'Seg' },
+  { full: 'Terça', short: 'Ter' },
+  { full: 'Quarta', short: 'Qua' },
+  { full: 'Quinta', short: 'Qui' },
+  { full: 'Sexta', short: 'Sex' },
+  { full: 'Sábado', short: 'Sáb' }
+];
+
+const PERIODOS_OPCOES = [
+  'Manhã (08h-12h)',
+  'Tarde (12h-18h)',
+  'Noite (18h-21h)',
+  'Online'
+];
 
 export const Espera: React.FC = () => {
   const { espera, lazyLoadEspera, refreshAll } = useApp();
@@ -19,6 +35,8 @@ export const Espera: React.FC = () => {
   const [especialidade, setEspecialidade] = useState('');
   const [idade, setIdade] = useState('');
   const [periodo, setPeriodo] = useState('Ambos');
+  const [dias, setDias] = useState<string[]>([]);
+  const [periodos, setPeriodos] = useState<string[]>([]);
   const [obs, setObs] = useState('');
   const [plano, setPlano] = useState('Particular');
   const [carteirinha, setCarteirinha] = useState('');
@@ -58,8 +76,17 @@ export const Espera: React.FC = () => {
     (e.tel && e.tel.includes(searchQuery)) ||
     (e.especialidade && e.especialidade.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (e.periodo && e.periodo.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (e.plano && e.plano.toLowerCase().includes(searchQuery.toLowerCase()))
+    (e.plano && e.plano.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (e.dias && e.dias.some(d => d.toLowerCase().includes(searchQuery.toLowerCase())))
   );
+
+  const toggleDia = (diaFull: string) => {
+    setDias(prev => prev.includes(diaFull) ? prev.filter(d => d !== diaFull) : [...prev, diaFull]);
+  };
+
+  const togglePeriodo = (pStr: string) => {
+    setPeriodos(prev => prev.includes(pStr) ? prev.filter(x => x !== pStr) : [...prev, pStr]);
+  };
 
   const openAddModal = () => {
     setEditingItem(null);
@@ -69,6 +96,8 @@ export const Espera: React.FC = () => {
     setEspecialidade('');
     setIdade('');
     setPeriodo('Ambos');
+    setDias([]);
+    setPeriodos([]);
     setObs('');
     setPlano('Particular');
     setCarteirinha('');
@@ -83,6 +112,8 @@ export const Espera: React.FC = () => {
     setEspecialidade(item.especialidade || '');
     setIdade(item.idade || '');
     setPeriodo(item.periodo || 'Ambos');
+    setDias(Array.isArray(item.dias) ? item.dias : []);
+    setPeriodos(Array.isArray(item.periodos) ? item.periodos : []);
     setObs(item.obs || '');
     setPlano(item.plano || 'Particular');
     setCarteirinha(item.carteirinha || '');
@@ -129,6 +160,8 @@ export const Espera: React.FC = () => {
       especialidade,
       idade,
       periodo,
+      dias,
+      periodos,
       obs,
       plano,
       carteirinha,
@@ -161,7 +194,6 @@ export const Espera: React.FC = () => {
     }
   };
 
-  // Helper to fix display if especialidade contains plan name
   const isPlanoName = (str?: string) => {
     if (!str) return false;
     const s = str.toLowerCase();
@@ -191,7 +223,7 @@ export const Espera: React.FC = () => {
         <Search size={16} className="text-slate-400 ml-1" />
         <input
           type="text"
-          placeholder="Buscar por nome, telefone, especialidade, convênio ou período..."
+          placeholder="Buscar por nome, telefone, especialidade, dia da semana ou período..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 bg-transparent border-0 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-0"
@@ -201,12 +233,12 @@ export const Espera: React.FC = () => {
       {/* Table Section */}
       <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-left border-collapse min-w-[1050px]">
+          <table className="w-full text-left border-collapse min-w-[1100px]">
             <thead>
               <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-white/[0.02]">
                 <th className="py-4 px-4">Paciente</th>
                 <th className="py-4 px-4">Especialidade / Idade</th>
-                <th className="py-4 px-4 text-center">Período Desejado</th>
+                <th className="py-4 px-4">Preferência de Horário & Dias</th>
                 <th className="py-4 px-4">Contato / Convênio</th>
                 <th className="py-4 px-4 text-center whitespace-nowrap">Data Cadastro</th>
                 <th className="py-4 px-4">Observações</th>
@@ -218,13 +250,18 @@ export const Espera: React.FC = () => {
               {filteredEspera.map((e) => {
                 const specDisplay = isPlanoName(e.especialidade) ? 'Geral' : (e.especialidade || 'Geral');
                 const planoDisplay = e.plano || (isPlanoName(e.especialidade) ? e.especialidade : 'Particular');
+                const temDias = Array.isArray(e.dias) && e.dias.length > 0;
+                const temPeriodos = Array.isArray(e.periodos) && e.periodos.length > 0;
+
                 return (
                   <tr key={e.id} className="hover:bg-white/[0.01] transition-colors group">
+                    {/* Paciente */}
                     <td className="py-3.5 px-4">
                       <p className="font-bold text-slate-100 group-hover:text-indigo-400 transition-colors text-sm">{e.nome}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{e.email || 'Sem e-mail'}</p>
                     </td>
 
+                    {/* Especialidade / Idade */}
                     <td className="py-3.5 px-4">
                       <span className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 mb-1">
                         {specDisplay}
@@ -232,25 +269,54 @@ export const Espera: React.FC = () => {
                       <p className="text-[10px] text-slate-400">{e.idade ? `Idade: ${e.idade}` : 'Idade não inf.'}</p>
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                        ⏱️ {e.periodo || 'Ambos'}
-                      </span>
+                    {/* Preferência de Horário & Dias */}
+                    <td className="py-3.5 px-4">
+                      <div className="space-y-1">
+                        {temDias ? (
+                          <div className="flex flex-wrap gap-1">
+                            {e.dias.map((d, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-indigo-500/15 text-indigo-300 rounded text-[9px] font-bold border border-indigo-500/20">
+                                {d.slice(0, 3)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-500">Qualquer dia</span>
+                        )}
+
+                        {temPeriodos ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {e.periodos.map((p, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-violet-500/15 text-violet-300 rounded text-[9px] font-bold border border-violet-500/20">
+                                ⏱️ {p}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-300 border border-white/10 mt-0.5">
+                            ⏱️ {e.periodo || 'Ambos'}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
+                    {/* Contato / Convênio */}
                     <td className="py-3.5 px-4">
                       <p className="text-slate-200 font-semibold font-mono tracking-wide">{formatTelefone(e.tel)}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{planoDisplay} {e.carteirinha ? `(${e.carteirinha})` : ''}</p>
                     </td>
 
+                    {/* Data Cadastro */}
                     <td className="py-3.5 px-4 text-center font-mono text-slate-300 font-medium whitespace-nowrap">
                       {formatDataBr(e.dataCadastro || e.dataEntrada)}
                     </td>
 
+                    {/* Observações */}
                     <td className="py-3.5 px-4 text-slate-400 max-w-[180px] truncate" title={e.obs || 'Nenhuma observação'}>
                       {e.obs || '—'}
                     </td>
 
+                    {/* Status */}
                     <td className="py-3.5 px-4 text-center">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border ${
                         e.status === 'Aguardando'
@@ -264,15 +330,18 @@ export const Espera: React.FC = () => {
                       </span>
                     </td>
 
+                    {/* Ações */}
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => openEditModal(e)}
-                          className="p-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] rounded-lg text-slate-300 transition-all cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg text-slate-200 transition-all cursor-pointer font-semibold text-[11px]"
                           title="Editar cadastro"
                         >
-                          <Edit3 size={13} />
+                          <Edit3 size={12} className="text-indigo-400" />
+                          <span>Editar</span>
                         </button>
+
                         {e.status === 'Aguardando' && (
                           <>
                             <button
@@ -289,12 +358,14 @@ export const Espera: React.FC = () => {
                             </button>
                           </>
                         )}
+
                         <button
                           onClick={() => handleDelete(e)}
-                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/15 rounded-lg text-rose-400 transition-all cursor-pointer"
-                          title="Excluir"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/15 rounded-lg text-rose-400 transition-all cursor-pointer font-semibold text-[11px]"
+                          title="Remover paciente"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} />
+                          <span>Remover</span>
                         </button>
                       </div>
                     </td>
@@ -316,7 +387,7 @@ export const Espera: React.FC = () => {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-white/[0.04] flex justify-between items-center bg-[#131622]/60">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                 {editingItem ? 'Editar Paciente na Fila de Espera' : 'Adicionar à Fila de Espera'}
@@ -364,7 +435,7 @@ export const Espera: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Período *</label>
+                  <label className="block text-slate-400 font-semibold mb-1">Período Geral</label>
                   <select
                     value={periodo}
                     onChange={(e) => setPeriodo(e.target.value)}
@@ -375,6 +446,60 @@ export const Espera: React.FC = () => {
                     <option value="Ambos">Ambos</option>
                     <option value="Online">Online</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Preferência de Dias da Semana */}
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1.5 flex items-center gap-1.5">
+                  <Calendar size={13} className="text-indigo-400" />
+                  <span>Dias da Semana com Preferência</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {DIAS_OPCOES.map((d) => {
+                    const selected = dias.includes(d.full);
+                    return (
+                      <button
+                        key={d.full}
+                        type="button"
+                        onClick={() => toggleDia(d.full)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                          selected
+                            ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-indigo-400 shadow-md shadow-indigo-500/20'
+                            : 'bg-[#161a26] text-slate-400 border-white/[0.06] hover:bg-white/[0.04] hover:text-slate-200'
+                        }`}
+                      >
+                        {d.short}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Preferência de Horários / Períodos */}
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1.5 flex items-center gap-1.5">
+                  <Watch size={13} className="text-violet-400" />
+                  <span>Horários / Períodos de Preferência</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PERIODOS_OPCOES.map((p) => {
+                    const selected = periodos.includes(p);
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => togglePeriodo(p)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left border ${
+                          selected
+                            ? 'bg-violet-600/30 text-violet-200 border-violet-500 shadow-md shadow-violet-500/20'
+                            : 'bg-[#161a26] text-slate-400 border-white/[0.06] hover:bg-white/[0.04] hover:text-slate-200'
+                        }`}
+                      >
+                        ⏱️ {p}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -429,7 +554,7 @@ export const Espera: React.FC = () => {
                   value={obs}
                   onChange={(e) => setObs(e.target.value)}
                   className="w-full bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2 text-white text-xs resize-none focus:outline-none focus:border-indigo-500/50"
-                  placeholder="Ex: Disponível somente de tarde."
+                  placeholder="Ex: Disponível somente de tarde. Aguardando integração sensorial."
                 />
               </div>
 
