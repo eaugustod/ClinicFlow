@@ -194,6 +194,8 @@ function App() {
         return <Importador tipo="anamnese" />;
       case 'importar-evolucoes':
         return <Importador tipo="evolucoes" />;
+      case 'importar-espera':
+        return <Importador tipo="espera" />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[50vh] text-[#555d74]">

@@ -367,12 +367,15 @@ export const mappers = {
     end: e.end || null,
     plano: e.plano || null,
     carteirinha: e.carteirinha || null,
+    especialidade: e.especialidade || null,
+    idade: e.idade || null,
     obs: e.obs || null,
     dias: e.dias || [],
     periodos: e.periodos || [],
     procedimentos: e.procedimentos || [],
     status: e.status || 'Aguardando',
-    data_entrada: e.dataEntrada || null
+    data_entrada: e.dataEntrada || e.dataCadastro || null,
+    data_cadastro: e.dataCadastro || e.dataEntrada || null
   }),
   dbToEspera: (r: any): ListaEspera => ({
     id: r.id,
@@ -383,12 +386,15 @@ export const mappers = {
     end: r.end || '',
     plano: r.plano || '',
     carteirinha: r.carteirinha || '',
+    especialidade: r.especialidade || '',
+    idade: r.idade || '',
     obs: r.obs || '',
     dias: r.dias || [],
     periodos: r.periodos || [],
     procedimentos: r.procedimentos || [],
     status: r.status || 'Aguardando',
-    dataEntrada: r.data_entrada || ''
+    dataEntrada: r.data_entrada || r.data_cadastro || '',
+    dataCadastro: r.data_cadastro || r.data_entrada || ''
   }),
 
   histToDb: (h: Partial<Historico>) => ({

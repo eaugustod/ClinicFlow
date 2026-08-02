@@ -4,7 +4,7 @@ import { mappers } from '../services/mappers';
 import { Upload, ChevronRight, CheckCircle2, AlertTriangle, XCircle, FileSpreadsheet, ClipboardList } from 'lucide-react';
 
 interface ImportadorProps {
-  tipo: 'agenda' | 'pacientes' | 'profissionais' | 'planos' | 'procedimentos' | 'guias_sadt' | 'senhas' | 'anamnese' | 'evolucoes';
+  tipo: 'agenda' | 'pacientes' | 'profissionais' | 'planos' | 'procedimentos' | 'guias_sadt' | 'senhas' | 'anamnese' | 'evolucoes' | 'espera';
 }
 
 interface FieldDefinition {
@@ -426,6 +426,37 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
         };
       },
       demo: "Paciente,Terapeuta,Data,Titulo,Conteudo\nCarlos Eduardo Silva,Amanda Lima,2026-06-25,Sessão 1,Realizado treino de fonemas linguodentais. Excelente evolução.\nMariana Souza,Dr. Roberto Gomes,2026-06-25,Sessão 2,Discutido manejo de estresse ocupacional. Paciente colaborativa."
+    },
+    espera: {
+      label: 'Lista de Espera',
+      table: 'lista_espera',
+      toDbMapper: mappers.esperaToDb,
+      fields: [
+        { key: 'dataCadastro', label: 'Data do Cadastro', required: false, aliases: ['data_cadastro', 'datacadastro', 'data_entrada', 'data', 'dt_cadastro', 'cadastro'] },
+        { key: 'nome', label: 'Nome Completo', required: true, aliases: ['nome', 'paciente', 'nome_completo', 'name'] },
+        { key: 'tel', label: 'Telefone', required: false, aliases: ['telefone', 'fone', 'phone', 'celular', 'whatsapp', 'tel'] },
+        { key: 'email', label: 'E-mail', required: false, aliases: ['email', 'e_mail', 'email_address'] },
+        { key: 'especialidade', label: 'Especialidade', required: false, aliases: ['especialidade', 'area', 'terapia', 'especialidade_terapia', 'specialty'] },
+        { key: 'idade', label: 'Idade', required: false, aliases: ['idade', 'age', 'idade_paciente'] },
+        { key: 'plano', label: 'Convênio / Plano', required: false, aliases: ['convenio', 'convênio', 'plano', 'plano_saude', 'health_plan'] },
+        { key: 'obs', label: 'Observações', required: false, aliases: ['observacao', 'observações', 'obs', 'notes', 'comentarios'] }
+      ],
+      mapper: (row) => {
+        const dtStr = parseDate(getCell(row, 'dataCadastro')) || new Date().toLocaleDateString('pt-BR');
+        return {
+          dataCadastro: dtStr,
+          dataEntrada: dtStr,
+          nome: getCell(row, 'nome'),
+          tel: cleanFone(getCell(row, 'tel')),
+          email: getCell(row, 'email'),
+          especialidade: getCell(row, 'especialidade'),
+          idade: getCell(row, 'idade'),
+          plano: getCell(row, 'plano') || 'Particular',
+          obs: getCell(row, 'obs'),
+          status: 'Aguardando'
+        };
+      },
+      demo: "Data Cadastro,Nome,Telefone,Email,Especialidade,Idade,Convenio,Observacao\n02/08/2026,Lucas Oliveira,(11) 99999-8888,lucas@email.com,Psicologia,8 anos,Bradesco Saúde,Aguardando vaga no período da tarde\n02/08/2026,Sophia Santos,(11) 97777-6666,,Fonoterapia,5 anos,Particular,Preferência para terças-feiras"
     }
   };
 

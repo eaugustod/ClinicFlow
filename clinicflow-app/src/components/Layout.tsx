@@ -100,6 +100,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     { id: 'importar-senhas', label: 'Importar Senhas & Aut.', icon: Key },
     { id: 'importar-anamnese', label: 'Importar Anamnese', icon: ClipboardList },
     { id: 'importar-evolucoes', label: 'Importar Evoluções', icon: FileText },
+    { id: 'importar-espera', label: 'Importar Lista de Espera', icon: ListOrdered },
   ];
 
   const otherItems = [

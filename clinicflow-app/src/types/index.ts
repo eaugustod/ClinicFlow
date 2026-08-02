@@ -207,12 +207,15 @@ export interface ListaEspera {
   end: string;
   plano: string;
   carteirinha: string;
+  especialidade?: string;
+  idade?: string;
   obs: string;
   dias: string[];
   periodos: string[];
   procedimentos: string[];
   status: 'Aguardando' | 'Convertido' | 'Cancelado';
   dataEntrada: string;
+  dataCadastro?: string;
 }
 
 export interface Historico {
