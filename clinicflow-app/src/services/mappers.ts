@@ -409,17 +409,27 @@ export const mappers = {
     status: h.status || null,
     fonte: h.fonte || null
   }),
-  dbToHist: (r: any): Historico => ({
-    id: r.id,
-    pacId: r.pac_id,
-    tipo: r.tipo,
-    titulo: r.titulo || '',
-    conteudo: r.conteudo || {},
-    profId: r.prof_id || null,
-    data: r.data || '',
-    status: r.status || '',
-    fonte: r.fonte || ''
-  }),
+  dbToHist: (r: any): Historico => {
+    let parsedConteudo = r.conteudo;
+    if (typeof parsedConteudo === 'string') {
+      try {
+        parsedConteudo = JSON.parse(parsedConteudo);
+      } catch (e) {
+        parsedConteudo = { texto: r.conteudo };
+      }
+    }
+    return {
+      id: r.id,
+      pacId: r.pac_id,
+      tipo: r.tipo,
+      titulo: r.titulo || '',
+      conteudo: parsedConteudo || {},
+      profId: r.prof_id || null,
+      data: r.data || '',
+      status: r.status || '',
+      fonte: r.fonte || ''
+    };
+  },
 
   fechamentoToDb: (f: Partial<FechamentoMensal>) => ({
     competencia: f.competencia,

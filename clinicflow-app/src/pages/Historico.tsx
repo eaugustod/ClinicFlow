@@ -426,6 +426,10 @@ export const Historico: React.FC = () => {
                   {displayedLogs.map((item) => {
                     const ItemIcon = item.tipo === 'anamnese' ? BookOpen : item.tipo === 'agendamento' ? Clock : Stethoscope;
                     const docName = profissionais.find(p => p.id === item.profId)?.nome || 'Profissional';
+                    const c = typeof item.conteudo === 'string' ? (() => { try { return JSON.parse(item.conteudo); } catch { return { texto: item.conteudo }; } })() : (item.conteudo || {});
+                    const textoExibir = c.texto || c.obs || c.text || (typeof item.conteudo === 'string' ? item.conteudo : '');
+                    const compC = item.complemento ? (typeof item.complemento.conteudo === 'string' ? (() => { try { return JSON.parse(item.complemento.conteudo); } catch { return { texto: item.complemento.conteudo }; } })() : (item.complemento.conteudo || {})) : null;
+
                     return (
                       <div key={item.id} className="relative pl-12 group">
                         {/* Time marker */}
@@ -467,26 +471,26 @@ export const Historico: React.FC = () => {
                                 </span>
                               </div>
                               <div className="space-y-1 text-[11px]">
-                                {renderMarkdown(item.complemento.conteudo.texto || item.complemento.conteudo.obs || '')}
+                                {renderMarkdown(compC?.texto || compC?.obs || compC?.text || '')}
                               </div>
                             </div>
                           ) : (
                             <div className="space-y-2 text-[11px]">
-                              {renderMarkdown(item.conteudo.texto || item.conteudo.obs || '')}
+                              {renderMarkdown(textoExibir)}
                               
                               {/* Renderização de Anexo no Prontuário */}
-                              {item.conteudo?.anexoUrl && (
+                              {c.anexoUrl && (
                                 <div className="mt-3 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                   <div className="flex items-center gap-2 overflow-hidden">
                                     <FileText size={20} className="text-indigo-400 shrink-0" />
                                     <div className="truncate">
-                                      <p className="font-bold text-xs text-white truncate">{item.conteudo.anexoNome || 'Documento Anexado'}</p>
-                                      <span className="text-[9px] text-slate-400 font-mono">Origem: {item.conteudo.origem || item.fonte || 'Chat / Prontuário'}</span>
+                                      <p className="font-bold text-xs text-white truncate">{c.anexoNome || 'Documento Anexado'}</p>
+                                      <span className="text-[9px] text-slate-400 font-mono">Origem: {c.origem || item.fonte || 'Chat / Prontuário'}</span>
                                     </div>
                                   </div>
                                   <a
-                                    href={item.conteudo.anexoUrl}
-                                    download={item.conteudo.anexoNome || 'anexo_prontuario'}
+                                    href={c.anexoUrl}
+                                    download={c.anexoNome || 'anexo_prontuario'}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
