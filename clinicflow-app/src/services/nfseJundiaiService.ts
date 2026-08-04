@@ -355,19 +355,15 @@ export const nfseJundiaiService = {
         xmlUrl: `data:text/xml;charset=utf-8,${encodeURIComponent(xmlContent)}`
       };
 
-      // Tenta gravar no Supabase
+      // Tenta gravar no Supabase via upsert
       try {
         const payloadDb = mappers.nfToDb(fullNota);
-        const { data: dbRes, error: dbErr } = await supabase
+        const { error: dbErr } = await supabase
           .from('notas_fiscais')
-          .insert([payloadDb])
-          .select('id')
-          .maybeSingle();
+          .upsert(payloadDb);
 
         if (dbErr) {
-          console.warn('[NFS-e Jundiaí XML Import] Warning on Supabase insert:', dbErr);
-        } else if (dbRes?.id) {
-          fullNota.id = String(dbRes.id);
+          console.warn('[NFS-e Jundiaí XML Import] Warning on Supabase upsert:', dbErr);
         }
       } catch (dbErr) {
         console.warn('[NFS-e Jundiaí XML Import] Erro ao gravar no Supabase:', dbErr);
