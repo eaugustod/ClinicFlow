@@ -357,7 +357,18 @@ export const nfseJundiaiService = {
 
       // Tenta gravar no Supabase
       try {
-        await supabase.from('notas_fiscais').upsert(mappers.nfToDb(fullNota));
+        const payloadDb = mappers.nfToDb(fullNota);
+        const { data: dbRes, error: dbErr } = await supabase
+          .from('notas_fiscais')
+          .insert([payloadDb])
+          .select('id')
+          .maybeSingle();
+
+        if (dbErr) {
+          console.warn('[NFS-e Jundiaí XML Import] Warning on Supabase insert:', dbErr);
+        } else if (dbRes?.id) {
+          fullNota.id = String(dbRes.id);
+        }
       } catch (dbErr) {
         console.warn('[NFS-e Jundiaí XML Import] Erro ao gravar no Supabase:', dbErr);
       }
@@ -373,7 +384,17 @@ export const nfseJundiaiService = {
       importedCount++;
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedNotas));
+    try {
+      // Omite string bruta do XML ao salvar no localStorage para evitar QuotaExceededError (5MB)
+      const sanitizedNotas = updatedNotas.map(n => ({
+        ...n,
+        xmlResposta: undefined,
+        xmlUrl: undefined
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizedNotas));
+    } catch (lsErr) {
+      console.warn('[NFS-e Jundiaí] LocalStorage quota limit bypassed:', lsErr);
+    }
 
     return {
       success: true,
