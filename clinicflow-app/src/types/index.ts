@@ -341,6 +341,7 @@ export interface StatusAgendamento {
 export interface NotaFiscalJundiai {
   id: string;
   numeroRps: string;
+  serieRps?: string;
   numeroLote?: number;
   numeroNota?: string;
   codigoVerificacao?: string;

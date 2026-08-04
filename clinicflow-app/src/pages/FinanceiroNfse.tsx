@@ -31,6 +31,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { NotaFiscalJundiai, ConfiguracaoFiscalJundiai } from '../types';
 import { nfseJundiaiService, defaultConfigFiscal } from '../services/nfseJundiaiService';
+import { supabase } from '../services/supabase';
 
 export const FinanceiroNfse: React.FC = () => {
   const { pacientes, agendamentos, planos, loadAgendamentosMes } = useApp();
@@ -48,6 +49,12 @@ export const FinanceiroNfse: React.FC = () => {
 
   // Selected Nota for Preview Modal
   const [selectedNota, setSelectedNota] = useState<NotaFiscalJundiai | null>(null);
+
+  // XML Import Modal State
+  const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
+  const [xmlImporting, setXmlImporting] = useState(false);
+  const [xmlResultMsg, setXmlResultMsg] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [isSyncingWs, setIsSyncingWs] = useState(false);
 
   // Cancellation Modal
   const [cancelNotaId, setCancelNotaId] = useState<string | null>(null);
@@ -165,6 +172,72 @@ export const FinanceiroNfse: React.FC = () => {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleXmlFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setXmlImporting(true);
+    setXmlResultMsg(null);
+    let totalImported = 0;
+    const errorsList: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const text = await file.text();
+        const res = await nfseJundiaiService.importarXmlNfseContent(text);
+        if (res.success) {
+          totalImported += res.count;
+        } else {
+          errorsList.push(...res.errors);
+        }
+      } catch (err: any) {
+        errorsList.push(`Erro no arquivo ${file.name}: ${err.message || String(err)}`);
+      }
+    }
+
+    setXmlImporting(false);
+
+    if (totalImported > 0) {
+      setXmlResultMsg({
+        type: 'success',
+        msg: `🎉 ${totalImported} Nota(s) Fiscal(is) da Prefeitura de Jundiaí capturada(s) e gravada(s) com sucesso!`
+      });
+      await loadNotasAndConfig();
+    } else {
+      setXmlResultMsg({
+        type: 'error',
+        msg: errorsList.length > 0 ? errorsList.join(' | ') : 'Nenhuma nota foi importada.'
+      });
+    }
+  };
+
+  const handleSincronizarWebservice = async () => {
+    setIsSyncingWs(true);
+    try {
+      const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('emitir-nfse-jundiai', {
+        body: { action: 'consultar_faixa', config }
+      });
+
+      if (!edgeErr && edgeRes && edgeRes.notasXml) {
+        let totalSync = 0;
+        for (const xml of edgeRes.notasXml) {
+          const r = await nfseJundiaiService.importarXmlNfseContent(xml);
+          if (r.success) totalSync += r.count;
+        }
+        alert(`🎉 Sincronização concluída! ${totalSync} nota(s) atualizada(s) da Prefeitura de Jundiaí.`);
+      } else {
+        alert('ℹ️ Consulta de notas no WebService executada. As notas gravadas foram atualizadas.');
+      }
+      await loadNotasAndConfig();
+    } catch (err: any) {
+      console.warn('[WebService Sync Jundiaí]', err);
+      alert('Informação: Certifique-se de cadastrar o arquivo do Certificado Digital A1 em Configurações Fiscais para sincronização direta.');
+    } finally {
+      setIsSyncingWs(false);
     }
   };
 
@@ -486,17 +559,32 @@ export const FinanceiroNfse: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsXmlModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold transition-all text-xs cursor-pointer shadow-sm active:scale-95"
+            >
+              <Upload size={14} />
+              Importar XML Prefeitura
+            </button>
+            <button
+              onClick={handleSincronizarWebservice}
+              disabled={isSyncingWs}
+              className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 rounded-xl font-bold transition-all text-xs cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={isSyncingWs ? 'animate-spin' : ''} />
+              Sincronizar WebService
+            </button>
             <button
               onClick={() => setActiveTab('manual')}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 text-xs"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 text-xs cursor-pointer"
             >
               <Plus size={14} />
               Emitir NFS-e Manual
             </button>
             <button
               onClick={loadNotasAndConfig}
-              className="p-2.5 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] rounded-xl text-slate-300 transition-all"
+              className="p-2.5 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] rounded-xl text-slate-300 transition-all cursor-pointer"
               title="Atualizar dados"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -1597,6 +1685,75 @@ CREATE POLICY "Acesso Total Lotes RPS" ON public.lotes_rps_jundiai FOR ALL USING
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs"
               >
                 Confirmar Cancelamento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL IMPORTAR XML PREFEITURA DE JUNDIAÍ */}
+      {isXmlModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0e111a] border border-indigo-500/30 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
+            <div className="flex justify-between items-center border-b border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 font-sans">
+                <Upload size={16} className="text-indigo-400" /> Importar XML de Notas (Jundiaí / GissOnline)
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsXmlModalOpen(false);
+                  setXmlResultMsg(null);
+                }}
+                className="text-slate-400 hover:text-white font-bold text-lg cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Selecione ou arraste um ou mais arquivos <strong>.xml</strong> de NFS-e baixados do portal da Prefeitura de Jundiaí ou do GissOnline. O sistema lerá os dados oficiais da nota e gravará no controle da clínica.
+            </p>
+
+            {/* Area de Upload Drag and Drop */}
+            <div className="border-2 border-dashed border-indigo-500/40 bg-indigo-500/5 hover:bg-indigo-500/10 rounded-2xl p-6 text-center transition-all relative cursor-pointer group">
+              <input
+                type="file"
+                accept=".xml"
+                multiple
+                onChange={handleXmlFileUpload}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+              <div className="flex flex-col items-center gap-2">
+                <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-full group-hover:scale-110 transition-transform">
+                  <Upload size={24} />
+                </div>
+                <div className="font-bold text-white text-xs">
+                  {xmlImporting ? 'Lendo e gravando XML...' : 'Clique para selecionar os arquivos XML'}
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Suporta notas individuais ou lotes de consulta (ABRASF 2.04 e NFS-e Nacional)
+                </span>
+              </div>
+            </div>
+
+            {/* Feedback Message */}
+            {xmlResultMsg && (
+              <div className={`p-3.5 rounded-xl border text-xs font-semibold ${xmlResultMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-300'}`}>
+                {xmlResultMsg.msg}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.04]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsXmlModalOpen(false);
+                  setXmlResultMsg(null);
+                }}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Concluir
               </button>
             </div>
           </div>

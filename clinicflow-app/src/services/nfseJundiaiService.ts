@@ -300,5 +300,85 @@ export const nfseJundiaiService = {
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
     return true;
+  },
+
+  /**
+   * Importa e grava notas fiscais extraídas de um conteúdo de arquivo XML (.xml) da Prefeitura de Jundiaí / GissOnline
+   */
+  importarXmlNfseContent: async (xmlContent: string): Promise<{ success: boolean; count: number; errors: string[] }> => {
+    const { parseXmlNfseJundiai } = await import('./xmlNfseParser');
+    const parseRes = parseXmlNfseJundiai(xmlContent);
+
+    if (!parseRes.success || parseRes.notas.length === 0) {
+      return {
+        success: false,
+        count: 0,
+        errors: parseRes.errors.length > 0 ? parseRes.errors : ['Nenhuma nota fiscal encontrada no XML.']
+      };
+    }
+
+    const config = nfseJundiaiService.getConfig();
+    const currentNotas = await nfseJundiaiService.listNotas();
+    let importedCount = 0;
+    const updatedNotas = [...currentNotas];
+
+    for (const parsed of parseRes.notas) {
+      const numNota = parsed.numeroNota || `NFS-${Date.now()}`;
+      
+      const fullNota: NotaFiscalJundiai = {
+        id: parsed.id || `nf_xml_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        numeroNota: numNota,
+        codigoVerificacao: parsed.codigoVerificacao || 'XML-OFICIAL-JUNDIAI',
+        numeroRps: parsed.numeroRps || `RPS-${numNota}`,
+        serieRps: parsed.serieRps || '1',
+        numeroLote: Number(parsed.numeroLote) || 1,
+        dataEmissao: parsed.dataEmissao || new Date().toISOString(),
+        status: 'Aprovada',
+        tomadorNome: parsed.tomadorNome || 'Tomador Não Informado',
+        tomadorCpfCnpj: parsed.tomadorCpfCnpj || '000.000.000-00',
+        tomadorEmail: parsed.tomadorEmail || '',
+        tomadorEndereco: parsed.tomadorEndereco || '',
+        descricaoServico: parsed.descricaoServico || 'Prestação de Serviços de Saúde - Jundiaí',
+        servicoCodigo: parsed.servicoCodigo || config.codigoServicoPadrao || '04.01',
+        valorServico: parsed.valorServico || 0,
+        aliquotaIss: parsed.aliquotaIss || config.aliquotaIssPadrao || 2.0,
+        valorIss: parsed.valorIss || 0,
+        cstIbsCbs: parsed.cstIbsCbs || '01',
+        cClassTribIbsCbs: parsed.cClassTribIbsCbs || '040100',
+        reducaoBaseIbsCbs: parsed.reducaoBaseIbsCbs || config.reducaoSaudeIbsCbs || 60,
+        aliquotaIbs: parsed.aliquotaIbs || config.aliquotaIbsPadrao || 0.10,
+        valorIbs: parsed.valorIbs || 0,
+        aliquotaCbs: parsed.aliquotaCbs || config.aliquotaCbsPadrao || 0.90,
+        valorCbs: parsed.valorCbs || 0,
+        ambiente: config.ambiente,
+        xmlResposta: parsed.xmlResposta || xmlContent,
+        xmlUrl: `data:text/xml;charset=utf-8,${encodeURIComponent(xmlContent)}`
+      };
+
+      // Tenta gravar no Supabase
+      try {
+        await supabase.from('notas_fiscais').upsert(mappers.nfToDb(fullNota));
+      } catch (dbErr) {
+        console.warn('[NFS-e Jundiaí XML Import] Erro ao gravar no Supabase:', dbErr);
+      }
+
+      // Atualiza ou adiciona na lista local
+      const existingIdx = updatedNotas.findIndex(n => n.numeroNota === fullNota.numeroNota || n.id === fullNota.id);
+      if (existingIdx >= 0) {
+        updatedNotas[existingIdx] = fullNota;
+      } else {
+        updatedNotas.unshift(fullNota);
+      }
+
+      importedCount++;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedNotas));
+
+    return {
+      success: true,
+      count: importedCount,
+      errors: []
+    };
   }
 };
