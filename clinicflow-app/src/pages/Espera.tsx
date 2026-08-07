@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter, Users, UserCheck, Printer, Wand2 } from 'lucide-react';
+import { Search, Plus, Clock, CheckCircle2, XCircle, Edit3, Trash2, Calendar, Watch, Sparkles, Filter, Users, UserCheck, Printer, Wand2, Shield } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ListaEspera } from '../types';
 import { supabase } from '../services/supabase';
@@ -123,6 +123,7 @@ export const Espera: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [mesFiltro, setMesFiltro] = useState('');
   const [especialidadeFiltro, setEspecialidadeFiltro] = useState('');
+  const [planoFiltro, setPlanoFiltro] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ListaEspera | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -233,6 +234,11 @@ export const Espera: React.FC = () => {
     }
     if (especialidadeFiltro) {
       if (!e.especialidade || !e.especialidade.toLowerCase().includes(especialidadeFiltro.toLowerCase())) {
+        return false;
+      }
+    }
+    if (planoFiltro.trim()) {
+      if (!e.plano || !e.plano.toLowerCase().includes(planoFiltro.toLowerCase().trim())) {
         return false;
       }
     }
@@ -557,6 +563,7 @@ export const Espera: React.FC = () => {
     const filtroTexto = [
       searchQuery ? `Busca: "${searchQuery}"` : '',
       especialidadeFiltro ? `Especialidade: ${especialidadeFiltro}` : '',
+      planoFiltro ? `Plano: ${planoFiltro}` : '',
       mesFiltro ? `Mês/Ano: ${mesFiltro}` : ''
     ].filter(Boolean).join(' | ') || 'Todos os registros (sem filtros)';
 
@@ -822,6 +829,18 @@ export const Espera: React.FC = () => {
                 <option key={sp} value={sp}>{sp}</option>
               ))}
             </select>
+          </div>
+
+          {/* Plano de Saúde Filter */}
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <Shield size={13} className="text-emerald-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Filtrar por plano de saúde..."
+              value={planoFiltro}
+              onChange={(e) => setPlanoFiltro(e.target.value)}
+              className="w-full sm:w-auto px-3 py-1.5 bg-[#161a26] border border-white/[0.08] rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 font-medium"
+            />
           </div>
 
           {/* Month/Year Filter */}

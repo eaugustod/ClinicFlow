@@ -31,7 +31,30 @@ const getFeriados = (): { data: string; desc: string }[] => {
 };
 
 export const GuiasSadt: React.FC = () => {
-  const { guias, lazyLoadGuias, pacientes, profissionais, planos, procedimentos, agendamentos, senhas, lazyLoadSenhas, refreshAll } = useApp();
+  const { guias, lazyLoadGuias, pacientes, profissionais, planos, procedimentos, agendamentos, senhas, lazyLoadSenhas, refreshAll, user } = useApp();
+  
+  const isRecepcao = user?.perfil?.toLowerCase() === 'recepcao' || user?.perfil?.toLowerCase() === 'recepção';
+
+  const isGuiaNoMesVigente = (dataStr?: string) => {
+    if (!dataStr) return false;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const s = dataStr.trim();
+    if (s.startsWith(`${currentYear}-${String(currentMonth).padStart(2, '0')}`)) {
+      return true;
+    }
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts.length === 3) {
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2].length === 2 ? '20' + parts[2] : parts[2], 10);
+        return month === currentMonth && year === currentYear;
+      }
+    }
+    return false;
+  };
   
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,6 +120,10 @@ export const GuiasSadt: React.FC = () => {
 
   // Filter logic
   const filteredGuias = guias.filter(g => {
+    if (isRecepcao) {
+      if (g.status !== 'Pendente') return false;
+      if (!isGuiaNoMesVigente(g.data)) return false;
+    }
     const matchesSearch = g.pac.toLowerCase().includes(searchQuery.toLowerCase()) || g.num.includes(searchQuery);
     const matchesStatus = statusFilter === 'Todos' || g.status === statusFilter;
     const matchesPeriodo = !periodoFilter || g.data.startsWith(periodoFilter);
@@ -995,14 +1022,16 @@ export const GuiasSadt: React.FC = () => {
         </div>
 
         {/* INDICATORS SECTION */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          {stats.map((s, idx) => (
-            <div key={idx} className={`p-4 rounded-xl border ${s.color} backdrop-blur-md shadow-lg`}>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{s.label}</p>
-              <p className="text-lg font-black mt-1 text-white">{s.val}</p>
-            </div>
-          ))}
-        </div>
+        {!isRecepcao && (
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            {stats.map((s, idx) => (
+              <div key={idx} className={`p-4 rounded-xl border ${s.color} backdrop-blur-md shadow-lg`}>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{s.label}</p>
+                <p className="text-lg font-black mt-1 text-white">{s.val}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* FILTERS BAR */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl">
@@ -1019,15 +1048,22 @@ export const GuiasSadt: React.FC = () => {
 
           <div>
             <select
-              value={statusFilter}
+              value={isRecepcao ? 'Pendente' : statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none"
+              disabled={isRecepcao}
+              className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none disabled:opacity-60 cursor-pointer"
             >
-              <option value="Todos">— Todos os Status —</option>
-              <option value="Pendente">Pendente</option>
-              <option value="Enviado">Enviado</option>
-              <option value="Pago">Pago</option>
-              <option value="Glosado">Glosado</option>
+              {isRecepcao ? (
+                <option value="Pendente">Status: Pendente (Recepção)</option>
+              ) : (
+                <>
+                  <option value="Todos">— Todos os Status —</option>
+                  <option value="Pendente">Pendente</option>
+                  <option value="Enviado">Enviado</option>
+                  <option value="Pago">Pago</option>
+                  <option value="Glosado">Glosado</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -1035,9 +1071,10 @@ export const GuiasSadt: React.FC = () => {
             <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">Emissão:</span>
             <input
               type="month"
-              value={periodoFilter}
+              value={isRecepcao ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}` : periodoFilter}
               onChange={(e) => setPeriodoFilter(e.target.value)}
-              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs"
+              disabled={isRecepcao}
+              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs disabled:opacity-60"
             />
           </div>
         </div>

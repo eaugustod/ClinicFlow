@@ -124,7 +124,7 @@ export const Perfis: React.FC = () => {
       cor: '#10b981',
       bloqueado: true,
       desc: 'Acesso a agenda, pacientes e faturamento básico',
-      modulos: ['dashboard', 'agenda', 'chat', 'pacientes', 'planos', 'espera', 'senhas'],
+      modulos: ['dashboard', 'agenda', 'chat', 'pacientes', 'planos', 'espera', 'senhas', 'guias'],
       subPerms: { pacientes: ['criar'], agenda: ['criar', 'editar'] }
     },
     {
