@@ -829,6 +829,19 @@ export const GuiasSadt: React.FC = () => {
     const plano = planos.find(p => p.id === g.planoId);
     const prof = profissionais.find(p => p.id === g.profId);
     const pacInfo = pacientes.find(p => p.nome === g.pac);
+    
+    // Busca objeto de senha correspondente no contexto
+    const senhaObj = senhas.find(s => 
+      (g.dados?.senha && s.numSenha === g.dados.senha) ||
+      (g.numOp && (s.numGuiaOp === g.numOp || s.numSenha === g.numOp)) ||
+      (s.paciente.toLowerCase().trim() === g.pac.toLowerCase().trim() && (s.carteirinha === g.carteirinha || !g.carteirinha))
+    );
+
+    const valSenha = g.dados?.senha || g.dados?.numSenha || senhaObj?.numSenha || '';
+    const valDtValSenha = g.dados?.dtValSenha || g.dados?.validade || senhaObj?.validade || '';
+    const valGuiaOp = g.numOp || g.dados?.numGuiaOp || g.dados?.numGuiaPrincipal || senhaObj?.numGuiaOp || '';
+    const valGuiaPrincipal = g.dados?.numGuiaPrincipal || valGuiaOp || '';
+
     const listProcs = g.dados?.procs && g.dados.procs.length > 0
       ? g.dados.procs
       : [{ codigo: g.codigoProcedimento || '50000470', desc: 'SESSAO DE PSICOTERAPIA INDIVIDUAL POR PSICOLOGO', qtd: 1, valor: g.valor, total: g.valor }];
@@ -1036,11 +1049,11 @@ export const GuiasSadt: React.FC = () => {
           <table class="tiss-tbl">
             <tr>
               <td style="width: 14%;"><span class="lbl">1 - Registro ANS</span><span class="val">${plano?.ans || '315478'}</span></td>
-              <td style="width: 36%;"><span class="lbl">3 – Número da Guia Principal</span><span class="val">${g.dados?.numGuiaPrincipal || g.numOp || ''}</span></td>
+              <td style="width: 36%;"><span class="lbl">3 – Número da Guia Principal</span><span class="val">${valGuiaPrincipal}</span></td>
               <td style="width: 12.5%;"><span class="lbl">4 - Data Autorização</span><span class="val">${formattedDate(g.dados?.dtAut || g.data)}</span></td>
-              <td style="width: 12.5%;"><span class="lbl">5 - Senha</span><span class="val">${g.dados?.senha || ''}</span></td>
-              <td style="width: 12.5%;"><span class="lbl">6 - Validade Senha</span><span class="val">${formattedDate(g.dados?.dtValSenha || '')}</span></td>
-              <td style="width: 12.5%;"><span class="lbl">7 - Nº Guia Operadora</span><span class="val">${g.numOp || g.dados?.numGuiaOp || ''}</span></td>
+              <td style="width: 12.5%;"><span class="lbl">5 - Senha</span><span class="val">${valSenha}</span></td>
+              <td style="width: 12.5%;"><span class="lbl">6 - Validade Senha</span><span class="val">${formattedDate(valDtValSenha)}</span></td>
+              <td style="width: 12.5%;"><span class="lbl">7 - Nº Guia Operadora</span><span class="val">${valGuiaOp}</span></td>
             </tr>
           </table>
 
@@ -1203,7 +1216,7 @@ export const GuiasSadt: React.FC = () => {
               <td style="padding: 2px 3px;">
                 <span class="lbl">58 - Observação / Justificativa</span>
                 <span class="val" style="font-size: 6pt; font-family: monospace; font-weight: normal;">
-                  Senha FacPlan ( ${g.dados?.senha || '21484962154'} ) - Validade: ( ${formattedDate(g.dados?.dtValSenha || '05/10/2026')} ) - LIBERAÇÃO REG. SERVIÇO : G.'${g.numOp || g.num}' PRES: '${g.num}' TELEFONE DO LOCAL DE ATENDIMENTO: 11 - 4586-8755
+                  Senha FacPlan ( ${valSenha || '—'} ) - Validade: ( ${formattedDate(valDtValSenha) || '—'} ) - LIBERAÇÃO REG. SERVIÇO : G.'${valGuiaOp || g.num}' PRES: '${g.num}' TELEFONE DO LOCAL DE ATENDIMENTO: 11 - 4586-8755
                 </span>
               </td>
             </tr>
