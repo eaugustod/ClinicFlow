@@ -829,26 +829,93 @@ export const GuiasSadt: React.FC = () => {
     const plano = planos.find(p => p.id === g.planoId);
     const prof = profissionais.find(p => p.id === g.profId);
     const pacInfo = pacientes.find(p => p.nome === g.pac);
-    const listProcs = g.dados?.procs || [{ codigo: '', desc: 'Sessão', qtd: 1, valor: g.valor, total: g.valor }];
+    const listProcs = g.dados?.procs && g.dados.procs.length > 0
+      ? g.dados.procs
+      : [{ codigo: g.codigoProcedimento || '50000470', desc: 'SESSAO DE PSICOTERAPIA INDIVIDUAL POR PSICOLOGO', qtd: 1, valor: g.valor, total: g.valor }];
     
-    const formattedDate = (iso: string) => {
+    const formattedDate = (iso?: string) => {
       if (!iso) return '';
-      return iso.split('-').reverse().join('/');
+      const clean = iso.split('T')[0].trim();
+      if (clean.includes('-')) {
+        return clean.split('-').reverse().join('/');
+      }
+      return clean;
     };
 
-    const logoHtml = plano?.logo 
-      ? `<img src="${plano.logo}" style="max-width:130px;max-height:36px;object-fit:contain;display:block">`
-      : `<div style="font-weight:bold;font-size:10px;">${plano?.nome || 'Particular'}</div>`;
+    const isAmil = (plano?.nome || '').toLowerCase().includes('amil');
+    const isVivest = (plano?.nome || '').toLowerCase().includes('vivest');
 
-    const procRows = listProcs.map((p, i) => `
-      <tr>
-        <td style="text-align:center;border:1px solid #ccc;padding:3px;">22</td>
-        <td style="text-align:center;font-family:monospace;border:1px solid #ccc;padding:3px;">${p.codigo}</td>
-        <td colspan="4" style="border:1px solid #ccc;padding:3px;">${p.desc}</td>
-        <td style="text-align:center;border:1px solid #ccc;padding:3px;">${p.qtd}</td>
-        <td style="text-align:center;border:1px solid #ccc;padding:3px;">${p.qtd}</td>
-      </tr>
-    `).join('');
+    let logoHtml = '';
+    if (plano?.logo) {
+      logoHtml = `<img src="${plano.logo}" style="max-height:36px;max-width:150px;object-fit:contain;display:block">`;
+    } else if (isAmil) {
+      logoHtml = `<div style="display:flex;align-items:center;gap:6px;">
+        <div style="font-family:Arial,sans-serif;font-size:24pt;font-weight:900;color:#002b80;letter-spacing:-1px;line-height:1;">amil</div>
+      </div>`;
+    } else if (isVivest) {
+      logoHtml = `<div style="display:flex;align-items:center;gap:4px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#005a9c"><path d="M12 2L2 22h20L12 2z"/></svg>
+        <span style="font-family:Arial,sans-serif;font-size:18pt;font-weight:800;color:#005a9c;">vivest</span>
+      </div>`;
+    } else {
+      logoHtml = `<div style="font-family:Arial,sans-serif;font-size:14pt;font-weight:bold;color:#1e293b;">${plano?.nome || 'Padrão TISS'}</div>`;
+    }
+
+    // Linhas de Itens Assistenciais Solicitados (Campos 24-28)
+    const reqRowsArr = [];
+    for (let i = 0; i < 5; i++) {
+      const p = listProcs[i];
+      if (p) {
+        reqRowsArr.push(`
+          <tr>
+            <td style="text-align:center;">${(p as any).tabela || '22'}</td>
+            <td style="text-align:center;font-family:monospace;font-weight:bold;">${p.codigo || ''}</td>
+            <td style="text-align:left;font-weight:bold;padding-left:4px;">${p.desc || ''}</td>
+            <td style="text-align:center;font-weight:bold;">${p.qtd ? p.qtd.toFixed(1) : '1.0'}</td>
+            <td style="text-align:center;font-weight:bold;">${p.qtd ? p.qtd.toFixed(1) : '1.0'}</td>
+          </tr>
+        `);
+      } else {
+        reqRowsArr.push(`
+          <tr>
+            <td>&nbsp;</td><td></td><td></td><td></td><td></td>
+          </tr>
+        `);
+      }
+    }
+
+    // Linhas de Execução / Procedimentos Realizados (Campos 36-47)
+    const execRowsArr = [];
+    for (let i = 0; i < 5; i++) {
+      const p = listProcs[i];
+      if (p) {
+        execRowsArr.push(`
+          <tr>
+            <td style="text-align:center;">${formattedDate(g.data)}</td>
+            <td style="text-align:center;"></td>
+            <td style="text-align:center;"></td>
+            <td style="text-align:center;">${(p as any).tabela || '22'}</td>
+            <td style="text-align:center;font-family:monospace;font-weight:bold;">${p.codigo || ''}</td>
+            <td style="text-align:left;font-weight:bold;padding-left:4px;">${p.desc || ''}</td>
+            <td style="text-align:center;font-weight:bold;">${p.qtd ? p.qtd.toFixed(1) : '1.0'}</td>
+            <td style="text-align:center;"></td>
+            <td style="text-align:center;">C</td>
+            <td style="text-align:center;"></td>
+            <td style="text-align:right;padding-right:2px;">${p.valor ? p.valor.toFixed(2).replace('.', ',') : '0,00'}</td>
+            <td style="text-align:right;font-weight:bold;padding-right:2px;">${(p.total || p.valor || g.valor).toFixed(2).replace('.', ',')}</td>
+          </tr>
+        `);
+      } else {
+        execRowsArr.push(`
+          <tr>
+            <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+        `);
+      }
+    }
+
+    const nowStr = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const footerRight = isAmil ? `Impresso em ${nowStr} &nbsp;&nbsp; Página: 1 de 1 &nbsp;&nbsp; Tiss - v4.02.00` : `@2026 Fácil Informática - FacPlan Novo WebPlan - Versão 1.6.9.1-556352`;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -857,111 +924,318 @@ export const GuiasSadt: React.FC = () => {
         <meta charset="UTF-8">
         <title>Guia SADT - ${g.num}</title>
         <style>
-          body { font-family: Arial, sans-serif; font-size: 8pt; color: #000; padding: 20px; }
-          .border-box { border: 1px solid #333; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
-          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
-          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-          .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-          .title { font-size: 14pt; font-weight: bold; }
-          .label { font-size: 7pt; color: #666; font-weight: bold; margin-bottom: 2px; }
-          .value { font-size: 9pt; font-weight: bold; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th { background: #eee; border: 1px solid #ccc; padding: 5px; font-size: 8pt; font-weight: bold; text-align: left; }
-          td { padding: 5px; font-size: 8pt; }
+          @page {
+            size: A4 portrait;
+            margin: 4mm 6mm;
+          }
+          * { box-sizing: border-box; }
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 6.5pt;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 4px;
+            -webkit-print-color-adjust: exact;
+          }
+          .guia-box {
+            width: 100%;
+            max-width: 200mm;
+            margin: 0 auto;
+          }
+          .sec-title {
+            background-color: #d9d9d9;
+            font-weight: bold;
+            font-size: 6.5pt;
+            padding: 2px 4px;
+            border: 1px solid #000;
+            border-bottom: none;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+          }
+          table.tiss-tbl {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 2px;
+          }
+          table.tiss-tbl td, table.tiss-tbl th {
+            border: 1px solid #000;
+            padding: 1.5px 3px;
+            vertical-align: top;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .lbl {
+            font-size: 5.5pt;
+            font-weight: bold;
+            color: #111;
+            display: block;
+            line-height: 1;
+            margin-bottom: 1px;
+          }
+          .val {
+            font-size: 7.5pt;
+            font-weight: bold;
+            color: #000;
+            line-height: 1.1;
+            min-height: 9px;
+            display: block;
+          }
+          th.th-hdr {
+            background: #e6e6e6;
+            font-size: 5.5pt;
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid #000;
+            padding: 2px 1px;
+          }
+          .serial-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px 12px;
+            font-size: 5.5pt;
+            padding: 2px;
+          }
+          .serial-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .footer-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 5.5pt;
+            color: #333;
+            margin-top: 3px;
+            padding-top: 2px;
+            border-top: 1px solid #000;
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div>${logoHtml}</div>
-          <div class="title">GUIA DE SERVIÇO DE ATENÇÃO À SAÚDE FISIÁTRICA / SADT</div>
-          <div>
-            <div class="label">Nº Guia Prestador</div>
-            <div class="value" style="font-size:14pt;color:#d32f2f;">${g.num}</div>
-          </div>
-        </div>
+        <div class="guia-box">
+          {/* HEADER */}
+          <table style="width:100%; border-collapse:collapse; margin-bottom:3px;">
+            <tr>
+              <td style="width: 25%; vertical-align: middle;">${logoHtml}</td>
+              <td style="width: 50%; text-align: center; vertical-align: middle;">
+                <div style="font-size: 9.5pt; font-weight: bold; text-transform: uppercase; line-height: 1.1;">
+                  GUIA DE SERVIÇO PROFISSIONAL / SERVIÇO AUXILIAR DE<br>DIAGNÓSTICO E TERAPIA (SP/SADT)
+                </div>
+              </td>
+              <td style="width: 25%; text-align: right; vertical-align: top;">
+                <div style="font-size: 6.5pt; font-weight: bold;">2 - Nº Guia no Prestador</div>
+                <div style="font-size: 11pt; font-weight: bold; font-family: monospace;">${g.num}</div>
+              </td>
+            </tr>
+          </table>
 
-        <div class="border-box">
-          <div class="grid">
-            <div>
-              <div class="label">Registro ANS</div>
-              <div class="value">${plano?.ans || '—'}</div>
-            </div>
-            <div>
-              <div class="label">Nº Guia Principal / Operadora</div>
-              <div class="value">${g.numOp || '—'}</div>
-            </div>
-          </div>
-        </div>
+          {/* CAMPOS 1 A 7 */}
+          <table class="tiss-tbl">
+            <tr>
+              <td style="width: 14%;"><span class="lbl">1 - Registro ANS</span><span class="val">${plano?.ans || '315478'}</span></td>
+              <td style="width: 36%;"><span class="lbl">3 – Número da Guia Principal</span><span class="val">${g.dados?.numGuiaPrincipal || g.numOp || ''}</span></td>
+              <td style="width: 12.5%;"><span class="lbl">4 - Data Autorização</span><span class="val">${formattedDate(g.dados?.dtAut || g.data)}</span></td>
+              <td style="width: 12.5%;"><span class="lbl">5 - Senha</span><span class="val">${g.dados?.senha || ''}</span></td>
+              <td style="width: 12.5%;"><span class="lbl">6 - Validade Senha</span><span class="val">${formattedDate(g.dados?.dtValSenha || '')}</span></td>
+              <td style="width: 12.5%;"><span class="lbl">7 - Nº Guia Operadora</span><span class="val">${g.numOp || g.dados?.numGuiaOp || ''}</span></td>
+            </tr>
+          </table>
 
-        <div class="border-box">
-          <div class="label" style="font-size:9pt;border-bottom:1px solid #eee;padding-bottom:2px;margin-bottom:6px;">Dados do Beneficiário</div>
-          <div class="grid-3">
-            <div>
-              <div class="label">Nome do Paciente</div>
-              <div class="value">${g.pac}</div>
-            </div>
-            <div>
-              <div class="label">Nº Carteirinha</div>
-              <div class="value">${g.carteirinha || '—'}</div>
-            </div>
-            <div>
-              <div class="label">Data de Nascimento</div>
-              <div class="value">${pacInfo?.nasc ? formattedDate(pacInfo.nasc) : '—'}</div>
-            </div>
-          </div>
-        </div>
+          {/* DADOS DO BENEFICIÁRIO */}
+          <div class="sec-title">Dados do Beneficiário</div>
+          <table class="tiss-tbl">
+            <tr>
+              <td style="width: 22%;"><span class="lbl">8 - Número da Carteira</span><span class="val">${g.carteirinha || pacInfo?.carteirinha || ''}</span></td>
+              <td style="width: 15%;"><span class="lbl">9 - Validade Carteira</span><span class="val">${formattedDate((pacInfo as any)?.valCarteirinha || '31/12/2199')}</span></td>
+              <td style="width: 38%;"><span class="lbl">10 - Nome</span><span class="val">${g.pac}</span></td>
+              <td style="width: 15%;"><span class="lbl">89 - Nome Social</span><span class="val">${(pacInfo as any)?.nomeSocial || ''}</span></td>
+              <td style="width: 10%;"><span class="lbl">12 - Atendimento RN</span><span class="val">${g.dados?.atendRN || 'Não'}</span></td>
+            </tr>
+          </table>
 
-        <div class="border-box">
-          <div class="label" style="font-size:9pt;border-bottom:1px solid #eee;padding-bottom:2px;margin-bottom:6px;">Dados do Solicitante / Executante</div>
-          <div class="grid-3">
-            <div>
-              <div class="label">Profissional Executante</div>
-              <div class="value">${prof?.nome || '—'}</div>
-            </div>
-            <div>
-              <div class="label">Conselho / Número / UF</div>
-              <div class="value">${prof?.conselho || '—'} / ${prof?.num || '—'} / ${prof?.uf || '—'}</div>
-            </div>
-            <div>
-              <div class="label">Código CBO</div>
-              <div class="value">${prof?.cbo || '—'}</div>
-            </div>
-          </div>
-        </div>
+          {/* DADOS DO SOLICITANTE */}
+          <div class="sec-title">Dados do Solicitante</div>
+          <table class="tiss-tbl">
+            <tr>
+              <td style="width: 20%;"><span class="lbl">13 - Código na Operadora</span><span class="val">${plano?.codPrestador || '405161'}</span></td>
+              <td style="width: 80%;" colspan="7"><span class="lbl">14 - Nome do Contratado</span><span class="val">${plano?.nomeContratado || 'MARIA CECILIA B D S PSICOLOGIA LTDA'}</span></td>
+            </tr>
+            <tr>
+              <td style="width: 38%;" colspan="2"><span class="lbl">15 - Nome do Profissional Solicitante</span><span class="val">${g.dados?.profSolicitante || prof?.nome || 'CASSIA MARIA CARVALHO ABRANTES DO AMARAL'}</span></td>
+              <td style="width: 12%;"><span class="lbl">16 - Conselho</span><span class="val">${prof?.conselho || 'CRM'}</span></td>
+              <td style="width: 14%;"><span class="lbl">17 - Nº Conselho</span><span class="val">${prof?.num || '73765'}</span></td>
+              <td style="width: 6%;"><span class="lbl">18 - UF</span><span class="val">${prof?.uf || 'SP'}</span></td>
+              <td style="width: 12%;"><span class="lbl">19 - Código CBO</span><span class="val">${prof?.cbo || '225125'}</span></td>
+              <td style="width: 18%;"><span class="lbl">20 - Assinatura Profissional Solicitante</span><span class="val"></span></td>
+            </tr>
+          </table>
 
-        <div class="border-box">
-          <div class="label" style="font-size:9pt;border-bottom:1px solid #eee;padding-bottom:2px;margin-bottom:6px;">Procedimentos Solicitados</div>
-          <table>
+          {/* DADOS DA SOLICITAÇÃO / PROCEDIMENTOS SOLICITADOS */}
+          <div class="sec-title">Dados da Solicitação / Procedimentos ou Itens Assistenciais Solicitados</div>
+          <table class="tiss-tbl">
+            <tr>
+              <td style="width: 25%;"><span class="lbl">21 - Caráter do Atendimento</span><span class="val">${g.dados?.caraterAtend || 'Eletivo'}</span></td>
+              <td style="width: 25%;"><span class="lbl">22 - Data da Solicitação</span><span class="val">${formattedDate(g.data)}</span></td>
+              <td style="width: 25%;"><span class="lbl">23 - Indicação Clínica</span><span class="val">${g.cid || 'f41'}</span></td>
+              <td style="width: 25%;"><span class="lbl">90 - Indicador Cobertura Especial</span><span class="val"></span></td>
+            </tr>
+          </table>
+
+          <table class="tiss-tbl">
             <thead>
               <tr>
-                <th style="width:50px;text-align:center;">Tab.</th>
-                <th style="width:100px;text-align:center;">Cód. TUSS</th>
-                <th>Descrição do Procedimento</th>
-                <th style="width:50px;text-align:center;">Qtd. Sol.</th>
-                <th style="width:50px;text-align:center;">Qtd. Aut.</th>
+                <th class="th-hdr" style="width: 6%;">24-Tabela</th>
+                <th class="th-hdr" style="width: 14%;">25-Código Procedimento</th>
+                <th class="th-hdr" style="width: 64%;">26 - Descrição</th>
+                <th class="th-hdr" style="width: 8%;">27-Qtde.Solic.</th>
+                <th class="th-hdr" style="width: 8%;">28-Qtde.Aut.</th>
               </tr>
             </thead>
             <tbody>
-              ${procRows}
+              ${reqRowsArr.join('')}
             </tbody>
           </table>
-        </div>
 
-        <div class="border-box">
-          <div class="grid">
-            <div>
-              <div class="label">Senha de Autorização</div>
-              <div class="value">${g.dados?.senha || '—'}</div>
-            </div>
-            <div>
-              <div class="label">Data de Emissão</div>
-              <div class="value">${formattedDate(g.data)}</div>
-            </div>
+          {/* DADOS DO CONTRATADO EXECUTANTE */}
+          <div class="sec-title">Dados do Contratado Executante</div>
+          <table class="tiss-tbl">
+            <tr>
+              <td style="width: 20%;"><span class="lbl">29 - Código na Operadora</span><span class="val">${plano?.codPrestador || '405161'}</span></td>
+              <td style="width: 60%;"><span class="lbl">30 - Nome do Contratado</span><span class="val">${plano?.nomeContratado || 'MARIA CECILIA B D S PSICOLOGIA LTDA'}</span></td>
+              <td style="width: 20%;"><span class="lbl">31 - Código CNES</span><span class="val">${plano?.cnes || '0620904'}</span></td>
+            </tr>
+          </table>
+
+          {/* DADOS DO ATENDIMENTO */}
+          <div class="sec-title">Dados do Atendimento</div>
+          <table class="tiss-tbl">
+            <tr>
+              <td style="width: 18%;"><span class="lbl">32 - Tipo de Atendimento</span><span class="val">${g.dados?.tipoAtendimento || '(3) TERAPIA'}</span></td>
+              <td style="width: 24%;"><span class="lbl">33 - Indicação de Acidente</span><span class="val">${g.dados?.indicacaoAcidente || '(2) OUTROS'}</span></td>
+              <td style="width: 20%;"><span class="lbl">34 - Tipo de Consulta</span><span class="val">${g.dados?.tipoConsulta || '(1) PRIMEIRA CONSULTA'}</span></td>
+              <td style="width: 18%;"><span class="lbl">35 - Motivo Encerramento</span><span class="val"></span></td>
+              <td style="width: 10%;"><span class="lbl">91 - Regime</span><span class="val">(1) Ambulatorial</span></td>
+              <td style="width: 10%;"><span class="lbl">92 - Saúde Ocup.</span><span class="val"></span></td>
+            </tr>
+          </table>
+
+          {/* DADOS DA EXECUÇÃO / PROCEDIMENTOS E EXAMES REALIZADOS */}
+          <div class="sec-title">Dados da Execução / Procedimentos e Exames Realizados</div>
+          <table class="tiss-tbl">
+            <thead>
+              <tr>
+                <th class="th-hdr" style="width: 9%;">36-Data</th>
+                <th class="th-hdr" style="width: 6%;">37-Hora Ini</th>
+                <th class="th-hdr" style="width: 6%;">38-Hora Fim</th>
+                <th class="th-hdr" style="width: 5%;">39-Tab</th>
+                <th class="th-hdr" style="width: 11%;">40-Código</th>
+                <th class="th-hdr" style="width: 35%;">41-Descrição</th>
+                <th class="th-hdr" style="width: 5%;">42-Qtde</th>
+                <th class="th-hdr" style="width: 4%;">43-Via</th>
+                <th class="th-hdr" style="width: 4%;">44-Tec</th>
+                <th class="th-hdr" style="width: 4%;">45-Fator</th>
+                <th class="th-hdr" style="width: 5.5%;">46-Valor Unit</th>
+                <th class="th-hdr" style="width: 5.5%;">47-Valor Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${execRowsArr.join('')}
+            </tbody>
+          </table>
+
+          {/* IDENTIFICAÇÃO DO PROFISSIONAL EXECUTANTE */}
+          <div class="sec-title">Identificação do(s) Profissional(is) Executante(s)</div>
+          <table class="tiss-tbl">
+            <thead>
+              <tr>
+                <th class="th-hdr" style="width: 5%;">48-Seq</th>
+                <th class="th-hdr" style="width: 6%;">49-Grau</th>
+                <th class="th-hdr" style="width: 15%;">50-CPF / Código Operadora</th>
+                <th class="th-hdr" style="width: 40%;">51-Nome do Profissional</th>
+                <th class="th-hdr" style="width: 10%;">52-Conselho</th>
+                <th class="th-hdr" style="width: 12%;">53-Número Conselho</th>
+                <th class="th-hdr" style="width: 4%;">54-UF</th>
+                <th class="th-hdr" style="width: 8%;">55-CBO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align:center;">1</td>
+                <td style="text-align:center;"></td>
+                <td style="text-align:center;">${(prof as any)?.cpf || ''}</td>
+                <td style="font-weight:bold;">${prof?.nome || 'MARIA CECILIA BENESSUTI DONATO'}</td>
+                <td style="text-align:center;">${prof?.conselho || 'CRP'}</td>
+                <td style="text-align:center;">${prof?.num || ''}</td>
+                <td style="text-align:center;">${prof?.uf || 'SP'}</td>
+                <td style="text-align:center;">${prof?.cbo || '251510'}</td>
+              </tr>
+              <tr><td style="text-align:center;">2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            </tbody>
+          </table>
+
+          {/* PROCEDIMENTOS EM SÉRIE */}
+          <table class="tiss-tbl">
+            <tr>
+              <td style="background:#fff; padding:1px 3px;">
+                <span class="lbl">56-Data de Realização de Procedimentos em Série &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 57-Assinatura do Beneficiário ou Responsável</span>
+                <div class="serial-grid">
+                  <div class="serial-item"><span>1 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>3 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>2 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>4 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>5 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>7 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>6 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>8 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>9 - __/__/____</span><span>_________________________________________</span></div>
+                  <div class="serial-item"><span>10 - __/__/____</span><span>________________________________________</span></div>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          {/* OBSERVAÇÃO / JUSTIFICATIVA */}
+          <table class="tiss-tbl">
+            <tr>
+              <td style="padding: 2px 3px;">
+                <span class="lbl">58 - Observação / Justificativa</span>
+                <span class="val" style="font-size: 6pt; font-family: monospace; font-weight: normal;">
+                  Senha FacPlan ( ${g.dados?.senha || '21484962154'} ) - Validade: ( ${formattedDate(g.dados?.dtValSenha || '05/10/2026')} ) - LIBERAÇÃO REG. SERVIÇO : G.'${g.numOp || g.num}' PRES: '${g.num}' TELEFONE DO LOCAL DE ATENDIMENTO: 11 - 4586-8755
+                </span>
+              </td>
+            </tr>
+          </table>
+
+          {/* TOTAIS */}
+          <table class="tiss-tbl">
+            <tr>
+              <td><span class="lbl">59 - Total Procedimentos</span><span class="val">R$ ${g.valor.toFixed(2).replace('.', ',')}</span></td>
+              <td><span class="lbl">60 - Total Taxas/Aluguéis</span><span class="val">R$ 0,00</span></td>
+              <td><span class="lbl">61 - Total Materiais</span><span class="val">R$ 0,00</span></td>
+              <td><span class="lbl">62 - Total OPME</span><span class="val">R$ 0,00</span></td>
+              <td><span class="lbl">63 - Total Medicamentos</span><span class="val">R$ 0,00</span></td>
+              <td><span class="lbl">64 - Total Gases</span><span class="val">R$ 0,00</span></td>
+              <td style="background:#f0f0f0;"><span class="lbl">65 - Total Geral</span><span class="val">R$ ${g.valor.toFixed(2).replace('.', ',')}</span></td>
+            </tr>
+          </table>
+
+          {/* ASSINATURAS FINAIS */}
+          <table class="tiss-tbl" style="margin-bottom: 2px;">
+            <tr style="height: 26px; vertical-align: top;">
+              <td style="width: 33%;"><span class="lbl">66 - Assinatura Responsável Autorização</span></td>
+              <td style="width: 34%;"><span class="lbl">67 - Assinatura Beneficiário ou Responsável</span></td>
+              <td style="width: 33%;"><span class="lbl">68 - Assinatura do Contratado</span></td>
+            </tr>
+          </table>
+
+          {/* FOOTER */}
+          <div class="footer-line">
+            <div>Guia SP/SADT &nbsp; | &nbsp; ${g.num}</div>
+            <div>${footerRight}</div>
           </div>
-        </div>
-
-        <div style="text-align:right;font-size:12pt;font-weight:bold;margin-top:15px;padding-right:10px;">
-          VALOR TOTAL DA GUIA: R$ ${g.valor.toFixed(2).replace('.', ',')}
         </div>
       </body>
       </html>
@@ -969,7 +1243,7 @@ export const GuiasSadt: React.FC = () => {
 
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
-    const win = window.open(blobUrl, '_blank', 'width=900,height=750');
+    const win = window.open(blobUrl, '_blank', 'width=1000,height=800');
     if (win) {
       setTimeout(() => {
         try {
