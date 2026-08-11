@@ -1016,7 +1016,7 @@ export const GuiasSadt: React.FC = () => {
       </head>
       <body>
         <div class="guia-box">
-          {/* HEADER */}
+          <!-- HEADER -->
           <table style="width:100%; border-collapse:collapse; margin-bottom:3px;">
             <tr>
               <td style="width: 25%; vertical-align: middle;">${logoHtml}</td>
@@ -1032,7 +1032,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* CAMPOS 1 A 7 */}
+          <!-- CAMPOS 1 A 7 -->
           <table class="tiss-tbl">
             <tr>
               <td style="width: 14%;"><span class="lbl">1 - Registro ANS</span><span class="val">${plano?.ans || '315478'}</span></td>
@@ -1044,7 +1044,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* DADOS DO BENEFICIÁRIO */}
+          <!-- DADOS DO BENEFICIÁRIO -->
           <div class="sec-title">Dados do Beneficiário</div>
           <table class="tiss-tbl">
             <tr>
@@ -1056,7 +1056,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* DADOS DO SOLICITANTE */}
+          <!-- DADOS DO SOLICITANTE -->
           <div class="sec-title">Dados do Solicitante</div>
           <table class="tiss-tbl">
             <tr>
@@ -1073,7 +1073,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* DADOS DA SOLICITAÇÃO / PROCEDIMENTOS SOLICITADOS */}
+          <!-- DADOS DA SOLICITAÇÃO / PROCEDIMENTOS SOLICITADOS -->
           <div class="sec-title">Dados da Solicitação / Procedimentos ou Itens Assistenciais Solicitados</div>
           <table class="tiss-tbl">
             <tr>
@@ -1099,7 +1099,7 @@ export const GuiasSadt: React.FC = () => {
             </tbody>
           </table>
 
-          {/* DADOS DO CONTRATADO EXECUTANTE */}
+          <!-- DADOS DO CONTRATADO EXECUTANTE -->
           <div class="sec-title">Dados do Contratado Executante</div>
           <table class="tiss-tbl">
             <tr>
@@ -1109,7 +1109,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* DADOS DO ATENDIMENTO */}
+          <!-- DADOS DO ATENDIMENTO -->
           <div class="sec-title">Dados do Atendimento</div>
           <table class="tiss-tbl">
             <tr>
@@ -1122,7 +1122,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* DADOS DA EXECUÇÃO / PROCEDIMENTOS E EXAMES REALIZADOS */}
+          <!-- DADOS DA EXECUÇÃO / PROCEDIMENTOS E EXAMES REALIZADOS -->
           <div class="sec-title">Dados da Execução / Procedimentos e Exames Realizados</div>
           <table class="tiss-tbl">
             <thead>
@@ -1146,7 +1146,7 @@ export const GuiasSadt: React.FC = () => {
             </tbody>
           </table>
 
-          {/* IDENTIFICAÇÃO DO PROFISSIONAL EXECUTANTE */}
+          <!-- IDENTIFICAÇÃO DO PROFISSIONAL EXECUTANTE -->
           <div class="sec-title">Identificação do(s) Profissional(is) Executante(s)</div>
           <table class="tiss-tbl">
             <thead>
@@ -1176,7 +1176,7 @@ export const GuiasSadt: React.FC = () => {
             </tbody>
           </table>
 
-          {/* PROCEDIMENTOS EM SÉRIE */}
+          <!-- PROCEDIMENTOS EM SÉRIE -->
           <table class="tiss-tbl">
             <tr>
               <td style="background:#fff; padding:1px 3px;">
@@ -1197,7 +1197,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* OBSERVAÇÃO / JUSTIFICATIVA */}
+          <!-- OBSERVAÇÃO / JUSTIFICATIVA -->
           <table class="tiss-tbl">
             <tr>
               <td style="padding: 2px 3px;">
@@ -1209,7 +1209,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* TOTAIS */}
+          <!-- TOTAIS -->
           <table class="tiss-tbl">
             <tr>
               <td><span class="lbl">59 - Total Procedimentos</span><span class="val">R$ ${g.valor.toFixed(2).replace('.', ',')}</span></td>
@@ -1222,7 +1222,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* ASSINATURAS FINAIS */}
+          <!-- ASSINATURAS FINAIS -->
           <table class="tiss-tbl" style="margin-bottom: 2px;">
             <tr style="height: 26px; vertical-align: top;">
               <td style="width: 33%;"><span class="lbl">66 - Assinatura Responsável Autorização</span></td>
@@ -1231,7 +1231,7 @@ export const GuiasSadt: React.FC = () => {
             </tr>
           </table>
 
-          {/* FOOTER */}
+          <!-- FOOTER -->
           <div class="footer-line">
             <div>Guia SP/SADT &nbsp; | &nbsp; ${g.num}</div>
             <div>${footerRight}</div>
