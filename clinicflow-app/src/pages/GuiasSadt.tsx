@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit3, Save, FileText, CheckCircle2, AlertCircle, Printer, Trash2, Filter, Settings, ShieldAlert, Sparkles, ChevronDown, Check, Loader } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { GuiaSadt, ProcedimentoGuia, SenhaPlano } from '../types';
+import { GuiaSadt, ProcedimentoGuia, SenhaPlano, Paciente } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
 
@@ -85,6 +85,46 @@ export const GuiasSadt: React.FC = () => {
   const [status, setStatus] = useState<'Pendente' | 'Enviado' | 'Pago' | 'Glosado'>('Pendente');
   const [procs, setProcs] = useState<ProcedimentoGuia[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Buscador dinâmico de pacientes para a modal
+  const [pacSearchInput, setPacSearchInput] = useState('');
+  const [searchedPacList, setSearchedPacList] = useState<Paciente[]>([]);
+  const [isSearchingPac, setIsSearchingPac] = useState(false);
+  const [showPacDropdown, setShowPacDropdown] = useState(false);
+
+  const handleSearchPaciente = async (overrideTerm?: string) => {
+    const term = (overrideTerm !== undefined ? overrideTerm : pacSearchInput).trim();
+    if (!term) return;
+    setIsSearchingPac(true);
+    try {
+      const { data, error } = await supabase
+        .from('pacientes')
+        .select('*')
+        .ilike('nome', `%${term}%`)
+        .order('nome')
+        .limit(30);
+
+      if (error) throw error;
+      if (data) {
+        setSearchedPacList(data.map(mappers.dbToPac));
+        setShowPacDropdown(true);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar paciente:', err);
+    } finally {
+      setIsSearchingPac(false);
+    }
+  };
+
+  const handleSelectPacienteObj = (p: Paciente) => {
+    setPac(p.nome);
+    setCarteirinha(p.carteirinha && p.carteirinha !== '—' ? p.carteirinha : '');
+    if (p.planoId) {
+      setPlanoId(p.planoId);
+    }
+    setShowPacDropdown(false);
+    setPacSearchInput('');
+  };
 
   // 1. Gerar Guias Automáticas Modal States
   const [isGerarModalOpen, setIsGerarModalOpen] = useState(false);
@@ -1190,22 +1230,86 @@ export const GuiasSadt: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="relative">
                   <label className="block text-slate-400 font-semibold mb-1">Beneficiário (Paciente) *</label>
+
+                  {/* Buscador no banco (Supabase) */}
+                  <div className="flex gap-1.5 mb-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={pacSearchInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPacSearchInput(val);
+                          if (val.trim().length >= 2) {
+                            handleSearchPaciente(val);
+                          } else {
+                            setShowPacDropdown(false);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSearchPaciente();
+                          }
+                        }}
+                        placeholder="Buscar paciente no banco..."
+                        className="w-full bg-[#161a26] border border-white/[0.08] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60"
+                      />
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSearchPaciente()}
+                      disabled={isSearchingPac}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
+                    >
+                      {isSearchingPac ? '...' : 'Buscar'}
+                    </button>
+                  </div>
+
+                  {/* Popover com resultados da busca no Supabase */}
+                  {showPacDropdown && searchedPacList.length > 0 && (
+                    <div className="absolute top-14 left-0 right-0 z-50 max-h-52 overflow-y-auto bg-[#131622] border border-indigo-500/40 rounded-xl shadow-2xl divide-y divide-white/[0.04]">
+                      {searchedPacList.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleSelectPacienteObj(p)}
+                          className="w-full text-left px-3 py-2 hover:bg-indigo-600/25 text-xs transition-colors flex flex-col gap-0.5 cursor-pointer"
+                        >
+                          <span className="font-bold text-white">{p.nome}</span>
+                          <span className="text-[10px] text-slate-400">
+                            Carteirinha: <strong className="text-indigo-300">{p.carteirinha || '—'}</strong> | Plano: <strong className="text-slate-300">{p.plano || 'Particular'}</strong>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Dropdown com a lista carregada e o paciente selecionado */}
                   <select
                     value={pac}
                     onChange={(e) => handlePacienteChange(e.target.value)}
                     className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500/50"
                     required
                   >
-                    <option value="">— Selecione —</option>
+                    <option value="">— Selecione ou busque acima —</option>
+                    {pac && (
+                      <option value={pac}>{pac}</option>
+                    )}
                     {pacientes.filter(p => p.status === 'Ativo').map(p => (
                       <option key={p.id} value={p.nome}>{p.nome}</option>
                     ))}
-                    {pac && !pacientes.some(p => p.nome === pac && p.status === 'Ativo') && (
-                      <option value={pac}>{pac}</option>
-                    )}
                   </select>
+
+                  {pac && (
+                    <div className="mt-1 text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                      <span>✓ Selecionado:</span>
+                      <span className="text-white font-semibold">{pac}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-slate-400 font-semibold mb-1">Nº Carteirinha</label>
