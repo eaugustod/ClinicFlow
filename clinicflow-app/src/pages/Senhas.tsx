@@ -6,7 +6,7 @@ import { mappers } from '../services/mappers';
 import { SenhaPlano, ProcedimentoSenha, Paciente } from '../types';
 
 export const Senhas: React.FC = () => {
-  const { senhas, lazyLoadSenhas, planos, pacientes, procedimentos, refreshAll } = useApp();
+  const { senhas, lazyLoadSenhas, planos, pacientes, profissionais, procedimentos, refreshAll } = useApp();
 
   const [buscaPac, setBuscaPac] = useState('');
   const [buscaSenha, setBuscaSenha] = useState('');
@@ -33,6 +33,14 @@ export const Senhas: React.FC = () => {
   const [status, setStatus] = useState<'Ativa' | 'Vencida' | 'Usada' | 'Cancelada'>('Ativa');
   const [obs, setObs] = useState('');
   const [procs, setProcs] = useState<ProcedimentoSenha[]>([]);
+
+  // Profissional Solicitante Form State (Campos 15 a 19)
+  const [profSolicitante, setProfSolicitante] = useState('');
+  const [profSolicitanteConselho, setProfSolicitanteConselho] = useState('CRM');
+  const [profSolicitanteNumConselho, setProfSolicitanteNumConselho] = useState('');
+  const [profSolicitanteUf, setProfSolicitanteUf] = useState('SP');
+  const [profSolicitanteCbo, setProfSolicitanteCbo] = useState('225125');
+
   const [submitting, setSubmitting] = useState(false);
 
   // Buscador dinâmico de pacientes para a modal
@@ -141,6 +149,13 @@ export const Senhas: React.FC = () => {
     setStatus('Ativa');
     setObs('');
     setProcs([{ codigo: procedimentos[0]?.codigo || '50000470', desc: procedimentos[0]?.desc || 'Sessão de Terapia' }]);
+    
+    setProfSolicitante('');
+    setProfSolicitanteConselho('CRM');
+    setProfSolicitanteNumConselho('');
+    setProfSolicitanteUf('SP');
+    setProfSolicitanteCbo('225125');
+
     setPacSearchInput('');
     setSearchedPacList([]);
     setShowPacDropdown(false);
@@ -162,6 +177,13 @@ export const Senhas: React.FC = () => {
     setStatus(s.status);
     setObs(s.obs || '');
     setProcs(s.procs && s.procs.length > 0 ? s.procs : [{ codigo: procedimentos[0]?.codigo || '50000470', desc: procedimentos[0]?.desc || 'Sessão de Terapia' }]);
+    
+    setProfSolicitante(s.profSolicitante || '');
+    setProfSolicitanteConselho(s.profSolicitanteConselho || 'CRM');
+    setProfSolicitanteNumConselho(s.profSolicitanteNumConselho || '');
+    setProfSolicitanteUf(s.profSolicitanteUf || 'SP');
+    setProfSolicitanteCbo(s.profSolicitanteCbo || '225125');
+
     setPacSearchInput('');
     setSearchedPacList([]);
     setShowPacDropdown(false);
@@ -247,7 +269,12 @@ export const Senhas: React.FC = () => {
       status,
       obs,
       procs,
-      ativa: status === 'Ativa'
+      ativa: status === 'Ativa',
+      profSolicitante,
+      profSolicitanteConselho,
+      profSolicitanteNumConselho,
+      profSolicitanteUf,
+      profSolicitanteCbo
     };
 
     try {
@@ -572,6 +599,92 @@ export const Senhas: React.FC = () => {
                     placeholder="Nº atribuído pelo plano"
                     className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500/50"
                   />
+                </div>
+              </div>
+
+              {/* SEÇÃO PROFISSIONAL SOLICITANTE (CAMPOS 15 A 19) */}
+              <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest block pt-2 border-t border-white/[0.02]">
+                Profissional Solicitante (Campos 15 a 19 da Guia)
+              </div>
+
+              <div className="p-3 bg-[#131622] border border-white/[0.04] rounded-xl space-y-3">
+                <div>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-1">Preencher a partir de Profissional Cadastrado</label>
+                  <select
+                    onChange={(e) => {
+                      const pId = Number(e.target.value);
+                      if (!pId) return;
+                      const pr = profissionais.find(x => x.id === pId);
+                      if (pr) {
+                        setProfSolicitante(pr.nome);
+                        setProfSolicitanteConselho(pr.conselho || 'CRM');
+                        setProfSolicitanteNumConselho(pr.num || '');
+                        setProfSolicitanteUf(pr.uf || 'SP');
+                        setProfSolicitanteCbo(pr.cbo || '225125');
+                      }
+                    }}
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500/50"
+                  >
+                    <option value="">— Selecionar Profissional (Opcional) —</option>
+                    {profissionais.map(p => (
+                      <option key={p.id} value={p.id}>{p.nome} ({p.conselho || 'CRP'} {p.num})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">15 - Nome do Profissional Solicitante</label>
+                  <input
+                    type="text"
+                    value={profSolicitante}
+                    onChange={(e) => setProfSolicitante(e.target.value)}
+                    placeholder="Ex: Dra. Bruna Rafaela Savietto"
+                    className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">16 - Conselho</label>
+                    <input
+                      type="text"
+                      value={profSolicitanteConselho}
+                      onChange={(e) => setProfSolicitanteConselho(e.target.value)}
+                      placeholder="CRM / CRP"
+                      className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white uppercase focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">17 - Nº Conselho</label>
+                    <input
+                      type="text"
+                      value={profSolicitanteNumConselho}
+                      onChange={(e) => setProfSolicitanteNumConselho(e.target.value)}
+                      placeholder="00000"
+                      className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white font-mono focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">18 - UF</label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={profSolicitanteUf}
+                      onChange={(e) => setProfSolicitanteUf(e.target.value.toUpperCase())}
+                      placeholder="SP"
+                      className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white uppercase text-center focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">19 - Código CBO</label>
+                    <input
+                      type="text"
+                      value={profSolicitanteCbo}
+                      onChange={(e) => setProfSolicitanteCbo(e.target.value)}
+                      placeholder="225125"
+                      className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-white font-mono focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 

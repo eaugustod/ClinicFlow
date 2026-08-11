@@ -842,6 +842,13 @@ export const GuiasSadt: React.FC = () => {
     const valGuiaOp = g.numOp || g.dados?.numGuiaOp || g.dados?.numGuiaPrincipal || senhaObj?.numGuiaOp || '';
     const valGuiaPrincipal = g.dados?.numGuiaPrincipal || valGuiaOp || '';
 
+    // Dados do Profissional Solicitante (Campos 15 a 19)
+    const valProfSolicitante = g.dados?.profSolicitante || senhaObj?.profSolicitante || prof?.nome || 'CASSIA MARIA CARVALHO ABRANTES DO AMARAL';
+    const valProfSolicitanteConselho = g.dados?.profSolicitanteConselho || senhaObj?.profSolicitanteConselho || prof?.conselho || 'CRM';
+    const valProfSolicitanteNumConselho = g.dados?.profSolicitanteNumConselho || senhaObj?.profSolicitanteNumConselho || prof?.num || '73765';
+    const valProfSolicitanteUf = g.dados?.profSolicitanteUf || senhaObj?.profSolicitanteUf || prof?.uf || 'SP';
+    const valProfSolicitanteCbo = g.dados?.profSolicitanteCbo || senhaObj?.profSolicitanteCbo || prof?.cbo || '225125';
+
     const listProcs = g.dados?.procs && g.dados.procs.length > 0
       ? g.dados.procs
       : [{ codigo: g.codigoProcedimento || '50000470', desc: 'SESSAO DE PSICOTERAPIA INDIVIDUAL POR PSICOLOGO', qtd: 1, valor: g.valor, total: g.valor }];
@@ -1077,11 +1084,11 @@ export const GuiasSadt: React.FC = () => {
               <td style="width: 80%;" colspan="7"><span class="lbl">14 - Nome do Contratado</span><span class="val">${plano?.nomeContratado || 'MARIA CECILIA B D S PSICOLOGIA LTDA'}</span></td>
             </tr>
             <tr>
-              <td style="width: 38%;" colspan="2"><span class="lbl">15 - Nome do Profissional Solicitante</span><span class="val">${g.dados?.profSolicitante || prof?.nome || 'CASSIA MARIA CARVALHO ABRANTES DO AMARAL'}</span></td>
-              <td style="width: 12%;"><span class="lbl">16 - Conselho</span><span class="val">${prof?.conselho || 'CRM'}</span></td>
-              <td style="width: 14%;"><span class="lbl">17 - Nº Conselho</span><span class="val">${prof?.num || '73765'}</span></td>
-              <td style="width: 6%;"><span class="lbl">18 - UF</span><span class="val">${prof?.uf || 'SP'}</span></td>
-              <td style="width: 12%;"><span class="lbl">19 - Código CBO</span><span class="val">${prof?.cbo || '225125'}</span></td>
+              <td style="width: 38%;" colspan="2"><span class="lbl">15 - Nome do Profissional Solicitante</span><span class="val">${valProfSolicitante}</span></td>
+              <td style="width: 12%;"><span class="lbl">16 - Conselho</span><span class="val">${valProfSolicitanteConselho}</span></td>
+              <td style="width: 14%;"><span class="lbl">17 - Nº Conselho</span><span class="val">${valProfSolicitanteNumConselho}</span></td>
+              <td style="width: 6%;"><span class="lbl">18 - UF</span><span class="val">${valProfSolicitanteUf}</span></td>
+              <td style="width: 12%;"><span class="lbl">19 - Código CBO</span><span class="val">${valProfSolicitanteCbo}</span></td>
               <td style="width: 18%;"><span class="lbl">20 - Assinatura Profissional Solicitante</span><span class="val"></span></td>
             </tr>
           </table>

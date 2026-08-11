@@ -196,6 +196,11 @@ export interface SenhaPlano {
   ativa: boolean;
   procedimento?: string | null;   // codigo direto do procedimento
   agendamentoId?: number | null;  // id do agendamento vinculado
+  profSolicitante?: string;       // 15 - Nome do Profissional Solicitante
+  profSolicitanteConselho?: string;// 16 - Conselho
+  profSolicitanteNumConselho?: string;// 17 - Nº Conselho
+  profSolicitanteUf?: string;     // 18 - UF
+  profSolicitanteCbo?: string;    // 19 - Código CBO
 }
 
 export interface ListaEspera {

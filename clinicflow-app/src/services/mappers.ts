@@ -337,7 +337,12 @@ export const mappers = {
     procs: s.procs || null,
     ativa: s.ativa !== false,
     procedimento: s.procedimento || null,
-    agendamento_id: s.agendamentoId || null
+    agendamento_id: s.agendamentoId || null,
+    prof_solicitante: s.profSolicitante || null,
+    prof_solicitante_conselho: s.profSolicitanteConselho || null,
+    prof_solicitante_num_conselho: s.profSolicitanteNumConselho || null,
+    prof_solicitante_uf: s.profSolicitanteUf || null,
+    prof_solicitante_cbo: s.profSolicitanteCbo || null
   }),
   dbToSenha: (r: any): SenhaPlano => ({
     id: r.id,
@@ -356,7 +361,12 @@ export const mappers = {
     procs: r.procs || [],
     ativa: r.ativa !== false,
     procedimento: r.procedimento || null,
-    agendamentoId: r.agendamento_id || null
+    agendamentoId: r.agendamento_id || null,
+    profSolicitante: r.prof_solicitante || r.profSolicitante || '',
+    profSolicitanteConselho: r.prof_solicitante_conselho || r.profSolicitanteConselho || '',
+    profSolicitanteNumConselho: r.prof_solicitante_num_conselho || r.profSolicitanteNumConselho || '',
+    profSolicitanteUf: r.prof_solicitante_uf || r.profSolicitanteUf || '',
+    profSolicitanteCbo: r.prof_solicitante_cbo || r.profSolicitanteCbo || ''
   }),
 
   esperaToDb: (e: Partial<ListaEspera>) => ({
