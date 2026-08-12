@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
-import { Agendamento, GuiaSadt, ProcedimentoGuia } from '../types';
+import { Agendamento, GuiaSadt, ProcedimentoGuia, Paciente } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
 
@@ -53,6 +53,46 @@ export const AgendaRecepcao: React.FC = () => {
   const [tipoAtendimento, setTipoAtendimento] = useState('sessao');
   const [status, setStatus] = useState<string>('Agendado');
   const [obs, setObs] = useState('');
+
+  // Dynamic Patient Search State in Modal
+  const [searchedPacientes, setSearchedPacientes] = useState<Paciente[]>([]);
+  const [isSearchingPac, setIsSearchingPac] = useState(false);
+  const [showPacDropdown, setShowPacDropdown] = useState(false);
+
+  const handleSearchPaciente = async (termToSearch?: string) => {
+    const query = (termToSearch !== undefined ? termToSearch : paciente).trim();
+    if (!query) return;
+    setIsSearchingPac(true);
+    try {
+      const { data, error } = await supabase
+        .from('pacientes')
+        .select('*')
+        .ilike('nome', `%${query}%`)
+        .order('nome')
+        .limit(30);
+
+      if (error) throw error;
+      if (data) {
+        setSearchedPacientes(data.map(mappers.dbToPac));
+        setShowPacDropdown(true);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar pacientes:', err);
+    } finally {
+      setIsSearchingPac(false);
+    }
+  };
+
+  const handleSelectPacienteObj = (p: Paciente) => {
+    setPaciente(p.nome);
+    if (p.planoId) {
+      setPlanoId(p.planoId);
+    }
+    if (p.carteirinha) {
+      setCarteirinha(p.carteirinha);
+    }
+    setShowPacDropdown(false);
+  };
 
   // Load appointments dynamically as user navigates
   useEffect(() => {
@@ -141,6 +181,9 @@ export const AgendaRecepcao: React.FC = () => {
     setObs('');
     setModalidade('presencial');
     setMeetLink('');
+    setSearchedPacientes([]);
+    setShowPacDropdown(false);
+    setIsSearchingPac(false);
     setIsModalOpen(true);
   };
 
@@ -784,16 +827,73 @@ export const AgendaRecepcao: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
+                <div className="relative">
                   <label className="block text-[var(--text-secondary)] font-bold mb-1">Paciente *</label>
-                  <input
-                    type="text"
-                    required
-                    value={paciente}
-                    onChange={(e) => setPaciente(e.target.value)}
-                    placeholder="Nome completo do paciente"
-                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] font-semibold focus:outline-none focus:border-[var(--accent)]"
-                  />
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      required
+                      value={paciente}
+                      onChange={(e) => {
+                        setPaciente(e.target.value);
+                        if (showPacDropdown) setShowPacDropdown(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSearchPaciente(paciente);
+                        }
+                      }}
+                      placeholder="Nome completo do paciente"
+                      className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] font-semibold focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSearchPaciente(paciente)}
+                      disabled={isSearchingPac}
+                      className="px-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0"
+                      title="Buscar paciente no Supabase"
+                    >
+                      {isSearchingPac ? (
+                        <Loader size={14} className="animate-spin" />
+                      ) : (
+                        <Search size={14} />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Dropdown de Resultados da Busca */}
+                  {showPacDropdown && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--bg-surface)] border border-[var(--border-mid)] rounded-xl shadow-2xl max-h-56 overflow-y-auto z-[999] p-1 divide-y divide-[var(--border)]">
+                      {searchedPacientes.length === 0 ? (
+                        <div className="p-3 text-xs text-center text-[var(--text-muted)] font-medium">
+                          Nenhum paciente encontrado com "{paciente}".
+                        </div>
+                      ) : (
+                        searchedPacientes.map(p => {
+                          const planoObj = planos.find(pl => pl.id === p.planoId);
+
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => handleSelectPacienteObj(p)}
+                              className="p-2.5 hover:bg-[var(--bg-raised)] rounded-lg cursor-pointer transition-colors text-xs flex items-center justify-between gap-2"
+                            >
+                              <div>
+                                <div className="font-bold text-[var(--text-primary)]">{p.nome}</div>
+                                <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                                  {p.cpf ? `CPF: ${p.cpf}` : ''} {p.carteirinha ? ` | Cart: ${p.carteirinha}` : ''}
+                                </div>
+                              </div>
+                              <div className="text-[10px] font-bold px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded-md border border-indigo-500/20 shrink-0">
+                                {planoObj?.nome || p.plano || 'Particular'}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
