@@ -497,14 +497,14 @@ export const AgendaRecepcao: React.FC = () => {
                 <div
                   key={appt.id}
                   onClick={() => openEditModal(appt)}
-                  className={`p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] shadow-md border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-hidden ${
+                  className={`p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-hidden ${
                     isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'
                   }`}
                   style={{
                     gridColumn: track + 2,
                     gridRow: `${startSlot + 1} / span ${spanRows}`,
-                    borderLeft: `4px solid ${pColor}`,
-                    backgroundColor: isDark ? `${pColor}25` : '#ffffff'
+                    borderLeft: `6px solid ${stColor}`,
+                    backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
                   <div>
@@ -512,32 +512,15 @@ export const AgendaRecepcao: React.FC = () => {
                       <span className="font-extrabold text-[var(--text-primary)] truncate text-xs sm:text-sm">
                         {appt.paciente}
                       </span>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {isMultiBlock && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-md font-extrabold bg-indigo-500/15 text-indigo-500 border border-indigo-500/30 shadow-xs">
-                            ⏱️ {durTotal} min
-                          </span>
-                        )}
-                        <span
-                          className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white shadow-xs"
-                          style={{ backgroundColor: stColor }}
-                        >
-                          {appt.status}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between mt-0.5">
-                      <span>{appt.hora} - {appt.horaFim || '09:30'}</span>
-                      <span className="text-[10px] text-[var(--text-muted)] font-mono truncate max-w-[100px]">
+                      <span className="text-[10px] text-[var(--text-muted)] font-mono truncate max-w-[110px] shrink-0">
                         {appt.plano}
                       </span>
                     </div>
                   </div>
 
-                  <div className="text-[10px] font-bold text-[var(--text-primary)] mt-2 pt-1 border-t border-[var(--border)] flex items-center justify-between">
+                  <div className="text-[10px] font-bold text-[var(--text-primary)] mt-1.5 pt-1 border-t border-[var(--border)] flex items-center justify-between">
                     <span className="truncate flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: pColor }} />
                       {prof?.nomeAgenda || prof?.nome || 'Profissional'}
                     </span>
                     {appt.modalidade === 'online' && (
