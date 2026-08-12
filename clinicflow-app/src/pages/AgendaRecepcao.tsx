@@ -498,7 +498,6 @@ export const AgendaRecepcao: React.FC = () => {
                 <div
                   key={appt.id}
                   onClick={() => openEditModal(appt)}
-                  title={`Paciente: ${appt.paciente}\nHorário: ${appt.hora} às ${appt.horaFim || '08:30'}\nTempo: ${durTotal} min\nPlano: ${appt.plano}\nTerapeuta: ${prof?.nomeAgenda || prof?.nome || 'Profissional'}`}
                   className={`group/card p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-visible relative ${
                     isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'
                   }`}
