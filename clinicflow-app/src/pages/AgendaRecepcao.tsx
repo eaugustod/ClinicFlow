@@ -369,12 +369,13 @@ export const AgendaRecepcao: React.FC = () => {
     // Grid row/col positioning calculations
     const slotStartBaseMin = 8 * 60;  // 08:00 is 480 mins
     const slotEndBaseMin = 20 * 60;   // 20:00 is 1200 mins
-    const totalDayMins = slotEndBaseMin - slotStartBaseMin;
+    const rowHeightPx = 115;          // height of each 30-min slot row (comfortable space)
+    const rowGapPx = 4;               // vertical gap
 
     // Position of current time green line
     const isLiveLineVisible = isToday && nowMinutes >= slotStartBaseMin && nowMinutes <= slotEndBaseMin;
-    const liveLinePercent = isLiveLineVisible
-      ? ((nowMinutes - slotStartBaseMin) / totalDayMins) * 100
+    const liveLineTopPx = isLiveLineVisible
+      ? ((nowMinutes - slotStartBaseMin) / 30) * (rowHeightPx + rowGapPx)
       : 0;
 
     return (
@@ -423,22 +424,22 @@ export const AgendaRecepcao: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Track Allocation Matrix Container - Fits 100% Height, Vertical Scroll OFF, Horizontal Scroll ON */}
-        <div className="flex-1 h-full min-h-0 overflow-x-auto overflow-y-hidden p-2 relative flex flex-col">
+        {/* Dynamic Track Allocation Matrix Container - High Density 115px Rows with Internal Scroll */}
+        <div className="flex-1 h-full min-h-0 overflow-auto p-3 relative flex flex-col scrollbar-thin">
           <div
-            className="grid relative h-full w-full min-h-0"
+            className="grid relative w-full min-h-0"
             style={{
               display: 'grid',
               gridTemplateColumns: `70px repeat(${totalTracks}, minmax(260px, 1fr))`,
-              gridTemplateRows: `repeat(${timeSlots.length}, minmax(0, 1fr))`,
-              gap: '4px'
+              gridTemplateRows: `repeat(${timeSlots.length}, ${rowHeightPx}px)`,
+              gap: `${rowGapPx}px`
             }}
           >
             {/* Live Green Time Line Indicator Across Entire Grid Width */}
             {isLiveLineVisible && (
               <div
                 className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
-                style={{ top: `${liveLinePercent}%` }}
+                style={{ top: `${liveLineTopPx}px` }}
               >
                 <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_#10b981] -ml-1.5 shrink-0 flex items-center justify-center">
                   <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
