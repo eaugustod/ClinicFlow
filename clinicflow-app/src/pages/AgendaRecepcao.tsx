@@ -508,19 +508,19 @@ export const AgendaRecepcao: React.FC = () => {
                     backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
-                  {/* Rich Floating Tooltip on Hover */}
-                  <div className="hidden group-hover/card:flex flex-col gap-1.5 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-slate-900/95 text-white rounded-xl shadow-2xl z-50 text-xs whitespace-nowrap border border-slate-700/80 backdrop-blur-md pointer-events-none transition-all animate-fade-in">
-                    <div className="font-extrabold text-sm text-indigo-300 flex items-center gap-1.5 border-b border-slate-700 pb-1">
+                  {/* Rich Solid Floating Tooltip on Hover */}
+                  <div className="hidden group-hover/card:flex flex-col gap-1.5 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3.5 bg-[#0f172a] text-white rounded-xl shadow-2xl z-50 text-xs whitespace-nowrap border border-slate-700 pointer-events-none transition-all animate-fade-in opacity-100">
+                    <div className="font-extrabold text-sm text-indigo-300 flex items-center gap-1.5 border-b border-slate-700/80 pb-1.5">
                       <span>👤 {appt.paciente}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-slate-200 font-semibold">
+                    <div className="flex items-center gap-3 text-slate-200 font-semibold pt-0.5">
                       <span>⏰ Horário: <strong>{appt.hora} - {appt.horaFim || '08:30'}</strong></span>
-                      <span className="px-1.5 py-0.5 bg-indigo-500/30 rounded text-indigo-300 font-bold">⏱️ {durTotal} min</span>
+                      <span className="px-2 py-0.5 bg-indigo-500/30 rounded text-indigo-300 font-extrabold">⏱️ {durTotal} min</span>
                     </div>
-                    <div className="flex items-center justify-between gap-4 text-slate-300 text-[11px]">
+                    <div className="flex items-center justify-between gap-4 text-slate-300 text-[11px] pt-0.5">
                       <span>💳 Plano: <strong>{appt.plano}</strong></span>
-                      <span className="flex items-center gap-1 font-bold">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: pColor }} />
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: pColor }} />
                         {prof?.nomeAgenda || prof?.nome || 'Profissional'}
                       </span>
                     </div>
@@ -528,23 +528,22 @@ export const AgendaRecepcao: React.FC = () => {
 
                   <div>
                     <div className="flex items-center justify-between gap-1.5 mb-1">
-                      <span className="font-extrabold text-[var(--text-primary)] truncate text-xs sm:text-sm">
+                      <span className="font-extrabold text-[var(--text-primary)] truncate text-xs sm:text-sm block w-full">
                         {appt.paciente}
-                      </span>
-                      <span className="text-[10px] text-[var(--text-muted)] font-mono truncate max-w-[130px] shrink-0">
-                        {appt.plano}
                       </span>
                     </div>
                   </div>
 
-                  <div className="text-[10px] font-bold text-[var(--text-primary)] mt-1.5 pt-1 border-t border-[var(--border)] flex items-center justify-between">
-                    <span className="truncate flex items-center gap-1.5">
+                  <div className="text-[10px] font-bold text-[var(--text-primary)] mt-1.5 pt-1 border-t border-[var(--border)] flex items-center justify-between gap-1">
+                    <span className="truncate flex items-center gap-1.5 min-w-0">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: pColor }} />
-                      {prof?.nomeAgenda || prof?.nome || 'Profissional'}
+                      <span className="truncate">
+                        {prof?.nomeAgenda || prof?.nome || 'Profissional'} <span className="text-[var(--text-muted)] font-mono font-medium text-[9px]">({appt.plano})</span>
+                      </span>
                     </span>
                     {appt.modalidade === 'online' && (
-                      <span className="flex items-center gap-0.5 text-indigo-500 font-bold shrink-0">
-                        <Video size={10} /> Online
+                      <span title="Atendimento Online" className="text-indigo-400 shrink-0">
+                        <Video size={12} />
                       </span>
                     )}
                   </div>
