@@ -298,20 +298,39 @@ export const AgendaRecepcao: React.FC = () => {
     return prof?.cor || '#6366f1';
   };
 
-  // Render Day View (Compact Dynamic Schedule Grid with Theme Support & Live Time Indicator)
+  // Render Day View (2D CSS Grid Schedule Matrix - Figure 2 Style)
   const renderDayView = () => {
     const dayAppts = filteredAgendamentos.filter(a => a.dataISO === currentDate);
     const isToday = currentDate === new Date().toISOString().split('T')[0];
     const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes();
     const nowTimeStr = `${String(nowDate.getHours()).padStart(2, '0')}:${String(nowDate.getMinutes()).padStart(2, '0')}`;
 
-    // Time Slots 08:00 to 20:00 (in 30-min intervals)
-    const timeSlots = [];
-    for (let h = 8; h <= 20; h++) {
+    // Determine active therapists/columns to show
+    const activeProfs = selectedProfFilter === 'all'
+      ? (profissionais.filter(p => dayAppts.some(a => a.profId === p.id)).length > 0
+          ? profissionais.filter(p => dayAppts.some(a => a.profId === p.id))
+          : profissionais)
+      : profissionais.filter(p => p.id === selectedProfFilter);
+
+    // Time Slots 07:00 to 20:30 (in 30-min intervals)
+    const timeSlots: string[] = [];
+    for (let h = 7; h <= 20; h++) {
       const hStr = String(h).padStart(2, '0');
       timeSlots.push(`${hStr}:00`);
-      if (h < 20) timeSlots.push(`${hStr}:30`);
+      timeSlots.push(`${hStr}:30`);
     }
+
+    // Grid row/col positioning calculations
+    const slotStartBaseMin = 7 * 60; // 07:00 is 420 mins
+    const rowHeightPx = 70; // height of each 30-min slot row
+    const rowGapPx = 6;     // vertical gap
+    const headerHeightPx = 40; // column header height
+
+    // Position of current time green line
+    const isLiveLineVisible = isToday && nowMinutes >= slotStartBaseMin && nowMinutes <= (21 * 60);
+    const liveLineTopPx = isLiveLineVisible
+      ? headerHeightPx + ((nowMinutes - slotStartBaseMin) / 30) * (rowHeightPx + rowGapPx)
+      : 0;
 
     return (
       <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden text-[var(--text-primary)] font-sans">
@@ -354,140 +373,156 @@ export const AgendaRecepcao: React.FC = () => {
               </span>
             )}
             <span className="text-xs font-semibold px-3 py-1 bg-indigo-500/10 text-indigo-500 rounded-full border border-indigo-500/20">
-              {dayAppts.length} Agendamento(s) hoje
+              {dayAppts.length} Agendamento(s) hoje ({activeProfs.length} Terapeutas)
             </span>
           </div>
         </div>
 
-        {/* Compact Schedule List (100% Width Responsive Grid per Time Slot) */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)] p-2 relative">
-          {timeSlots.map(slot => {
-            const slotStartMin = timeToMinutes(slot);
-            const slotEndMin = slotStartMin + 30;
-
-            // Direct starting appointments
-            const directAppts = dayAppts.filter(a => a.hora && a.hora === slot);
-
-            const isSlotCurrent = isToday && nowMinutes >= slotStartMin && nowMinutes < slotEndMin;
-            const lineTopPercent = isSlotCurrent ? ((nowMinutes - slotStartMin) / 30) * 100 : 0;
-
-            return (
+        {/* 2D CSS Grid Matrix Container (Figure 2 Layout) */}
+        <div className="flex-1 overflow-auto p-4 relative">
+          <div
+            className="grid relative"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `70px repeat(${activeProfs.length}, minmax(220px, 1fr))`,
+              gridTemplateRows: `${headerHeightPx}px repeat(${timeSlots.length}, ${rowHeightPx}px)`,
+              gap: `${rowGapPx}px`
+            }}
+          >
+            {/* Live Green Time Line Indicator Across Entire Grid Width */}
+            {isLiveLineVisible && (
               <div
-                key={slot}
-                className="relative flex flex-col md:flex-row items-start gap-3 py-2 px-3 min-h-[76px] hover:bg-[var(--bg-raised)]/30 transition-colors rounded-xl group z-0"
+                className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
+                style={{ top: `${liveLineTopPx}px` }}
               >
-                {/* Live Green Time Line Indicator */}
-                {isSlotCurrent && (
-                  <div
-                    className="absolute left-0 right-0 z-40 pointer-events-none flex items-center px-1"
-                    style={{ top: `${lineTopPercent}%` }}
-                  >
-                    <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_#10b981] -ml-1.5 shrink-0 flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    </div>
-                    <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 shadow-[0_0_10px_#10b981]" />
-                    <span className="text-[10px] font-mono font-black px-2 py-0.5 bg-emerald-500 text-white rounded-md shadow-md ml-2 flex items-center gap-1 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      {nowTimeStr}
-                    </span>
-                  </div>
-                )}
-
-                {/* Time Label Column */}
-                <div className="w-20 pt-1 text-xs font-black font-mono text-[var(--text-muted)] shrink-0 flex items-center justify-between">
-                  <span>{slot}</span>
-                  <button
-                    onClick={() => openNewModal(slot)}
-                    title="Adicionar agendamento neste horário"
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-indigo-500 hover:bg-indigo-500/10 rounded transition-all"
-                  >
-                    <Plus size={14} />
-                  </button>
+                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_#10b981] -ml-1.5 shrink-0 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                 </div>
-
-                {/* Cards Container (Side-by-side Cards with Physical Height Expansion) */}
-                <div className="flex-1 flex flex-wrap gap-2.5 w-full items-start min-h-[62px] relative z-10">
-                  {directAppts.length === 0 ? (
-                    <div
-                      onClick={() => openNewModal(slot)}
-                      className="flex-1 py-2 px-3 border border-dashed border-[var(--border)] rounded-xl text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-mid)] transition-all cursor-pointer flex items-center justify-center gap-1.5 min-h-[58px]"
-                    >
-                      <Plus size={12} /> Clique para agendar às {slot}
-                    </div>
-                  ) : (
-                    directAppts.map(appt => {
-                      const prof = profissionais.find(p => p.id === appt.profId);
-                      const pColor = prof?.cor || '#6366f1';
-                      const stColor = getStatusColorHex(appt.status);
-                      const startM = timeToMinutes(appt.hora);
-                      const endM = appt.horaFim ? timeToMinutes(appt.horaFim) : startM + (appt.durMin || 30);
-                      const durTotal = endM > startM ? endM - startM : (appt.durMin || 30);
-                      const numBlocks = Math.max(1, Math.round(durTotal / 30));
-                      const isMultiBlock = numBlocks > 1;
-
-                      // Physical height expansion: 1 block = auto (~65px), 2 blocks = 150px, 3 blocks = 232px
-                      const cardHeight = isMultiBlock ? `${numBlocks * 68 + (numBlocks - 1) * 14}px` : undefined;
-
-                      return (
-                        <div
-                          key={appt.id}
-                          onClick={() => openEditModal(appt)}
-                          className={`flex-1 min-w-[220px] max-w-[340px] p-3 rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between ${
-                            isMultiBlock ? 'z-20 ring-2 ring-indigo-500/20 shadow-md' : 'z-10'
-                          }`}
-                          style={{
-                            borderLeft: `4px solid ${pColor}`,
-                            backgroundColor: isDark ? `${pColor}20` : '#ffffff',
-                            height: cardHeight,
-                            minHeight: cardHeight || '68px'
-                          }}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-1.5 mb-1">
-                              <span className="font-extrabold text-[var(--text-primary)] truncate text-sm">
-                                {appt.paciente}
-                              </span>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {isMultiBlock && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-extrabold bg-indigo-500/15 text-indigo-500 border border-indigo-500/30 shadow-xs">
-                                    ⏱️ {durTotal} min
-                                  </span>
-                                )}
-                                <span
-                                  className="text-[9px] px-2 py-0.5 rounded-md font-bold text-white shrink-0 shadow-xs"
-                                  style={{ backgroundColor: stColor }}
-                                >
-                                  {appt.status}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between mt-0.5">
-                              <span>{appt.hora} - {appt.horaFim || '09:30'}</span>
-                              <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                                {appt.plano}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="text-[11px] font-bold text-[var(--text-primary)] mt-2.5 pt-1.5 border-t border-[var(--border)] flex items-center justify-between">
-                            <span className="truncate flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
-                              {prof?.nomeAgenda || prof?.nome || 'Profissional'}
-                            </span>
-                            {appt.modalidade === 'online' && (
-                              <span className="flex items-center gap-0.5 text-indigo-500 font-bold shrink-0">
-                                <Video size={11} /> Online
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 shadow-[0_0_10px_#10b981]" />
+                <span className="text-[10px] font-mono font-black px-2 py-0.5 bg-emerald-500 text-white rounded-md shadow-md ml-2 flex items-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  {nowTimeStr}
+                </span>
               </div>
-            );
-          })}
+            )}
+
+            {/* Header Row: Column 1 = Horário Label */}
+            <div
+              className="font-bold text-xs text-[var(--text-muted)] flex items-center justify-center border-b border-[var(--border)] bg-[var(--bg-raised)] rounded-t-xl"
+              style={{ gridColumn: 1, gridRow: 1 }}
+            >
+              Horário
+            </div>
+
+            {/* Header Row: Therapist Names */}
+            {activeProfs.map((prof, pIdx) => (
+              <div
+                key={prof.id}
+                className="px-3 py-1.5 font-bold text-xs text-[var(--text-primary)] flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-raised)] rounded-t-xl truncate"
+                style={{ gridColumn: pIdx + 2, gridRow: 1 }}
+              >
+                <span className="truncate flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: prof.cor || '#6366f1' }} />
+                  {prof.nomeAgenda || prof.nome}
+                </span>
+              </div>
+            ))}
+
+            {/* Time Slots Labels Column (Column 1) */}
+            {timeSlots.map((slot, sIdx) => (
+              <div
+                key={`label-${slot}`}
+                className="font-mono text-xs font-black text-[var(--text-muted)] flex items-center justify-center border-r border-[var(--border)] bg-[var(--bg-raised)]/30 rounded-l-xl"
+                style={{ gridColumn: 1, gridRow: sIdx + 2 }}
+              >
+                {slot}
+              </div>
+            ))}
+
+            {/* Background Grid Cells for Empty Slot Clicks */}
+            {timeSlots.map((slot, sIdx) =>
+              activeProfs.map((prof, pIdx) => (
+                <div
+                  key={`cell-${slot}-${prof.id}`}
+                  onClick={() => openNewModal(slot, prof.id)}
+                  title={`Agendar às ${slot} com ${prof.nomeAgenda || prof.nome}`}
+                  className="border border-dashed border-[var(--border)]/30 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all cursor-pointer group flex items-center justify-center"
+                  style={{ gridColumn: pIdx + 2, gridRow: sIdx + 2 }}
+                >
+                  <Plus size={14} className="opacity-0 group-hover:opacity-100 text-indigo-500 transition-opacity" />
+                </div>
+              ))
+            )}
+
+            {/* Real Appointment Cards Placed Natively in CSS Grid (spanning 1, 2, 3+ rows) */}
+            {dayAppts.map(appt => {
+              const colIdx = activeProfs.findIndex(p => p.id === appt.profId);
+              if (colIdx === -1) return null;
+
+              const slotIdx = timeSlots.indexOf(appt.hora || '');
+              if (slotIdx === -1) return null;
+
+              const startRow = slotIdx + 2; // +2 because row 1 is header
+              const prof = profissionais.find(p => p.id === appt.profId);
+              const pColor = prof?.cor || '#6366f1';
+              const stColor = getStatusColorHex(appt.status);
+
+              const startM = timeToMinutes(appt.hora);
+              const endM = appt.horaFim ? timeToMinutes(appt.horaFim) : startM + (appt.durMin || 30);
+              const durTotal = endM > startM ? endM - startM : (appt.durMin || 30);
+              const spanRows = Math.max(1, Math.round(durTotal / 30));
+              const isMultiBlock = spanRows > 1;
+
+              return (
+                <div
+                  key={appt.id}
+                  onClick={() => openEditModal(appt)}
+                  className={`p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] shadow-md border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-hidden ${
+                    isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'
+                  }`}
+                  style={{
+                    gridColumn: colIdx + 2,
+                    gridRow: `${startRow} / span ${spanRows}`,
+                    borderLeft: `4px solid ${pColor}`,
+                    backgroundColor: isDark ? `${pColor}25` : '#ffffff'
+                  }}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5 mb-1">
+                      <span className="font-extrabold text-[var(--text-primary)] truncate text-xs sm:text-sm">
+                        {appt.paciente}
+                      </span>
+                      <span
+                        className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white shrink-0 shadow-xs"
+                        style={{ backgroundColor: stColor }}
+                      >
+                        {appt.status}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between mt-0.5">
+                      <span>{appt.hora} - {appt.horaFim || '09:30'}</span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-mono truncate max-w-[100px]">
+                        {appt.plano}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] font-bold text-[var(--text-primary)] mt-2 pt-1 border-t border-[var(--border)] flex items-center justify-between">
+                    <span className="truncate flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
+                      {prof?.nomeAgenda || prof?.nome || 'Profissional'}
+                    </span>
+                    {isMultiBlock && (
+                      <span className="text-[9px] font-mono text-indigo-500 font-extrabold shrink-0">
+                        {durTotal} min
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
