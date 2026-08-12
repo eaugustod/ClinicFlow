@@ -514,6 +514,19 @@ export const AgendaRecepcao: React.FC = () => {
               const durTotal = endM > startM ? endM - startM : (appt.durMin || 30);
               const isMultiBlock = spanRows > 1;
 
+              // Smart Tooltip Auto-Positioning Calculations (Prevents clipping at edges and top bar)
+              const isTopRow = startSlot <= 1; // 08:00 or 08:30 slots open downwards
+              const isRightEdge = track >= totalTracks - 1;
+              const isLeftEdge = track === 0;
+
+              const verticalPosClass = isTopRow ? 'top-full mt-2' : 'bottom-full mb-2';
+              let horizontalPosClass = 'left-1/2 -translate-x-1/2';
+              if (isLeftEdge) {
+                horizontalPosClass = 'left-0 translate-x-0';
+              } else if (isRightEdge) {
+                horizontalPosClass = 'right-0 left-auto translate-x-0';
+              }
+
               return (
                 <div
                   key={appt.id}
@@ -528,32 +541,32 @@ export const AgendaRecepcao: React.FC = () => {
                     backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
-                  {/* Rich Solid Floating Tooltip on Hover (Adaptive Light & Dark Modes) */}
-                  <div className={`hidden group-hover/card:flex flex-col gap-1.5 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3.5 rounded-xl shadow-2xl z-50 text-xs whitespace-nowrap border pointer-events-none transition-all animate-fade-in opacity-100 ${
+                  {/* Rich Solid Floating Tooltip on Hover (Smart Auto-Positioning & Standard Width) */}
+                  <div className={`hidden group-hover/card:flex flex-col gap-1.5 absolute ${verticalPosClass} ${horizontalPosClass} w-[270px] max-w-[270px] whitespace-normal p-3.5 rounded-xl shadow-2xl z-50 text-xs border pointer-events-none transition-all animate-fade-in opacity-100 ${
                     isDark
-                      ? 'bg-[#0f172a] text-white border-slate-700 shadow-slate-950/80'
-                      : 'bg-white text-slate-900 border-slate-200 shadow-2xl shadow-indigo-500/10 ring-1 ring-black/5'
+                      ? 'bg-[#0f172a] text-white border-slate-700 shadow-slate-950/90'
+                      : 'bg-white text-slate-900 border-slate-200 shadow-2xl shadow-indigo-500/15 ring-1 ring-black/5'
                   }`}>
                     <div className={`font-extrabold text-sm flex items-center gap-1.5 border-b pb-1.5 ${
                       isDark ? 'text-indigo-300 border-slate-700/80' : 'text-indigo-600 border-slate-200'
                     }`}>
-                      <span>👤 {appt.paciente}</span>
+                      <span className="truncate">👤 {appt.paciente}</span>
                     </div>
-                    <div className={`flex items-center gap-3 font-semibold pt-0.5 ${
+                    <div className={`flex items-center justify-between gap-2 font-semibold pt-0.5 ${
                       isDark ? 'text-slate-200' : 'text-slate-700'
                     }`}>
-                      <span>⏰ Horário: <strong>{appt.hora} - {appt.horaFim || '08:30'}</strong></span>
-                      <span className={`px-2 py-0.5 rounded font-extrabold ${
+                      <span className="truncate">⏰ Horário: <strong>{appt.hora} - {appt.horaFim || '08:30'}</strong></span>
+                      <span className={`px-2 py-0.5 rounded font-extrabold shrink-0 ${
                         isDark ? 'bg-indigo-500/30 text-indigo-300' : 'bg-indigo-100 text-indigo-700'
                       }`}>⏱️ {durTotal} min</span>
                     </div>
-                    <div className={`flex items-center justify-between gap-4 text-[11px] pt-0.5 ${
+                    <div className={`flex items-center justify-between gap-2 text-[11px] pt-0.5 ${
                       isDark ? 'text-slate-300' : 'text-slate-600'
                     }`}>
-                      <span>💳 Plano: <strong>{appt.plano}</strong></span>
-                      <span className="flex items-center gap-1.5 font-bold">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: pColor }} />
-                        {prof?.nomeAgenda || prof?.nome || 'Profissional'}
+                      <span className="truncate">💳 Plano: <strong>{appt.plano}</strong></span>
+                      <span className="flex items-center gap-1.5 font-bold shrink-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
+                        <span className="truncate max-w-[90px]">{prof?.nomeAgenda || prof?.nome || 'Profissional'}</span>
                       </span>
                     </div>
                   </div>
