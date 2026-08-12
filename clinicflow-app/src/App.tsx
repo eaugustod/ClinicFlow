@@ -9,6 +9,7 @@ import { PlanosProcedimentos } from './pages/PlanosProcedimentos';
 import { Configuracoes } from './pages/Configuracoes';
 import { Espera } from './pages/Espera';
 import { Agenda } from './pages/Agenda';
+import { AgendaRecepcao } from './pages/AgendaRecepcao';
 import { Historico } from './pages/Historico';
 import { GuiasSadt } from './pages/GuiasSadt';
 import { LotesTiss } from './pages/LotesTiss';
@@ -126,6 +127,8 @@ function App() {
         return <Dashboard />;
       case 'agenda':
         return <Agenda />;
+      case 'agenda-recepcao':
+        return <AgendaRecepcao />;
       case 'atendimento':
         return <Atendimento onNavigate={setActivePage} />;
       case 'conecta-agenda':

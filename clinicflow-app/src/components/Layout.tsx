@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Calendar,
+  CalendarRange,
   History,
   Users,
   Stethoscope,
@@ -55,6 +56,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
+    { id: 'agenda-recepcao', label: 'Agenda Recepção', icon: CalendarRange },
     { id: 'atendimento', label: 'Atendimento', icon: UserCheck },
     { id: 'historico', label: 'Histórico / Prontuário', icon: History },
     { id: 'chat', label: 'Chat com Pacientes', icon: MessageSquare },
