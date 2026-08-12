@@ -305,12 +305,12 @@ export const AgendaRecepcao: React.FC = () => {
     const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes();
     const nowTimeStr = `${String(nowDate.getHours()).padStart(2, '0')}:${String(nowDate.getMinutes()).padStart(2, '0')}`;
 
-    // Time Slots 07:00 to 20:30 (in 30-min intervals)
+    // Time Slots 08:00 to 20:00 (in 30-min intervals)
     const timeSlots: string[] = [];
-    for (let h = 7; h <= 20; h++) {
+    for (let h = 8; h <= 20; h++) {
       const hStr = String(h).padStart(2, '0');
       timeSlots.push(`${hStr}:00`);
-      timeSlots.push(`${hStr}:30`);
+      if (h < 20) timeSlots.push(`${hStr}:30`);
     }
 
     // Sort appointments: 1) Start time ASC, 2) Duration DESC (60+ min BEFORE 30 min)
@@ -367,14 +367,14 @@ export const AgendaRecepcao: React.FC = () => {
     const totalTracks = Math.max(3, ...apptPlacements.map(p => p.track + 1));
 
     // Grid row/col positioning calculations
-    const slotStartBaseMin = 7 * 60; // 07:00 is 420 mins
-    const rowHeightPx = 70; // height of each 30-min slot row
-    const rowGapPx = 6;     // vertical gap
+    const slotStartBaseMin = 8 * 60;  // 08:00 is 480 mins
+    const slotEndBaseMin = 20 * 60;   // 20:00 is 1200 mins
+    const totalDayMins = slotEndBaseMin - slotStartBaseMin;
 
     // Position of current time green line
-    const isLiveLineVisible = isToday && nowMinutes >= slotStartBaseMin && nowMinutes <= (21 * 60);
-    const liveLineTopPx = isLiveLineVisible
-      ? ((nowMinutes - slotStartBaseMin) / 30) * (rowHeightPx + rowGapPx)
+    const isLiveLineVisible = isToday && nowMinutes >= slotStartBaseMin && nowMinutes <= slotEndBaseMin;
+    const liveLinePercent = isLiveLineVisible
+      ? ((nowMinutes - slotStartBaseMin) / totalDayMins) * 100
       : 0;
 
     return (
@@ -429,7 +429,7 @@ export const AgendaRecepcao: React.FC = () => {
             className="grid relative h-full w-full min-h-0"
             style={{
               display: 'grid',
-              gridTemplateColumns: `65px repeat(${totalTracks}, minmax(200px, 1fr))`,
+              gridTemplateColumns: `70px repeat(${totalTracks}, minmax(260px, 1fr))`,
               gridTemplateRows: `repeat(${timeSlots.length}, minmax(0, 1fr))`,
               gap: '4px'
             }}
@@ -438,7 +438,7 @@ export const AgendaRecepcao: React.FC = () => {
             {isLiveLineVisible && (
               <div
                 className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
-                style={{ top: `${((nowMinutes - slotStartBaseMin) / (21 * 60 - slotStartBaseMin)) * 100}%` }}
+                style={{ top: `${liveLinePercent}%` }}
               >
                 <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_#10b981] -ml-1.5 shrink-0 flex items-center justify-center">
                   <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
@@ -497,7 +497,8 @@ export const AgendaRecepcao: React.FC = () => {
                 <div
                   key={appt.id}
                   onClick={() => openEditModal(appt)}
-                  className={`p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-hidden ${
+                  title={`Paciente: ${appt.paciente}\nHorário: ${appt.hora} às ${appt.horaFim || '08:30'}\nTempo: ${durTotal} min\nPlano: ${appt.plano}\nTerapeuta: ${prof?.nomeAgenda || prof?.nome || 'Profissional'}`}
+                  className={`group/card p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-visible relative ${
                     isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'
                   }`}
                   style={{
@@ -507,12 +508,30 @@ export const AgendaRecepcao: React.FC = () => {
                     backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
+                  {/* Rich Floating Tooltip on Hover */}
+                  <div className="hidden group-hover/card:flex flex-col gap-1.5 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-slate-900/95 text-white rounded-xl shadow-2xl z-50 text-xs whitespace-nowrap border border-slate-700/80 backdrop-blur-md pointer-events-none transition-all animate-fade-in">
+                    <div className="font-extrabold text-sm text-indigo-300 flex items-center gap-1.5 border-b border-slate-700 pb-1">
+                      <span>👤 {appt.paciente}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-200 font-semibold">
+                      <span>⏰ Horário: <strong>{appt.hora} - {appt.horaFim || '08:30'}</strong></span>
+                      <span className="px-1.5 py-0.5 bg-indigo-500/30 rounded text-indigo-300 font-bold">⏱️ {durTotal} min</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 text-slate-300 text-[11px]">
+                      <span>💳 Plano: <strong>{appt.plano}</strong></span>
+                      <span className="flex items-center gap-1 font-bold">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: pColor }} />
+                        {prof?.nomeAgenda || prof?.nome || 'Profissional'}
+                      </span>
+                    </div>
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between gap-1.5 mb-1">
                       <span className="font-extrabold text-[var(--text-primary)] truncate text-xs sm:text-sm">
                         {appt.paciente}
                       </span>
-                      <span className="text-[10px] text-[var(--text-muted)] font-mono truncate max-w-[110px] shrink-0">
+                      <span className="text-[10px] text-[var(--text-muted)] font-mono truncate max-w-[130px] shrink-0">
                         {appt.plano}
                       </span>
                     </div>
