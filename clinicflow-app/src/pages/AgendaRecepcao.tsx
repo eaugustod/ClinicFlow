@@ -372,7 +372,7 @@ export const AgendaRecepcao: React.FC = () => {
 
     // Grid row/col positioning calculations
     const slotStartBaseMin = 8 * 60;  // 08:00 is 480 mins
-    const slotEndBaseMin = 20 * 60;   // 20:00 is 1200 mins
+    const slotEndBaseMin = 20 * 60 + 30; // 20:30 is 1230 mins
     const rowHeightPx = compactView ? 54 : 95;   // 54px in compact mode, 95px in comfortable mode
     const rowGapPx = compactView ? 3 : 4;        // vertical gap
     const trackMinWidth = compactView ? 180 : 260; // column min width
@@ -528,16 +528,28 @@ export const AgendaRecepcao: React.FC = () => {
                     backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
-                  {/* Rich Solid Floating Tooltip on Hover */}
-                  <div className="hidden group-hover/card:flex flex-col gap-1.5 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3.5 bg-[#0f172a] text-white rounded-xl shadow-2xl z-50 text-xs whitespace-nowrap border border-slate-700 pointer-events-none transition-all animate-fade-in opacity-100">
-                    <div className="font-extrabold text-sm text-indigo-300 flex items-center gap-1.5 border-b border-slate-700/80 pb-1.5">
+                  {/* Rich Solid Floating Tooltip on Hover (Adaptive Light & Dark Modes) */}
+                  <div className={`hidden group-hover/card:flex flex-col gap-1.5 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3.5 rounded-xl shadow-2xl z-50 text-xs whitespace-nowrap border pointer-events-none transition-all animate-fade-in opacity-100 ${
+                    isDark
+                      ? 'bg-[#0f172a] text-white border-slate-700 shadow-slate-950/80'
+                      : 'bg-white text-slate-900 border-slate-200 shadow-2xl shadow-indigo-500/10 ring-1 ring-black/5'
+                  }`}>
+                    <div className={`font-extrabold text-sm flex items-center gap-1.5 border-b pb-1.5 ${
+                      isDark ? 'text-indigo-300 border-slate-700/80' : 'text-indigo-600 border-slate-200'
+                    }`}>
                       <span>👤 {appt.paciente}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-slate-200 font-semibold pt-0.5">
+                    <div className={`flex items-center gap-3 font-semibold pt-0.5 ${
+                      isDark ? 'text-slate-200' : 'text-slate-700'
+                    }`}>
                       <span>⏰ Horário: <strong>{appt.hora} - {appt.horaFim || '08:30'}</strong></span>
-                      <span className="px-2 py-0.5 bg-indigo-500/30 rounded text-indigo-300 font-extrabold">⏱️ {durTotal} min</span>
+                      <span className={`px-2 py-0.5 rounded font-extrabold ${
+                        isDark ? 'bg-indigo-500/30 text-indigo-300' : 'bg-indigo-100 text-indigo-700'
+                      }`}>⏱️ {durTotal} min</span>
                     </div>
-                    <div className="flex items-center justify-between gap-4 text-slate-300 text-[11px] pt-0.5">
+                    <div className={`flex items-center justify-between gap-4 text-[11px] pt-0.5 ${
+                      isDark ? 'text-slate-300' : 'text-slate-600'
+                    }`}>
                       <span>💳 Plano: <strong>{appt.plano}</strong></span>
                       <span className="flex items-center gap-1.5 font-bold">
                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: pColor }} />
