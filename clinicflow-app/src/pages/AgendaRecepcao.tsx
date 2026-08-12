@@ -4,6 +4,7 @@ import {
   CalendarDays, Lock, Unlock, HelpCircle, Key, Check, Search, Bell, Filter, UserCheck, Shield, Users
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { Agendamento, GuiaSadt, ProcedimentoGuia } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
@@ -14,6 +15,8 @@ export const AgendaRecepcao: React.FC = () => {
     getBaseStatus, getStatusColor: getStatusColorHex, logStatusChange, refreshAll,
     loadAgendamentosMes, loadAgendamentosPeriodo
   } = useApp();
+
+  const { isDark } = useTheme();
 
   // View Controls: Day, Week, Month, Year
   const [viewTab, setViewTab] = useState<'day' | 'week' | 'month' | 'year'>('day');
@@ -236,7 +239,7 @@ export const AgendaRecepcao: React.FC = () => {
     return prof?.cor || '#6366f1';
   };
 
-  // Render Day View (Compact Dynamic Schedule Grid)
+  // Render Day View (Compact Dynamic Schedule Grid with Theme Support)
   const renderDayView = () => {
     const dayAppts = filteredAgendamentos.filter(a => a.dataISO === currentDate);
 
@@ -249,27 +252,27 @@ export const AgendaRecepcao: React.FC = () => {
     }
 
     return (
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
+      <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden text-[var(--text-primary)] font-sans">
         {/* Sub Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/[0.04] bg-slate-50/60 dark:bg-[#131726] gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--bg-raised)] gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigateDate('prev')}
-              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-xl transition-all active:scale-95 text-slate-600 dark:text-slate-300"
+              className="p-1.5 hover:bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl transition-all active:scale-95 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               <ChevronLeft size={18} />
             </button>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <h3 className="text-base font-extrabold text-[var(--text-primary)] tracking-tight">
                 Agenda do Dia
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5">
+              <p className="text-xs text-[var(--text-muted)] font-medium capitalize mt-0.5">
                 {new Date(currentDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
               </p>
             </div>
             <button
               onClick={() => navigateDate('next')}
-              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-xl transition-all active:scale-95 text-slate-600 dark:text-slate-300"
+              className="p-1.5 hover:bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl transition-all active:scale-95 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               <ChevronRight size={18} />
             </button>
@@ -278,33 +281,33 @@ export const AgendaRecepcao: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigateDate('today')}
-              className="px-3.5 py-1.5 bg-white dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all shadow-xs"
+              className="px-3.5 py-1.5 bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold hover:bg-[var(--bg-raised)] transition-all shadow-xs"
             >
               Hoje
             </button>
-            <span className="text-xs font-semibold px-3 py-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 rounded-full border border-indigo-100 dark:border-indigo-800/40">
+            <span className="text-xs font-semibold px-3 py-1 bg-indigo-500/10 text-indigo-500 rounded-full border border-indigo-500/20">
               {dayAppts.length} Agendamento(s) hoje
             </span>
           </div>
         </div>
 
         {/* Compact Schedule List (100% Width Responsive Grid per Time Slot) */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.03] p-2">
+        <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)] p-2">
           {timeSlots.map(slot => {
             const slotAppts = dayAppts.filter(a => a.hora && a.hora === slot);
 
             return (
               <div
                 key={slot}
-                className="flex flex-col md:flex-row items-start md:items-stretch gap-3 py-2.5 px-3 hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors rounded-xl group"
+                className="flex flex-col md:flex-row items-start md:items-stretch gap-3 py-2.5 px-3 hover:bg-[var(--bg-raised)]/60 transition-colors rounded-xl group"
               >
                 {/* Time Label Column */}
-                <div className="w-20 pt-1 text-xs font-black font-mono text-slate-400 dark:text-slate-500 shrink-0 flex items-center justify-between">
+                <div className="w-20 pt-1 text-xs font-black font-mono text-[var(--text-muted)] shrink-0 flex items-center justify-between">
                   <span>{slot}</span>
                   <button
                     onClick={() => openNewModal(slot)}
                     title="Adicionar agendamento neste horário"
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-indigo-500 hover:bg-indigo-500/10 rounded transition-all"
                   >
                     <Plus size={14} />
                   </button>
@@ -315,7 +318,7 @@ export const AgendaRecepcao: React.FC = () => {
                   {slotAppts.length === 0 ? (
                     <div
                       onClick={() => openNewModal(slot)}
-                      className="flex-1 py-2 px-3 border border-dashed border-slate-200 dark:border-white/[0.04] rounded-xl text-[11px] font-medium text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 hover:border-slate-300 dark:hover:border-white/[0.1] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 px-3 border border-dashed border-[var(--border)] rounded-xl text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-mid)] transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <Plus size={12} /> Clique para agendar às {slot}
                     </div>
@@ -329,15 +332,15 @@ export const AgendaRecepcao: React.FC = () => {
                         <div
                           key={appt.id}
                           onClick={() => openEditModal(appt)}
-                          className="flex-1 min-w-[220px] max-w-[340px] p-3 rounded-xl text-xs bg-white dark:bg-[#161a28] shadow-sm border border-slate-200/80 dark:border-white/[0.06] transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer flex flex-col justify-between"
+                          className="flex-1 min-w-[220px] max-w-[340px] p-3 rounded-xl text-xs bg-[var(--bg-surface)] shadow-xs border border-[var(--border)] transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer flex flex-col justify-between"
                           style={{
                             borderLeft: `4px solid ${pColor}`,
-                            backgroundColor: `${pColor}0d`
+                            backgroundColor: isDark ? `${pColor}1a` : '#ffffff'
                           }}
                         >
                           <div>
                             <div className="flex items-center justify-between gap-1.5 mb-1">
-                              <span className="font-extrabold text-slate-900 dark:text-white truncate text-sm">
+                              <span className="font-extrabold text-[var(--text-primary)] truncate text-sm">
                                 {appt.paciente}
                               </span>
                               <span
@@ -347,21 +350,21 @@ export const AgendaRecepcao: React.FC = () => {
                                 {appt.status}
                               </span>
                             </div>
-                            <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between mt-0.5">
+                            <div className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between mt-0.5">
                               <span>{appt.hora} - {appt.horaFim || '09:30'}</span>
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                              <span className="text-[10px] text-[var(--text-muted)] font-mono">
                                 {appt.plano}
                               </span>
                             </div>
                           </div>
 
-                          <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 mt-2.5 pt-1.5 border-t border-slate-200/40 dark:border-white/[0.04] flex items-center justify-between">
+                          <div className="text-[11px] font-bold text-[var(--text-primary)] mt-2.5 pt-1.5 border-t border-[var(--border)] flex items-center justify-between">
                             <span className="truncate flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
                               {prof?.nomeAgenda || prof?.nome || 'Profissional'}
                             </span>
                             {appt.modalidade === 'online' && (
-                              <span className="flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                              <span className="flex items-center gap-0.5 text-indigo-500 font-bold shrink-0">
                                 <Video size={11} /> Online
                               </span>
                             )}
@@ -394,22 +397,22 @@ export const AgendaRecepcao: React.FC = () => {
     }
 
     return (
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
-        <div className="grid grid-cols-7 divide-x divide-slate-200 dark:divide-white/[0.06] border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-[#131726] text-xs font-bold text-slate-600 dark:text-slate-300">
+      <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden text-[var(--text-primary)] font-sans">
+        <div className="grid grid-cols-7 divide-x divide-[var(--border)] border-b border-[var(--border)] bg-[var(--bg-raised)] text-xs font-bold text-[var(--text-secondary)]">
           {weekDays.map(dStr => {
             const d = new Date(dStr + 'T12:00:00');
             const isToday = dStr === new Date().toISOString().split('T')[0];
 
             return (
-              <div key={dStr} className={`p-3 text-center ${isToday ? 'bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-extrabold' : ''}`}>
-                <div className="uppercase text-[10px] tracking-wider text-slate-400">{d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
+              <div key={dStr} className={`p-3 text-center ${isToday ? 'bg-indigo-500/10 text-indigo-500 font-extrabold' : ''}`}>
+                <div className="uppercase text-[10px] tracking-wider text-[var(--text-muted)]">{d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
                 <div className="text-base font-black mt-0.5">{d.getDate()}</div>
               </div>
             );
           })}
         </div>
 
-        <div className="flex-1 grid grid-cols-7 divide-x divide-slate-200 dark:divide-white/[0.06] overflow-y-auto">
+        <div className="flex-1 grid grid-cols-7 divide-x divide-[var(--border)] overflow-y-auto">
           {weekDays.map(dStr => {
             const dayAppts = filteredAgendamentos.filter(a => a.dataISO === dStr);
 
@@ -417,7 +420,7 @@ export const AgendaRecepcao: React.FC = () => {
               <div
                 key={dStr}
                 onClick={() => openNewModal(undefined, undefined)}
-                className="p-2 space-y-2 hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-colors min-h-[400px]"
+                className="p-2 space-y-2 hover:bg-[var(--bg-raised)]/50 transition-colors min-h-[400px]"
               >
                 {dayAppts.map(appt => {
                   const pColor = getProfColor(appt.profId);
@@ -430,11 +433,11 @@ export const AgendaRecepcao: React.FC = () => {
                         e.stopPropagation();
                         openEditModal(appt);
                       }}
-                      className="p-2 rounded-xl text-xs bg-slate-50 dark:bg-[#161a28] border border-slate-200 dark:border-white/[0.06] shadow-xs hover:shadow-md cursor-pointer"
+                      className="p-2 rounded-xl text-xs bg-[var(--bg-surface)] border border-[var(--border)] shadow-xs hover:shadow-md cursor-pointer"
                       style={{ borderLeft: `4px solid ${pColor}` }}
                     >
-                      <div className="font-bold text-slate-900 dark:text-white truncate">{appt.paciente}</div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{appt.hora} - {prof?.nome.split(' ')[0]}</div>
+                      <div className="font-bold text-[var(--text-primary)] truncate">{appt.paciente}</div>
+                      <div className="text-[10px] text-[var(--text-muted)]">{appt.hora} - {prof?.nome.split(' ')[0]}</div>
                     </div>
                   );
                 })}
@@ -463,36 +466,36 @@ export const AgendaRecepcao: React.FC = () => {
     }
 
     return (
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
+      <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden text-[var(--text-primary)] font-sans">
         {/* Navigation Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 dark:border-white/[0.06] bg-slate-50/60 dark:bg-[#131726]">
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-[var(--border)] bg-[var(--bg-raised)]">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigateDate('prev')}
-              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
+              className="p-1.5 hover:bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               <ChevronLeft size={18} />
             </button>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white capitalize">
+            <h3 className="text-lg font-black text-[var(--text-primary)] capitalize">
               {new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </h3>
             <button
               onClick={() => navigateDate('next')}
-              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
+              className="p-1.5 hover:bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               <ChevronRight size={18} />
             </button>
           </div>
           <button
             onClick={() => navigateDate('today')}
-            className="px-3.5 py-1.5 bg-white dark:bg-[#181d2d] border border-slate-300 dark:border-white/[0.08] rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-white/[0.04] text-slate-700 dark:text-slate-200 transition-all shadow-xs"
+            className="px-3.5 py-1.5 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-xs font-bold hover:bg-[var(--bg-raised)] text-[var(--text-primary)] transition-all shadow-xs"
           >
             Hoje
           </button>
         </div>
 
         {/* 7 Columns Header */}
-        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-white/[0.06] bg-slate-100/70 dark:bg-[#161a28] text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center py-2">
+        <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--bg-raised)] text-[11px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider text-center py-2">
           <div>DOM</div>
           <div>SEG</div>
           <div>TER</div>
@@ -503,10 +506,10 @@ export const AgendaRecepcao: React.FC = () => {
         </div>
 
         {/* Calendar Grid */}
-        <div className="flex-1 grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-200 dark:divide-white/[0.06] overflow-y-auto">
+        <div className="flex-1 grid grid-cols-7 auto-rows-fr divide-x divide-y divide-[var(--border)] overflow-y-auto">
           {calendarCells.map((dStr, idx) => {
             if (!dStr) {
-              return <div key={`empty-${idx}`} className="bg-slate-50/40 dark:bg-white/[0.01] p-2" />;
+              return <div key={`empty-${idx}`} className="bg-[var(--bg-raised)]/40 p-2" />;
             }
             const dayNum = Number(dStr.split('-')[2]);
             const dayAppts = filteredAgendamentos.filter(a => a.dataISO === dStr);
@@ -519,16 +522,16 @@ export const AgendaRecepcao: React.FC = () => {
                   setCurrentDate(dStr);
                   openNewModal(undefined, undefined);
                 }}
-                className={`p-2 flex flex-col justify-between hover:bg-indigo-50/20 dark:hover:bg-indigo-950/20 transition-colors cursor-pointer min-h-[90px] ${
-                  isToday ? 'bg-indigo-50/30 dark:bg-indigo-950/30' : ''
+                className={`p-2 flex flex-col justify-between hover:bg-indigo-500/10 transition-colors cursor-pointer min-h-[90px] ${
+                  isToday ? 'bg-indigo-500/15' : ''
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`text-xs font-black ${isToday ? 'w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center' : 'text-slate-700 dark:text-slate-300'}`}>
+                  <span className={`text-xs font-black ${isToday ? 'w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center' : 'text-[var(--text-primary)]'}`}>
                     {dayNum}
                   </span>
                   {dayAppts.length > 0 && (
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{dayAppts.length} appts</span>
+                    <span className="text-[10px] font-bold text-[var(--text-muted)]">{dayAppts.length} appts</span>
                   )}
                 </div>
 
@@ -543,7 +546,7 @@ export const AgendaRecepcao: React.FC = () => {
                           e.stopPropagation();
                           openEditModal(appt);
                         }}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-bold truncate bg-slate-100 dark:bg-[#1a1f30] text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-white/[0.06] hover:bg-slate-200 transition-colors"
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold truncate bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--bg-raised)] transition-colors"
                         style={{ borderLeft: `3px solid ${pColor}` }}
                       >
                         {appt.hora} - {appt.paciente}
@@ -551,7 +554,7 @@ export const AgendaRecepcao: React.FC = () => {
                     );
                   })}
                   {dayAppts.length > 3 && (
-                    <div className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 text-center pt-0.5">
+                    <div className="text-[9px] font-bold text-indigo-500 text-center pt-0.5">
                       + {dayAppts.length - 3} mais
                     </div>
                   )}
@@ -579,45 +582,45 @@ export const AgendaRecepcao: React.FC = () => {
     });
 
     const getHeatColorClass = (count: number) => {
-      if (count === 0) return 'bg-slate-100 dark:bg-white/[0.04] text-slate-400 dark:text-slate-600';
-      if (count <= 2) return 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 font-bold';
-      if (count <= 5) return 'bg-indigo-300 dark:bg-indigo-800/80 text-indigo-900 dark:text-indigo-100 font-extrabold';
+      if (count === 0) return 'bg-[var(--bg-raised)] text-[var(--text-muted)]';
+      if (count <= 2) return 'bg-indigo-500/20 text-indigo-500 font-bold';
+      if (count <= 5) return 'bg-indigo-500/40 text-indigo-400 font-extrabold';
       if (count <= 8) return 'bg-indigo-500 text-white font-extrabold';
-      return 'bg-indigo-800 dark:bg-indigo-600 text-white font-black';
+      return 'bg-indigo-700 text-white font-black';
     };
 
     return (
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm font-sans p-6 space-y-6 overflow-y-auto text-slate-800 dark:text-slate-100">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/[0.06] pb-4">
+      <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-sm font-sans p-6 space-y-6 overflow-y-auto text-[var(--text-primary)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
           <div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">Visão Anual - {selectedYear}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Densidade de agendamentos por dia na clínica</p>
+            <h3 className="text-xl font-black text-[var(--text-primary)]">Visão Anual - {selectedYear}</h3>
+            <p className="text-xs text-[var(--text-muted)] font-medium">Densidade de agendamentos por dia na clínica</p>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)]">
               <span>Baixa demanda</span>
               <div className="flex gap-1">
-                <span className="w-4 h-4 rounded bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]" />
-                <span className="w-4 h-4 rounded bg-indigo-100 dark:bg-indigo-950/60" />
-                <span className="w-4 h-4 rounded bg-indigo-300 dark:bg-indigo-800/80" />
+                <span className="w-4 h-4 rounded bg-[var(--bg-raised)] border border-[var(--border)]" />
+                <span className="w-4 h-4 rounded bg-indigo-500/20" />
+                <span className="w-4 h-4 rounded bg-indigo-500/40" />
                 <span className="w-4 h-4 rounded bg-indigo-500" />
-                <span className="w-4 h-4 rounded bg-indigo-800 dark:bg-indigo-600" />
+                <span className="w-4 h-4 rounded bg-indigo-700" />
               </div>
               <span>Alta demanda</span>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-[#161a28] p-1 rounded-xl">
+            <div className="flex items-center gap-2 bg-[var(--bg-raised)] p-1 rounded-xl border border-[var(--border)]">
               <button
                 onClick={() => setSelectedYear(selectedYear - 1)}
-                className="p-1 hover:bg-white dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
+                className="p-1 hover:bg-[var(--bg-surface)] rounded-lg transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="font-extrabold text-sm px-2 text-slate-900 dark:text-white">{selectedYear}</span>
+              <span className="font-extrabold text-sm px-2 text-[var(--text-primary)]">{selectedYear}</span>
               <button
                 onClick={() => setSelectedYear(selectedYear + 1)}
-                className="p-1 hover:bg-white dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
+                className="p-1 hover:bg-[var(--bg-surface)] rounded-lg transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 <ChevronRight size={16} />
               </button>
@@ -638,9 +641,9 @@ export const AgendaRecepcao: React.FC = () => {
             }
 
             return (
-              <div key={mName} className="p-4 bg-slate-50/70 dark:bg-[#141826] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl space-y-3">
-                <h4 className="text-sm font-extrabold text-slate-800 dark:text-white">{mName}</h4>
-                <div className="grid grid-cols-7 gap-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 text-center">
+              <div key={mName} className="p-4 bg-[var(--bg-raised)]/60 border border-[var(--border)] rounded-2xl space-y-3">
+                <h4 className="text-sm font-extrabold text-[var(--text-primary)]">{mName}</h4>
+                <div className="grid grid-cols-7 gap-1 text-[10px] font-bold text-[var(--text-muted)] text-center">
                   <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center">
@@ -670,30 +673,30 @@ export const AgendaRecepcao: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-100/60 dark:bg-[#07090e] p-4 gap-4 animate-fade-in font-sans text-slate-800 dark:text-slate-100">
-      {/* RESTRUCTURED TOP HEADER BAR (FIGURA 1 AJUSTADA) */}
-      <div className="bg-white dark:bg-[#0f131f] px-6 py-4 rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-[var(--bg-base)] p-4 gap-4 animate-fade-in font-sans text-[var(--text-primary)] transition-colors duration-300">
+      {/* RESTRUCTURED TOP HEADER BAR */}
+      <div className="bg-[var(--bg-surface)] px-6 py-4 rounded-2xl border border-[var(--border)] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-500/20">
+          <div className="p-2.5 bg-gradient-to-tr from-indigo-500 to-violet-600 text-white rounded-xl shadow-md shadow-indigo-500/20">
             <Calendar size={20} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">Agenda Recepção</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Visão integrada de alta densidade por profissional</p>
+            <h2 className="text-xl font-black text-[var(--text-primary)] leading-tight">Agenda Recepção</h2>
+            <p className="text-xs text-[var(--text-muted)] font-medium">Visão integrada de alta densidade por profissional</p>
           </div>
         </div>
 
         {/* View Switcher Tabs: Dia / Semana / Mês / Ano */}
-        <div className="flex items-center bg-slate-100 dark:bg-[#161a28] p-1 rounded-xl border border-slate-200/60 dark:border-white/[0.06] self-start lg:self-auto">
+        <div className="flex items-center bg-[var(--bg-raised)] p-1 rounded-xl border border-[var(--border)] self-start lg:self-auto">
           {(['day', 'week', 'month', 'year'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setViewTab(tab)}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
                 viewTab === tab
-                  ? 'bg-white dark:bg-[#202638] text-indigo-700 dark:text-indigo-300 shadow-sm font-extrabold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[var(--bg-surface)] text-indigo-500 shadow-sm font-extrabold'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {tab === 'day' ? 'Dia' : tab === 'week' ? 'Semana' : tab === 'month' ? 'Mês' : 'Ano (Heatmap)'}
@@ -708,7 +711,7 @@ export const AgendaRecepcao: React.FC = () => {
             <select
               value={selectedProfFilter}
               onChange={(e) => setSelectedProfFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className="w-full pl-3 pr-8 py-2 bg-slate-50 dark:bg-[#161a28] border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+              className="w-full pl-3 pr-8 py-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-xs font-bold text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-all cursor-pointer"
             >
               <option value="all">👥 Todos os Terapeutas ({profissionais.length})</option>
               {profissionais.map(p => (
@@ -721,20 +724,20 @@ export const AgendaRecepcao: React.FC = () => {
 
           {/* Search Patient Input */}
           <div className="relative min-w-[180px]">
-            <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-3 text-[var(--text-muted)]" />
             <input
               type="text"
               placeholder="Search patients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-[#161a28] border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-all"
+              className="w-full pl-9 pr-4 py-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] transition-all"
             />
           </div>
 
           {/* Button Novo Agendamento */}
           <button
             onClick={() => openNewModal()}
-            className="py-2 px-4 bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white rounded-xl font-extrabold text-xs shadow-md flex items-center gap-2 active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="py-2 px-4 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-extrabold text-xs shadow-md flex items-center gap-2 active:scale-95 transition-all shrink-0 cursor-pointer"
           >
             <Plus size={16} />
             + Novo Agendamento
@@ -742,7 +745,7 @@ export const AgendaRecepcao: React.FC = () => {
         </div>
       </div>
 
-      {/* MAIN CONTENT CONTAINER (FULL 100% WIDTH - FIGURA 2 REMOVIDA) */}
+      {/* MAIN CONTENT CONTAINER (FULL 100% WIDTH) */}
       <div className="flex-1 flex overflow-hidden w-full">
         {viewTab === 'day' && renderDayView()}
         {viewTab === 'week' && renderWeekView()}
@@ -752,15 +755,15 @@ export const AgendaRecepcao: React.FC = () => {
 
       {/* MODAL NOVO / EDITAR AGENDAMENTO */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121624] rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-white/[0.08] text-slate-800 dark:text-slate-100 space-y-4 animate-scale-up font-sans">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[var(--border-mid)] text-[var(--text-primary)] space-y-4 animate-scale-up font-sans">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <h3 className="text-lg font-black text-[var(--text-primary)]">
                 {editId ? 'Editar Agendamento' : 'Novo Agendamento'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-white font-bold text-lg cursor-pointer"
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold text-lg cursor-pointer"
               >
                 &times;
               </button>
@@ -769,11 +772,11 @@ export const AgendaRecepcao: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Profissional *</label>
+                  <label className="block text-[var(--text-secondary)] font-bold mb-1">Profissional *</label>
                   <select
                     value={profIdForm}
                     onChange={(e) => setProfIdForm(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] font-semibold focus:outline-none focus:border-[var(--accent)]"
                   >
                     {profissionais.map(p => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
@@ -782,61 +785,61 @@ export const AgendaRecepcao: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Paciente *</label>
+                  <label className="block text-[var(--text-secondary)] font-bold mb-1">Paciente *</label>
                   <input
                     type="text"
                     required
                     value={paciente}
                     onChange={(e) => setPaciente(e.target.value)}
                     placeholder="Nome completo do paciente"
-                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] font-semibold focus:outline-none focus:border-[var(--accent)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Data *</label>
+                  <label className="block text-[var(--text-secondary)] font-bold mb-1">Data *</label>
                   <input
                     type="date"
                     required
                     value={dataAg}
                     onChange={(e) => setDataAg(e.target.value)}
-                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
+                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl font-semibold text-[var(--text-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Horário *</label>
+                  <label className="block text-[var(--text-secondary)] font-bold mb-1">Horário *</label>
                   <input
                     type="time"
                     required
                     value={horaIni}
                     onChange={(e) => setHoraIni(e.target.value)}
-                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
+                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl font-semibold text-[var(--text-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Duração (min)</label>
+                  <label className="block text-[var(--text-secondary)] font-bold mb-1">Duração (min)</label>
                   <input
                     type="number"
                     min={15}
                     step={15}
                     value={duracao}
                     onChange={(e) => setDuracao(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
+                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl font-semibold text-[var(--text-primary)] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Plano de Saúde</label>
+                  <label className="block text-[var(--text-secondary)] font-bold mb-1">Plano de Saúde</label>
                   <select
                     value={planoId}
                     onChange={(e) => setPlanoId(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none"
+                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] font-semibold focus:outline-none"
                   >
                     {planos.map(p => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
@@ -845,11 +848,11 @@ export const AgendaRecepcao: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Status do Agendamento</label>
+                  <label className="block text-[var(--text-secondary)] font-bold mb-1">Status do Agendamento</label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none"
+                    className="w-full p-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] font-semibold focus:outline-none"
                   >
                     {statusAgendamentos.map(s => (
                       <option key={s.nome} value={s.nome}>{s.nome}</option>
@@ -858,18 +861,18 @@ export const AgendaRecepcao: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs cursor-pointer"
+                  className="px-4 py-2 bg-[var(--bg-raised)] hover:bg-[var(--border)] text-[var(--text-primary)] rounded-xl font-bold text-xs cursor-pointer transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md cursor-pointer"
+                  className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold text-xs shadow-md cursor-pointer transition-all"
                 >
                   {submitting ? 'Salvando...' : 'Salvar Agendamento'}
                 </button>

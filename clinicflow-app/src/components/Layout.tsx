@@ -16,6 +16,8 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Menu,
   X,
   Bell,
@@ -47,11 +49,22 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActivePage }) => {
   const { clinicaConfig, user, logout } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('cf_sidebar_collapsed') === 'true';
+  });
   const [faturamentoOpen, setFaturamentoOpen] = useState(false);
   const [cadastrosOpen, setCadastrosOpen] = useState(false);
   const [conectaOpen, setConectaOpen] = useState(false);
   const [ferramentasOpen, setFerramentasOpen] = useState(false);
   const [fechamentoOpen, setFechamentoOpen] = useState(false);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('cf_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -179,30 +192,50 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col w-[256px] bg-[var(--sidebar-bg)] backdrop-blur-xl border-r border-[var(--border)] transition-all duration-300 ease-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col ${
+          sidebarCollapsed ? 'lg:w-[76px]' : 'lg:w-[256px]'
+        } w-[256px] bg-[var(--sidebar-bg)] backdrop-blur-xl border-r border-[var(--border)] transition-all duration-300 ease-out lg:static lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand Header */}
-        <div className="flex items-center justify-between h-20 px-6 border-b border-[var(--border)]">
+        {/* Brand Header com Botao de Recolher/Expandir ao lado do Logo */}
+        <div className={`flex items-center ${sidebarCollapsed ? 'lg:justify-between lg:px-3' : 'justify-between px-6'} h-20 border-b border-[var(--border)] transition-all duration-300`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-[0_0_20px_rgba(99,102,241,0.4)] shrink-0">
               CF
             </div>
-            <div>
+            {!sidebarCollapsed && (
+              <div className="hidden lg:block">
+                <span className="font-bold text-base tracking-wider text-[var(--text-primary)]">
+                  ClinicFlow
+                </span>
+                <p className="text-[9px] text-[var(--accent)] font-semibold tracking-widest uppercase">v2026.1</p>
+              </div>
+            )}
+            <div className="lg:hidden">
               <span className="font-bold text-base tracking-wider text-[var(--text-primary)]">
                 ClinicFlow
               </span>
               <p className="text-[9px] text-[var(--accent)] font-semibold tracking-widest uppercase">v2026.1</p>
             </div>
           </div>
+
+          {/* Botao Recolher / Expandir Menu */}
+          <button
+            onClick={toggleSidebarCollapsed}
+            className="hidden lg:flex items-center justify-center p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--bg-raised)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-xs"
+            title={sidebarCollapsed ? "Expandir Menu" : "Recolher Menu"}
+          >
+            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+
           <button className="lg:hidden p-1 hover:bg-[var(--bg-raised)] rounded-lg" onClick={() => setSidebarOpen(false)}>
             <X size={18} className="text-[var(--text-secondary)]" />
           </button>
         </div>
 
         {/* Navigation Section */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-thin">
+        <nav className={`flex-1 ${sidebarCollapsed ? 'lg:px-2' : 'px-4'} py-6 space-y-1 overflow-y-auto scrollbar-thin`}>
           {menuItems.filter(item => hasPermission(item.id)).map((item) => {
             const Icon = item.icon;
             const active = activePage === item.id;
@@ -211,16 +244,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`flex items-center w-full gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+                title={sidebarCollapsed ? item.label : undefined}
+                className={`flex items-center w-full gap-3.5 ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'px-4'
+                } py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                   active
                     ? 'bg-gradient-to-r from-indigo-500/15 to-violet-500/5 text-indigo-400 border border-indigo-500/10 shadow-[0_4px_16px_rgba(99,102,241,0.06)]'
                     : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
-                <Icon size={16} className={active ? 'text-indigo-400' : 'text-slate-400'} />
-                <span className="flex-1 text-left">{item.label}</span>
-                {isChat && (
-                  <span className="flex items-center gap-1 text-[9px] bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase">
+                <Icon size={16} className={`shrink-0 ${active ? 'text-indigo-400' : 'text-slate-400'}`} />
+                <span className={`flex-1 text-left ${sidebarCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
+                {isChat && !sidebarCollapsed && (
+                  <span className="flex items-center gap-1 text-[9px] bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase lg:block">
                     Nova Aba <ExternalLink size={10} />
                   </span>
                 )}
