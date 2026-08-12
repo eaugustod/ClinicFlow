@@ -59,6 +59,22 @@ export const AgendaRecepcao: React.FC = () => {
   const [isSearchingPac, setIsSearchingPac] = useState(false);
   const [showPacDropdown, setShowPacDropdown] = useState(false);
 
+  // Live Clock State for Green Time Indicator Line
+  const [nowDate, setNowDate] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowDate(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeToMinutes = (t: string): number => {
+    if (!t) return 0;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + (m || 0);
+  };
+
   const handleSearchPaciente = async (termToSearch?: string) => {
     const query = (termToSearch !== undefined ? termToSearch : paciente).trim();
     if (!query) return;
@@ -282,9 +298,12 @@ export const AgendaRecepcao: React.FC = () => {
     return prof?.cor || '#6366f1';
   };
 
-  // Render Day View (Compact Dynamic Schedule Grid with Theme Support)
+  // Render Day View (Compact Dynamic Schedule Grid with Theme Support & Live Time Indicator)
   const renderDayView = () => {
     const dayAppts = filteredAgendamentos.filter(a => a.dataISO === currentDate);
+    const isToday = currentDate === new Date().toISOString().split('T')[0];
+    const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes();
+    const nowTimeStr = `${String(nowDate.getHours()).padStart(2, '0')}:${String(nowDate.getMinutes()).padStart(2, '0')}`;
 
     // Time Slots 08:00 to 20:00 (in 30-min intervals)
     const timeSlots = [];
@@ -328,6 +347,12 @@ export const AgendaRecepcao: React.FC = () => {
             >
               Hoje
             </button>
+            {isToday && (
+              <span className="text-xs font-bold px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20 flex items-center gap-1.5 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Agora: {nowTimeStr}
+              </span>
+            )}
             <span className="text-xs font-semibold px-3 py-1 bg-indigo-500/10 text-indigo-500 rounded-full border border-indigo-500/20">
               {dayAppts.length} Agendamento(s) hoje
             </span>
@@ -337,13 +362,45 @@ export const AgendaRecepcao: React.FC = () => {
         {/* Compact Schedule List (100% Width Responsive Grid per Time Slot) */}
         <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)] p-2">
           {timeSlots.map(slot => {
-            const slotAppts = dayAppts.filter(a => a.hora && a.hora === slot);
+            const slotStartMin = timeToMinutes(slot);
+            const slotEndMin = slotStartMin + 30;
+
+            // Direct starting appointments
+            const directAppts = dayAppts.filter(a => a.hora && a.hora === slot);
+
+            // Ongoing appointments starting earlier but spanning across this slot (e.g. 08:00 - 09:00 during 08:30)
+            const ongoingAppts = dayAppts.filter(a => {
+              if (!a.hora || a.hora === slot) return false;
+              const startM = timeToMinutes(a.hora);
+              const endM = a.horaFim ? timeToMinutes(a.horaFim) : startM + (a.durMin || 30);
+              return startM < slotStartMin && endM > slotStartMin;
+            });
+
+            const isSlotCurrent = isToday && nowMinutes >= slotStartMin && nowMinutes < slotEndMin;
+            const lineTopPercent = isSlotCurrent ? ((nowMinutes - slotStartMin) / 30) * 100 : 0;
 
             return (
               <div
                 key={slot}
-                className="flex flex-col md:flex-row items-start md:items-stretch gap-3 py-2.5 px-3 hover:bg-[var(--bg-raised)]/60 transition-colors rounded-xl group"
+                className="relative flex flex-col md:flex-row items-start md:items-stretch gap-3 py-2.5 px-3 hover:bg-[var(--bg-raised)]/60 transition-colors rounded-xl group"
               >
+                {/* Live Green Time Line Indicator */}
+                {isSlotCurrent && (
+                  <div
+                    className="absolute left-0 right-0 z-30 pointer-events-none flex items-center px-1"
+                    style={{ top: `${lineTopPercent}%` }}
+                  >
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] -ml-1.5 shrink-0 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    </div>
+                    <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 shadow-[0_0_8px_#10b981]" />
+                    <span className="text-[10px] font-mono font-black px-2 py-0.5 bg-emerald-500 text-white rounded-md shadow-md ml-2 flex items-center gap-1 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      {nowTimeStr}
+                    </span>
+                  </div>
+                )}
+
                 {/* Time Label Column */}
                 <div className="w-20 pt-1 text-xs font-black font-mono text-[var(--text-muted)] shrink-0 flex items-center justify-between">
                   <span>{slot}</span>
@@ -358,7 +415,7 @@ export const AgendaRecepcao: React.FC = () => {
 
                 {/* Cards Container (Side-by-side Cards) */}
                 <div className="flex-1 flex flex-wrap gap-2.5 w-full items-stretch min-h-[42px]">
-                  {slotAppts.length === 0 ? (
+                  {directAppts.length === 0 && ongoingAppts.length === 0 ? (
                     <div
                       onClick={() => openNewModal(slot)}
                       className="flex-1 py-2 px-3 border border-dashed border-[var(--border)] rounded-xl text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-mid)] transition-all cursor-pointer flex items-center justify-center gap-1.5"
@@ -366,55 +423,114 @@ export const AgendaRecepcao: React.FC = () => {
                       <Plus size={12} /> Clique para agendar às {slot}
                     </div>
                   ) : (
-                    slotAppts.map(appt => {
-                      const prof = profissionais.find(p => p.id === appt.profId);
-                      const pColor = prof?.cor || '#6366f1';
-                      const stColor = getStatusColorHex(appt.status);
+                    <>
+                      {/* Direct Starting Cards */}
+                      {directAppts.map(appt => {
+                        const prof = profissionais.find(p => p.id === appt.profId);
+                        const pColor = prof?.cor || '#6366f1';
+                        const stColor = getStatusColorHex(appt.status);
+                        const startM = timeToMinutes(appt.hora);
+                        const endM = appt.horaFim ? timeToMinutes(appt.horaFim) : startM + (appt.durMin || 30);
+                        const durTotal = endM > startM ? endM - startM : (appt.durMin || 30);
+                        const isLongerThan30 = durTotal >= 60;
 
-                      return (
-                        <div
-                          key={appt.id}
-                          onClick={() => openEditModal(appt)}
-                          className="flex-1 min-w-[220px] max-w-[340px] p-3 rounded-xl text-xs bg-[var(--bg-surface)] shadow-xs border border-[var(--border)] transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer flex flex-col justify-between"
-                          style={{
-                            borderLeft: `4px solid ${pColor}`,
-                            backgroundColor: isDark ? `${pColor}1a` : '#ffffff'
-                          }}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-1.5 mb-1">
-                              <span className="font-extrabold text-[var(--text-primary)] truncate text-sm">
-                                {appt.paciente}
-                              </span>
-                              <span
-                                className="text-[9px] px-2 py-0.5 rounded-md font-bold text-white shrink-0 shadow-xs"
-                                style={{ backgroundColor: stColor }}
-                              >
-                                {appt.status}
-                              </span>
+                        return (
+                          <div
+                            key={appt.id}
+                            onClick={() => openEditModal(appt)}
+                            className={`flex-1 min-w-[220px] max-w-[340px] p-3 rounded-xl text-xs bg-[var(--bg-surface)] shadow-xs border border-[var(--border)] transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer flex flex-col justify-between ${
+                              isLongerThan30 ? 'min-h-[85px] ring-1 ring-indigo-500/20 shadow-sm' : ''
+                            }`}
+                            style={{
+                              borderLeft: `4px solid ${pColor}`,
+                              backgroundColor: isDark ? `${pColor}1a` : '#ffffff'
+                            }}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-1.5 mb-1">
+                                <span className="font-extrabold text-[var(--text-primary)] truncate text-sm">
+                                  {appt.paciente}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {isLongerThan30 && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-md font-extrabold bg-indigo-500/15 text-indigo-500 border border-indigo-500/30">
+                                      ⏱️ {durTotal} min
+                                    </span>
+                                  )}
+                                  <span
+                                    className="text-[9px] px-2 py-0.5 rounded-md font-bold text-white shadow-xs"
+                                    style={{ backgroundColor: stColor }}
+                                  >
+                                    {appt.status}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between mt-0.5">
+                                <span>{appt.hora} - {appt.horaFim || '09:30'}</span>
+                                <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                                  {appt.plano}
+                                </span>
+                              </div>
                             </div>
-                            <div className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between mt-0.5">
-                              <span>{appt.hora} - {appt.horaFim || '09:30'}</span>
-                              <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                                {appt.plano}
+
+                            <div className="text-[11px] font-bold text-[var(--text-primary)] mt-2.5 pt-1.5 border-t border-[var(--border)] flex items-center justify-between">
+                              <span className="truncate flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
+                                {prof?.nomeAgenda || prof?.nome || 'Profissional'}
+                              </span>
+                              {appt.modalidade === 'online' && (
+                                <span className="flex items-center gap-0.5 text-indigo-500 font-bold shrink-0">
+                                  <Video size={11} /> Online
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Ongoing Continuation Cards */}
+                      {ongoingAppts.map(appt => {
+                        const prof = profissionais.find(p => p.id === appt.profId);
+                        const pColor = prof?.cor || '#6366f1';
+                        const startM = timeToMinutes(appt.hora);
+                        const endM = appt.horaFim ? timeToMinutes(appt.horaFim) : startM + (appt.durMin || 30);
+                        const durTotal = endM > startM ? endM - startM : (appt.durMin || 30);
+
+                        return (
+                          <div
+                            key={`ongoing-${appt.id}-${slot}`}
+                            onClick={() => openEditModal(appt)}
+                            className="flex-1 min-w-[220px] max-w-[340px] p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] border border-dashed border-[var(--border-mid)] transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer flex flex-col justify-between opacity-85 hover:opacity-100"
+                            style={{
+                              borderLeft: `4px solid ${pColor}`,
+                              backgroundColor: isDark ? `${pColor}12` : '#f8fafc'
+                            }}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-1.5 mb-1">
+                                <span className="font-extrabold text-[var(--text-primary)] truncate text-xs flex items-center gap-1">
+                                  <span className="text-[10px] text-indigo-500 font-bold">↳</span> {appt.paciente}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-indigo-500/15 text-indigo-500 shrink-0">
+                                  Em atendimento ({appt.hora} - {appt.horaFim})
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center justify-between mt-0.5">
+                                <span>Ocupado ({durTotal} min)</span>
+                                <span className="font-mono">{appt.plano}</span>
+                              </div>
+                            </div>
+
+                            <div className="text-[10px] font-bold text-[var(--text-secondary)] mt-1.5 pt-1 border-t border-dashed border-[var(--border)] flex items-center justify-between">
+                              <span className="truncate flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
+                                {prof?.nomeAgenda || prof?.nome || 'Profissional'}
                               </span>
                             </div>
                           </div>
-
-                          <div className="text-[11px] font-bold text-[var(--text-primary)] mt-2.5 pt-1.5 border-t border-[var(--border)] flex items-center justify-between">
-                            <span className="truncate flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
-                              {prof?.nomeAgenda || prof?.nome || 'Profissional'}
-                            </span>
-                            {appt.modalidade === 'online' && (
-                              <span className="flex items-center gap-0.5 text-indigo-500 font-bold shrink-0">
-                                <Video size={11} /> Online
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })}
+                    </>
                   )}
                 </div>
               </div>
