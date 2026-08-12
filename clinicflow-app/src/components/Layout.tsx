@@ -268,22 +268,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           {cadastroItems.filter(item => hasPermission(item.id)).length > 0 && (
             <div className="space-y-1">
               <button
-                onClick={() => setCadastrosOpen(!cadastrosOpen)}
-                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+                onClick={() => {
+                  if (sidebarCollapsed) setSidebarCollapsed(false);
+                  setCadastrosOpen(!cadastrosOpen);
+                }}
+                title={sidebarCollapsed ? "Cadastros" : undefined}
+                className={`flex items-center w-full ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-4'
+                } py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200 cursor-pointer`}
               >
                 <div className="flex items-center gap-3.5">
-                  <ClipboardList size={16} />
-                  <span>Cadastros</span>
+                  <ClipboardList size={16} className="shrink-0" />
+                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Cadastros</span>
                 </div>
                 <ChevronDown
                   size={14}
                   className={`transition-transform duration-300 ${
                     cadastrosOpen ? 'rotate-180 text-indigo-400' : ''
-                  }`}
+                  } ${sidebarCollapsed ? 'lg:hidden' : ''}`}
                 />
               </button>
               {cadastrosOpen && (
-                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                <div className={`${sidebarCollapsed ? 'lg:pl-0' : 'pl-6'} space-y-1 relative ${sidebarCollapsed ? '' : 'before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5'}`}>
                   {cadastroItems.filter(item => hasPermission(item.id)).map((item) => {
                     const Icon = item.icon;
                     const active = activePage === item.id;
@@ -291,14 +297,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                        title={sidebarCollapsed ? item.label : undefined}
+                        className={`flex items-center w-full ${
+                          sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'gap-3 px-4'
+                        } py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] cursor-pointer ${
                           active
                             ? 'bg-indigo-500/10 text-indigo-400'
                             : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
                         }`}
                       >
-                        <Icon size={13} />
-                        {item.label}
+                        <Icon size={13} className="shrink-0" />
+                        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
                       </button>
                     );
                   })}
@@ -311,22 +320,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           {fatItems.filter(item => hasPermission(item.id)).length > 0 && (
             <div className="space-y-1">
               <button
-                onClick={() => setFaturamentoOpen(!faturamentoOpen)}
-                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+                onClick={() => {
+                  if (sidebarCollapsed) setSidebarCollapsed(false);
+                  setFaturamentoOpen(!faturamentoOpen);
+                }}
+                title={sidebarCollapsed ? "Faturamento" : undefined}
+                className={`flex items-center w-full ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-4'
+                } py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200 cursor-pointer`}
               >
                 <div className="flex items-center gap-3.5">
-                  <FileText size={16} />
-                  <span>Faturamento</span>
+                  <FileText size={16} className="shrink-0" />
+                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Faturamento</span>
                 </div>
                 <ChevronDown
                   size={14}
                   className={`transition-transform duration-300 ${
                     faturamentoOpen ? 'rotate-180 text-indigo-400' : ''
-                  }`}
+                  } ${sidebarCollapsed ? 'lg:hidden' : ''}`}
                 />
               </button>
               {faturamentoOpen && (
-                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                <div className={`${sidebarCollapsed ? 'lg:pl-0' : 'pl-6'} space-y-1 relative ${sidebarCollapsed ? '' : 'before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5'}`}>
                   {fatItems.filter(item => hasPermission(item.id)).map((item) => {
                     const Icon = item.icon;
                     const active = activePage === item.id;
@@ -334,14 +349,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                        title={sidebarCollapsed ? item.label : undefined}
+                        className={`flex items-center w-full ${
+                          sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'gap-3 px-4'
+                        } py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] cursor-pointer ${
                           active
                             ? 'bg-indigo-500/10 text-indigo-400'
                             : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
                         }`}
                       >
-                        <Icon size={13} />
-                        {item.label}
+                        <Icon size={13} className="shrink-0" />
+                        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
                       </button>
                     );
                   })}
@@ -354,22 +372,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           {fechamentoItems.filter(item => hasPermission(item.id)).length > 0 && (
             <div className="space-y-1">
               <button
-                onClick={() => setFechamentoOpen(!fechamentoOpen)}
-                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+                onClick={() => {
+                  if (sidebarCollapsed) setSidebarCollapsed(false);
+                  setFechamentoOpen(!fechamentoOpen);
+                }}
+                title={sidebarCollapsed ? "Fechamento Mensal" : undefined}
+                className={`flex items-center w-full ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-4'
+                } py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200 cursor-pointer`}
               >
                 <div className="flex items-center gap-3.5">
-                  <Calculator size={16} />
-                  <span>Fechamento Mensal</span>
+                  <Calculator size={16} className="shrink-0" />
+                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Fechamento Mensal</span>
                 </div>
                 <ChevronDown
                   size={14}
                   className={`transition-transform duration-300 ${
                     fechamentoOpen ? 'rotate-180 text-indigo-400' : ''
-                  }`}
+                  } ${sidebarCollapsed ? 'lg:hidden' : ''}`}
                 />
               </button>
               {fechamentoOpen && (
-                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                <div className={`${sidebarCollapsed ? 'lg:pl-0' : 'pl-6'} space-y-1 relative ${sidebarCollapsed ? '' : 'before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5'}`}>
                   {fechamentoItems.filter(item => hasPermission(item.id)).map((item) => {
                     const Icon = item.icon;
                     const active = activePage === item.id;
@@ -377,14 +401,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                        title={sidebarCollapsed ? item.label : undefined}
+                        className={`flex items-center w-full ${
+                          sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'gap-3 px-4'
+                        } py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] cursor-pointer ${
                           active
                             ? 'bg-indigo-500/10 text-indigo-400'
                             : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
                         }`}
                       >
-                        <Icon size={13} />
-                        {item.label}
+                        <Icon size={13} className="shrink-0" />
+                        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
                       </button>
                     );
                   })}
@@ -397,22 +424,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           {conectaItems.filter(item => hasPermission(item.id)).length > 0 && (
             <div className="space-y-1">
               <button
-                onClick={() => setConectaOpen(!conectaOpen)}
-                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+                onClick={() => {
+                  if (sidebarCollapsed) setSidebarCollapsed(false);
+                  setConectaOpen(!conectaOpen);
+                }}
+                title={sidebarCollapsed ? "Espaço Conecta" : undefined}
+                className={`flex items-center w-full ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-4'
+                } py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200 cursor-pointer`}
               >
                 <div className="flex items-center gap-3.5">
-                  <Building2 size={16} />
-                  <span>Espaço Conecta</span>
+                  <Building2 size={16} className="shrink-0" />
+                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Espaço Conecta</span>
                 </div>
                 <ChevronDown
                   size={14}
                   className={`transition-transform duration-300 ${
                     conectaOpen ? 'rotate-180 text-indigo-400' : ''
-                  }`}
+                  } ${sidebarCollapsed ? 'lg:hidden' : ''}`}
                 />
               </button>
               {conectaOpen && (
-                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                <div className={`${sidebarCollapsed ? 'lg:pl-0' : 'pl-6'} space-y-1 relative ${sidebarCollapsed ? '' : 'before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5'}`}>
                   {conectaItems.filter(item => hasPermission(item.id)).map((item) => {
                     const Icon = item.icon;
                     const active = activePage === item.id;
@@ -420,14 +453,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                        title={sidebarCollapsed ? item.label : undefined}
+                        className={`flex items-center w-full ${
+                          sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'gap-3 px-4'
+                        } py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] cursor-pointer ${
                           active
                             ? 'bg-indigo-500/10 text-indigo-400'
                             : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
                         }`}
                       >
-                        <Icon size={13} />
-                        {item.label}
+                        <Icon size={13} className="shrink-0" />
+                        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
                       </button>
                     );
                   })}
@@ -440,22 +476,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           {ferramentasItems.filter(item => hasPermission(item.id)).length > 0 && (
             <div className="space-y-1">
               <button
-                onClick={() => setFerramentasOpen(!ferramentasOpen)}
-                className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200"
+                onClick={() => {
+                  if (sidebarCollapsed) setSidebarCollapsed(false);
+                  setFerramentasOpen(!ferramentasOpen);
+                }}
+                title={sidebarCollapsed ? "Ferramentas" : undefined}
+                className={`flex items-center w-full ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-4'
+                } py-3 rounded-xl text-xs font-semibold tracking-wide text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] transition-all duration-200 cursor-pointer`}
               >
                 <div className="flex items-center gap-3.5">
-                  <Upload size={16} />
-                  <span>Ferramentas</span>
+                  <Upload size={16} className="shrink-0" />
+                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Ferramentas</span>
                 </div>
                 <ChevronDown
                   size={14}
                   className={`transition-transform duration-300 ${
                     ferramentasOpen ? 'rotate-180 text-indigo-400' : ''
-                  }`}
+                  } ${sidebarCollapsed ? 'lg:hidden' : ''}`}
                 />
               </button>
               {ferramentasOpen && (
-                <div className="pl-6 space-y-1 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+                <div className={`${sidebarCollapsed ? 'lg:pl-0' : 'pl-6'} space-y-1 relative ${sidebarCollapsed ? '' : 'before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5'}`}>
                   {ferramentasItems.filter(item => hasPermission(item.id)).map((item) => {
                     const Icon = item.icon;
                     const active = activePage === item.id;
@@ -463,14 +505,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`flex items-center w-full gap-3 px-4 py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] ${
+                        title={sidebarCollapsed ? item.label : undefined}
+                        className={`flex items-center w-full ${
+                          sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'gap-3 px-4'
+                        } py-2.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 hover:scale-[1.01] cursor-pointer ${
                           active
                             ? 'bg-indigo-500/10 text-indigo-400'
                             : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.01]'
                         }`}
                       >
-                        <Icon size={13} />
-                        {item.label}
+                        <Icon size={13} className="shrink-0" />
+                        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
                       </button>
                     );
                   })}
@@ -486,26 +531,32 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`flex items-center w-full gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                title={sidebarCollapsed ? item.label : undefined}
+                className={`flex items-center w-full ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'gap-3.5 px-4'
+                } py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                   active
                     ? 'bg-gradient-to-r from-indigo-500/15 to-violet-500/5 text-indigo-400 border border-indigo-500/10 shadow-[0_4px_16px_rgba(99,102,241,0.06)]'
                     : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
-                <Icon size={16} className={active ? 'text-indigo-400' : 'text-slate-400'} />
-                {item.label}
+                <Icon size={16} className={`shrink-0 ${active ? 'text-indigo-400' : 'text-slate-400'}`} />
+                <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
               </button>
             );
           })}
         </nav>
 
         {/* User profile & Info card */}
-        <div className="p-4 border-t border-white/[0.04] bg-[#0c0e16]/40 flex flex-col gap-2">
-          <div className="flex items-center gap-3 p-2 rounded-xl bg-white/[0.01] border border-white/[0.02] shadow-inner">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-violet-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 border border-indigo-500/20 shadow-lg uppercase">
+        <div className={`p-4 border-t border-white/[0.04] bg-[#0c0e16]/40 flex flex-col gap-2 ${sidebarCollapsed ? 'lg:p-2' : ''}`}>
+          <div
+            title={sidebarCollapsed ? (user?.nome || 'Clínica Admin') : undefined}
+            className={`flex items-center ${sidebarCollapsed ? 'lg:justify-center lg:p-1.5' : 'gap-3 p-2'} rounded-xl bg-white/[0.01] border border-white/[0.02] shadow-inner`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-violet-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 border border-indigo-500/20 shadow-lg uppercase shrink-0">
               {user?.nome ? user.nome.slice(0, 3) : 'ADM'}
             </div>
-            <div className="overflow-hidden">
+            <div className={`overflow-hidden ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
               <p className="text-[11px] font-bold text-slate-200 truncate">{user?.nome || 'Clínica Admin'}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <Sparkles size={8} className="text-yellow-400 animate-pulse" />
@@ -515,10 +566,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
           </div>
           <button
             onClick={logout}
-            className="flex items-center justify-center gap-2 w-full py-3 mt-1 rounded-xl text-xs font-bold text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 hover:text-rose-300 border border-rose-500/10 hover:border-rose-500/20 transition-all duration-200 cursor-pointer"
+            title={sidebarCollapsed ? "Efetuar Logout" : undefined}
+            className={`flex items-center justify-center gap-2 w-full ${
+              sidebarCollapsed ? 'lg:px-2 lg:py-2.5' : 'py-3'
+            } mt-1 rounded-xl text-xs font-bold text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 hover:text-rose-300 border border-rose-500/10 hover:border-rose-500/20 transition-all duration-200 cursor-pointer`}
           >
-            <LogOut size={14} />
-            Efetuar Logout
+            <LogOut size={14} className="shrink-0" />
+            <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Efetuar Logout</span>
           </button>
         </div>
       </aside>
