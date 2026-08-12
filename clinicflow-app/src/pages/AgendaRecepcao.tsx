@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Clock, Plus, ChevronLeft, ChevronRight, Calendar, FileText, Trash2, Video, Sparkles, Loader,
-  CalendarDays, Lock, Unlock, HelpCircle, Key, Check, Search, Bell, Filter, UserCheck, Shield, Users
+  CalendarDays, Lock, Unlock, HelpCircle, Key, Check, Search, Bell, Filter, UserCheck, Shield, Users,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -23,6 +24,9 @@ export const AgendaRecepcao: React.FC = () => {
   const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // "YYYY-MM"
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Density View Mode Toggle: Compact (High Density) vs Confortavel
+  const [compactView, setCompactView] = useState<boolean>(true);
 
   // Global Patient Search & Therapist Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -369,8 +373,9 @@ export const AgendaRecepcao: React.FC = () => {
     // Grid row/col positioning calculations
     const slotStartBaseMin = 8 * 60;  // 08:00 is 480 mins
     const slotEndBaseMin = 20 * 60;   // 20:00 is 1200 mins
-    const rowHeightPx = 115;          // height of each 30-min slot row (comfortable space)
-    const rowGapPx = 4;               // vertical gap
+    const rowHeightPx = compactView ? 54 : 95;   // 54px in compact mode, 95px in comfortable mode
+    const rowGapPx = compactView ? 3 : 4;        // vertical gap
+    const trackMinWidth = compactView ? 180 : 260; // column min width
 
     // Position of current time green line
     const isLiveLineVisible = isToday && nowMinutes >= slotStartBaseMin && nowMinutes <= slotEndBaseMin;
@@ -406,12 +411,27 @@ export const AgendaRecepcao: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Toggle Visão Compacta vs Confortável */}
+            <button
+              onClick={() => setCompactView(!compactView)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                compactView
+                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20'
+                  : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--bg-raised)]'
+              }`}
+              title={compactView ? "Mudar para Modo Confortável" : "Mudar para Modo Compacto de Alta Densidade"}
+            >
+              <SlidersHorizontal size={14} />
+              <span>{compactView ? 'Modo Compacto' : 'Modo Confortável'}</span>
+            </button>
+
             <button
               onClick={() => navigateDate('today')}
-              className="px-3.5 py-1.5 bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold hover:bg-[var(--bg-raised)] transition-all shadow-xs"
+              className="px-3.5 py-1.5 bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold hover:bg-[var(--bg-raised)] transition-all shadow-xs cursor-pointer"
             >
               Hoje
             </button>
+
             {isToday && (
               <span className="text-xs font-bold px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20 flex items-center gap-1.5 shadow-xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -424,13 +444,13 @@ export const AgendaRecepcao: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Track Allocation Matrix Container - High Density 115px Rows with Internal Scroll */}
+        {/* Dynamic Track Allocation Matrix Container - High Density Rows with Internal Scroll */}
         <div className="flex-1 h-full min-h-0 overflow-auto p-3 relative flex flex-col scrollbar-thin">
           <div
             className="grid relative w-full min-h-0"
             style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${totalTracks}, minmax(260px, 1fr))`,
+              gridTemplateColumns: `65px repeat(${totalTracks}, minmax(${trackMinWidth}px, 1fr))`,
               gridTemplateRows: `repeat(${timeSlots.length}, ${rowHeightPx}px)`,
               gap: `${rowGapPx}px`
             }}
@@ -498,13 +518,13 @@ export const AgendaRecepcao: React.FC = () => {
                 <div
                   key={appt.id}
                   onClick={() => openEditModal(appt)}
-                  className={`group/card p-2.5 rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-visible relative ${
-                    isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'
-                  }`}
+                  className={`group/card rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-visible relative ${
+                    compactView ? 'p-1.5 sm:p-2' : 'p-3'
+                  } ${isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'}`}
                   style={{
                     gridColumn: track + 2,
                     gridRow: `${startSlot + 1} / span ${spanRows}`,
-                    borderLeft: `6px solid ${stColor}`,
+                    borderLeft: `${compactView ? '5px' : '6px'} solid ${stColor}`,
                     backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
@@ -526,24 +546,28 @@ export const AgendaRecepcao: React.FC = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5 mb-1">
-                      <span className="font-extrabold text-[var(--text-primary)] truncate text-xs sm:text-sm block w-full">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`font-extrabold text-[var(--text-primary)] truncate block w-full leading-tight ${
+                        compactView ? 'text-[11px] sm:text-xs' : 'text-xs sm:text-sm'
+                      }`}>
                         {appt.paciente}
                       </span>
                     </div>
                   </div>
 
-                  <div className="text-[10px] font-bold text-[var(--text-primary)] mt-1.5 pt-1 border-t border-[var(--border)] flex items-center justify-between gap-1">
-                    <span className="truncate flex items-center gap-1.5 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: pColor }} />
+                  <div className={`font-bold text-[var(--text-primary)] flex items-center justify-between gap-1 min-w-0 ${
+                    compactView ? 'text-[9.5px] mt-0.5 pt-0.5 border-t border-[var(--border)]/50' : 'text-[10px] mt-1.5 pt-1 border-t border-[var(--border)]'
+                  }`}>
+                    <span className="truncate flex items-center gap-1 min-w-0">
+                      <span className="w-2 h-2 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: pColor }} />
                       <span className="truncate">
-                        {prof?.nomeAgenda || prof?.nome || 'Profissional'} <span className="text-[var(--text-muted)] font-mono font-medium text-[9px]">({appt.plano})</span>
+                        {prof?.nomeAgenda || prof?.nome || 'Profissional'} <span className="text-[var(--text-muted)] font-mono font-normal">({appt.plano})</span>
                       </span>
                     </span>
                     {appt.modalidade === 'online' && (
                       <span title="Atendimento Online" className="text-indigo-400 shrink-0">
-                        <Video size={12} />
+                        <Video size={compactView ? 10 : 12} />
                       </span>
                     )}
                   </div>
