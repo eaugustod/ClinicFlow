@@ -298,19 +298,12 @@ export const AgendaRecepcao: React.FC = () => {
     return prof?.cor || '#6366f1';
   };
 
-  // Render Day View (2D CSS Grid Schedule Matrix - Figure 2 Style)
+  // Render Day View (Dynamic Track Allocation Matrix - No Therapist Column Headers)
   const renderDayView = () => {
     const dayAppts = filteredAgendamentos.filter(a => a.dataISO === currentDate);
     const isToday = currentDate === new Date().toISOString().split('T')[0];
     const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes();
     const nowTimeStr = `${String(nowDate.getHours()).padStart(2, '0')}:${String(nowDate.getMinutes()).padStart(2, '0')}`;
-
-    // Determine active therapists/columns to show
-    const activeProfs = selectedProfFilter === 'all'
-      ? (profissionais.filter(p => dayAppts.some(a => a.profId === p.id)).length > 0
-          ? profissionais.filter(p => dayAppts.some(a => a.profId === p.id))
-          : profissionais)
-      : profissionais.filter(p => p.id === selectedProfFilter);
 
     // Time Slots 07:00 to 20:30 (in 30-min intervals)
     const timeSlots: string[] = [];
@@ -320,16 +313,68 @@ export const AgendaRecepcao: React.FC = () => {
       timeSlots.push(`${hStr}:30`);
     }
 
+    // Sort appointments: 1) Start time ASC, 2) Duration DESC (60+ min BEFORE 30 min)
+    const sortedAppts = [...dayAppts].sort((a, b) => {
+      const startA = timeToMinutes(a.hora || '');
+      const startB = timeToMinutes(b.hora || '');
+      if (startA !== startB) return startA - startB;
+
+      const endA = a.horaFim ? timeToMinutes(a.horaFim) : startA + (a.durMin || 30);
+      const endB = b.horaFim ? timeToMinutes(b.horaFim) : startB + (b.durMin || 30);
+      const durA = endA - startA;
+      const durB = endB - startB;
+
+      return durB - durA; // 60 min appts first, then 30 min appts!
+    });
+
+    // Track Occupancy Allocation Matrix
+    const occupiedTracks: boolean[][] = timeSlots.map(() => []);
+    const apptPlacements: { appt: typeof dayAppts[0]; track: number; startSlot: number; spanRows: number }[] = [];
+
+    sortedAppts.forEach(appt => {
+      const startSlot = timeSlots.indexOf(appt.hora || '');
+      if (startSlot === -1) return;
+
+      const startM = timeToMinutes(appt.hora || '');
+      const endM = appt.horaFim ? timeToMinutes(appt.horaFim) : startM + (appt.durMin || 30);
+      const durTotal = endM > startM ? endM - startM : (appt.durMin || 30);
+      const spanRows = Math.max(1, Math.round(durTotal / 30));
+
+      // Find first track 't' where all slots from startSlot to startSlot + spanRows - 1 are free
+      let t = 0;
+      while (true) {
+        let isFree = true;
+        for (let s = startSlot; s < startSlot + spanRows; s++) {
+          if (occupiedTracks[s] && occupiedTracks[s][t]) {
+            isFree = false;
+            break;
+          }
+        }
+        if (isFree) break;
+        t++;
+      }
+
+      // Reserve slots in occupiedTracks
+      for (let s = startSlot; s < startSlot + spanRows; s++) {
+        if (!occupiedTracks[s]) occupiedTracks[s] = [];
+        occupiedTracks[s][t] = true;
+      }
+
+      apptPlacements.push({ appt, track: t, startSlot, spanRows });
+    });
+
+    // Determine total sub-column tracks needed
+    const totalTracks = Math.max(3, ...apptPlacements.map(p => p.track + 1));
+
     // Grid row/col positioning calculations
     const slotStartBaseMin = 7 * 60; // 07:00 is 420 mins
     const rowHeightPx = 70; // height of each 30-min slot row
     const rowGapPx = 6;     // vertical gap
-    const headerHeightPx = 40; // column header height
 
     // Position of current time green line
     const isLiveLineVisible = isToday && nowMinutes >= slotStartBaseMin && nowMinutes <= (21 * 60);
     const liveLineTopPx = isLiveLineVisible
-      ? headerHeightPx + ((nowMinutes - slotStartBaseMin) / 30) * (rowHeightPx + rowGapPx)
+      ? ((nowMinutes - slotStartBaseMin) / 30) * (rowHeightPx + rowGapPx)
       : 0;
 
     return (
@@ -373,19 +418,19 @@ export const AgendaRecepcao: React.FC = () => {
               </span>
             )}
             <span className="text-xs font-semibold px-3 py-1 bg-indigo-500/10 text-indigo-500 rounded-full border border-indigo-500/20">
-              {dayAppts.length} Agendamento(s) hoje ({activeProfs.length} Terapeutas)
+              {dayAppts.length} Agendamento(s) hoje
             </span>
           </div>
         </div>
 
-        {/* 2D CSS Grid Matrix Container (Figure 2 Layout) */}
+        {/* Dynamic Track Allocation Matrix Container (No Fixed Therapist Column Headers) */}
         <div className="flex-1 overflow-auto p-4 relative">
           <div
             className="grid relative"
             style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${activeProfs.length}, minmax(220px, 1fr))`,
-              gridTemplateRows: `${headerHeightPx}px repeat(${timeSlots.length}, ${rowHeightPx}px)`,
+              gridTemplateColumns: `70px repeat(${totalTracks}, minmax(220px, 1fr))`,
+              gridTemplateRows: `repeat(${timeSlots.length}, ${rowHeightPx}px)`,
               gap: `${rowGapPx}px`
             }}
           >
@@ -406,34 +451,12 @@ export const AgendaRecepcao: React.FC = () => {
               </div>
             )}
 
-            {/* Header Row: Column 1 = Horário Label */}
-            <div
-              className="font-bold text-xs text-[var(--text-muted)] flex items-center justify-center border-b border-[var(--border)] bg-[var(--bg-raised)] rounded-t-xl"
-              style={{ gridColumn: 1, gridRow: 1 }}
-            >
-              Horário
-            </div>
-
-            {/* Header Row: Therapist Names */}
-            {activeProfs.map((prof, pIdx) => (
-              <div
-                key={prof.id}
-                className="px-3 py-1.5 font-bold text-xs text-[var(--text-primary)] flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-raised)] rounded-t-xl truncate"
-                style={{ gridColumn: pIdx + 2, gridRow: 1 }}
-              >
-                <span className="truncate flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: prof.cor || '#6366f1' }} />
-                  {prof.nomeAgenda || prof.nome}
-                </span>
-              </div>
-            ))}
-
             {/* Time Slots Labels Column (Column 1) */}
             {timeSlots.map((slot, sIdx) => (
               <div
                 key={`label-${slot}`}
                 className="font-mono text-xs font-black text-[var(--text-muted)] flex items-center justify-center border-r border-[var(--border)] bg-[var(--bg-raised)]/30 rounded-l-xl"
-                style={{ gridColumn: 1, gridRow: sIdx + 2 }}
+                style={{ gridColumn: 1, gridRow: sIdx + 1 }}
               >
                 {slot}
               </div>
@@ -441,36 +464,33 @@ export const AgendaRecepcao: React.FC = () => {
 
             {/* Background Grid Cells for Empty Slot Clicks */}
             {timeSlots.map((slot, sIdx) =>
-              activeProfs.map((prof, pIdx) => (
-                <div
-                  key={`cell-${slot}-${prof.id}`}
-                  onClick={() => openNewModal(slot, prof.id)}
-                  title={`Agendar às ${slot} com ${prof.nomeAgenda || prof.nome}`}
-                  className="border border-dashed border-[var(--border)]/30 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all cursor-pointer group flex items-center justify-center"
-                  style={{ gridColumn: pIdx + 2, gridRow: sIdx + 2 }}
-                >
-                  <Plus size={14} className="opacity-0 group-hover:opacity-100 text-indigo-500 transition-opacity" />
-                </div>
-              ))
+              Array.from({ length: totalTracks }).map((_, tIdx) => {
+                const isOccupied = occupiedTracks[sIdx]?.[tIdx];
+                if (isOccupied) return null;
+
+                return (
+                  <div
+                    key={`cell-${slot}-${tIdx}`}
+                    onClick={() => openNewModal(slot)}
+                    title={`Clique para agendar às ${slot}`}
+                    className="border border-dashed border-[var(--border)]/30 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all cursor-pointer group flex items-center justify-center"
+                    style={{ gridColumn: tIdx + 2, gridRow: sIdx + 1 }}
+                  >
+                    <Plus size={14} className="opacity-0 group-hover:opacity-100 text-indigo-500 transition-opacity" />
+                  </div>
+                );
+              })
             )}
 
             {/* Real Appointment Cards Placed Natively in CSS Grid (spanning 1, 2, 3+ rows) */}
-            {dayAppts.map(appt => {
-              const colIdx = activeProfs.findIndex(p => p.id === appt.profId);
-              if (colIdx === -1) return null;
-
-              const slotIdx = timeSlots.indexOf(appt.hora || '');
-              if (slotIdx === -1) return null;
-
-              const startRow = slotIdx + 2; // +2 because row 1 is header
+            {apptPlacements.map(({ appt, track, startSlot, spanRows }) => {
               const prof = profissionais.find(p => p.id === appt.profId);
               const pColor = prof?.cor || '#6366f1';
               const stColor = getStatusColorHex(appt.status);
 
-              const startM = timeToMinutes(appt.hora);
+              const startM = timeToMinutes(appt.hora || '');
               const endM = appt.horaFim ? timeToMinutes(appt.horaFim) : startM + (appt.durMin || 30);
               const durTotal = endM > startM ? endM - startM : (appt.durMin || 30);
-              const spanRows = Math.max(1, Math.round(durTotal / 30));
               const isMultiBlock = spanRows > 1;
 
               return (
@@ -481,8 +501,8 @@ export const AgendaRecepcao: React.FC = () => {
                     isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'
                   }`}
                   style={{
-                    gridColumn: colIdx + 2,
-                    gridRow: `${startRow} / span ${spanRows}`,
+                    gridColumn: track + 2,
+                    gridRow: `${startSlot + 1} / span ${spanRows}`,
                     borderLeft: `4px solid ${pColor}`,
                     backgroundColor: isDark ? `${pColor}25` : '#ffffff'
                   }}
@@ -492,12 +512,19 @@ export const AgendaRecepcao: React.FC = () => {
                       <span className="font-extrabold text-[var(--text-primary)] truncate text-xs sm:text-sm">
                         {appt.paciente}
                       </span>
-                      <span
-                        className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white shrink-0 shadow-xs"
-                        style={{ backgroundColor: stColor }}
-                      >
-                        {appt.status}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isMultiBlock && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-md font-extrabold bg-indigo-500/15 text-indigo-500 border border-indigo-500/30 shadow-xs">
+                            ⏱️ {durTotal} min
+                          </span>
+                        )}
+                        <span
+                          className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white shadow-xs"
+                          style={{ backgroundColor: stColor }}
+                        >
+                          {appt.status}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between mt-0.5">
@@ -509,13 +536,13 @@ export const AgendaRecepcao: React.FC = () => {
                   </div>
 
                   <div className="text-[10px] font-bold text-[var(--text-primary)] mt-2 pt-1 border-t border-[var(--border)] flex items-center justify-between">
-                    <span className="truncate flex items-center gap-1">
+                    <span className="truncate flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
                       {prof?.nomeAgenda || prof?.nome || 'Profissional'}
                     </span>
-                    {isMultiBlock && (
-                      <span className="text-[9px] font-mono text-indigo-500 font-extrabold shrink-0">
-                        {durTotal} min
+                    {appt.modalidade === 'online' && (
+                      <span className="flex items-center gap-0.5 text-indigo-500 font-bold shrink-0">
+                        <Video size={10} /> Online
                       </span>
                     )}
                   </div>
