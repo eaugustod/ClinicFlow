@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Clock, Plus, ChevronLeft, ChevronRight, Calendar, FileText, Trash2, Video, Sparkles, Loader,
-  CalendarDays, Lock, Unlock, HelpCircle, Key, Check, Search, Bell, Filter, UserCheck, Shield
+  CalendarDays, Lock, Unlock, HelpCircle, Key, Check, Search, Bell, Filter, UserCheck, Shield, Users
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Agendamento, GuiaSadt, ProcedimentoGuia } from '../types';
@@ -21,39 +21,14 @@ export const AgendaRecepcao: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // "YYYY-MM"
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  // Global Patient Search
+  // Global Patient Search & Therapist Filter
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Professional Checkbox Filters (Default: all selected)
-  const [selectedProfIds, setSelectedProfIds] = useState<number[]>([]);
-
-  useEffect(() => {
-    if (profissionais.length > 0 && selectedProfIds.length === 0) {
-      setSelectedProfIds(profissionais.map(p => p.id));
-    }
-  }, [profissionais]);
-
-  const toggleProfFilter = (id: number) => {
-    if (selectedProfIds.includes(id)) {
-      setSelectedProfIds(selectedProfIds.filter(pId => pId !== id));
-    } else {
-      setSelectedProfIds([...selectedProfIds, id]);
-    }
-  };
-
-  const toggleAllProfs = () => {
-    if (selectedProfIds.length === profissionais.length) {
-      setSelectedProfIds([]);
-    } else {
-      setSelectedProfIds(profissionais.map(p => p.id));
-    }
-  };
+  const [selectedProfFilter, setSelectedProfFilter] = useState<number | 'all'>('all');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [modalTab, setModalTab] = useState<'dados' | 'sadt'>('dados');
 
   // Form State - Tab 1 (Dados)
   const [profIdForm, setProfIdForm] = useState<number>(profissionais[0]?.id || 0);
@@ -130,13 +105,13 @@ export const AgendaRecepcao: React.FC = () => {
     }
   };
 
-  // Filter agendamentos by professional checkboxes, query and active view date
+  // Filter agendamentos by therapist dropdown, search query and active date
   const filteredAgendamentos = agendamentos.filter(a => {
-    // Professional filter
-    if (selectedProfIds.length > 0 && !selectedProfIds.includes(a.profId)) {
+    // Therapist filter
+    if (selectedProfFilter !== 'all' && a.profId !== selectedProfFilter) {
       return false;
     }
-    // Search query filter
+    // Patient Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchPac = a.paciente.toLowerCase().includes(q);
@@ -149,8 +124,7 @@ export const AgendaRecepcao: React.FC = () => {
   // Modal Reset and Open
   const openNewModal = (initialTime?: string, initialProfId?: number) => {
     setEditId(null);
-    setModalTab('dados');
-    setProfIdForm(initialProfId || selectedProfIds[0] || profissionais[0]?.id || 0);
+    setProfIdForm(initialProfId || (typeof selectedProfFilter === 'number' ? selectedProfFilter : profissionais[0]?.id || 0));
     setDataAg(currentDate);
     setHoraIni(initialTime || '09:00');
     setDuracao(30);
@@ -169,7 +143,6 @@ export const AgendaRecepcao: React.FC = () => {
 
   const openEditModal = (a: Agendamento) => {
     setEditId(a.id);
-    setModalTab('dados');
     setProfIdForm(a.profId);
     setDataAg(a.dataISO || currentDate);
     setHoraIni(a.hora || '09:00');
@@ -263,120 +236,144 @@ export const AgendaRecepcao: React.FC = () => {
     return prof?.cor || '#6366f1';
   };
 
-  // Render Day View (High Density Unified Schedule)
+  // Render Day View (Compact Dynamic Schedule Grid)
   const renderDayView = () => {
     const dayAppts = filteredAgendamentos.filter(a => a.dataISO === currentDate);
-    const activeProfs = profissionais.filter(p => selectedProfIds.includes(p.id));
 
-    // Time Slots 08:00 to 20:00
+    // Time Slots 08:00 to 20:00 (in 30-min intervals)
     const timeSlots = [];
     for (let h = 8; h <= 20; h++) {
-      timeSlots.push(`${String(h).padStart(2, '0')}:00`);
+      const hStr = String(h).padStart(2, '0');
+      timeSlots.push(`${hStr}:00`);
+      if (h < 20) timeSlots.push(`${hStr}:30`);
     }
 
     return (
-      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden text-slate-800 font-sans">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
         {/* Sub Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div>
-            <h3 className="text-base font-bold text-slate-800 tracking-tight">Unified Schedule (High Density)</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Data: {new Date(currentDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-            </p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/[0.04] bg-slate-50/60 dark:bg-[#131726] gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
-              {activeProfs.length} Profissionais visíveis
-            </span>
-            <span className="text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 rounded-full">
-              {dayAppts.length} Agendamentos hoje
+            <button
+              onClick={() => navigateDate('prev')}
+              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-xl transition-all active:scale-95 text-slate-600 dark:text-slate-300"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Agenda do Dia
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5">
+                {new Date(currentDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            <button
+              onClick={() => navigateDate('next')}
+              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-xl transition-all active:scale-95 text-slate-600 dark:text-slate-300"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigateDate('today')}
+              className="px-3.5 py-1.5 bg-white dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all shadow-xs"
+            >
+              Hoje
+            </button>
+            <span className="text-xs font-semibold px-3 py-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 rounded-full border border-indigo-100 dark:border-indigo-800/40">
+              {dayAppts.length} Agendamento(s) hoje
             </span>
           </div>
         </div>
 
-        {/* High Density Grid */}
-        <div className="flex-1 overflow-auto">
-          <div className="min-w-[800px] flex border-b border-slate-100 bg-slate-50/80 text-xs font-bold text-slate-600 sticky top-0 z-10 backdrop-blur-md">
-            <div className="w-20 px-3 py-3 text-center border-r border-slate-200/60 font-mono">Horário</div>
-            <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-slate-200/60">
-              {activeProfs.map(prof => (
-                <div key={prof.id} className="px-3 py-3 flex items-center gap-2 truncate">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: prof.cor || '#6366f1' }} />
-                  <span className="truncate">{prof.nomeAgenda || prof.nome}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Compact Schedule List (100% Width Responsive Grid per Time Slot) */}
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.03] p-2">
+          {timeSlots.map(slot => {
+            const slotAppts = dayAppts.filter(a => a.hora && a.hora === slot);
 
-          <div className="divide-y divide-slate-100 min-w-[800px]">
-            {timeSlots.map(slot => {
-              return (
-                <div key={slot} className="flex min-h-[64px]">
-                  <div className="w-20 px-3 py-3 text-xs font-bold text-slate-400 font-mono text-center border-r border-slate-200/60 shrink-0 bg-slate-50/30">
-                    {slot}
-                  </div>
-                  <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-slate-200/60">
-                    {activeProfs.map(prof => {
-                      const profSlotAppts = dayAppts.filter(a => a.profId === prof.id && a.hora && a.hora.startsWith(slot.slice(0, 2)));
+            return (
+              <div
+                key={slot}
+                className="flex flex-col md:flex-row items-start md:items-stretch gap-3 py-2.5 px-3 hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors rounded-xl group"
+              >
+                {/* Time Label Column */}
+                <div className="w-20 pt-1 text-xs font-black font-mono text-slate-400 dark:text-slate-500 shrink-0 flex items-center justify-between">
+                  <span>{slot}</span>
+                  <button
+                    onClick={() => openNewModal(slot)}
+                    title="Adicionar agendamento neste horário"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-all"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+
+                {/* Cards Container (Side-by-side Cards) */}
+                <div className="flex-1 flex flex-wrap gap-2.5 w-full items-stretch min-h-[42px]">
+                  {slotAppts.length === 0 ? (
+                    <div
+                      onClick={() => openNewModal(slot)}
+                      className="flex-1 py-2 px-3 border border-dashed border-slate-200 dark:border-white/[0.04] rounded-xl text-[11px] font-medium text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 hover:border-slate-300 dark:hover:border-white/[0.1] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Plus size={12} /> Clique para agendar às {slot}
+                    </div>
+                  ) : (
+                    slotAppts.map(appt => {
+                      const prof = profissionais.find(p => p.id === appt.profId);
+                      const pColor = prof?.cor || '#6366f1';
+                      const stColor = getStatusColorHex(appt.status);
 
                       return (
                         <div
-                          key={prof.id}
-                          onClick={() => openNewModal(slot, prof.id)}
-                          className="p-1.5 hover:bg-indigo-50/20 transition-colors cursor-pointer relative group flex flex-col gap-1.5"
+                          key={appt.id}
+                          onClick={() => openEditModal(appt)}
+                          className="flex-1 min-w-[220px] max-w-[340px] p-3 rounded-xl text-xs bg-white dark:bg-[#161a28] shadow-sm border border-slate-200/80 dark:border-white/[0.06] transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer flex flex-col justify-between"
+                          style={{
+                            borderLeft: `4px solid ${pColor}`,
+                            backgroundColor: `${pColor}0d`
+                          }}
                         >
-                          {profSlotAppts.map(appt => {
-                            const pColor = prof.cor || '#6366f1';
-                            const stColor = getStatusColorHex(appt.status);
-
-                            return (
-                              <div
-                                key={appt.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditModal(appt);
-                                }}
-                                className="p-2.5 rounded-xl text-xs shadow-sm border border-slate-200/80 transition-all hover:shadow-md hover:scale-[1.01] flex flex-col justify-between"
-                                style={{
-                                  backgroundColor: `${pColor}0d`,
-                                  borderLeft: `4px solid ${pColor}`
-                                }}
+                          <div>
+                            <div className="flex items-center justify-between gap-1.5 mb-1">
+                              <span className="font-extrabold text-slate-900 dark:text-white truncate text-sm">
+                                {appt.paciente}
+                              </span>
+                              <span
+                                className="text-[9px] px-2 py-0.5 rounded-md font-bold text-white shrink-0 shadow-xs"
+                                style={{ backgroundColor: stColor }}
                               >
-                                <div>
-                                  <div className="flex items-center justify-between gap-1 mb-1">
-                                    <span className="font-bold text-slate-900 truncate">
-                                      {appt.paciente}
-                                    </span>
-                                    <span
-                                      className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold text-white shrink-0"
-                                      style={{ backgroundColor: stColor }}
-                                    >
-                                      {appt.status}
-                                    </span>
-                                  </div>
-                                  <div className="text-[11px] text-slate-500 font-medium">
-                                    {appt.hora} - {appt.horaFim || '09:30'}
-                                  </div>
-                                </div>
-                                <div className="text-[10px] font-semibold text-slate-600 mt-1 flex items-center justify-between">
-                                  <span>{prof.nomeAgenda || prof.nome.split(' ')[0]}</span>
-                                  {appt.modalidade === 'online' && (
-                                    <span className="flex items-center gap-0.5 text-indigo-600 font-bold">
-                                      <Video size={10} /> Online
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                                {appt.status}
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between mt-0.5">
+                              <span>{appt.hora} - {appt.horaFim || '09:30'}</span>
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                                {appt.plano}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 mt-2.5 pt-1.5 border-t border-slate-200/40 dark:border-white/[0.04] flex items-center justify-between">
+                            <span className="truncate flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
+                              {prof?.nomeAgenda || prof?.nome || 'Profissional'}
+                            </span>
+                            {appt.modalidade === 'online' && (
+                              <span className="flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                                <Video size={11} /> Online
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
-                    })}
-                  </div>
+                    })
+                  )}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -397,14 +394,14 @@ export const AgendaRecepcao: React.FC = () => {
     }
 
     return (
-      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden text-slate-800 font-sans">
-        <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
+        <div className="grid grid-cols-7 divide-x divide-slate-200 dark:divide-white/[0.06] border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-[#131726] text-xs font-bold text-slate-600 dark:text-slate-300">
           {weekDays.map(dStr => {
             const d = new Date(dStr + 'T12:00:00');
             const isToday = dStr === new Date().toISOString().split('T')[0];
 
             return (
-              <div key={dStr} className={`p-3 text-center ${isToday ? 'bg-indigo-50/60 text-indigo-700 font-extrabold' : ''}`}>
+              <div key={dStr} className={`p-3 text-center ${isToday ? 'bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-extrabold' : ''}`}>
                 <div className="uppercase text-[10px] tracking-wider text-slate-400">{d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
                 <div className="text-base font-black mt-0.5">{d.getDate()}</div>
               </div>
@@ -412,7 +409,7 @@ export const AgendaRecepcao: React.FC = () => {
           })}
         </div>
 
-        <div className="flex-1 grid grid-cols-7 divide-x divide-slate-200 overflow-y-auto">
+        <div className="flex-1 grid grid-cols-7 divide-x divide-slate-200 dark:divide-white/[0.06] overflow-y-auto">
           {weekDays.map(dStr => {
             const dayAppts = filteredAgendamentos.filter(a => a.dataISO === dStr);
 
@@ -420,7 +417,7 @@ export const AgendaRecepcao: React.FC = () => {
               <div
                 key={dStr}
                 onClick={() => openNewModal(undefined, undefined)}
-                className="p-2 space-y-2 hover:bg-slate-50/50 transition-colors min-h-[400px]"
+                className="p-2 space-y-2 hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-colors min-h-[400px]"
               >
                 {dayAppts.map(appt => {
                   const pColor = getProfColor(appt.profId);
@@ -433,11 +430,11 @@ export const AgendaRecepcao: React.FC = () => {
                         e.stopPropagation();
                         openEditModal(appt);
                       }}
-                      className="p-2 rounded-xl text-xs bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md cursor-pointer"
+                      className="p-2 rounded-xl text-xs bg-slate-50 dark:bg-[#161a28] border border-slate-200 dark:border-white/[0.06] shadow-xs hover:shadow-md cursor-pointer"
                       style={{ borderLeft: `4px solid ${pColor}` }}
                     >
-                      <div className="font-bold text-slate-900 truncate">{appt.paciente}</div>
-                      <div className="text-[10px] text-slate-500">{appt.hora} - {prof?.nome.split(' ')[0]}</div>
+                      <div className="font-bold text-slate-900 dark:text-white truncate">{appt.paciente}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{appt.hora} - {prof?.nome.split(' ')[0]}</div>
                     </div>
                   );
                 })}
@@ -466,50 +463,50 @@ export const AgendaRecepcao: React.FC = () => {
     }
 
     return (
-      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden text-slate-800 font-sans">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
         {/* Navigation Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 bg-slate-50/60">
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 dark:border-white/[0.06] bg-slate-50/60 dark:bg-[#131726]">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigateDate('prev')}
-              className="p-1.5 hover:bg-slate-200/60 rounded-lg transition-all active:scale-95"
+              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
             >
               <ChevronLeft size={18} />
             </button>
-            <h3 className="text-lg font-black text-slate-900 capitalize">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white capitalize">
               {new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </h3>
             <button
               onClick={() => navigateDate('next')}
-              className="p-1.5 hover:bg-slate-200/60 rounded-lg transition-all active:scale-95"
+              className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
             >
               <ChevronRight size={18} />
             </button>
           </div>
           <button
             onClick={() => navigateDate('today')}
-            className="px-3.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+            className="px-3.5 py-1.5 bg-white dark:bg-[#181d2d] border border-slate-300 dark:border-white/[0.08] rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-white/[0.04] text-slate-700 dark:text-slate-200 transition-all shadow-xs"
           >
             Hoje
           </button>
         </div>
 
         {/* 7 Columns Header */}
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-100/70 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider text-center py-2">
-          <div>SUN</div>
-          <div>MON</div>
-          <div>TUE</div>
-          <div>WED</div>
-          <div>THU</div>
-          <div>FRI</div>
-          <div>SAT</div>
+        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-white/[0.06] bg-slate-100/70 dark:bg-[#161a28] text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center py-2">
+          <div>DOM</div>
+          <div>SEG</div>
+          <div>TER</div>
+          <div>QUA</div>
+          <div>QUI</div>
+          <div>SEX</div>
+          <div>SÁB</div>
         </div>
 
         {/* Calendar Grid */}
-        <div className="flex-1 grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-200 overflow-y-auto">
+        <div className="flex-1 grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-200 dark:divide-white/[0.06] overflow-y-auto">
           {calendarCells.map((dStr, idx) => {
             if (!dStr) {
-              return <div key={`empty-${idx}`} className="bg-slate-50/40 p-2" />;
+              return <div key={`empty-${idx}`} className="bg-slate-50/40 dark:bg-white/[0.01] p-2" />;
             }
             const dayNum = Number(dStr.split('-')[2]);
             const dayAppts = filteredAgendamentos.filter(a => a.dataISO === dStr);
@@ -522,16 +519,16 @@ export const AgendaRecepcao: React.FC = () => {
                   setCurrentDate(dStr);
                   openNewModal(undefined, undefined);
                 }}
-                className={`p-2 flex flex-col justify-between hover:bg-indigo-50/20 transition-colors cursor-pointer min-h-[90px] ${
-                  isToday ? 'bg-indigo-50/30' : ''
+                className={`p-2 flex flex-col justify-between hover:bg-indigo-50/20 dark:hover:bg-indigo-950/20 transition-colors cursor-pointer min-h-[90px] ${
+                  isToday ? 'bg-indigo-50/30 dark:bg-indigo-950/30' : ''
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`text-xs font-black ${isToday ? 'w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center' : 'text-slate-700'}`}>
+                  <span className={`text-xs font-black ${isToday ? 'w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center' : 'text-slate-700 dark:text-slate-300'}`}>
                     {dayNum}
                   </span>
                   {dayAppts.length > 0 && (
-                    <span className="text-[10px] font-bold text-slate-400">{dayAppts.length} appts</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{dayAppts.length} appts</span>
                   )}
                 </div>
 
@@ -546,7 +543,7 @@ export const AgendaRecepcao: React.FC = () => {
                           e.stopPropagation();
                           openEditModal(appt);
                         }}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-bold truncate bg-slate-100 text-slate-800 border border-slate-200/60 hover:bg-slate-200 transition-colors"
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold truncate bg-slate-100 dark:bg-[#1a1f30] text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-white/[0.06] hover:bg-slate-200 transition-colors"
                         style={{ borderLeft: `3px solid ${pColor}` }}
                       >
                         {appt.hora} - {appt.paciente}
@@ -554,7 +551,7 @@ export const AgendaRecepcao: React.FC = () => {
                     );
                   })}
                   {dayAppts.length > 3 && (
-                    <div className="text-[9px] font-bold text-indigo-600 text-center pt-0.5">
+                    <div className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 text-center pt-0.5">
                       + {dayAppts.length - 3} mais
                     </div>
                   )}
@@ -582,45 +579,45 @@ export const AgendaRecepcao: React.FC = () => {
     });
 
     const getHeatColorClass = (count: number) => {
-      if (count === 0) return 'bg-slate-100 text-slate-400';
-      if (count <= 2) return 'bg-indigo-100 text-indigo-800 font-bold';
-      if (count <= 5) return 'bg-indigo-300 text-indigo-900 font-extrabold';
+      if (count === 0) return 'bg-slate-100 dark:bg-white/[0.04] text-slate-400 dark:text-slate-600';
+      if (count <= 2) return 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 font-bold';
+      if (count <= 5) return 'bg-indigo-300 dark:bg-indigo-800/80 text-indigo-900 dark:text-indigo-100 font-extrabold';
       if (count <= 8) return 'bg-indigo-500 text-white font-extrabold';
-      return 'bg-indigo-800 text-white font-black';
+      return 'bg-indigo-800 dark:bg-indigo-600 text-white font-black';
     };
 
     return (
-      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden text-slate-800 font-sans p-6 space-y-6 overflow-y-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#0f131f] rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm font-sans p-6 space-y-6 overflow-y-auto text-slate-800 dark:text-slate-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/[0.06] pb-4">
           <div>
-            <h3 className="text-xl font-black text-slate-900">Visão Anual - {selectedYear}</h3>
-            <p className="text-xs text-slate-500 font-medium">Densidade de agendamentos por dia na clínica</p>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">Visão Anual - {selectedYear}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Densidade de agendamentos por dia na clínica</p>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
               <span>Baixa demanda</span>
               <div className="flex gap-1">
-                <span className="w-4 h-4 rounded bg-slate-100 border border-slate-200" />
-                <span className="w-4 h-4 rounded bg-indigo-100" />
-                <span className="w-4 h-4 rounded bg-indigo-300" />
+                <span className="w-4 h-4 rounded bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]" />
+                <span className="w-4 h-4 rounded bg-indigo-100 dark:bg-indigo-950/60" />
+                <span className="w-4 h-4 rounded bg-indigo-300 dark:bg-indigo-800/80" />
                 <span className="w-4 h-4 rounded bg-indigo-500" />
-                <span className="w-4 h-4 rounded bg-indigo-800" />
+                <span className="w-4 h-4 rounded bg-indigo-800 dark:bg-indigo-600" />
               </div>
               <span>Alta demanda</span>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-[#161a28] p-1 rounded-xl">
               <button
                 onClick={() => setSelectedYear(selectedYear - 1)}
-                className="p-1 hover:bg-white rounded-lg transition-all"
+                className="p-1 hover:bg-white dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="font-extrabold text-sm px-2">{selectedYear}</span>
+              <span className="font-extrabold text-sm px-2 text-slate-900 dark:text-white">{selectedYear}</span>
               <button
                 onClick={() => setSelectedYear(selectedYear + 1)}
-                className="p-1 hover:bg-white rounded-lg transition-all"
+                className="p-1 hover:bg-white dark:hover:bg-white/[0.08] rounded-lg transition-all text-slate-600 dark:text-slate-300"
               >
                 <ChevronRight size={16} />
               </button>
@@ -641,9 +638,9 @@ export const AgendaRecepcao: React.FC = () => {
             }
 
             return (
-              <div key={mName} className="p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl space-y-3">
-                <h4 className="text-sm font-extrabold text-slate-800">{mName}</h4>
-                <div className="grid grid-cols-7 gap-1 text-[10px] font-bold text-slate-400 text-center">
+              <div key={mName} className="p-4 bg-slate-50/70 dark:bg-[#141826] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl space-y-3">
+                <h4 className="text-sm font-extrabold text-slate-800 dark:text-white">{mName}</h4>
+                <div className="grid grid-cols-7 gap-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 text-center">
                   <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center">
@@ -673,28 +670,30 @@ export const AgendaRecepcao: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-100/60 p-4 gap-4 animate-fade-in font-sans text-slate-800">
-      {/* TOP HEADER BAR */}
-      <div className="bg-white px-6 py-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-100/60 dark:bg-[#07090e] p-4 gap-4 animate-fade-in font-sans text-slate-800 dark:text-slate-100">
+      {/* RESTRUCTURED TOP HEADER BAR (FIGURA 1 AJUSTADA) */}
+      <div className="bg-white dark:bg-[#0f131f] px-6 py-4 rounded-2xl border border-slate-200 dark:border-white/[0.06] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-500/20 font-black tracking-wide text-sm">
-            TherapySync
+          <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-500/20">
+            <Calendar size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-black text-slate-900 leading-tight">Agenda Recepção</h2>
-            <p className="text-xs text-slate-500 font-medium">Visão integrada de alta densidade por profissional</p>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">Agenda Recepção</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Visão integrada de alta densidade por profissional</p>
           </div>
         </div>
 
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60 self-start md:self-auto">
+        {/* View Switcher Tabs: Dia / Semana / Mês / Ano */}
+        <div className="flex items-center bg-slate-100 dark:bg-[#161a28] p-1 rounded-xl border border-slate-200/60 dark:border-white/[0.06] self-start lg:self-auto">
           {(['day', 'week', 'month', 'year'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setViewTab(tab)}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
                 viewTab === tab
-                  ? 'bg-white text-indigo-700 shadow-sm font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-[#202638] text-indigo-700 dark:text-indigo-300 shadow-sm font-extrabold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {tab === 'day' ? 'Dia' : tab === 'week' ? 'Semana' : tab === 'month' ? 'Mês' : 'Ano (Heatmap)'}
@@ -702,77 +701,49 @@ export const AgendaRecepcao: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative min-w-[220px]">
-            <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+        {/* Filters, Patient Search & Button Novo Agendamento */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Select Dropdown Terapeuta Filter */}
+          <div className="relative min-w-[200px]">
+            <select
+              value={selectedProfFilter}
+              onChange={(e) => setSelectedProfFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="w-full pl-3 pr-8 py-2 bg-slate-50 dark:bg-[#161a28] border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">👥 Todos os Terapeutas ({profissionais.length})</option>
+              {profissionais.map(p => (
+                <option key={p.id} value={p.id}>
+                  👤 {p.nomeAgenda || p.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search Patient Input */}
+          <div className="relative min-w-[180px]">
+            <Search size={14} className="absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
               placeholder="Search patients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-all"
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-[#161a28] border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-all"
             />
           </div>
-          <button className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 relative transition-all">
-            <Bell size={16} />
-            <span className="w-2 h-2 bg-indigo-600 rounded-full absolute top-1.5 right-1.5" />
+
+          {/* Button Novo Agendamento */}
+          <button
+            onClick={() => openNewModal()}
+            className="py-2 px-4 bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white rounded-xl font-extrabold text-xs shadow-md flex items-center gap-2 active:scale-95 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus size={16} />
+            + Novo Agendamento
           </button>
         </div>
       </div>
 
-      {/* MAIN BODY AREA */}
-      <div className="flex-1 flex gap-4 overflow-hidden">
-        {/* LEFT SIDEBAR / FILTERS PANEL */}
-        <div className="w-64 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col gap-5 shrink-0 overflow-y-auto">
-          <button
-            onClick={() => openNewModal()}
-            className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
-          >
-            <Plus size={16} />
-            Create Appointment
-          </button>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                FILTERS ({profissionais.length})
-              </span>
-              <button
-                onClick={toggleAllProfs}
-                className="text-[10px] text-indigo-600 font-bold hover:underline"
-              >
-                {selectedProfIds.length === profissionais.length ? 'Desmarcar' : 'Marcar todos'}
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {profissionais.map(p => {
-                const isChecked = selectedProfIds.includes(p.id);
-
-                return (
-                  <label
-                    key={p.id}
-                    className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors text-xs font-medium text-slate-700"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleProfFilter(p.id)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                    />
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: p.cor || '#6366f1' }}
-                    />
-                    <span className="truncate">{p.nomeAgenda || p.nome}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* VIEW CONTAINER */}
+      {/* MAIN CONTENT CONTAINER (FULL 100% WIDTH - FIGURA 2 REMOVIDA) */}
+      <div className="flex-1 flex overflow-hidden w-full">
         {viewTab === 'day' && renderDayView()}
         {viewTab === 'week' && renderWeekView()}
         {viewTab === 'month' && renderMonthView()}
@@ -781,15 +752,15 @@ export const AgendaRecepcao: React.FC = () => {
 
       {/* MODAL NOVO / EDITAR AGENDAMENTO */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 text-slate-800 space-y-4 animate-scale-up font-sans">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-black text-slate-900">
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#121624] rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-white/[0.08] text-slate-800 dark:text-slate-100 space-y-4 animate-scale-up font-sans">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">
                 {editId ? 'Editar Agendamento' : 'Novo Agendamento'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 font-bold text-lg"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white font-bold text-lg cursor-pointer"
               >
                 &times;
               </button>
@@ -798,11 +769,11 @@ export const AgendaRecepcao: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Profissional *</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Profissional *</label>
                   <select
                     value={profIdForm}
                     onChange={(e) => setProfIdForm(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:border-indigo-500"
                   >
                     {profissionais.map(p => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
@@ -811,61 +782,61 @@ export const AgendaRecepcao: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Paciente *</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Paciente *</label>
                   <input
                     type="text"
                     required
                     value={paciente}
                     onChange={(e) => setPaciente(e.target.value)}
                     placeholder="Nome completo do paciente"
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Data *</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Data *</label>
                   <input
                     type="date"
                     required
                     value={dataAg}
                     onChange={(e) => setDataAg(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none"
+                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Horário *</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Horário *</label>
                   <input
                     type="time"
                     required
                     value={horaIni}
                     onChange={(e) => setHoraIni(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none"
+                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Duração (min)</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Duração (min)</label>
                   <input
                     type="number"
                     min={15}
                     step={15}
                     value={duracao}
                     onChange={(e) => setDuracao(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none"
+                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Plano de Saúde</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Plano de Saúde</label>
                   <select
                     value={planoId}
                     onChange={(e) => setPlanoId(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none"
+                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none"
                   >
                     {planos.map(p => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
@@ -874,11 +845,11 @@ export const AgendaRecepcao: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Status do Agendamento</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Status do Agendamento</label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none"
+                    className="w-full p-2 bg-slate-50 dark:bg-[#181d2d] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-800 dark:text-slate-100 font-semibold focus:outline-none"
                   >
                     {statusAgendamentos.map(s => (
                       <option key={s.nome} value={s.nome}>{s.nome}</option>
@@ -887,18 +858,18 @@ export const AgendaRecepcao: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs"
+                  className="px-4 py-2 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md cursor-pointer"
                 >
                   {submitting ? 'Salvando...' : 'Salvar Agendamento'}
                 </button>
