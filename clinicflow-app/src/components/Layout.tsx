@@ -609,8 +609,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 scrollbar-thin w-full max-w-full">
-          <div className="w-full max-w-[1920px] mx-auto space-y-6 lg:space-y-8">
+        <main className="flex-1 overflow-hidden p-3 sm:p-4 lg:p-5 w-full max-w-full flex flex-col min-h-0">
+          <div className="w-full max-w-[1920px] mx-auto h-full flex flex-col flex-1 min-h-0">
             {children}
           </div>
         </main>

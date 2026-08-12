@@ -378,9 +378,9 @@ export const AgendaRecepcao: React.FC = () => {
       : 0;
 
     return (
-      <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden text-[var(--text-primary)] font-sans">
+      <div className="flex-1 h-full min-h-0 flex flex-col bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden text-[var(--text-primary)] font-sans">
         {/* Sub Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--bg-raised)] gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-3 border-b border-[var(--border)] bg-[var(--bg-raised)] gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigateDate('prev')}
@@ -423,22 +423,22 @@ export const AgendaRecepcao: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Track Allocation Matrix Container (No Fixed Therapist Column Headers) */}
-        <div className="flex-1 overflow-auto p-4 relative">
+        {/* Dynamic Track Allocation Matrix Container - Fits 100% Height, Vertical Scroll OFF, Horizontal Scroll ON */}
+        <div className="flex-1 h-full min-h-0 overflow-x-auto overflow-y-hidden p-2 relative flex flex-col">
           <div
-            className="grid relative"
+            className="grid relative h-full w-full min-h-0"
             style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${totalTracks}, minmax(220px, 1fr))`,
-              gridTemplateRows: `repeat(${timeSlots.length}, ${rowHeightPx}px)`,
-              gap: `${rowGapPx}px`
+              gridTemplateColumns: `65px repeat(${totalTracks}, minmax(200px, 1fr))`,
+              gridTemplateRows: `repeat(${timeSlots.length}, minmax(0, 1fr))`,
+              gap: '4px'
             }}
           >
             {/* Live Green Time Line Indicator Across Entire Grid Width */}
             {isLiveLineVisible && (
               <div
                 className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
-                style={{ top: `${liveLineTopPx}px` }}
+                style={{ top: `${((nowMinutes - slotStartBaseMin) / (21 * 60 - slotStartBaseMin)) * 100}%` }}
               >
                 <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_#10b981] -ml-1.5 shrink-0 flex items-center justify-center">
                   <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
@@ -829,9 +829,9 @@ export const AgendaRecepcao: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-[var(--bg-base)] p-4 gap-4 animate-fade-in font-sans text-[var(--text-primary)] transition-colors duration-300">
+    <div className="flex-1 h-full min-h-0 flex flex-col bg-[var(--bg-base)] gap-3 animate-fade-in font-sans text-[var(--text-primary)] transition-colors duration-300 overflow-hidden">
       {/* RESTRUCTURED TOP HEADER BAR */}
-      <div className="bg-[var(--bg-surface)] px-6 py-4 rounded-2xl border border-[var(--border)] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-[var(--bg-surface)] px-6 py-3 rounded-2xl border border-[var(--border)] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 shrink-0">
         {/* Title */}
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-gradient-to-tr from-indigo-500 to-violet-600 text-white rounded-xl shadow-md shadow-indigo-500/20">
