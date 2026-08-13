@@ -151,6 +151,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     if (user.perfil?.toLowerCase() === 'admin') return true;
     if (!user.permissions) return true;
 
+    // Perfil Recepção tem acesso garantido à Agenda Recepção
+    if (itemId === 'agenda-recepcao' && (user.perfil?.toLowerCase().includes('recep') || user.perfil?.toLowerCase() === 'recepcao')) return true;
+
     // Normaliza IDs específicos para casar com Perfis de Acesso
     let targetId = itemId;
     if (itemId === 'atendimento') targetId = 'agenda';

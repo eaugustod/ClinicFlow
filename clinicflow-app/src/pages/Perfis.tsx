@@ -38,6 +38,7 @@ export const Perfis: React.FC = () => {
       itens: [
         { id: 'dashboard', label: 'Dashboard', desc: 'Visão geral e indicadores' },
         { id: 'agenda', label: 'Agenda', desc: 'Calendário de agendamentos' },
+        { id: 'agenda-recepcao', label: 'Agenda Recepção', desc: 'Agenda da recepção com visão diária por profissional' },
         { id: 'chat', label: 'Chat com Pacientes', desc: 'Mensagens e comunicação' }
       ]
     },
@@ -124,7 +125,7 @@ export const Perfis: React.FC = () => {
       cor: '#10b981',
       bloqueado: true,
       desc: 'Acesso a agenda, pacientes e faturamento básico',
-      modulos: ['dashboard', 'agenda', 'chat', 'pacientes', 'planos', 'espera', 'senhas', 'guias'],
+      modulos: ['dashboard', 'agenda', 'agenda-recepcao', 'chat', 'pacientes', 'planos', 'espera', 'senhas', 'guias'],
       subPerms: { pacientes: ['criar'], agenda: ['criar', 'editar'] }
     },
     {

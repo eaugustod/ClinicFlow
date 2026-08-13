@@ -99,6 +99,8 @@ function App() {
     if (user.perfil?.toLowerCase() === 'admin') return true;
     if (!user.permissions) return true;
 
+    if (pageId === 'agenda-recepcao' && (user.perfil?.toLowerCase().includes('recep') || user.perfil?.toLowerCase() === 'recepcao')) return true;
+
     let targetId = pageId;
     if (pageId === 'atendimento') targetId = 'agenda';
     if (pageId === 'analise-fechamento' || pageId === 'financeiro') targetId = 'fechamento';
