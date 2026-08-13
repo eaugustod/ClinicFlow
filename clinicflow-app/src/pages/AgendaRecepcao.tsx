@@ -531,7 +531,7 @@ export const AgendaRecepcao: React.FC = () => {
                 <div
                   key={appt.id}
                   onClick={() => openEditModal(appt)}
-                  className={`group/card rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer flex flex-col justify-between overflow-visible relative ${
+                  className={`group/card rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] hover:z-[9999] group-hover/card:z-[9999] cursor-pointer flex flex-col justify-between overflow-visible relative ${
                     compactView ? 'p-1.5 sm:p-2' : 'p-3'
                   } ${isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'}`}
                   style={{
