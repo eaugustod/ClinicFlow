@@ -123,9 +123,9 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-y-auto scrollbar-thin p-1">
       {/* Header and Filter Selector */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 shrink-0">
         <div>
           <span className="text-[10px] text-[var(--accent)] font-bold uppercase tracking-widest font-semibold">Dashboard Principal</span>
           <h2 className="text-2xl font-black tracking-wide text-[var(--text-primary)] mt-0.5 font-sans">Visão Geral da Clínica</h2>
@@ -195,7 +195,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 shrink-0">
         {stats.map((item, idx) => {
           const Icon = item.icon;
           return (
@@ -221,9 +221,9 @@ export const Dashboard: React.FC = () => {
         })}
       </div>
 
-      {/* Main Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Columns (Schedules of the day and pending guides) */}
+      {/* Main Content Layout Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+        {/* Left Columns (Schedules of the day, pending guides, waitlist) */}
         <div className="lg:col-span-2 space-y-6">
           
           {/* Profissionais Hoje (referente ao dia selecionado) */}
@@ -305,6 +305,42 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Waitlist Widget */}
+          <div className="p-5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl flex flex-col flex-1 min-h-0">
+            <div className="flex justify-between items-center pb-3 border-b border-white/[0.04] mb-4">
+              <div>
+                <h3 className="font-bold text-xs tracking-wider text-slate-200 uppercase">Lista de Espera</h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Pacientes aguardando vaga</p>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/15">
+                {espera.filter(e => e.status === 'Aguardando').length} em espera
+              </span>
+            </div>
+
+            <div className="space-y-2.5 overflow-y-auto max-h-[220px] pr-1 scrollbar-thin">
+              {espera.filter(e => e.status === 'Aguardando').slice(0, 5).map((e) => (
+                <div
+                  key={e.id}
+                  className="p-3 bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.02] hover:border-white/[0.04] rounded-xl flex items-center justify-between transition-all duration-200 cursor-pointer group"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">{e.nome}</p>
+                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{e.tel}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-indigo-400 bg-indigo-500/5 border border-indigo-500/10 px-2 py-0.5 rounded-full">
+                    <Clock size={10} />
+                    <span>{e.dataEntrada}</span>
+                  </div>
+                </div>
+              ))}
+              {espera.filter(e => e.status === 'Aguardando').length === 0 && (
+                <div className="text-center text-slate-500 font-medium py-6">
+                  Nenhum paciente aguardando.
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
 
         {/* Right Columns (Holidays, plans, and waitlists) */}
@@ -372,42 +408,6 @@ export const Dashboard: React.FC = () => {
               {profsMonthData.length === 0 && (
                 <div className="py-8 text-center text-slate-500 font-medium">
                   Nenhum registro para este período.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Waitlist Sidebar */}
-          <div className="p-5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl flex flex-col">
-            <div className="flex justify-between items-center pb-3 border-b border-white/[0.04] mb-4">
-              <div>
-                <h3 className="font-bold text-xs tracking-wider text-slate-200 uppercase">Lista de Espera</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Pacientes aguardando vaga</p>
-              </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/15">
-                {espera.filter(e => e.status === 'Aguardando').length} em espera
-              </span>
-            </div>
-
-            <div className="space-y-2.5 overflow-y-auto max-h-[220px] pr-1 scrollbar-thin">
-              {espera.filter(e => e.status === 'Aguardando').slice(0, 5).map((e) => (
-                <div
-                  key={e.id}
-                  className="p-3 bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.02] hover:border-white/[0.04] rounded-xl flex items-center justify-between transition-all duration-200 cursor-pointer group"
-                >
-                  <div>
-                    <p className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">{e.nome}</p>
-                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{e.tel}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-indigo-400 bg-indigo-500/5 border border-indigo-500/10 px-2 py-0.5 rounded-full">
-                    <Clock size={10} />
-                    <span>{e.dataEntrada}</span>
-                  </div>
-                </div>
-              ))}
-              {espera.filter(e => e.status === 'Aguardando').length === 0 && (
-                <div className="text-center text-slate-500 font-medium py-6">
-                  Nenhum paciente aguardando.
                 </div>
               )}
             </div>

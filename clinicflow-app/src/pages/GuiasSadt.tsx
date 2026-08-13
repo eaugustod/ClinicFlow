@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit3, Save, FileText, CheckCircle2, AlertCircle, Printer, Trash2, Filter, Settings, ShieldAlert, Sparkles, ChevronDown, Check, Loader } from 'lucide-react';
+import { Search, Plus, Edit3, Save, FileText, CheckCircle2, AlertCircle, Printer, Trash2, Filter, Settings, ShieldAlert, Sparkles, ChevronDown, Check, Loader, Wand2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { GuiaSadt, ProcedimentoGuia, SenhaPlano, Paciente } from '../types';
 import { supabase } from '../services/supabase';
@@ -58,6 +58,7 @@ export const GuiasSadt: React.FC = () => {
   
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
+  const [planoFilter, setPlanoFilter] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
   const [periodoFilter, setPeriodoFilter] = useState<string>(''); // YYYY-MM
   
@@ -1284,10 +1285,10 @@ export const GuiasSadt: React.FC = () => {
   const totalValue = procs.reduce((acc, p) => acc + (p.total || 0), 0);
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-hidden">
       
-      {/* STICKY HEADER AND FILTERS */}
-      <div className="sticky top-0 bg-[#07090e]/95 backdrop-blur-md z-20 pb-4 pt-1 -mx-8 px-8 border-b border-white/[0.04] space-y-4">
+      {/* HEADER AND FILTERS */}
+      <div className="flex flex-col gap-4 shrink-0">
         {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -1338,8 +1339,8 @@ export const GuiasSadt: React.FC = () => {
                     onClick={() => { setShowSubMenu(false); handleValidateWithAdjustments(); }}
                     className="w-full text-left px-4 py-2 hover:bg-white/[0.03] text-slate-300 hover:text-white transition-colors flex items-center gap-2"
                   >
-                    <Edit3 size={13} className="text-sky-400" />
-                    Validar com Ajustes
+                    <Wand2 size={13} className="text-indigo-400" />
+                    Ajustar & Validar Inteligente
                   </button>
                 </div>
               )}
@@ -1355,37 +1356,40 @@ export const GuiasSadt: React.FC = () => {
           </div>
         </div>
 
-        {/* INDICATORS SECTION */}
-        {!isRecepcao && (
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            {stats.map((s, idx) => (
-              <div key={idx} className={`p-4 rounded-xl border ${s.color} backdrop-blur-md shadow-lg`}>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{s.label}</p>
-                <p className="text-lg font-black mt-1 text-white">{s.val}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* FILTERS BAR */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl">
-          <div className="flex items-center gap-3 bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2">
-            <Search size={14} className="text-slate-400" />
+        {/* FILTERS SECTION */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="flex items-center gap-3 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] p-3 rounded-xl">
+            <Search size={16} className="text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar por paciente ou guia..."
+              placeholder="Buscar por Nº Guia, Paciente ou Carteirinha..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-transparent border-0 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-0 text-xs"
             />
           </div>
 
-          <div>
+          <div className="flex items-center gap-2 bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2">
+            <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">Convênio:</span>
             <select
-              value={isRecepcao ? 'Pendente' : statusFilter}
+              value={planoFilter}
+              onChange={(e) => setPlanoFilter(Number(e.target.value))}
+              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs"
+            >
+              <option value="0">Todos os convênios</option>
+              {planos.map(p => (
+                <option key={p.id} value={p.id}>{p.nome}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2">
+            <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">Status:</span>
+            <select
+              value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               disabled={isRecepcao}
-              className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white focus:outline-none disabled:opacity-60 cursor-pointer"
+              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs disabled:opacity-60"
             >
               {isRecepcao ? (
                 <option value="Pendente">Status: Pendente (Recepção)</option>
@@ -1401,7 +1405,7 @@ export const GuiasSadt: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2 bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1">
+          <div className="flex items-center gap-2 bg-[#161a26] border border-white/[0.06] rounded-xl px-3 py-2">
             <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">Emissão:</span>
             <input
               type="month"
@@ -1415,9 +1419,9 @@ export const GuiasSadt: React.FC = () => {
       </div>
 
       {/* TABLE SECTION */}
-      <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-360px)] scrollbar-thin">
-          <table className="w-full text-left border-collapse">
+      <div className="flex-1 min-h-0 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden flex flex-col">
+        <div className="overflow-auto flex-1 scrollbar-thin">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
               <tr className="sticky top-0 z-10 text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-[#131622]">
                 <th className="p-4">Nº Guia</th>

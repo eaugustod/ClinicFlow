@@ -240,10 +240,10 @@ export const PlanosProcedimentos: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-hidden">
       
-      {/* Sticky Header Section */}
-      <div className="sticky -top-8 bg-[#07090e]/95 backdrop-blur-md z-10 pb-4 pt-9 -mx-8 px-8 border-b border-white/[0.04] space-y-4">
+      {/* Header Section */}
+      <div className="flex flex-col gap-4 shrink-0">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest font-sans">Cadastros de Faturamento</span>
@@ -298,15 +298,15 @@ export const PlanosProcedimentos: React.FC = () => {
         </div>
 
         {/* Search Filter */}
-        <div className="p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="flex-1 flex items-center gap-3 bg-[#161a26]/40 px-3 py-2 rounded-xl border border-white/[0.04]">
-            <Search size={16} className="text-slate-400" />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex items-center gap-3">
+            <Search size={16} className="text-slate-400 ml-1" />
             <input
               type="text"
-              placeholder={activeTab === 'planos' ? "Buscar planos..." : "Buscar por código ou descrição do procedimento..."}
+              placeholder={activeTab === 'planos' ? "Buscar plano por nome ou código..." : "Buscar procedimento por código ou descrição..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent border-0 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-0 p-0"
+              className="flex-1 bg-transparent border-0 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-0 text-xs"
             />
           </div>
           {activeTab === 'procedimentos' && (
@@ -328,88 +328,81 @@ export const PlanosProcedimentos: React.FC = () => {
       </div>
 
       {activeTab === 'planos' ? (
-        /* Planos Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPlanos.map((pl) => (
-            <div
-              key={pl.id}
-              className="p-5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col justify-between hover:translate-y-[-2px] transition-all duration-300 group shadow-xl"
-            >
-              <div>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    {(pl.logo || pl.foto) ? (
-                      <img
-                        src={pl.logo || pl.foto}
-                        alt={pl.nome}
-                        className="w-10 h-10 rounded-xl object-contain bg-white/5 p-1 border border-white/10 shrink-0 shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                        {pl.nome.slice(0, 2).toUpperCase()}
+        /* Planos Grid Container */
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPlanos.map((pl) => (
+              <div
+                key={pl.id}
+                className="p-5 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl flex flex-col justify-between hover:translate-y-[-2px] transition-all duration-300 group shadow-xl"
+              >
+                <div>
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      {(pl.logo || pl.foto) ? (
+                        <img
+                          src={pl.logo || pl.foto}
+                          alt={pl.nome}
+                          className="w-10 h-10 rounded-xl object-contain bg-white/5 p-1 border border-white/10 shrink-0 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                          {pl.nome.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors text-xs">
+                          {pl.nome}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          Código ANS: {pl.ans || '—'}
+                        </p>
                       </div>
-                    )}
-                    <div>
-                      <h3 className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors text-xs">
-                        {pl.nome}
-                      </h3>
-                      <p className="text-[10px] text-slate-400 font-semibold tracking-wide mt-0.5">
-                        ANS: <span className="font-mono text-slate-300">{pl.ans || '—'}</span>
-                      </p>
                     </div>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
-                    pl.status === 'Ativo'
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/15'
-                      : 'bg-rose-500/10 text-rose-400 border-rose-500/15'
-                  }`}>
-                    {pl.status}
-                  </span>
-                </div>
-                <div className="mt-4 space-y-2 text-[10px] text-slate-400">
-                  <div className="flex justify-between border-b border-white/[0.02] pb-1.5">
-                    <span className="font-medium">CNPJ:</span>
-                    <span className="font-mono text-slate-300">{pl.cnpj || '—'}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-white/[0.02] pb-1.5">
-                    <span className="font-medium">Registro ANS:</span>
-                    <span className="font-mono text-slate-300">{pl.ans || '—'}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-white/[0.02] pb-1.5">
-                    <span className="font-medium">Padrão Tabela:</span>
-                    <span className="text-slate-300">{pl.tabela}</span>
-                  </div>
-                  <div className="flex justify-between pb-1.5 border-b border-white/[0.02]">
-                    <span className="font-medium">CNES Clínica:</span>
-                    <span className="text-slate-300 font-mono">{pl.cnes || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Guias Integradas (TISS):</span>
-                    <span className={`font-bold ${pl.usaTiss ? 'text-emerald-400' : 'text-slate-400'}`}>
-                      {pl.usaTiss ? 'Sim' : 'Não'}
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                      pl.status === 'Ativo' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    }`}>
+                      {pl.status}
                     </span>
                   </div>
+
+                  <div className="mt-4 space-y-2 text-[11px] text-slate-400">
+                    <div className="flex justify-between pb-1.5 border-b border-white/[0.02]">
+                      <span className="font-medium">Tabela Padrão:</span>
+                      <span className="text-slate-300">{pl.tabela}</span>
+                    </div>
+                    <div className="flex justify-between pb-1.5 border-b border-white/[0.02]">
+                      <span className="font-medium">CNES Clínica:</span>
+                      <span className="text-slate-300 font-mono">{pl.cnes || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Guias Integradas (TISS):</span>
+                      <span className={`font-bold ${pl.usaTiss ? 'text-emerald-400' : 'text-slate-400'}`}>
+                        {pl.usaTiss ? 'Sim' : 'Não'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 pt-3 border-t border-white/[0.04] flex justify-end">
+                  <button
+                    onClick={() => openEditPlano(pl)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] rounded-xl text-[10px] font-bold text-slate-300 transition-all"
+                  >
+                    <Edit3 size={11} />
+                    Editar Plano
+                  </button>
                 </div>
               </div>
-              <div className="mt-5 pt-3 border-t border-white/[0.04] flex justify-end">
-                <button
-                  onClick={() => openEditPlano(pl)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] rounded-xl text-[10px] font-bold text-slate-300 transition-all"
-                >
-                  <Edit3 size={11} />
-                  Editar Plano
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
-        /* Procedimentos Table */
-        <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+        /* Procedimentos Table Container */
+        <div className="flex-1 min-h-0 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden flex flex-col">
+          <div className="overflow-auto flex-1 scrollbar-thin">
+            <table className="w-full text-left text-xs border-collapse min-w-[850px]">
               <thead>
-                <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-white/[0.01]">
+                <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-[#161a26] sticky top-0 z-10 shadow-md">
                   <th className="p-4">Código</th>
                   <th className="p-4">Descrição</th>
                   <th className="p-4">Convênio Restrito</th>

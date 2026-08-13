@@ -193,8 +193,8 @@ export const Pacientes: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 shrink-0">
         <div>
           <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Base de Dados</span>
           <h2 className="text-2xl font-black tracking-wide text-white mt-0.5">Pacientes</h2>
@@ -210,7 +210,7 @@ export const Pacientes: React.FC = () => {
       </div>
 
       {/* Filters Card */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 shrink-0">
         <div className="flex-1 p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl flex items-center gap-3">
           <Search size={16} className="text-slate-400 ml-1" />
           <input
@@ -245,10 +245,10 @@ export const Pacientes: React.FC = () => {
         </button>
       </div>
 
-      {/* Patients Table */}
-      <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)] scrollbar-thin">
-          <table className="w-full text-left text-xs border-collapse">
+      {/* Patients Table Container */}
+      <div className="flex-1 min-h-0 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden flex flex-col">
+        <div className="overflow-auto flex-1 scrollbar-thin">
+          <table className="w-full text-left text-xs border-collapse min-w-[850px]">
             <thead>
               <tr className="sticky top-0 z-10 text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-[#131622]">
                 <th className="p-4">Nome</th>
