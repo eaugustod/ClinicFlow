@@ -570,7 +570,7 @@ export const AgendaRecepcao: React.FC = () => {
                 >
                   {/* Rich Solid Floating Tooltip on Hover (Smart Auto-Positioning & 100% Opaque Solid Background) */}
                   <div
-                    className={`hidden group-hover/card:flex flex-col gap-1.5 absolute ${verticalPosClass} ${horizontalPosClass} w-[270px] max-w-[270px] whitespace-normal p-3.5 rounded-xl shadow-2xl z-[9999] text-xs border pointer-events-none transition-all animate-fade-in opacity-100 ${
+                    className={`hidden group-hover/card:flex flex-col gap-1.5 absolute ${verticalPosClass} ${horizontalPosClass} w-[275px] max-w-[275px] whitespace-normal p-3.5 rounded-xl shadow-2xl z-[9999] text-xs border pointer-events-none transition-all animate-fade-in opacity-100 ${
                       isDark
                         ? 'text-white border-slate-700 shadow-slate-950/95'
                         : 'text-slate-900 border-slate-200 shadow-2xl shadow-indigo-500/20 ring-1 ring-black/5'
@@ -580,10 +580,20 @@ export const AgendaRecepcao: React.FC = () => {
                       isolation: 'isolate'
                     }}
                   >
-                    <div className={`font-extrabold text-sm flex items-center gap-1.5 border-b pb-1.5 ${
+                    <div className={`font-extrabold text-sm flex items-center justify-between gap-2 border-b pb-1.5 ${
                       isDark ? 'text-indigo-300 border-slate-700/80' : 'text-indigo-600 border-slate-200'
                     }`}>
-                      <span className="truncate">👤 {appt.paciente}</span>
+                      <span className="truncate flex items-center gap-1.5">👤 {appt.paciente}</span>
+                      <span 
+                        className="px-2 py-0.5 rounded text-[10px] font-extrabold shrink-0 border"
+                        style={{
+                          backgroundColor: `${stColor}22`,
+                          color: stColor,
+                          borderColor: `${stColor}44`
+                        }}
+                      >
+                        {appt.status}
+                      </span>
                     </div>
                     <div className={`flex items-center justify-between gap-2 font-semibold pt-0.5 ${
                       isDark ? 'text-slate-200' : 'text-slate-700'
@@ -601,6 +611,21 @@ export const AgendaRecepcao: React.FC = () => {
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
                         <span className="truncate max-w-[90px]">{prof?.nomeAgenda || prof?.nome || 'Profissional'}</span>
                       </span>
+                    </div>
+                    <div className={`flex items-center justify-between gap-2 text-[11px] pt-1 border-t ${
+                      isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'
+                    }`}>
+                      <span className="font-semibold">Modalidade:</span>
+                      {appt.modalidade === 'online' ? (
+                        <span className="flex items-center gap-1.5 font-extrabold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                          <Video size={12} className="text-indigo-400 animate-pulse" />
+                          <span>Online</span>
+                        </span>
+                      ) : (
+                        <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          🏢 Presencial
+                        </span>
+                      )}
                     </div>
                   </div>
 
