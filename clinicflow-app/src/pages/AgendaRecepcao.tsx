@@ -916,21 +916,11 @@ export const AgendaRecepcao: React.FC = () => {
           </div>
         </div>
 
-        {/* View Switcher Tabs: Dia / Semana / Mês / Ano */}
+        {/* Single View Mode Badge: Dia */}
         <div className="flex items-center bg-[var(--bg-raised)] p-1 rounded-xl border border-[var(--border)] self-start lg:self-auto">
-          {(['day', 'week', 'month', 'year'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setViewTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                viewTab === tab
-                  ? 'bg-[var(--bg-surface)] text-indigo-500 shadow-sm font-extrabold'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              {tab === 'day' ? 'Dia' : tab === 'week' ? 'Semana' : tab === 'month' ? 'Mês' : 'Ano (Heatmap)'}
-            </button>
-          ))}
+          <span className="px-4 py-1.5 rounded-lg text-xs font-black bg-[var(--bg-surface)] text-indigo-500 shadow-sm">
+            Dia
+          </span>
         </div>
 
         {/* Filters, Patient Search & Button Novo Agendamento */}
