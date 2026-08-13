@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/context/AppContext.tsx": {
-    "mtime": 1786657520.4807253,
-    "ast_hash": "e80e3844534a530759b3ce96fee14c53",
+    "mtime": 1786660230.2569861,
+    "ast_hash": "6aa250524ace21fc8492d685a72190aa",
     "semantic_hash": ""
   },
   "clinicflow-app/src/context/ThemeContext.tsx": {
@@ -180,8 +180,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/services/mappers.ts": {
-    "mtime": 1786488789.5331504,
-    "ast_hash": "684ec2768fd8c0b7a434826adff24f50",
+    "mtime": 1786659487.0833983,
+    "ast_hash": "84090f3f7aa0eef24f89e427c2fa089a",
     "semantic_hash": ""
   },
   "clinicflow-app/src/services/nfseJundiaiService.ts": {
@@ -200,8 +200,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/types/index.ts": {
-    "mtime": 1786488771.427942,
-    "ast_hash": "86f426e078dff5a580f05bdbbaf41ef6",
+    "mtime": 1786659475.1672244,
+    "ast_hash": "551b496bb491b1c11483a40d8fa2fb9b",
     "semantic_hash": ""
   },
   "clinicflow-app/supabase/functions/emitir-nfse-jundiai/index.ts": {
@@ -352,6 +352,11 @@
   "clinicflow-app/src/pages/AgendaRecepcao.tsx": {
     "mtime": 1786657204.4290862,
     "ast_hash": "81b1c8b7421300313b47f7802a7dfd55",
+    "semantic_hash": ""
+  },
+  "add_agendamento_id_historico.sql": {
+    "mtime": 1786659455.9099422,
+    "ast_hash": "303997bcc138e2b704cdb6c21c560cf0",
     "semantic_hash": ""
   }
 }

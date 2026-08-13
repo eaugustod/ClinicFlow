@@ -65,39 +65,30 @@ const CACHE_KEY = 'cf_cache_v3';
 
 const safeSaveCache = (key: string, data: any) => {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e: any) {
-    if (e?.name === 'QuotaExceededError' || e?.code === 22 || e?.code === 1014) {
-      console.warn('[ClinicFlow Context] LocalStorage quota exceeded. Clearing legacy keys and caching core data.');
-      try {
-        const keysToKeep = [key, 'cf_auth_session', 'sb-supabase-auth-token'];
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const k = localStorage.key(i);
-          if (k && !keysToKeep.includes(k) && k.startsWith('cf_')) {
-            localStorage.removeItem(k);
-          }
-        }
-        const trimmedData = {
-          ...data,
-          agendamentos: Array.isArray(data.agendamentos) ? data.agendamentos.slice(0, 150) : [],
-          pacientes: Array.isArray(data.pacientes) ? data.pacientes.slice(0, 300) : []
-        };
-        localStorage.setItem(key, JSON.stringify(trimmedData));
-      } catch (_) {
-        try {
-          const minimalData = {
-            profissionais: data.profissionais || [],
-            planos: data.planos || [],
-            procedimentos: data.procedimentos || [],
-            clinica: data.clinica || {},
-            statusAgendamentos: data.statusAgendamentos || [],
-            ts: Date.now()
-          };
-          localStorage.setItem(key, JSON.stringify(minimalData));
-        } catch (_) {
-          console.warn('[ClinicFlow Context] Storage quota limit reached. Bypassing offline cache.');
-        }
-      }
+    const compactData = {
+      profissionais: data.profissionais || [],
+      planos: data.planos || [],
+      procedimentos: data.procedimentos || [],
+      clinica: data.clinica || {},
+      statusAgendamentos: data.statusAgendamentos || [],
+      agendamentos: Array.isArray(data.agendamentos) ? data.agendamentos.slice(0, 100) : [],
+      pacientes: Array.isArray(data.pacientes) ? data.pacientes.slice(0, 150).map((p: any) => ({ id: p.id, nome: p.nome, cpf: p.cpf, plano: p.plano })) : [],
+      ts: Date.now()
+    };
+    localStorage.setItem(key, JSON.stringify(compactData));
+  } catch (_) {
+    try {
+      localStorage.removeItem(key);
+      const minimal = {
+        profissionais: data.profissionais || [],
+        planos: data.planos || [],
+        procedimentos: data.procedimentos || [],
+        statusAgendamentos: data.statusAgendamentos || [],
+        ts: Date.now()
+      };
+      localStorage.setItem(key, JSON.stringify(minimal));
+    } catch (_) {
+      // Silent catch
     }
   }
 };
@@ -465,28 +456,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      // 1. Verifica se já existe registro em historico para este agendamento_id
-      const { data: existing } = await supabase
+      // Busca prévia em 2 camadas (1: agendamento_id, 2: pac_id + prof_id + data) ANTES de tentar insert
+      let existingId: number | null = null;
+
+      const { data: byAgend } = await supabase
         .from('historico')
         .select('id')
         .eq('agendamento_id', apptId)
         .maybeSingle();
 
-      if (existing) {
-        // Atualiza registro existente do agendamento
+      if (byAgend) {
+        existingId = byAgend.id;
+      } else if (appt.dataISO) {
+        let q = supabase
+          .from('historico')
+          .select('id')
+          .eq('pac_id', targetPacId)
+          .gte('data', appt.dataISO)
+          .lte('data', `${appt.dataISO}T23:59:59.999Z`)
+          .order('id', { ascending: false })
+          .limit(1);
+
+        if (appt.profId) {
+          q = q.eq('prof_id', appt.profId);
+        }
+
+        const { data: byDate } = await q;
+        if (byDate && byDate.length > 0) {
+          existingId = byDate[0].id;
+        }
+      }
+
+      if (existingId) {
+        // Registro localizado: executa UPDATE direto -> NENHUMA requisição POST com erro é enviada!
         await supabase
           .from('historico')
           .update({
+            agendamento_id: apptId,
             pac_id: targetPacId,
             titulo,
             conteudo,
             status: histStatus,
             prof_id: appt.profId
           })
-          .eq('id', existing.id);
+          .eq('id', existingId);
       } else {
-        // Tenta novo insert na tabela historico
-        const { error: insertErr } = await supabase.from('historico').insert([{
+        // Executa INSERT somente se realmente NENHUM registro prévio existir para o paciente/data
+        await supabase.from('historico').insert([{
           pac_id: targetPacId,
           agendamento_id: apptId,
           tipo: 'agendamento',
@@ -497,31 +513,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: histStatus,
           fonte: 'Web App'
         }]);
-
-        if (insertErr) {
-          // Trata graciosa e silenciosamente colisões de índice único (409 Conflict / 23505)
-          if (insertErr.code === '23505' || insertErr.message?.includes('duplicate') || (insertErr as any).status === 409) {
-            let updQuery = supabase
-              .from('historico')
-              .update({
-                agendamento_id: apptId,
-                titulo,
-                conteudo,
-                status: histStatus
-              })
-              .eq('pac_id', targetPacId)
-              .gte('data', appt.dataISO || new Date().toISOString().split('T')[0])
-              .lte('data', `${appt.dataISO || new Date().toISOString().split('T')[0]}T23:59:59.999Z`);
-
-            if (appt.profId) {
-              updQuery = updQuery.eq('prof_id', appt.profId);
-            }
-
-            await updQuery;
-          } else {
-            console.warn('[ClinicFlow AppContext] Error writing history log:', insertErr);
-          }
-        }
       }
       await lazyLoadHistorico(targetPacId);
     } catch (e) {

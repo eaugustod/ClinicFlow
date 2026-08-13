@@ -755,7 +755,7 @@
       "label": "AppProvider()",
       "file_type": "code",
       "source_file": "clinicflow-app/src/context/AppContext.tsx",
-      "source_location": "L105",
+      "source_location": "L96",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_appcontext_appprovider",
       "community": 1,
@@ -5533,7 +5533,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/context/AppContext.tsx",
-      "source_location": "L105",
+      "source_location": "L96",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_context_appcontext",
@@ -6719,7 +6719,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/context/AppContext.tsx",
-      "source_location": "L247",
+      "source_location": "L238",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_context_appcontext_appprovider",
@@ -13293,5 +13293,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "910008c42235e4504facf1de951241f0dd65b71a"
+  "built_at_commit": "67d915adf47cfd6e6f8144f78a2ee008aabab0d4"
 }
