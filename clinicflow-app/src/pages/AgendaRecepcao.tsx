@@ -541,12 +541,18 @@ export const AgendaRecepcao: React.FC = () => {
                     backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
-                  {/* Rich Solid Floating Tooltip on Hover (Smart Auto-Positioning & Standard Width) */}
-                  <div className={`hidden group-hover/card:flex flex-col gap-1.5 absolute ${verticalPosClass} ${horizontalPosClass} w-[270px] max-w-[270px] whitespace-normal p-3.5 rounded-xl shadow-2xl z-50 text-xs border pointer-events-none transition-all animate-fade-in opacity-100 ${
-                    isDark
-                      ? 'bg-[#0f172a] text-white border-slate-700 shadow-slate-950/90'
-                      : 'bg-white text-slate-900 border-slate-200 shadow-2xl shadow-indigo-500/15 ring-1 ring-black/5'
-                  }`}>
+                  {/* Rich Solid Floating Tooltip on Hover (Smart Auto-Positioning & 100% Opaque Solid Background) */}
+                  <div
+                    className={`hidden group-hover/card:flex flex-col gap-1.5 absolute ${verticalPosClass} ${horizontalPosClass} w-[270px] max-w-[270px] whitespace-normal p-3.5 rounded-xl shadow-2xl z-[9999] text-xs border pointer-events-none transition-all animate-fade-in opacity-100 ${
+                      isDark
+                        ? 'text-white border-slate-700 shadow-slate-950/95'
+                        : 'text-slate-900 border-slate-200 shadow-2xl shadow-indigo-500/20 ring-1 ring-black/5'
+                    }`}
+                    style={{
+                      backgroundColor: isDark ? '#0b0f19' : '#ffffff',
+                      isolation: 'isolate'
+                    }}
+                  >
                     <div className={`font-extrabold text-sm flex items-center gap-1.5 border-b pb-1.5 ${
                       isDark ? 'text-indigo-300 border-slate-700/80' : 'text-indigo-600 border-slate-200'
                     }`}>
