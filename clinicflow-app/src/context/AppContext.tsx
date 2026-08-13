@@ -456,26 +456,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetPacId = appt.pacId || pac?.id;
     if (!targetPacId) return;
 
+    const titulo = `Status do Agendamento: ${newStatusName}`;
+    const conteudo = {
+      texto: `Agendamento no dia ${appt.dataISO ? appt.dataISO.split('-').reverse().join('/') : ''} às ${appt.hora} teve o status alterado para "${newStatusName}".`,
+      profId: appt.profId,
+      hora: appt.hora,
+      status: histStatus
+    };
+
     try {
-      await supabase.from('historico').insert([{
-        pac_id: targetPacId,
-        agendamento_id: apptId,
-        tipo: 'agendamento',
-        titulo: `Status do Agendamento: ${newStatusName}`,
-        conteudo: {
-          texto: `Agendamento no dia ${appt.dataISO ? appt.dataISO.split('-').reverse().join('/') : ''} às ${appt.hora} teve o status alterado para "${newStatusName}".`,
-          profId: appt.profId,
-          hora: appt.hora,
-          status: histStatus
-        },
-        prof_id: appt.profId,
-        data: new Date().toISOString(),
-        status: histStatus,
-        fonte: 'Web App'
-      }]);
+      // 1. Verifica se já existe registro em historico para este agendamento_id
+      const { data: existing } = await supabase
+        .from('historico')
+        .select('id')
+        .eq('agendamento_id', apptId)
+        .maybeSingle();
+
+      if (existing) {
+        // Atualiza registro existente do agendamento
+        await supabase
+          .from('historico')
+          .update({
+            pac_id: targetPacId,
+            titulo,
+            conteudo,
+            status: histStatus,
+            prof_id: appt.profId
+          })
+          .eq('id', existing.id);
+      } else {
+        // Tenta novo insert na tabela historico
+        const { error: insertErr } = await supabase.from('historico').insert([{
+          pac_id: targetPacId,
+          agendamento_id: apptId,
+          tipo: 'agendamento',
+          titulo,
+          conteudo,
+          prof_id: appt.profId,
+          data: new Date().toISOString(),
+          status: histStatus,
+          fonte: 'Web App'
+        }]);
+
+        if (insertErr) {
+          // Trata graciosa e silenciosamente colisões de índice único (409 Conflict / 23505)
+          if (insertErr.code === '23505' || insertErr.message?.includes('duplicate') || (insertErr as any).status === 409) {
+            let updQuery = supabase
+              .from('historico')
+              .update({
+                agendamento_id: apptId,
+                titulo,
+                conteudo,
+                status: histStatus
+              })
+              .eq('pac_id', targetPacId)
+              .gte('data', appt.dataISO || new Date().toISOString().split('T')[0])
+              .lte('data', `${appt.dataISO || new Date().toISOString().split('T')[0]}T23:59:59.999Z`);
+
+            if (appt.profId) {
+              updQuery = updQuery.eq('prof_id', appt.profId);
+            }
+
+            await updQuery;
+          } else {
+            console.warn('[ClinicFlow AppContext] Error writing history log:', insertErr);
+          }
+        }
+      }
       await lazyLoadHistorico(targetPacId);
     } catch (e) {
-      console.error('[ClinicFlow AppContext] Error writing history log:', e);
+      console.error('[ClinicFlow AppContext] Exception in logStatusChange:', e);
     }
   };
 
