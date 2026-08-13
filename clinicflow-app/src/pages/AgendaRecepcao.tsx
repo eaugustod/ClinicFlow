@@ -51,6 +51,7 @@ export const AgendaRecepcao: React.FC = () => {
   const [groupPacientes, setGroupPacientes] = useState<string[]>([]);
 
   // Single Paciente
+  const [selectedPacId, setSelectedPacId] = useState<number | null>(null);
   const [paciente, setPaciente] = useState('');
   const [planoId, setPlanoId] = useState<number>(5);
   const [carteirinha, setCarteirinha] = useState('');
@@ -105,6 +106,7 @@ export const AgendaRecepcao: React.FC = () => {
 
   const handleSelectPacienteObj = (p: Paciente) => {
     setPaciente(p.nome);
+    setSelectedPacId(p.id);
     if (p.planoId) {
       setPlanoId(p.planoId);
     }
@@ -112,6 +114,22 @@ export const AgendaRecepcao: React.FC = () => {
       setCarteirinha(p.carteirinha);
     }
     setShowPacDropdown(false);
+  };
+
+  // Dedicated direct status change helper (identical to Agenda.tsx)
+  const handleStatusChange = async (id: number, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ status: newStatus })
+        .eq('id', id);
+      if (error) throw error;
+      await logStatusChange(id, newStatus);
+      await refreshAll();
+    } catch (e) {
+      console.error(e);
+      alert('Erro ao alterar status.');
+    }
   };
 
   // Load appointments dynamically as user navigates
@@ -187,6 +205,7 @@ export const AgendaRecepcao: React.FC = () => {
   // Modal Reset and Open
   const openNewModal = (initialTime?: string, initialProfId?: number) => {
     setEditId(null);
+    setSelectedPacId(null);
     setProfIdForm(initialProfId || (typeof selectedProfFilter === 'number' ? selectedProfFilter : profissionais[0]?.id || 0));
     setDataAg(currentDate);
     setHoraIni(initialTime || '09:00');
@@ -209,6 +228,7 @@ export const AgendaRecepcao: React.FC = () => {
 
   const openEditModal = (a: Agendamento) => {
     setEditId(a.id);
+    setSelectedPacId(a.pacId || null);
     setProfIdForm(a.profId);
     setDataAg(a.dataISO || currentDate);
     setHoraIni(a.hora || '09:00');
@@ -251,8 +271,13 @@ export const AgendaRecepcao: React.FC = () => {
       const finalPaciente = isGroupMode ? groupPacientes.join(', ') : paciente;
       const planoObj = planos.find(p => p.id === planoId);
 
+      const oldAppt = editId ? agendamentos.find(a => a.id === editId) : null;
+      const matchedPac = pacientes.find(p => p.nome.trim().toLowerCase() === finalPaciente.trim().toLowerCase());
+      const targetPacId = selectedPacId || (matchedPac ? matchedPac.id : (oldAppt ? oldAppt.pacId : null));
+
       const payload: Partial<Agendamento> = {
         profId: profIdForm,
+        pacId: targetPacId,
         paciente: finalPaciente,
         planoId,
         plano: planoObj?.nome || 'Particular',
@@ -265,8 +290,12 @@ export const AgendaRecepcao: React.FC = () => {
         modalidade,
         meetLink: modalidade === 'online' ? meetLink : undefined,
         carteirinha,
-        tipo: tipoAtendimento
+        tipo: tipoAtendimento,
+        waSent: oldAppt?.waSent || false,
+        guia: oldAppt?.guia || null
       };
+
+      const statusChanged = !oldAppt || oldAppt.status !== status;
 
       if (editId) {
         const { error } = await supabase
@@ -274,7 +303,9 @@ export const AgendaRecepcao: React.FC = () => {
           .update(mappers.apptToDb(payload))
           .eq('id', editId);
         if (error) throw error;
-        await logStatusChange(editId, status);
+        if (statusChanged) {
+          await logStatusChange(editId, status);
+        }
       } else {
         const { data, error } = await supabase
           .from('agendamentos')
