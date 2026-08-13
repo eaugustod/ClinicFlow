@@ -25,8 +25,8 @@ export const AgendaRecepcao: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // "YYYY-MM"
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  // Density View Mode Toggle: Compact (High Density) vs Confortavel
-  const [compactView, setCompactView] = useState<boolean>(true);
+  // Density View Mode Toggle: Comfortable, Compact, Ultra Compact (High Density No-Scroll)
+  const [densityMode, setDensityMode] = useState<'comfortable' | 'compact' | 'ultra'>('ultra');
 
   // Global Patient Search & Therapist Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -371,11 +371,14 @@ export const AgendaRecepcao: React.FC = () => {
     const totalTracks = Math.max(3, ...apptPlacements.map(p => p.track + 1));
 
     // Grid row/col positioning calculations
+    const isUltra = densityMode === 'ultra';
+    const isCompact = densityMode === 'compact' || isUltra;
+
     const slotStartBaseMin = 8 * 60;  // 08:00 is 480 mins
     const slotEndBaseMin = 20 * 60 + 30; // 20:30 is 1230 mins
-    const rowHeightPx = compactView ? 54 : 95;   // 54px in compact mode, 95px in comfortable mode
-    const rowGapPx = compactView ? 3 : 4;        // vertical gap
-    const trackMinWidth = compactView ? 180 : 260; // column min width
+    const rowHeightPx = isUltra ? 42 : isCompact ? 54 : 95;   // 42px ultra, 54px compact, 95px comfortable
+    const rowGapPx = isUltra ? 2 : isCompact ? 3 : 4;        // vertical gap
+    const trackMinWidth = isUltra ? 100 : isCompact ? 175 : 250; // column min width (100px enables fitting 100% width with no horizontal scroll)
 
     // Position of current time green line
     const isLiveLineVisible = isToday && nowMinutes >= slotStartBaseMin && nowMinutes <= slotEndBaseMin;
@@ -411,19 +414,43 @@ export const AgendaRecepcao: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Toggle Visão Compacta vs Confortável */}
-            <button
-              onClick={() => setCompactView(!compactView)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 shadow-xs cursor-pointer ${
-                compactView
-                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20'
-                  : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--bg-raised)]'
-              }`}
-              title={compactView ? "Mudar para Modo Confortável" : "Mudar para Modo Compacto de Alta Densidade"}
-            >
-              <SlidersHorizontal size={14} />
-              <span>{compactView ? 'Modo Compacto' : 'Modo Confortável'}</span>
-            </button>
+            {/* 3-Way Density Switcher: Confortável | Compacto | Ultra Compacto */}
+            <div className="flex items-center bg-[var(--bg-surface)] p-1 rounded-xl border border-[var(--border)] gap-1 shadow-xs">
+              <button
+                onClick={() => setDensityMode('comfortable')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  densityMode === 'comfortable'
+                    ? 'bg-[var(--bg-raised)] text-indigo-500 shadow-xs font-extrabold'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+                title="Visualização Confortável com cards expandidos"
+              >
+                Confortável
+              </button>
+              <button
+                onClick={() => setDensityMode('compact')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  densityMode === 'compact'
+                    ? 'bg-[var(--bg-raised)] text-indigo-500 shadow-xs font-extrabold'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+                title="Visualização Compacta de Alta Densidade"
+              >
+                Compacto
+              </button>
+              <button
+                onClick={() => setDensityMode('ultra')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  densityMode === 'ultra'
+                    ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-sm font-extrabold'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+                title="Visualização Ultra Compacta — Enquadra todos os terapeutas sem rolagem lateral"
+              >
+                <SlidersHorizontal size={12} />
+                <span>Ultra Compacto</span>
+              </button>
+            </div>
 
             <button
               onClick={() => navigateDate('today')}
@@ -531,13 +558,13 @@ export const AgendaRecepcao: React.FC = () => {
                 <div
                   key={appt.id}
                   onClick={() => openEditModal(appt)}
-                  className={`group/card rounded-xl text-xs bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] hover:z-[9999] group-hover/card:z-[9999] cursor-pointer flex flex-col justify-between overflow-visible relative ${
-                    compactView ? 'p-1.5 sm:p-2' : 'p-3'
+                  className={`group/card rounded-xl bg-[var(--bg-surface)] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:scale-[1.01] hover:z-[9999] group-hover/card:z-[9999] cursor-pointer flex flex-col justify-between overflow-visible relative ${
+                    isUltra ? 'p-1 leading-tight text-[10px]' : isCompact ? 'p-1.5 sm:p-2 text-xs' : 'p-3 text-xs'
                   } ${isMultiBlock ? 'z-20 ring-2 ring-indigo-500/30' : 'z-10'}`}
                   style={{
                     gridColumn: track + 2,
                     gridRow: `${startSlot + 1} / span ${spanRows}`,
-                    borderLeft: `${compactView ? '5px' : '6px'} solid ${stColor}`,
+                    borderLeft: `${isUltra ? '3.5px' : isCompact ? '5px' : '6px'} solid ${stColor}`,
                     backgroundColor: isDark ? `${stColor}18` : '#ffffff'
                   }}
                 >
@@ -580,7 +607,7 @@ export const AgendaRecepcao: React.FC = () => {
                   <div className="min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <span className={`font-extrabold text-[var(--text-primary)] truncate block w-full leading-tight ${
-                        compactView ? 'text-[11px] sm:text-xs' : 'text-xs sm:text-sm'
+                        isUltra ? 'text-[9.5px]' : isCompact ? 'text-[11px] sm:text-xs' : 'text-xs sm:text-sm'
                       }`}>
                         {appt.paciente}
                       </span>
@@ -588,17 +615,17 @@ export const AgendaRecepcao: React.FC = () => {
                   </div>
 
                   <div className={`font-bold text-[var(--text-primary)] flex items-center justify-between gap-1 min-w-0 ${
-                    compactView ? 'text-[9.5px] mt-0.5 pt-0.5 border-t border-[var(--border)]/50' : 'text-[10px] mt-1.5 pt-1 border-t border-[var(--border)]'
+                    isUltra ? 'text-[8.5px] mt-0.2 pt-0.5 border-t border-[var(--border)]/40' : isCompact ? 'text-[9.5px] mt-0.5 pt-0.5 border-t border-[var(--border)]/50' : 'text-[10px] mt-1.5 pt-1 border-t border-[var(--border)]'
                   }`}>
                     <span className="truncate flex items-center gap-1 min-w-0">
-                      <span className="w-2 h-2 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: pColor }} />
+                      <span className={`rounded-full shrink-0 shadow-xs ${isUltra ? 'w-1.5 h-1.5' : 'w-2 h-2'}`} style={{ backgroundColor: pColor }} />
                       <span className="truncate">
                         {prof?.nomeAgenda || prof?.nome || 'Profissional'} <span className="text-[var(--text-muted)] font-mono font-normal">({appt.plano})</span>
                       </span>
                     </span>
                     {appt.modalidade === 'online' && (
                       <span title="Atendimento Online" className="text-indigo-400 shrink-0">
-                        <Video size={compactView ? 10 : 12} />
+                        <Video size={isUltra ? 9 : isCompact ? 10 : 12} />
                       </span>
                     )}
                   </div>
