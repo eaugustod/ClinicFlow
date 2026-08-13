@@ -227,6 +227,7 @@ export interface ListaEspera {
 export interface Historico {
   id: number;
   pacId: number;
+  agendamentoId?: number | null;
   tipo: 'evolucao' | 'anamnese' | 'agendamento';
   titulo: string;
   conteudo: {

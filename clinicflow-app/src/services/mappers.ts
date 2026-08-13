@@ -411,6 +411,7 @@ export const mappers = {
 
   histToDb: (h: Partial<Historico>) => ({
     pac_id: h.pacId,
+    agendamento_id: h.agendamentoId || null,
     tipo: h.tipo,
     titulo: h.titulo || null,
     conteudo: h.conteudo || null,
@@ -431,6 +432,7 @@ export const mappers = {
     return {
       id: r.id,
       pacId: r.pac_id,
+      agendamentoId: r.agendamento_id || null,
       tipo: r.tipo,
       titulo: r.titulo || '',
       conteudo: parsedConteudo || {},

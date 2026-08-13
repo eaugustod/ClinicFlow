@@ -459,6 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await supabase.from('historico').insert([{
         pac_id: targetPacId,
+        agendamento_id: apptId,
         tipo: 'agendamento',
         titulo: `Status do Agendamento: ${newStatusName}`,
         conteudo: {
