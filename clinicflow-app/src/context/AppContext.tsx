@@ -450,7 +450,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!appt) return;
     const foundStatus = statusAgendamentos.find(s => s.nome.toLowerCase() === newStatusName.toLowerCase()) || 
                         defaultStatusAgendamentos.find(s => s.nome.toLowerCase() === newStatusName.toLowerCase());
-    if (!foundStatus || !foundStatus.statusHistorico) return;
+    const histStatus = foundStatus?.statusHistorico || newStatusName;
 
     const pac = pacientes.find(p => p.nome.toLowerCase().trim() === appt.paciente.toLowerCase().trim());
     const targetPacId = appt.pacId || pac?.id;
@@ -460,16 +460,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await supabase.from('historico').insert([{
         pac_id: targetPacId,
         tipo: 'agendamento',
-        titulo: `Status do Agendamento: ${foundStatus.nome}`,
+        titulo: `Status do Agendamento: ${newStatusName}`,
         conteudo: {
-          texto: `Agendamento no dia ${appt.dataISO ? appt.dataISO.split('-').reverse().join('/') : ''} às ${appt.hora} teve o status alterado para "${foundStatus.nome}".`,
+          texto: `Agendamento no dia ${appt.dataISO ? appt.dataISO.split('-').reverse().join('/') : ''} às ${appt.hora} teve o status alterado para "${newStatusName}".`,
           profId: appt.profId,
           hora: appt.hora,
-          status: foundStatus.statusHistorico
+          status: histStatus
         },
         prof_id: appt.profId,
         data: new Date().toISOString(),
-        status: foundStatus.statusHistorico,
+        status: histStatus,
         fonte: 'Web App'
       }]);
       await lazyLoadHistorico(targetPacId);
