@@ -259,12 +259,18 @@ export const Agenda: React.FC = () => {
       : profissionais.filter(p => p.status === 'Ativo');
   })();
 
-  // Status changers
+  // Status changers (sincroniza status e stat_terap)
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
+      let statTerap = 'Agendado';
+      const stLower = newStatus.toLowerCase();
+      if (stLower === 'atendido' || stLower === 'em atendimento') statTerap = 'Presente';
+      else if (stLower.includes('espera')) statTerap = 'Em Espera';
+      else if (stLower === 'desmarcado' || stLower === 'falta' || stLower === 'cancelado') statTerap = 'Falta';
+
       const { error } = await supabase
         .from('agendamentos')
-        .update({ status: newStatus })
+        .update({ status: newStatus, stat_terap: statTerap })
         .eq('id', id);
       if (error) throw error;
       await logStatusChange(id, newStatus);

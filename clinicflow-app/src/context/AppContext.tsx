@@ -452,11 +452,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       texto: `Agendamento no dia ${appt.dataISO ? appt.dataISO.split('-').reverse().join('/') : ''} às ${appt.hora} teve o status alterado para "${newStatusName}".`,
       profId: appt.profId,
       hora: appt.hora,
-      status: histStatus
+      status: histStatus,
+      usuario: user?.nome || 'Recepção / Atendimento'
     };
 
     try {
-      // Busca prévia em 2 camadas (1: agendamento_id, 2: pac_id + prof_id + data) ANTES de tentar insert
+      // Tenta executar via RPC atômica do Supabase se disponível no banco
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc('sp_atualizar_status_agendamento', {
+        p_agendamento_id: apptId,
+        p_status_novo: newStatusName,
+        p_origem: 'ClinicFlow Web',
+        p_usuario_id: user?.id ? String(user.id) : null,
+        p_usuario_nome: user?.nome || 'Sistema'
+      });
+
+      if (!rpcErr && rpcRes && rpcRes.success) {
+        await lazyLoadHistorico(targetPacId);
+        return;
+      }
+
+      // Fallback local se a RPC não estiver disponível
       let existingId: number | null = null;
 
       const { data: byAgend } = await supabase
@@ -487,8 +502,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
+      const fechaISO = appt.dataISO ? `${appt.dataISO}T${appt.hora || '08:00'}:00.000Z` : new Date().toISOString();
+
       if (existingId) {
-        // Registro localizado: executa UPDATE direto -> NENHUMA requisição POST com erro é enviada!
         await supabase
           .from('historico')
           .update({
@@ -501,7 +517,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           })
           .eq('id', existingId);
       } else {
-        // Executa INSERT somente se realmente NENHUM registro prévio existir para o paciente/data
         await supabase.from('historico').insert([{
           pac_id: targetPacId,
           agendamento_id: apptId,
@@ -509,9 +524,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           titulo,
           conteudo,
           prof_id: appt.profId,
-          data: new Date().toISOString(),
+          data: fechaISO,
           status: histStatus,
-          fonte: 'Web App'
+          fonte: 'ClinicFlow Web'
         }]);
       }
       await lazyLoadHistorico(targetPacId);
