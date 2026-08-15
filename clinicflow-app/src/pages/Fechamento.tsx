@@ -1244,6 +1244,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           </div>
         </div>
       )}
+      </div>
 
       {/* EDIT MODAL */}
       {editingPayment && (
@@ -1360,9 +1361,9 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
                 </button>
               </div>
             </form>
+          </div>
         </div>
       )}
-      </div>
 
       {/* CALCULATING LOADER OVERLAY */}
       {calculating && (

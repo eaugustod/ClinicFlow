@@ -1302,6 +1302,7 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
                   })}
               </div>
             )}
+          </div>
         </div>
       )}
       </div>
