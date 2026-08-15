@@ -839,10 +839,10 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
   const salasFiltradas = salaFiltro ? salas.filter(s => String(s.id) === String(salaFiltro)) : salas;
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-hidden">
       
-      {/* Sticky Header Section */}
-      <div className="sticky -top-8 bg-[#07090e]/95 backdrop-blur-md z-10 pb-4 pt-9 -mx-8 px-8 border-b border-white/[0.04] space-y-4">
+      {/* Header Section */}
+      <div className="shrink-0 bg-[#07090e]/95 backdrop-blur-md z-10 pb-4 border-b border-white/[0.04] space-y-4">
         {/* Page Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
@@ -928,8 +928,10 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
         )}
       </div>
 
-      {/* ── TAB 1: AGENDA DE RESERVAS DE SALA ── */}
-      {activeTab === 'conecta-agenda' && (
+      {/* SCROLLABLE MAIN CONTENT AREA */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin space-y-6 pr-1">
+        {/* ── TAB 1: AGENDA DE RESERVAS DE SALA ── */}
+        {activeTab === 'conecta-agenda' && (
         <div className="space-y-6">
 
           {/* Rooms and Weekly Grid List */}
@@ -1300,9 +1302,9 @@ export const Conecta: React.FC<ConectaProps> = ({ activeTab, onNavigate }) => {
                   })}
               </div>
             )}
-          </div>
         </div>
       )}
+      </div>
 
       {/* ── MODAL: GERENCIAR SALAS ── */}
       {isSalaModalOpen && (

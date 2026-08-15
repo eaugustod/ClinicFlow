@@ -649,8 +649,9 @@ export const LotesTiss: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-hidden">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 shrink-0">
         <div>
           <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest font-sans font-semibold">TISS XML Faturamento</span>
           <h2 className="text-2xl font-black tracking-wide text-white mt-0.5">Lotes TISS</h2>
@@ -666,7 +667,7 @@ export const LotesTiss: React.FC = () => {
       </div>
 
       {/* INDICATORS SECTION */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 animate-fade-in">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 animate-fade-in shrink-0">
         {stats.map((s, idx) => (
           <div key={idx} className={`p-4 rounded-xl border ${s.color} backdrop-blur-md shadow-lg`}>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{s.label}</p>
@@ -676,7 +677,7 @@ export const LotesTiss: React.FC = () => {
       </div>
 
       {/* FILTERS BAR */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#131622]/40 backdrop-blur-md border border-white/[0.04] rounded-2xl shrink-0">
         <div className="flex items-center gap-3 bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2">
           <Search size={14} className="text-slate-400" />
           <input
@@ -714,9 +715,9 @@ export const LotesTiss: React.FC = () => {
         </div>
       </div>
 
-      {/* Lotes Table */}
-      <div className="bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Lotes Table Container with Scroll */}
+      <div className="flex-1 min-h-0 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl overflow-hidden flex flex-col">
+        <div className="overflow-auto flex-1 scrollbar-thin">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/[0.04] bg-white/[0.01]">

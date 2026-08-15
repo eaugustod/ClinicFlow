@@ -864,59 +864,63 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-hidden">
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest font-sans font-semibold">Gestão Financeira</span>
-          <h2 className="text-2xl font-black tracking-wide text-white mt-0.5">Fechamento & Repasses</h2>
-          <p className="text-xs text-slate-400 mt-1">Calcule fechamentos mensais por terapeuta e gerencie recibos e pagamentos</p>
+      <div className="flex flex-col gap-4 shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest font-sans font-semibold">Gestão Financeira</span>
+            <h2 className="text-2xl font-black tracking-wide text-white mt-0.5">Fechamento & Repasses</h2>
+            <p className="text-xs text-slate-400 mt-1">Calcule fechamentos mensais por terapeuta e gerencie recibos e pagamentos</p>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-[#131622]/60 backdrop-blur-md border border-white/[0.06] rounded-xl px-4 py-2 text-white font-bold font-mono focus:outline-none transition-all focus:border-indigo-500/50"
+            />
+            {activeTab === 'calculo' && (
+              <button
+                onClick={handleCalculate}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#161a26] hover:bg-[#1f2433] text-slate-300 rounded-xl font-bold border border-white/[0.06] transition-all"
+              >
+                <Calculator size={13} />
+                Calcular
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-[#131622]/60 backdrop-blur-md border border-white/[0.06] rounded-xl px-4 py-2 text-white font-bold font-mono focus:outline-none transition-all focus:border-indigo-500/50"
-          />
-          {activeTab === 'calculo' && (
-            <button
-              onClick={handleCalculate}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#161a26] hover:bg-[#1f2433] text-slate-300 rounded-xl font-bold border border-white/[0.06] transition-all"
-            >
-              <Calculator size={13} />
-              Calcular
-            </button>
-          )}
+
+        {/* TABS BAR */}
+        <div className="flex gap-2 border-b border-white/[0.04] pb-1">
+          <button
+            onClick={() => setActiveTab('calculo')}
+            className={`pb-3 px-4 font-bold transition-all relative ${
+              activeTab === 'calculo'
+                ? 'text-white border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Fechamento Mensal
+          </button>
+          <button
+            onClick={() => setActiveTab('financeiro')}
+            className={`pb-3 px-4 font-bold transition-all relative ${
+              activeTab === 'financeiro'
+                ? 'text-white border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Repasses / Pagamentos
+          </button>
         </div>
       </div>
 
-      {/* TABS BAR */}
-      <div className="flex gap-2 border-b border-white/[0.04] pb-1">
-        <button
-          onClick={() => setActiveTab('calculo')}
-          className={`pb-3 px-4 font-bold transition-all relative ${
-            activeTab === 'calculo'
-              ? 'text-white border-b-2 border-indigo-500'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Fechamento Mensal
-        </button>
-        <button
-          onClick={() => setActiveTab('financeiro')}
-          className={`pb-3 px-4 font-bold transition-all relative ${
-            activeTab === 'financeiro'
-              ? 'text-white border-b-2 border-indigo-500'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Repasses / Pagamentos
-        </button>
-      </div>
-
-      {/* CALCULATOR TAB */}
-      {activeTab === 'calculo' && (
+      {/* SCROLLABLE MAIN CONTENT AREA */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin space-y-6 pr-1">
+        {/* CALCULATOR TAB */}
+        {activeTab === 'calculo' && (
         <div className="space-y-6">
           {calculated ? (
             <div className="space-y-6 animate-fade-in">
@@ -1356,9 +1360,9 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
                 </button>
               </div>
             </form>
-          </div>
         </div>
       )}
+      </div>
 
       {/* CALCULATING LOADER OVERLAY */}
       {calculating && (

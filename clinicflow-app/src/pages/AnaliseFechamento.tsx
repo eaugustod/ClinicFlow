@@ -168,7 +168,7 @@ export const AnaliseFechamento: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 text-xs animate-fade-in pb-12">
+    <div className="flex-1 h-full min-h-0 flex flex-col gap-4 animate-fade-in text-xs overflow-hidden">
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-surface)] border border-emerald-500/40 text-[var(--text-primary)] px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200">
@@ -178,7 +178,7 @@ export const AnaliseFechamento: React.FC = () => {
       )}
 
       {/* Header & Filter Card */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm space-y-6 transition-colors duration-300">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm space-y-6 transition-colors duration-300 shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
           <div>
             <span className="text-[10px] text-[var(--accent)] font-bold uppercase tracking-widest">
@@ -262,8 +262,9 @@ export const AnaliseFechamento: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Table Content */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm transition-colors duration-300">
+      {/* Main Table Content with Scroll Container */}
+      <div className="flex-1 min-h-0 bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm transition-colors duration-300 flex flex-col">
+        <div className="overflow-auto flex-1 scrollbar-thin">
         {loading ? (
           <div className="p-16 flex flex-col items-center justify-center text-[var(--text-muted)] gap-3">
             <Loader2 size={32} className="text-[var(--accent)] animate-spin" />
@@ -363,6 +364,7 @@ export const AnaliseFechamento: React.FC = () => {
             </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
