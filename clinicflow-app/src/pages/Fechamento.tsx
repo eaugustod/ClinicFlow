@@ -302,8 +302,13 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === prevMonth
         );
         if (prevFinProf.length > 0) {
-          const prevDevido = prevFinProf.reduce((acc, r) => acc + (r.tipo === 'desconto_mes_anterior' ? -r.valor : (r.tipo === 'adicional_mes_anterior' ? r.valor : (r.tipo !== 'avaliacao' ? r.valor : 0))), 0);
-          const prevPago = prevFinProf.filter(r => r.status === 'pago').reduce((acc, r) => acc + (r.valorPago || 0), 0);
+          const prevDevido = prevFinProf.reduce((acc, r) => {
+            if (r.tipo === 'avaliacao') return acc;
+            if (r.tipo === 'desconto_mes_anterior') return acc - Math.abs(r.valor);
+            if (r.tipo === 'adicional_mes_anterior') return acc + Math.abs(r.valor);
+            return acc + r.valor;
+          }, 0);
+          const prevPago = prevFinProf.filter(r => r.status === 'pago').reduce((acc, r) => acc + (r.valorPago || r.valor), 0);
 
           if (prevPago > prevDevido) {
             valorDescontoMesAnterior = prevPago - prevDevido;
@@ -534,11 +539,193 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
   };
 
   // Save Fechamento
+  // Helper to sync calculated repasses (including sessions & discounts/additions) to database
+  const syncRepassesFromCalculations = async (month: string, currentTerapeutasCalculados: any[], currentAgendamentsList: any[]) => {
+    const [year, monthNum] = month.split('-').map(Number);
+    const primDay = `${month}-01`;
+    const ultDay = new Date(year, monthNum, 0).toISOString().split('T')[0];
+
+    const atendidos = currentAgendamentsList.filter(a => {
+      const isDateValid = a.dataISO >= primDay && a.dataISO <= ultDay;
+      if (!isDateValid) return false;
+      const isAtendido = getBaseStatus(a.status) === 'atendido';
+      const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
+      const isDesmarcadoApos18 = isDesmarcado && a.hora >= '18:00';
+      return isAtendido || isDesmarcadoApos18;
+    });
+
+    const grupos: { [key: string]: any } = {};
+
+    atendidos.forEach(a => {
+      const prof = profissionais.find(p => p.id === a.profId);
+      const profNome = prof ? prof.nome : `Prof #${a.profId}`;
+      const profId = a.profId || null;
+
+      const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
+      const tipoLower = a.tipo?.toLowerCase() || '';
+      const obsLower = a.obs?.toLowerCase() || '';
+
+      const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva');
+      const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
+      const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
+      const isDesmarcadoApos18 = isDesmarcado && a.hora >= '18:00';
+
+      let tipo: 'sessao' | 'devolutiva' | 'avaliacao' | 'particular' = 'sessao';
+      if (isParticular) {
+        tipo = 'particular';
+      } else if (isAval) {
+        tipo = 'avaliacao';
+      } else if (isDev) {
+        tipo = 'devolutiva';
+      }
+
+      const key = `${profId}__${tipo}`;
+      if (!grupos[key]) {
+        grupos[key] = {
+          profissionalId: profId,
+          profissional: profNome,
+          tipo,
+          pacientes: new Set(),
+          valor: 0
+        };
+      }
+      grupos[key].pacientes.add(a.paciente);
+
+      if (tipo !== 'avaliacao' && prof) {
+        if (isDesmarcadoApos18) {
+          grupos[key].valor += parseFloat((prof as any).valorDesmarqueApos18 || 0);
+        } else if (tipo === 'particular') {
+          grupos[key].valor += parseFloat((prof as any).valorParticular || 0);
+        } else if (tipo === 'devolutiva') {
+          grupos[key].valor += prof.valorAval || 0;
+        } else {
+          const dur = a.durMin || 30;
+          const defaultSessionVal = dur >= 45 
+            ? parseFloat((prof as any).valor60 || 100) 
+            : parseFloat((prof as any).valor30 || 60);
+          grupos[key].valor += defaultSessionVal;
+        }
+      }
+    });
+
+    const { data: currentDbRecords } = await supabase
+      .from('pagamentos_terapeutas')
+      .select('*')
+      .eq('competencia', month);
+    
+    const existingFin = (currentDbRecords || []).map(mappers.dbToPagamento);
+    const recordsToUpsert: PagamentoTerapeuta[] = [];
+
+    // 1. Group records from appointments
+    for (const g of Object.values(grupos)) {
+      const keyExist = existingFin.find(r => 
+        r.competencia === month && 
+        (r.profissionalId === g.profissionalId || r.profissional === g.profissional) && 
+        r.tipo === g.tipo
+      );
+
+      const newId = keyExist ? keyExist.id : `fin_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      recordsToUpsert.push({
+        id: newId,
+        profissionalId: g.profissionalId,
+        profissional: g.profissional,
+        competencia: month,
+        tipo: g.tipo,
+        qtdPacientes: g.pacientes.size,
+        valor: g.valor,
+        status: keyExist ? keyExist.status : 'pendente',
+        valorPago: keyExist ? keyExist.valorPago : 0,
+        dataPagamento: keyExist ? keyExist.dataPagamento : '',
+        nfUrl: keyExist ? keyExist.nfUrl : '',
+        nfNome: keyExist ? keyExist.nfNome : '',
+        obs: keyExist ? keyExist.obs : ''
+      });
+    }
+
+    // 2. Discount / Addition records from calculations
+    for (const tc of currentTerapeutasCalculados) {
+      const profId = tc.prof.id;
+      const profNome = tc.prof.nome;
+
+      if (tc.valorDescontoMesAnterior > 0) {
+        const keyExist = existingFin.find(r => 
+          r.competencia === month && 
+          (r.profissionalId === profId || r.profissional === profNome) && 
+          r.tipo === 'desconto_mes_anterior'
+        );
+
+        const valDesconto = -Math.abs(tc.valorDescontoMesAnterior);
+        const newId = keyExist ? keyExist.id : `fin_desc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        recordsToUpsert.push({
+          id: newId,
+          profissionalId: profId,
+          profissional: profNome,
+          competencia: month,
+          tipo: 'desconto_mes_anterior',
+          qtdPacientes: 0,
+          valor: valDesconto,
+          status: keyExist ? keyExist.status : 'pendente',
+          valorPago: keyExist ? (keyExist.status === 'pago' ? keyExist.valorPago || valDesconto : 0) : 0,
+          dataPagamento: keyExist ? keyExist.dataPagamento : '',
+          nfUrl: keyExist ? keyExist.nfUrl : '',
+          nfNome: keyExist ? keyExist.nfNome : '',
+          obs: keyExist && keyExist.obs ? keyExist.obs : (tc.obsDescontoMesAnterior || 'Pago a maior no mês anterior (Desconto)')
+        });
+      }
+
+      if (tc.valorAdicionalMesAnterior > 0) {
+        const keyExist = existingFin.find(r => 
+          r.competencia === month && 
+          (r.profissionalId === profId || r.profissional === profNome) && 
+          r.tipo === 'adicional_mes_anterior'
+        );
+
+        const valAdicional = Math.abs(tc.valorAdicionalMesAnterior);
+        const newId = keyExist ? keyExist.id : `fin_adic_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        recordsToUpsert.push({
+          id: newId,
+          profissionalId: profId,
+          profissional: profNome,
+          competencia: month,
+          tipo: 'adicional_mes_anterior',
+          qtdPacientes: 0,
+          valor: valAdicional,
+          status: keyExist ? keyExist.status : 'pendente',
+          valorPago: keyExist ? (keyExist.status === 'pago' ? keyExist.valorPago || valAdicional : 0) : 0,
+          dataPagamento: keyExist ? keyExist.dataPagamento : '',
+          nfUrl: keyExist ? keyExist.nfUrl : '',
+          nfNome: keyExist ? keyExist.nfNome : '',
+          obs: keyExist && keyExist.obs ? keyExist.obs : (tc.obsAdicionalMesAnterior || 'Pago a menor no mês anterior (Adicional)')
+        });
+      }
+    }
+
+    for (const reg of recordsToUpsert) {
+      const { error } = await supabase
+        .from('pagamentos_terapeutas')
+        .upsert(mappers.pagamentoToDb(reg), { onConflict: 'id' });
+      if (error) throw error;
+    }
+  };
+
+  // Save Fechamento
   const handleConfirmFechamento = async () => {
     setSavingFechamento(true);
     const totalSessoes = terapeutasCalculados.reduce((acc, tc) => acc + tc.totalSessoes, 0);
     const totalValor = terapeutasCalculados.reduce((acc, tc) => acc + tc.totalValor, 0);
     const totalProfs = terapeutasCalculados.length;
+
+    let currentAgendamentos = agendamentos;
+    try {
+      const fetched = await loadAgendamentosMes(selectedMonth);
+      if (fetched && fetched.length > 0) {
+        const map = new Map(agendamentos.map(a => [a.id, a]));
+        fetched.forEach(a => map.set(a.id, a));
+        currentAgendamentos = Array.from(map.values());
+      }
+    } catch (e) {
+      console.error('[ClinicFlow Fechamento] Error loading month for confirmation:', e);
+    }
 
     const payload = {
       competencia: selectedMonth,
@@ -560,6 +747,11 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           valorPart: tc.valorPart,
           countDesmarqueApos18: tc.countDesmarqueApos18,
           valorDesmarqueApos18Total: tc.valorDesmarqueApos18Total,
+          valorDescontoMesAnterior: tc.valorDescontoMesAnterior,
+          obsDescontoMesAnterior: tc.obsDescontoMesAnterior,
+          valorAdicionalMesAnterior: tc.valorAdicionalMesAnterior,
+          obsAdicionalMesAnterior: tc.obsAdicionalMesAnterior,
+          totalBruto: tc.totalBruto,
           totalValor: tc.totalValor,
           totalSessoes: tc.totalSessoes
         }))
@@ -624,7 +816,15 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
         console.warn('[Fechamento] Erro ao sincronizar contas a pagar:', syncErr);
       }
 
-      alert(`Sucesso! Fechamento de ${selectedMonth} gravado no banco de dados e repasses adicionados em Contas a Pagar!`);
+      // Sync repasses to pagamentos_terapeutas (including discounts/adicionais)
+      try {
+        await syncRepassesFromCalculations(selectedMonth, terapeutasCalculados, currentAgendamentos);
+        await loadFinanceiro();
+      } catch (syncRepErr) {
+        console.warn('[Fechamento] Erro ao sincronizar repasses de terapeutas:', syncRepErr);
+      }
+
+      alert(`Sucesso! Fechamento de ${selectedMonth} gravado no banco de dados, repasses atualizados e adicionados em Contas a Pagar!`);
     } catch (e: any) {
       console.error('[Fechamento] Erro ao gravar fechamento mensal:', e);
       if (e?.status === 403 || e?.code === '42501' || String(e?.message).includes('403')) {
@@ -645,7 +845,6 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
     try {
       const fetched = await loadAgendamentosMes(selectedMonth);
       if (fetched && fetched.length > 0) {
-        // Merge fetched data with current local array for immediate calculation
         const map = new Map(agendamentos.map(a => [a.id, a]));
         fetched.forEach(a => map.set(a.id, a));
         currentAgendamentos = Array.from(map.values());
@@ -654,116 +853,130 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       console.error('[ClinicFlow Fechamento] Error pre-loading month:', e);
     }
     
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const primDay = `${selectedMonth}-01`;
-    const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
-    
-    // Filter attended appointments and desmarques after 18:00
-    const atendidos = currentAgendamentos.filter(a => {
-      const isDateValid = a.dataISO >= primDay && a.dataISO <= ultDay;
-      if (!isDateValid) return false;
-      const isAtendido = getBaseStatus(a.status) === 'atendido';
-      const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
-      const isDesmarcadoApos18 = isDesmarcado && a.hora >= '18:00';
-      return isAtendido || isDesmarcadoApos18;
-    });
-
-    if (atendidos.length === 0) {
-      alert('Nenhum atendimento marcado como "Atendido" ou desmarque após as 18:00 no período selecionado.');
-      setLoadingFin(false);
-      return;
-    }
-
-    const grupos: { [key: string]: any } = {};
-
-    atendidos.forEach(a => {
-      const prof = profissionais.find(p => p.id === a.profId);
-      const profNome = prof ? prof.nome : `Prof #${a.profId}`;
-      const profId = a.profId || null;
-
-      // Group by: regular session vs devolution vs particular
-      const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
-      const tipoLower = a.tipo?.toLowerCase() || '';
-      const obsLower = a.obs?.toLowerCase() || '';
-      const pacLower = a.paciente?.toLowerCase() || '';
-
-      const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva') || pacLower.includes('devolutiva');
-      const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
-      const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
-      const isDesmarcadoApos18 = isDesmarcado && a.hora >= '18:00';
-
-      let tipo: 'sessao' | 'devolutiva' | 'avaliacao' | 'particular' = 'sessao';
-      if (isParticular) {
-        tipo = 'particular';
-      } else if (isAval) {
-        tipo = 'avaliacao';
-      } else if (isDev) {
-        tipo = 'devolutiva';
-      }
-
-      const key = `${profId}__${tipo}`;
-      if (!grupos[key]) {
-        grupos[key] = {
-          profissionalId: profId,
-          profissional: profNome,
-          tipo,
-          pacientes: new Set(),
-          valor: 0
-        };
-      }
-      grupos[key].pacientes.add(a.paciente);
-
-      // Add to value
-      if (tipo !== 'avaliacao' && prof) {
-        if (isDesmarcadoApos18) {
-          grupos[key].valor += parseFloat((prof as any).valorDesmarqueApos18 || 0);
-        } else if (tipo === 'particular') {
-          grupos[key].valor += parseFloat((prof as any).valorParticular || 0);
-        } else if (tipo === 'devolutiva') {
-          grupos[key].valor += prof.valorAval || 0;
-        } else {
-          const dur = a.durMin || 30;
-          const defaultSessionVal = dur >= 45 
-            ? parseFloat((prof as any).valor60 || 100) 
-            : parseFloat((prof as any).valor30 || 60);
-          grupos[key].valor += defaultSessionVal;
-        }
-      }
-    });
-
     try {
-      let novos = 0;
-      for (const g of Object.values(grupos)) {
-        const keyExist = finRegistros.find(r => 
-          r.competencia === selectedMonth && 
-          r.profissional === g.profissional && 
-          r.tipo === g.tipo
+      // Recalculate therapist totals if needed to ensure discounts/adicionais are ready
+      let currentCalculados = terapeutasCalculados;
+      if (!calculated || terapeutasCalculados.length === 0) {
+        const [year, month] = selectedMonth.split('-').map(Number);
+        const primDay = `${selectedMonth}-01`;
+        const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
+        
+        const atendidos = currentAgendamentos.filter(a => 
+          getBaseStatus(a.status) === 'atendido' && 
+          a.dataISO >= primDay && 
+          a.dataISO <= ultDay
+        );
+        const todosAgendamentos = currentAgendamentos.filter(a => 
+          a.dataISO >= primDay && 
+          a.dataISO <= ultDay
         );
 
-        const newId = keyExist ? keyExist.id : `fin_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        const reg: PagamentoTerapeuta = {
-          id: newId,
-          profissionalId: g.profissionalId,
-          profissional: g.profissional,
-          competencia: selectedMonth,
-          tipo: g.tipo,
-          qtdPacientes: g.pacientes.size,
-          valor: g.valor,
-          status: keyExist ? keyExist.status : 'pendente',
-          valorPago: keyExist ? keyExist.valorPago : 0,
-          dataPagamento: keyExist ? keyExist.dataPagamento : '',
-          nfUrl: keyExist ? keyExist.nfUrl : '',
-          nfNome: keyExist ? keyExist.nfNome : '',
-          obs: keyExist ? keyExist.obs : ''
-        };
+        const list: any[] = [];
+        profissionais.forEach(p => {
+          const profAppts = atendidos.filter(a => a.profId === p.id);
+          const profApptsAll = todosAgendamentos.filter(a => a.profId === p.id);
+          if (profApptsAll.length === 0) return;
 
-        const { error } = await supabase
-          .from('pagamentos_terapeutas')
-          .upsert(mappers.pagamentoToDb(reg), { onConflict: 'id' });
-        if (error) throw error;
-        novos++;
+          let count30 = 0, valor30 = 0, count60 = 0, valor60 = 0, countDev = 0, valorDev = 0, countAval = 0, countPart = 0, valorPart = 0;
+          profAppts.forEach(a => {
+            const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
+            const tipoLower = a.tipo?.toLowerCase() || '';
+            const obsLower = a.obs?.toLowerCase() || '';
+
+            const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva');
+            const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
+
+            if (isParticular) {
+              countPart++;
+              valorPart += parseFloat((p as any).valorParticular || 0);
+            } else if (isAval) {
+              countAval++;
+            } else if (isDev) {
+              countDev++;
+              valorDev += p.valorAval || 0;
+            } else {
+              const dur = a.durMin || 30;
+              if (dur >= 45) {
+                count60++;
+                valor60 += parseFloat((p as any).valor60 || 100);
+              } else {
+                count30++;
+                valor30 += parseFloat((p as any).valor30 || 60);
+              }
+            }
+          });
+
+          const profDesmarquesApos18 = profApptsAll.filter(a => {
+            const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
+            return isDesmarcado && a.hora >= '18:00';
+          });
+          const countDesmarqueApos18 = profDesmarquesApos18.length;
+          const valorDesmarqueApos18Total = countDesmarqueApos18 * parseFloat((p as any).valorDesmarqueApos18 || 0);
+
+          const totalBruto = valor30 + valor60 + valorDev + valorPart + valorDesmarqueApos18Total;
+
+          let valorDescontoMesAnterior = 0;
+          let obsDescontoMesAnterior = '';
+          let valorAdicionalMesAnterior = 0;
+          let obsAdicionalMesAnterior = '';
+          const prevMonth = getPrevMonth(selectedMonth);
+
+          if (prevMonth) {
+            const prevFinProf = finRegistros.filter(
+              r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === prevMonth
+            );
+            if (prevFinProf.length > 0) {
+              const prevDevido = prevFinProf.reduce((acc, r) => {
+                if (r.tipo === 'avaliacao') return acc;
+                if (r.tipo === 'desconto_mes_anterior') return acc - Math.abs(r.valor);
+                if (r.tipo === 'adicional_mes_anterior') return acc + Math.abs(r.valor);
+                return acc + r.valor;
+              }, 0);
+              const prevPago = prevFinProf.filter(r => r.status === 'pago').reduce((acc, r) => acc + (r.valorPago || r.valor), 0);
+
+              if (prevPago > prevDevido) {
+                valorDescontoMesAnterior = prevPago - prevDevido;
+                obsDescontoMesAnterior = `Excedente de R$ ${valorDescontoMesAnterior.toFixed(2)} pago a maior em ${formatMonthLabel(prevMonth)}`;
+              } else if (prevPago < prevDevido && prevFinProf.some(r => r.status === 'pago')) {
+                valorAdicionalMesAnterior = prevDevido - prevPago;
+                obsAdicionalMesAnterior = `Valor faltante de R$ ${valorAdicionalMesAnterior.toFixed(2)} pago a menor em ${formatMonthLabel(prevMonth)}`;
+              }
+            }
+
+            const regDescontoAtual = finRegistros.find(
+              r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'desconto_mes_anterior'
+            );
+            if (regDescontoAtual) {
+              valorDescontoMesAnterior = Math.abs(regDescontoAtual.valor);
+              if (regDescontoAtual.obs) obsDescontoMesAnterior = regDescontoAtual.obs;
+            }
+
+            const regAdicionalAtual = finRegistros.find(
+              r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'adicional_mes_anterior'
+            );
+            if (regAdicionalAtual) {
+              valorAdicionalMesAnterior = Math.abs(regAdicionalAtual.valor);
+              if (regAdicionalAtual.obs) obsAdicionalMesAnterior = regAdicionalAtual.obs;
+            }
+          }
+
+          const totalValor = Math.max(0, totalBruto - valorDescontoMesAnterior + valorAdicionalMesAnterior);
+
+          list.push({
+            prof: p,
+            count30, valor30, count60, valor60, countDev, valorDev, countAval, countPart, valorPart,
+            countDesmarqueApos18, valorDesmarqueApos18Total,
+            valorDescontoMesAnterior, obsDescontoMesAnterior,
+            valorAdicionalMesAnterior, obsAdicionalMesAnterior,
+            totalBruto, totalValor,
+            totalSessoes: count30 + count60 + countDev + countAval + countPart + countDesmarqueApos18,
+            pacientesLista: []
+          });
+        });
+        currentCalculados = list;
       }
 
+      await syncRepassesFromCalculations(selectedMonth, currentCalculados, currentAgendamentos);
       await loadFinanceiro();
       alert('Repasses gerados e importados com sucesso!');
     } catch (e) {
@@ -778,7 +991,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
   const openEditModal = (p: PagamentoTerapeuta) => {
     setEditingPayment(p);
     setModalStatus(p.status);
-    setModalValorPago(p.valorPago || p.valor);
+    setModalValorPago(p.valorPago ? Math.abs(p.valorPago) : Math.abs(p.valor));
     setModalDataPagamento(p.dataPagamento || new Date().toISOString().split('T')[0]);
     setModalNfNome(p.nfNome || '');
     setModalNfUrl(p.nfUrl || '');
@@ -791,10 +1004,17 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
     if (!editingPayment) return;
     setSavingPayment(true);
 
+    let finalValorPago = modalValorPago;
+    if (modalStatus === 'pago') {
+      finalValorPago = editingPayment.valor < 0 ? -Math.abs(modalValorPago) : Math.abs(modalValorPago);
+    } else {
+      finalValorPago = 0;
+    }
+
     const updated: PagamentoTerapeuta = {
       ...editingPayment,
       status: modalStatus,
-      valorPago: modalStatus === 'pago' ? modalValorPago : 0,
+      valorPago: finalValorPago,
       dataPagamento: modalStatus === 'pago' ? modalDataPagamento : '',
       nfNome: modalNfNome,
       nfUrl: modalNfUrl,
@@ -861,6 +1081,19 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
     const [y, m] = ym.split('-').map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
       .replace(/^\w/, c => c.toUpperCase());
+  };
+
+  const formatTipoLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'sessao': return 'Sessão Regular';
+      case 'devolutiva': return 'Devolutiva Neuropsicológica';
+      case 'avaliacao': return 'Avaliação Neuropsicológica';
+      case 'particular': return 'Consulta Particular';
+      case 'desconto_mes_anterior': return 'Pago a Maior (Desconto)';
+      case 'adicional_mes_anterior': return 'Pago a Menor (Adicional)';
+      case 'ajuste': return 'Ajuste Manual';
+      default: return tipo;
+    }
   };
 
   return (
@@ -1072,6 +1305,16 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
                                 </span>
                               </div>
                             )}
+                            {tc.valorAdicionalMesAnterior > 0 && (
+                              <div className="flex justify-between items-center text-emerald-300 bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 mt-2">
+                                <span className="flex items-center gap-1.5 text-xs font-semibold">
+                                  🔺 Pago a Menor no Mês Anterior (Adicional)
+                                </span>
+                                <span className="font-mono font-bold text-emerald-400">
+                                  + R$ {tc.valorAdicionalMesAnterior.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-[10px] text-slate-500 pt-2 border-t border-white/[0.04]">
@@ -1194,10 +1437,18 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
                     <tr key={r.id} className="hover:bg-white/[0.01] transition-colors group">
                       <td className="p-4 font-semibold text-slate-200 group-hover:text-indigo-400 transition-all">{r.profissional}</td>
                       <td className="p-4 text-center font-mono text-slate-400">{formatMonthLabel(r.competencia)}</td>
-                      <td className="p-4 text-slate-300 capitalize">{r.tipo}</td>
+                      <td className="p-4 text-slate-300">{formatTipoLabel(r.tipo)}</td>
                       <td className="p-4 text-center font-mono text-slate-300">{r.qtdPacientes}</td>
-                      <td className="p-4 font-mono font-bold text-slate-200">
-                        {r.tipo === 'avaliacao' ? '—' : `R$ ${r.valor.toFixed(2)}`}
+                      <td className="p-4 font-mono font-bold">
+                        {r.tipo === 'avaliacao' ? (
+                          <span className="text-slate-500">—</span>
+                        ) : r.valor < 0 ? (
+                          <span className="text-rose-400">- R$ {Math.abs(r.valor).toFixed(2)}</span>
+                        ) : r.tipo === 'adicional_mes_anterior' ? (
+                          <span className="text-emerald-400">+ R$ {r.valor.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-slate-200">R$ {r.valor.toFixed(2)}</span>
+                        )}
                       </td>
                       <td className="p-4">
                         {r.nfNome ? (
