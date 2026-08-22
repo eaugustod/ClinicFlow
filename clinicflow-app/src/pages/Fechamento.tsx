@@ -106,19 +106,20 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
         .select('*')
         .order('competencia', { ascending: false });
       if (error) throw error;
-      setFinRegistros(data.map(mappers.dbToPagamento));
+      const list = (data || []).map(mappers.dbToPagamento);
+      setFinRegistros(list);
+      return list;
     } catch (e) {
       console.error('[ClinicFlow Fechamento] Error loading payments:', e);
+      return [];
     } finally {
       setLoadingFin(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'financeiro') {
-      loadFinanceiro();
-    }
-  }, [activeTab]);
+    loadFinanceiro();
+  }, []);
 
   const getPrevMonth = (ym: string): string => {
     if (!ym || !ym.includes('-')) return '';
@@ -150,6 +151,8 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
     } catch(e) {
       console.error('[ClinicFlow Fechamento] Error pre-loading month:', e);
     }
+    
+    const currentFin = await loadFinanceiro();
     
     const [year, month] = selectedMonth.split('-').map(Number);
     const primDay = `${selectedMonth}-01`;
@@ -298,7 +301,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       const prevMonth = getPrevMonth(selectedMonth);
 
       if (prevMonth) {
-        const prevFinProf = finRegistros.filter(
+        const prevFinProf = currentFin.filter(
           r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === prevMonth
         );
         if (prevFinProf.length > 0) {
@@ -319,7 +322,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           }
         }
 
-        const regDescontoAtual = finRegistros.find(
+        const regDescontoAtual = currentFin.find(
           r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'desconto_mes_anterior'
         );
         if (regDescontoAtual) {
@@ -327,7 +330,7 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
           if (regDescontoAtual.obs) obsDescontoMesAnterior = regDescontoAtual.obs;
         }
 
-        const regAdicionalAtual = finRegistros.find(
+        const regAdicionalAtual = currentFin.find(
           r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'adicional_mes_anterior'
         );
         if (regAdicionalAtual) {
@@ -854,129 +857,126 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
     }
     
     try {
-      // Recalculate therapist totals if needed to ensure discounts/adicionais are ready
-      let currentCalculados = terapeutasCalculados;
-      if (!calculated || terapeutasCalculados.length === 0) {
-        const [year, month] = selectedMonth.split('-').map(Number);
-        const primDay = `${selectedMonth}-01`;
-        const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
-        
-        const atendidos = currentAgendamentos.filter(a => 
-          getBaseStatus(a.status) === 'atendido' && 
-          a.dataISO >= primDay && 
-          a.dataISO <= ultDay
-        );
-        const todosAgendamentos = currentAgendamentos.filter(a => 
-          a.dataISO >= primDay && 
-          a.dataISO <= ultDay
-        );
+      const currentFin = await loadFinanceiro();
+      
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const primDay = `${selectedMonth}-01`;
+      const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
+      
+      const atendidos = currentAgendamentos.filter(a => 
+        getBaseStatus(a.status) === 'atendido' && 
+        a.dataISO >= primDay && 
+        a.dataISO <= ultDay
+      );
+      const todosAgendamentos = currentAgendamentos.filter(a => 
+        a.dataISO >= primDay && 
+        a.dataISO <= ultDay
+      );
 
-        const list: any[] = [];
-        profissionais.forEach(p => {
-          const profAppts = atendidos.filter(a => a.profId === p.id);
-          const profApptsAll = todosAgendamentos.filter(a => a.profId === p.id);
-          if (profApptsAll.length === 0) return;
+      const list: any[] = [];
+      profissionais.forEach(p => {
+        const profAppts = atendidos.filter(a => a.profId === p.id);
+        const profApptsAll = todosAgendamentos.filter(a => a.profId === p.id);
+        if (profApptsAll.length === 0) return;
 
-          let count30 = 0, valor30 = 0, count60 = 0, valor60 = 0, countDev = 0, valorDev = 0, countAval = 0, countPart = 0, valorPart = 0;
-          profAppts.forEach(a => {
-            const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
-            const tipoLower = a.tipo?.toLowerCase() || '';
-            const obsLower = a.obs?.toLowerCase() || '';
+        let count30 = 0, valor30 = 0, count60 = 0, valor60 = 0, countDev = 0, valorDev = 0, countAval = 0, countPart = 0, valorPart = 0;
+        profAppts.forEach(a => {
+          const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
+          const tipoLower = a.tipo?.toLowerCase() || '';
+          const obsLower = a.obs?.toLowerCase() || '';
 
-            const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva');
-            const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
+          const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva');
+          const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
 
-            if (isParticular) {
-              countPart++;
-              valorPart += parseFloat((p as any).valorParticular || 0);
-            } else if (isAval) {
-              countAval++;
-            } else if (isDev) {
-              countDev++;
-              valorDev += p.valorAval || 0;
+          if (isParticular) {
+            countPart++;
+            valorPart += parseFloat((p as any).valorParticular || 0);
+          } else if (isAval) {
+            countAval++;
+          } else if (isDev) {
+            countDev++;
+            valorDev += p.valorAval || 0;
+          } else {
+            const dur = a.durMin || 30;
+            if (dur >= 45) {
+              count60++;
+              valor60 += parseFloat((p as any).valor60 || 100);
             } else {
-              const dur = a.durMin || 30;
-              if (dur >= 45) {
-                count60++;
-                valor60 += parseFloat((p as any).valor60 || 100);
-              } else {
-                count30++;
-                valor30 += parseFloat((p as any).valor30 || 60);
-              }
+              count30++;
+              valor30 += parseFloat((p as any).valor30 || 60);
             }
-          });
+          }
+        });
 
-          const profDesmarquesApos18 = profApptsAll.filter(a => {
-            const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
-            return isDesmarcado && a.hora >= '18:00';
-          });
-          const countDesmarqueApos18 = profDesmarquesApos18.length;
-          const valorDesmarqueApos18Total = countDesmarqueApos18 * parseFloat((p as any).valorDesmarqueApos18 || 0);
+        const profDesmarquesApos18 = profApptsAll.filter(a => {
+          const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
+          return isDesmarcado && a.hora >= '18:00';
+        });
+        const countDesmarqueApos18 = profDesmarquesApos18.length;
+        const valorDesmarqueApos18Total = countDesmarqueApos18 * parseFloat((p as any).valorDesmarqueApos18 || 0);
 
-          const totalBruto = valor30 + valor60 + valorDev + valorPart + valorDesmarqueApos18Total;
+        const totalBruto = valor30 + valor60 + valorDev + valorPart + valorDesmarqueApos18Total;
 
-          let valorDescontoMesAnterior = 0;
-          let obsDescontoMesAnterior = '';
-          let valorAdicionalMesAnterior = 0;
-          let obsAdicionalMesAnterior = '';
-          const prevMonth = getPrevMonth(selectedMonth);
+        let valorDescontoMesAnterior = 0;
+        let obsDescontoMesAnterior = '';
+        let valorAdicionalMesAnterior = 0;
+        let obsAdicionalMesAnterior = '';
+        const prevMonth = getPrevMonth(selectedMonth);
 
-          if (prevMonth) {
-            const prevFinProf = finRegistros.filter(
-              r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === prevMonth
-            );
-            if (prevFinProf.length > 0) {
-              const prevDevido = prevFinProf.reduce((acc, r) => {
-                if (r.tipo === 'avaliacao') return acc;
-                if (r.tipo === 'desconto_mes_anterior') return acc - Math.abs(r.valor);
-                if (r.tipo === 'adicional_mes_anterior') return acc + Math.abs(r.valor);
-                return acc + r.valor;
-              }, 0);
-              const prevPago = prevFinProf.filter(r => r.status === 'pago').reduce((acc, r) => acc + (r.valorPago || r.valor), 0);
+        if (prevMonth) {
+          const prevFinProf = currentFin.filter(
+            r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === prevMonth
+          );
+          if (prevFinProf.length > 0) {
+            const prevDevido = prevFinProf.reduce((acc, r) => {
+              if (r.tipo === 'avaliacao') return acc;
+              if (r.tipo === 'desconto_mes_anterior') return acc - Math.abs(r.valor);
+              if (r.tipo === 'adicional_mes_anterior') return acc + Math.abs(r.valor);
+              return acc + r.valor;
+            }, 0);
+            const prevPago = prevFinProf.filter(r => r.status === 'pago').reduce((acc, r) => acc + (r.valorPago || r.valor), 0);
 
-              if (prevPago > prevDevido) {
-                valorDescontoMesAnterior = prevPago - prevDevido;
-                obsDescontoMesAnterior = `Excedente de R$ ${valorDescontoMesAnterior.toFixed(2)} pago a maior em ${formatMonthLabel(prevMonth)}`;
-              } else if (prevPago < prevDevido && prevFinProf.some(r => r.status === 'pago')) {
-                valorAdicionalMesAnterior = prevDevido - prevPago;
-                obsAdicionalMesAnterior = `Valor faltante de R$ ${valorAdicionalMesAnterior.toFixed(2)} pago a menor em ${formatMonthLabel(prevMonth)}`;
-              }
-            }
-
-            const regDescontoAtual = finRegistros.find(
-              r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'desconto_mes_anterior'
-            );
-            if (regDescontoAtual) {
-              valorDescontoMesAnterior = Math.abs(regDescontoAtual.valor);
-              if (regDescontoAtual.obs) obsDescontoMesAnterior = regDescontoAtual.obs;
-            }
-
-            const regAdicionalAtual = finRegistros.find(
-              r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'adicional_mes_anterior'
-            );
-            if (regAdicionalAtual) {
-              valorAdicionalMesAnterior = Math.abs(regAdicionalAtual.valor);
-              if (regAdicionalAtual.obs) obsAdicionalMesAnterior = regAdicionalAtual.obs;
+            if (prevPago > prevDevido) {
+              valorDescontoMesAnterior = prevPago - prevDevido;
+              obsDescontoMesAnterior = `Excedente de R$ ${valorDescontoMesAnterior.toFixed(2)} pago a maior em ${formatMonthLabel(prevMonth)}`;
+            } else if (prevPago < prevDevido && prevFinProf.some(r => r.status === 'pago')) {
+              valorAdicionalMesAnterior = prevDevido - prevPago;
+              obsAdicionalMesAnterior = `Valor faltante de R$ ${valorAdicionalMesAnterior.toFixed(2)} pago a menor em ${formatMonthLabel(prevMonth)}`;
             }
           }
 
-          const totalValor = Math.max(0, totalBruto - valorDescontoMesAnterior + valorAdicionalMesAnterior);
+          const regDescontoAtual = currentFin.find(
+            r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'desconto_mes_anterior'
+          );
+          if (regDescontoAtual) {
+            valorDescontoMesAnterior = Math.abs(regDescontoAtual.valor);
+            if (regDescontoAtual.obs) obsDescontoMesAnterior = regDescontoAtual.obs;
+          }
 
-          list.push({
-            prof: p,
-            count30, valor30, count60, valor60, countDev, valorDev, countAval, countPart, valorPart,
-            countDesmarqueApos18, valorDesmarqueApos18Total,
-            valorDescontoMesAnterior, obsDescontoMesAnterior,
-            valorAdicionalMesAnterior, obsAdicionalMesAnterior,
-            totalBruto, totalValor,
-            totalSessoes: count30 + count60 + countDev + countAval + countPart + countDesmarqueApos18,
-            pacientesLista: []
-          });
+          const regAdicionalAtual = currentFin.find(
+            r => (r.profissionalId === p.id || r.profissional === p.nome) && r.competencia === selectedMonth && r.tipo === 'adicional_mes_anterior'
+          );
+          if (regAdicionalAtual) {
+            valorAdicionalMesAnterior = Math.abs(regAdicionalAtual.valor);
+            if (regAdicionalAtual.obs) obsAdicionalMesAnterior = regAdicionalAtual.obs;
+          }
+        }
+
+        const totalValor = Math.max(0, totalBruto - valorDescontoMesAnterior + valorAdicionalMesAnterior);
+
+        list.push({
+          prof: p,
+          count30, valor30, count60, valor60, countDev, valorDev, countAval, countPart, valorPart,
+          countDesmarqueApos18, valorDesmarqueApos18Total,
+          valorDescontoMesAnterior, obsDescontoMesAnterior,
+          valorAdicionalMesAnterior, obsAdicionalMesAnterior,
+          totalBruto, totalValor,
+          totalSessoes: count30 + count60 + countDev + countAval + countPart + countDesmarqueApos18,
+          pacientesLista: []
         });
-        currentCalculados = list;
-      }
+      });
 
-      await syncRepassesFromCalculations(selectedMonth, currentCalculados, currentAgendamentos);
+      await syncRepassesFromCalculations(selectedMonth, list, currentAgendamentos);
       await loadFinanceiro();
       alert('Repasses gerados e importados com sucesso!');
     } catch (e) {
