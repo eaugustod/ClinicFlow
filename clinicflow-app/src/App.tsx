@@ -27,7 +27,9 @@ import { ChatPage } from './pages/Chat';
 import { Importador } from './pages/Importador';
 import { FinanceiroNfse } from './pages/FinanceiroNfse';
 import { FinanceiroFluxoCaixa } from './pages/FinanceiroFluxoCaixa';
+import { FechamentoPlanosPage } from './pages/FechamentoPlanos';
 import { Login } from './pages/Login';
+
 import { ThemeSelector } from './components/ThemeSelector';
 import { useApp } from './context/AppContext';
 
@@ -103,8 +105,9 @@ function App() {
 
     let targetId = pageId;
     if (pageId === 'atendimento') targetId = 'agenda';
-    if (pageId === 'analise-fechamento' || pageId === 'financeiro') targetId = 'fechamento';
+    if (pageId === 'analise-fechamento' || pageId === 'financeiro' || pageId === 'fechamento-planos') targetId = 'fechamento';
     if (pageId === 'conecta-agenda') targetId = 'agenda';
+
     if (pageId === 'conecta-profissionais') targetId = 'profissionais';
     if (pageId === 'conecta-fechamento') targetId = 'fechamento';
     if (pageId.startsWith('importar-')) targetId = 'importar';
@@ -154,8 +157,11 @@ function App() {
         return <LotesTiss />;
       case 'senhas':
         return <Senhas />;
+      case 'fechamento-planos':
+        return <FechamentoPlanosPage />;
       case 'analise-fechamento':
         return <AnaliseFechamento />;
+
       case 'fechamento':
         return <Fechamento initialTab="calculo" />;
       case 'financeiro':

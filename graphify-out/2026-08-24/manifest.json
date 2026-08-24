@@ -15,13 +15,13 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/App.tsx": {
-    "mtime": 1787606874.8374913,
-    "ast_hash": "a2885894467b6cd68b63e4c1303f849e",
+    "mtime": 1786608279.5057902,
+    "ast_hash": "e85d5de4a1e34f08cc5a93dd2417b13d",
     "semantic_hash": ""
   },
   "clinicflow-app/src/components/Layout.tsx": {
-    "mtime": 1787606856.459246,
-    "ast_hash": "a22a95486f663ed0b376d662120fbf45",
+    "mtime": 1786608260.523393,
+    "ast_hash": "8b911407eb7c75a2220821c6de70f546",
     "semantic_hash": ""
   },
   "clinicflow-app/src/components/ThemeSelector.tsx": {
@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/context/AppContext.tsx": {
-    "mtime": 1786699793.3172848,
-    "ast_hash": "d2aa4c0b69571c57fe68f8f1f6c11e07",
+    "mtime": 1786660737.0303426,
+    "ast_hash": "508eecbb02436f88cc21315dfe99af7a",
     "semantic_hash": ""
   },
   "clinicflow-app/src/context/ThemeContext.tsx": {
@@ -45,18 +45,18 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Agenda.tsx": {
-    "mtime": 1786699816.843475,
-    "ast_hash": "f27b59981173d5381b7c2309cf3a1927",
+    "mtime": 1784144753.2505658,
+    "ast_hash": "36e339affd1decd96476be2a14cf1392",
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/AnaliseFechamento.tsx": {
-    "mtime": 1786830850.8122559,
-    "ast_hash": "5692a18bae3655707c21ce87447a0cb6",
+    "mtime": 1784844485.04026,
+    "ast_hash": "56a3464cf0471580616184c2c09dffee",
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Atendimento.tsx": {
-    "mtime": 1786699809.8851275,
-    "ast_hash": "84d79e2bdfdb95baa8425ef5857debbe",
+    "mtime": 1785499916.2135756,
+    "ast_hash": "22601492be9849694eac15ad0d628c75",
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Chat.tsx": {
@@ -65,8 +65,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Conecta.tsx": {
-    "mtime": 1786831427.7923021,
-    "ast_hash": "2fcf75a09690243d032910a72f658efc",
+    "mtime": 1785533569.3843307,
+    "ast_hash": "d609e60246c435f8ea8627d6882c0692",
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Configuracoes.tsx": {
@@ -90,8 +90,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Fechamento.tsx": {
-    "mtime": 1787398875.4583354,
-    "ast_hash": "d9a630a765e6abb7c245d22de5def068",
+    "mtime": 1785514350.3764136,
+    "ast_hash": "9e0b623e68c182cada47e057c650d74b",
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Feriados.tsx": {
@@ -130,8 +130,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/LotesTiss.tsx": {
-    "mtime": 1786830824.5229626,
-    "ast_hash": "da5fd2f9c06fa04e95b7aa4c5fbb5088",
+    "mtime": 1785514369.0805852,
+    "ast_hash": "0c163b3404843da6596ddb17a06438ab",
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Pacientes.tsx": {
@@ -350,33 +350,13 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/AgendaRecepcao.tsx": {
-    "mtime": 1786699800.6176589,
-    "ast_hash": "d905769dcf09e488418cb3eb33e7126b",
+    "mtime": 1786657204.4290862,
+    "ast_hash": "81b1c8b7421300313b47f7802a7dfd55",
     "semantic_hash": ""
   },
   "add_agendamento_id_historico.sql": {
     "mtime": 1786659455.9099422,
     "ast_hash": "303997bcc138e2b704cdb6c21c560cf0",
-    "semantic_hash": ""
-  },
-  "clinicflow-app/src/pages/FechamentoPlanos.tsx": {
-    "mtime": 1787606815.9627051,
-    "ast_hash": "d126fbc8cb55c98ee166627c90b2769b",
-    "semantic_hash": ""
-  },
-  "clinicflow-app/src/services/fechamentoPlanosService.ts": {
-    "mtime": 1787606802.7655287,
-    "ast_hash": "fa140810bcfae3025ae6779c5db6bc7c",
-    "semantic_hash": ""
-  },
-  "clinicflow-app/supabase_fechamento_planos.sql": {
-    "mtime": 1787606794.63042,
-    "ast_hash": "5a26d6dbc82a289d24580bf3f4a8601f",
-    "semantic_hash": ""
-  },
-  "fix_status_historico_and_logs.sql": {
-    "mtime": 1786700199.2019634,
-    "ast_hash": "b475de479171a9b871875d99705fccde",
     "semantic_hash": ""
   }
 }

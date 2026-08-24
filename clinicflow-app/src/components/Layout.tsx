@@ -39,6 +39,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ThemeSelector } from './ThemeSelector';
+import { fechamentoPlanosService, AlertaNotification } from '../services/fechamentoPlanosService';
+
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -57,6 +59,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
   const [conectaOpen, setConectaOpen] = useState(false);
   const [ferramentasOpen, setFerramentasOpen] = useState(false);
   const [fechamentoOpen, setFechamentoOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [alertasNotif, setAlertasNotif] = useState<AlertaNotification[]>([]);
+
+  useEffect(() => {
+    const fetchAlertas = async () => {
+      const data = await fechamentoPlanosService.list();
+      const calc = fechamentoPlanosService.calcularAlertas(data);
+      setAlertasNotif(calc);
+    };
+    fetchAlertas();
+  }, [activePage]);
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed(prev => {
@@ -92,12 +105,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
   ];
 
   const fechamentoItems = [
+    { id: 'fechamento-planos', label: 'Prazos por Convênio', icon: CalendarDays },
     { id: 'financeiro-fluxo-caixa', label: 'Fluxo de Caixa & Contas', icon: Wallet },
     { id: 'analise-fechamento', label: 'Análise por Terapeuta', icon: UserCheck },
     { id: 'fechamento', label: 'Fechamento Mensal', icon: Calculator },
     { id: 'financeiro', label: 'Repasses / Pagamentos', icon: CreditCard },
     { id: 'financeiro-nfse', label: 'NFS-e (Prefeitura Jundiaí)', icon: Building2 },
   ];
+
 
   const conectaItems = [
     { id: 'conecta-agenda', label: 'Agendamento de Salas', icon: Calendar },
@@ -157,8 +172,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
     // Normaliza IDs específicos para casar com Perfis de Acesso
     let targetId = itemId;
     if (itemId === 'atendimento') targetId = 'agenda';
-    if (itemId === 'analise-fechamento') targetId = 'fechamento';
+    if (itemId === 'analise-fechamento' || itemId === 'fechamento-planos') targetId = 'fechamento';
     if (itemId === 'financeiro') targetId = 'fechamento';
+
     if (itemId === 'conecta-agenda') targetId = 'agenda';
     if (itemId === 'conecta-profissionais') targetId = 'profissionais';
     if (itemId === 'conecta-fechamento') targetId = 'fechamento';
@@ -603,11 +619,109 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setActiveP
             {/* Theme Selector */}
             <ThemeSelector />
 
-            {/* Notification button */}
-            <button className="relative p-2.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--border-mid)] transition-all">
-              <Bell size={16} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-gradient-to-r from-indigo-400 to-violet-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
-            </button>
+            {/* Notification button & Popover */}
+            <div className="relative">
+              <button
+                onClick={() => setNotifOpen(!notifOpen)}
+                className="relative p-2.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--border-mid)] transition-all cursor-pointer"
+                title="Notificações e Alertas de Fechamento"
+              >
+                <Bell size={16} />
+                {alertasNotif.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(244,63,94,0.6)] animate-pulse">
+                    {alertasNotif.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Popover Dropdown */}
+              {notifOpen && (
+                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-fadeIn">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[#0f1118]">
+                    <div className="flex items-center gap-2">
+                      <Bell size={15} className="text-indigo-400" />
+                      <span className="font-bold text-xs text-[var(--text-primary)]">
+                        Central de Alertas ({alertasNotif.length})
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setNotifOpen(false)}
+                      className="p-1 text-slate-400 hover:text-slate-100 rounded-lg text-xs cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-[var(--border)] p-2 space-y-2">
+                    {alertasNotif.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-500">
+                        Nenhum alerta pendente no momento. Todos os prazos estão em dia!
+                      </div>
+                    ) : (
+                      alertasNotif.map((alerta) => (
+                        <div
+                          key={alerta.id}
+                          className="p-3 rounded-xl bg-[var(--bg-base)]/60 border border-[var(--border)] flex flex-col gap-1.5 hover:border-indigo-500/30 transition-all text-left"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs text-[var(--text-primary)]">{alerta.titulo}</span>
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                alerta.nivel === 'error'
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                  : alerta.nivel === 'urgent'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                              }`}
+                            >
+                              {alerta.tipo === 'uma_semana_inicio'
+                                ? 'Alerta 7d'
+                                : alerta.tipo === 'tres_dias_inicio'
+                                ? 'Alerta 3d'
+                                : alerta.tipo === 'quatro_dias_final'
+                                ? 'Alerta 4d Encerramento'
+                                : alerta.tipo === 'hoje_final'
+                                ? 'Encerra Hoje'
+                                : 'Vencido'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                            {alerta.mensagem}
+                          </p>
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              Código: {alerta.planoCodigo || 'S/C'}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setNotifOpen(false);
+                                setActivePage('fechamento-planos');
+                              }}
+                              className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                            >
+                              Ver no cadastro &rarr;
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-3 border-t border-[var(--border)] bg-[#0f1118] text-center">
+                    <button
+                      onClick={() => {
+                        setNotifOpen(false);
+                        setActivePage('fechamento-planos');
+                      }}
+                      className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-all cursor-pointer"
+                    >
+                      Gerenciar Prazos de Fechamento por Convênio
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         </header>
 

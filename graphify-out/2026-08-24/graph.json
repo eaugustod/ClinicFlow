@@ -612,7 +612,7 @@
       "label": "App()",
       "file_type": "code",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L36",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "clinicflow_app_src_app_app",
       "community": 0,
@@ -626,26 +626,26 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clinicflow_app_src_components_layout",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "layout.tsx"
     },
     {
       "label": "LayoutProps",
       "file_type": "code",
       "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L45",
+      "source_location": "L43",
       "_origin": "ast",
       "id": "clinicflow_app_src_components_layout_layoutprops",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "layoutprops"
     },
     {
       "label": "Layout()",
       "file_type": "code",
       "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L51",
+      "source_location": "L49",
       "_origin": "ast",
       "id": "clinicflow_app_src_components_layout_layout",
       "community": 0,
@@ -659,8 +659,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clinicflow_app_src_components_themeselector",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themeselector.tsx"
     },
     {
@@ -670,8 +670,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "clinicflow_app_src_components_themeselector_themeselector",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themeselector()"
     },
     {
@@ -681,8 +681,8 @@
       "source_location": "L117",
       "_origin": "ast",
       "id": "clinicflow_app_src_components_themeselector_themeitemprops",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themeitemprops"
     },
     {
@@ -692,8 +692,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "clinicflow_app_src_components_themeselector_themeitem",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themeitem()"
     },
     {
@@ -769,8 +769,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themecontext.tsx"
     },
     {
@@ -780,8 +780,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext_themeid",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themeid"
     },
     {
@@ -791,8 +791,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext_themeoption",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themeoption"
     },
     {
@@ -802,8 +802,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext_theme_options",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "theme_options"
     },
     {
@@ -813,8 +813,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext_themecontexttype",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themecontexttype"
     },
     {
@@ -824,8 +824,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext_themecontext",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themecontext"
     },
     {
@@ -835,8 +835,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext_themeprovider",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "themeprovider()"
     },
     {
@@ -846,8 +846,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "clinicflow_app_src_context_themecontext_usetheme",
-      "community": 11,
-      "community_name": "Layout.tsx",
+      "community": 0,
+      "community_name": "App.tsx",
       "norm_label": "usetheme()"
     },
     {
@@ -887,7 +887,7 @@
       "label": "getPlanoBadgeStyles()",
       "file_type": "code",
       "source_file": "clinicflow-app/src/pages/Agenda.tsx",
-      "source_location": "L1698",
+      "source_location": "L1692",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_agenda_getplanobadgestyles",
       "community": 0,
@@ -1165,8 +1165,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_espera",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 11,
+      "community_name": "Espera.tsx",
       "norm_label": "espera.tsx"
     },
     {
@@ -1176,8 +1176,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_espera_especialidades_opcoes",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 11,
+      "community_name": "Espera.tsx",
       "norm_label": "especialidades_opcoes"
     },
     {
@@ -1187,8 +1187,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_espera_dias_opcoes",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 11,
+      "community_name": "Espera.tsx",
       "norm_label": "dias_opcoes"
     },
     {
@@ -1198,8 +1198,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_espera_posicoes_agenda_opcoes",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 11,
+      "community_name": "Espera.tsx",
       "norm_label": "posicoes_agenda_opcoes"
     },
     {
@@ -1209,8 +1209,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_espera_horarios_especificos_opcoes",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 11,
+      "community_name": "Espera.tsx",
       "norm_label": "horarios_especificos_opcoes"
     },
     {
@@ -1220,8 +1220,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_espera_parsepreferencesfromtext",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 11,
+      "community_name": "Espera.tsx",
       "norm_label": "parsepreferencesfromtext()"
     },
     {
@@ -1231,8 +1231,8 @@
       "source_location": "L121",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_espera_espera",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 11,
+      "community_name": "Espera.tsx",
       "norm_label": "espera()"
     },
     {
@@ -1267,28 +1267,6 @@
       "community": 0,
       "community_name": "App.tsx",
       "norm_label": "fechamento()"
-    },
-    {
-      "label": "FechamentoPlanos.tsx",
-      "file_type": "code",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "clinicflow_app_src_pages_fechamentoplanos",
-      "community": 11,
-      "community_name": "Layout.tsx",
-      "norm_label": "fechamentoplanos.tsx"
-    },
-    {
-      "label": "FechamentoPlanosPage()",
-      "file_type": "code",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L28",
-      "_origin": "ast",
-      "id": "clinicflow_app_src_pages_fechamentoplanos_fechamentoplanospage",
-      "community": 0,
-      "community_name": "App.tsx",
-      "norm_label": "fechamentoplanospage()"
     },
     {
       "label": "Feriados.tsx",
@@ -1440,8 +1418,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_importador",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 14,
+      "community_name": "Importador.tsx",
       "norm_label": "importador.tsx"
     },
     {
@@ -1451,8 +1429,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_importador_importadorprops",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 14,
+      "community_name": "Importador.tsx",
       "norm_label": "importadorprops"
     },
     {
@@ -1462,8 +1440,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_importador_fielddefinition",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 14,
+      "community_name": "Importador.tsx",
       "norm_label": "fielddefinition"
     },
     {
@@ -1473,8 +1451,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_importador_importschema",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 14,
+      "community_name": "Importador.tsx",
       "norm_label": "importschema"
     },
     {
@@ -1484,8 +1462,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_importador_importador",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 14,
+      "community_name": "Importador.tsx",
       "norm_label": "importador()"
     },
     {
@@ -1671,8 +1649,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "clinicflow_app_src_pages_perfis_perfis",
-      "community": 0,
-      "community_name": "App.tsx",
+      "community": 1,
+      "community_name": "types/index.ts",
       "norm_label": "perfis()"
     },
     {
@@ -1817,61 +1795,6 @@
       "community": 0,
       "community_name": "App.tsx",
       "norm_label": "usuarios()"
-    },
-    {
-      "label": "fechamentoPlanosService.ts",
-      "file_type": "code",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "clinicflow_app_src_services_fechamentoplanosservice",
-      "community": 11,
-      "community_name": "Layout.tsx",
-      "norm_label": "fechamentoplanosservice.ts"
-    },
-    {
-      "label": "FechamentoPlano",
-      "file_type": "code",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "clinicflow_app_src_services_fechamentoplanosservice_fechamentoplano",
-      "community": 11,
-      "community_name": "Layout.tsx",
-      "norm_label": "fechamentoplano"
-    },
-    {
-      "label": "AlertaNotification",
-      "file_type": "code",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L17",
-      "_origin": "ast",
-      "id": "clinicflow_app_src_services_fechamentoplanosservice_alertanotification",
-      "community": 11,
-      "community_name": "Layout.tsx",
-      "norm_label": "alertanotification"
-    },
-    {
-      "label": "defaultFechamentos",
-      "file_type": "code",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L34",
-      "_origin": "ast",
-      "id": "clinicflow_app_src_services_fechamentoplanosservice_defaultfechamentos",
-      "community": 11,
-      "community_name": "Layout.tsx",
-      "norm_label": "defaultfechamentos"
-    },
-    {
-      "label": "fechamentoPlanosService",
-      "file_type": "code",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L70",
-      "_origin": "ast",
-      "id": "clinicflow_app_src_services_fechamentoplanosservice_fechamentoplanosservice",
-      "community": 11,
-      "community_name": "Layout.tsx",
-      "norm_label": "fechamentoplanosservice"
     },
     {
       "label": "financeiroFluxoCaixaService.ts",
@@ -4646,7 +4569,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L36",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app",
@@ -4682,7 +4605,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L33",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app",
@@ -4694,7 +4617,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L33",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app",
@@ -4706,7 +4629,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L34",
+      "source_location": "L32",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app",
@@ -4718,7 +4641,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L34",
+      "source_location": "L32",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app",
@@ -4994,30 +4917,6 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L30",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_app",
-      "target": "clinicflow_app_src_pages_fechamentoplanos",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L30",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_app",
-      "target": "clinicflow_app_src_pages_fechamentoplanos_fechamentoplanospage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/App.tsx",
       "source_location": "L20",
       "weight": 1.0,
       "_origin": "ast",
@@ -5162,7 +5061,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L31",
+      "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app",
@@ -5174,7 +5073,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L31",
+      "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app",
@@ -5414,7 +5313,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/App.tsx",
-      "source_location": "L42",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_app_app",
@@ -5437,7 +5336,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L51",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_components_layout",
@@ -5448,7 +5347,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L45",
+      "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_components_layout",
@@ -5504,48 +5403,12 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L42",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_components_layout",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L42",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_components_layout",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_alertanotification",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L42",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_components_layout",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_fechamentoplanosservice",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "clinicflow-app/src/components/Layout.tsx",
-      "source_location": "L52",
+      "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_components_layout_layout",
@@ -6020,18 +5883,6 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_pages_fechamento",
-      "target": "clinicflow_app_src_context_appcontext",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L21",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos",
       "target": "clinicflow_app_src_context_appcontext",
       "confidence_score": 1.0
     },
@@ -6555,30 +6406,6 @@
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L21",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos",
-      "target": "clinicflow_app_src_context_appcontext_useapp",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L29",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos_fechamentoplanospage",
-      "target": "clinicflow_app_src_context_appcontext_useapp"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/pages/FinanceiroFluxoCaixa.tsx",
       "source_location": "L30",
       "weight": 1.0,
@@ -7075,7 +6902,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/pages/Agenda.tsx",
-      "source_location": "L1698",
+      "source_location": "L1692",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_pages_agenda",
@@ -7183,7 +7010,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "clinicflow-app/src/pages/Agenda.tsx",
-      "source_location": "L953",
+      "source_location": "L947",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_pages_agenda_agenda",
@@ -7315,7 +7142,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "clinicflow-app/src/pages/AgendaRecepcao.tsx",
-      "source_location": "L253",
+      "source_location": "L247",
       "weight": 1.0,
       "_origin": "ast",
       "source": "clinicflow_app_src_pages_agendarecepcao_agendarecepcao",
@@ -8112,65 +7939,6 @@
       "_origin": "ast",
       "source": "clinicflow_app_src_pages_fechamento",
       "target": "clinicflow_app_src_types_index_pagamentoterapeuta",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L28",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos",
-      "target": "clinicflow_app_src_pages_fechamentoplanos_fechamentoplanospage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L22",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L22",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_alertanotification",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L22",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_fechamentoplano",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/pages/FechamentoPlanos.tsx",
-      "source_location": "L22",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_pages_fechamentoplanos",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_fechamentoplanosservice",
       "confidence_score": 1.0
     },
     {
@@ -9783,74 +9551,6 @@
       "_origin": "ast",
       "source": "clinicflow_app_src_pages_usuarios",
       "target": "clinicflow_app_src_types_index_usuario",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L17",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_services_fechamentoplanosservice",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_alertanotification",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L34",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_services_fechamentoplanosservice",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_defaultfechamentos",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_services_fechamentoplanosservice",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_fechamentoplano",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L70",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_services_fechamentoplanosservice",
-      "target": "clinicflow_app_src_services_fechamentoplanosservice_fechamentoplanosservice",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_services_fechamentoplanosservice",
-      "target": "clinicflow_app_src_services_supabase",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "clinicflow-app/src/services/fechamentoPlanosService.ts",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "clinicflow_app_src_services_fechamentoplanosservice",
-      "target": "clinicflow_app_src_services_supabase_supabase",
       "confidence_score": 1.0
     },
     {
@@ -13593,5 +13293,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "fc8fdd11eacef69192b2493c048370b3b49ffab5"
+  "built_at_commit": "67d915adf47cfd6e6f8144f78a2ee008aabab0d4"
 }

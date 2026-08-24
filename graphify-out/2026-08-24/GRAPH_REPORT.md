@@ -1,16 +1,16 @@
-# Graph Report - ClinicFlow  (2026-08-24)
+# Graph Report - ClinicFlow  (2026-08-13)
 
 ## Corpus Check
-- 69 files · ~228,132 words
+- 65 files · ~221,952 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 368 nodes · 817 edges · 24 communities (21 shown, 3 thin omitted)
+- 361 nodes · 798 edges · 25 communities (22 shown, 3 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `fc8fdd11`
+- Built from commit: `67d915ad`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -26,9 +26,10 @@
 - devDependencies
 - package.json
 - security_patch.js
-- Layout.tsx
+- Espera.tsx
 - FinanceiroNfse.tsx
 - Conecta.tsx
+- Importador.tsx
 - emitir-nfse-jundiai/index.ts
 - React + TypeScript + Vite
 - supabase_patch.js
@@ -36,8 +37,8 @@
 - dev-server.sh
 
 ## God Nodes (most connected - your core abstractions)
-1. `useApp()` - 51 edges
-2. `supabase` - 28 edges
+1. `useApp()` - 49 edges
+2. `supabase` - 27 edges
 3. `mappers` - 24 edges
 4. `compilerOptions` - 17 edges
 5. `compilerOptions` - 16 edges
@@ -48,10 +49,10 @@
 10. `campo()` - 10 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Espera()` --calls--> `useApp()`  [EXTRACTED]
+  clinicflow-app/src/pages/Espera.tsx → clinicflow-app/src/context/AppContext.tsx
 - `LotesTiss()` --calls--> `useApp()`  [EXTRACTED]
   clinicflow-app/src/pages/LotesTiss.tsx → clinicflow-app/src/context/AppContext.tsx
-- `AgendaRecepcao()` --calls--> `useTheme()`  [EXTRACTED]
-  clinicflow-app/src/pages/AgendaRecepcao.tsx → clinicflow-app/src/context/ThemeContext.tsx
 - `AgendaRecepcao()` --references--> `Paciente`  [EXTRACTED]
   clinicflow-app/src/pages/AgendaRecepcao.tsx → clinicflow-app/src/types/index.ts
 - `GroupedPatient` --references--> `Agendamento`  [EXTRACTED]
@@ -62,15 +63,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (24 total, 3 thin omitted)
+## Communities (25 total, 3 thin omitted)
 
 ### Community 0 - "App.tsx"
-Cohesion: 0.07
-Nodes (41): App(), Layout(), useApp(), Agenda(), getPlanoBadgeStyles(), AgendaRecepcao(), AnaliseFechamento(), Atendimento() (+33 more)
+Cohesion: 0.08
+Nodes (39): App(), Layout(), LayoutProps, ThemeItemProps, ThemeSelector(), useApp(), THEME_OPTIONS, ThemeContext (+31 more)
 
 ### Community 1 - "types/index.ts"
-Cohesion: 0.15
-Nodes (32): AppContext, AppContextType, AppProvider(), safeSaveCache(), GroupedPatient, Mensagem, FechamentoProps, parseBoldText() (+24 more)
+Cohesion: 0.14
+Nodes (33): AppContext, AppContextType, AppProvider(), safeSaveCache(), GroupedPatient, Mensagem, FechamentoProps, parseBoldText() (+25 more)
 
 ### Community 2 - "clinicflow-import-fixes.js"
 Cohesion: 0.14
@@ -108,9 +109,9 @@ Nodes (18): dependencies, lucide-react, react, react-dom, @supabase/supabase-js,
 Cohesion: 0.31
 Nodes (8): _audit(), _getAttempts(), _getBcrypt(), _getSb(), _incrementAttempt(), _isBloqueado(), _minutosRestantes(), _verificarSenha()
 
-### Community 11 - "Layout.tsx"
-Cohesion: 0.16
-Nodes (14): LayoutProps, ThemeItemProps, ThemeSelector(), THEME_OPTIONS, ThemeContext, ThemeContextType, ThemeId, ThemeOption (+6 more)
+### Community 11 - "Espera.tsx"
+Cohesion: 0.33
+Nodes (6): DIAS_OPCOES, ESPECIALIDADES_OPCOES, Espera(), HORARIOS_ESPECIFICOS_OPCOES, parsePreferencesFromText(), POSICOES_AGENDA_OPCOES
 
 ### Community 12 - "FinanceiroNfse.tsx"
 Cohesion: 0.36
@@ -119,6 +120,10 @@ Nodes (5): defaultConfigFiscal, nfseJundiaiService, XmlParseResult, Configuracao
 ### Community 13 - "Conecta.tsx"
 Cohesion: 0.29
 Nodes (6): Conecta(), ConectaProps, FechamentoConecta, Locatario, ReservaSala, SalaConecta
+
+### Community 14 - "Importador.tsx"
+Cohesion: 0.40
+Nodes (4): FieldDefinition, Importador(), ImportadorProps, ImportSchema
 
 ### Community 16 - "React + TypeScript + Vite"
 Cohesion: 0.50
@@ -129,24 +134,24 @@ Cohesion: 0.83
 Nodes (3): getDb(), loadFromSupabase(), salvarConfigNoDB()
 
 ## Knowledge Gaps
-- **110 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+105 more)
+- **109 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+104 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **3 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useApp()` connect `App.tsx` to `types/index.ts`, `Layout.tsx`, `FinanceiroNfse.tsx`, `LotesTiss.tsx`?**
-  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+- **Why does `useApp()` connect `App.tsx` to `types/index.ts`, `Espera.tsx`, `FinanceiroNfse.tsx`, `LotesTiss.tsx`?**
+  _High betweenness centrality (0.019) - this node is a cross-community bridge._
 - **Why does `devDependencies` connect `devDependencies` to `package.json`?**
-  _High betweenness centrality (0.016) - this node is a cross-community bridge._
-- **Why does `supabase` connect `types/index.ts` to `App.tsx`, `LotesTiss.tsx`, `Layout.tsx`, `FinanceiroNfse.tsx`, `Conecta.tsx`?**
-  _High betweenness centrality (0.007) - this node is a cross-community bridge._
+  _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **What connects `name`, `private`, `version` to the rest of the system?**
-  _110 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _109 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `App.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.07102040816326531 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07673469387755102 - nodes in this community are weakly interconnected._
 - **Should `types/index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.14949201741654572 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.14465408805031446 - nodes in this community are weakly interconnected._
 - **Should `clinicflow-import-fixes.js` be split into smaller, more focused modules?**
   _Cohesion score 0.13940256045519203 - nodes in this community are weakly interconnected._
+- **Should `compilerOptions` be split into smaller, more focused modules?**
+  _Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected._
