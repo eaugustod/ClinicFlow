@@ -43,10 +43,10 @@ export const AnaliseFechamento: React.FC = () => {
   const [historicoModalItem, setHistoricoModalItem] = useState<FechamentoItemGestao | null>(null);
   const [historicoLogs, setHistoricoLogs] = useState<FechamentoHistoricoItem[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
-
   // Modal Fechamento Oficial
   const [closingPeriodo, setClosingPeriodo] = useState<FechamentoPeriodoGestao | null>(null);
   const [executingClose, setExecutingClose] = useState(false);
+  const [diaPrazo, setDiaPrazo] = useState<number>(10);
 
   // Auto-select first professional when loaded for single search tab
   useEffect(() => {
@@ -74,12 +74,10 @@ export const AnaliseFechamento: React.FC = () => {
         const atualizado = lista.find(p => p.profissional_id === selectedPeriodoDetail.profissional_id);
         if (atualizado) {
           setSelectedPeriodoDetail(atualizado);
-          carregarItensDetalhados(atualizado.id);
         }
       }
     } catch (e) {
       console.error('[AnaliseFechamento] Erro ao carregar painel:', e);
-      showToast('Erro ao carregar painel de fechamentos.');
     } finally {
       setLoadingPainel(false);
     }
@@ -89,16 +87,19 @@ export const AnaliseFechamento: React.FC = () => {
     if (activeTab === 'painel_fechamento') {
       carregarPainelFechamento();
     }
-  }, [selectedMonth, profissionais, activeTab]);
+  }, [activeTab, selectedMonth, profissionais]);
 
-  const carregarItensDetalhados = async (periodoId: string) => {
-    if (!periodoId) {
+  // Carrega detalhe de atendimentos de um período selecionado
+  const handleSelectPeriodoDetail = async (p: FechamentoPeriodoGestao) => {
+    setSelectedPeriodoDetail(p);
+    if (!p.id) {
       setItensPeriodoDetail([]);
       return;
     }
+
     setLoadingItensDetail(true);
     try {
-      const itens = await fechamentoGestaoService.buscarItensFechamentoPeriodo(periodoId);
+      const itens = await fechamentoGestaoService.buscarItensFechamentoPeriodo(p.id);
       setItensPeriodoDetail(itens);
     } catch (e) {
       console.error('[AnaliseFechamento] Erro ao carregar itens:', e);
@@ -109,7 +110,7 @@ export const AnaliseFechamento: React.FC = () => {
 
   // Abrir conferência para um terapeuta
   const handleAbrirConferencia = async (profId: number) => {
-    const ok = await fechamentoGestaoService.abrirConferenciaProfissional(profId, selectedMonth);
+    const ok = await fechamentoGestaoService.abrirConferenciaProfissional(profId, selectedMonth, diaPrazo);
     if (ok) {
       showToast('Conferência aberta com sucesso para o terapeuta!');
       carregarPainelFechamento();
@@ -123,7 +124,7 @@ export const AnaliseFechamento: React.FC = () => {
     setLoadingPainel(true);
     let count = 0;
     for (const p of profissionais) {
-      const ok = await fechamentoGestaoService.abrirConferenciaProfissional(p.id, selectedMonth);
+      const ok = await fechamentoGestaoService.abrirConferenciaProfissional(p.id, selectedMonth, diaPrazo);
       if (ok) count++;
     }
     setLoadingPainel(false);
@@ -425,6 +426,20 @@ export const AnaliseFechamento: React.FC = () => {
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="bg-transparent text-[11px] font-bold text-[var(--text-primary)] focus:outline-none cursor-pointer [color-scheme:dark]"
+              />
+            </div>
+
+            {/* Filter Dia Limite do Prazo */}
+            <div className="flex items-center gap-1.5 bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl px-3 py-1.5" title="Dia limite do mês seguinte para encerramento da conferência pelos terapeutas">
+              <Clock size={14} className="text-[var(--accent)]" />
+              <label className="text-[11px] font-bold text-[var(--text-muted)]">Dia Limite:</label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={diaPrazo}
+                onChange={(e) => setDiaPrazo(Math.max(1, Math.min(31, parseInt(e.target.value) || 10)))}
+                className="bg-transparent text-[11px] font-bold text-[var(--text-primary)] w-8 text-center focus:outline-none"
               />
             </div>
           </div>
