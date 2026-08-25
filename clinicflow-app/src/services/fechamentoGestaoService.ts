@@ -204,7 +204,7 @@ export const fechamentoGestaoService = {
   /**
    * Abre a conferência de um profissional no mês especificado
    */
-  async abrirConferenciaProfissional(profId: number, anoMes: string, diaPrazoMesSeguinte: number = 5): Promise<boolean> {
+  async abrirConferenciaProfissional(profId: number, anoMes: string, diaPrazoMesSeguinte: number = 10): Promise<boolean> {
     const competencia = `${anoMes}-01`;
     const [year, month] = anoMes.split('-').map(Number);
 

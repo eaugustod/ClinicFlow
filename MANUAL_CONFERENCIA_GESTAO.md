@@ -42,7 +42,7 @@ No início de cada mês (ou período de apuração):
 1. Selecione o mês no filtro superior.
 2. Para abrir a conferência de **todos os terapeutas** de uma só vez, clique no botão azul **Abrir Todos**.
 3. Para abrir individualmente para um terapeuta específico, clique em **Abrir Conferência** no card do profissional.
-4. O status mudará para `Aberto` e os terapeutas já visualizarão as sessões em seus aplicativos.
+4. O status mudará para `Aberto` (com prazo limite configurado até o **dia 10** do mês seguinte) e os terapeutas já visualizarão as sessões em seus aplicativos.
 
 ### Passo 2: Acompanhamento da Fila de Terapeutas
 - A lista de terapeutas na coluna esquerda é **ordenada automaticamente por quantidade de contestações (decrescente)**. Terapeutas com itens em `Em Contestação` aparecem no topo da lista para priorização.
