@@ -356,8 +356,8 @@ export const fechamentoGestaoService = {
           data_iso: appt.data_iso || appt.data,
           hora_inicio: appt.hora_inicio || appt.horario || '—',
           paciente: appt.paciente || appt.paciente_nome || '—',
-          tipo_sessao: appt.tipo_sessao || appt.procedimento || 'Sessão',
-          procedimento: appt.procedimento || appt.convenio || 'Particular',
+          tipo_sessao: appt.tipo || appt.tipo_sessao || 'Sessão',
+          procedimento: appt.plano || appt.convenio || appt.procedimento || 'Particular',
           status: appt.status || 'Agendado'
         } : undefined
       });
