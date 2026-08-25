@@ -67,9 +67,9 @@ export function calcularValorSessao(a: any, profData?: any): number {
     return vDesm18;
   }
 
-  // REGRA EXPLICITA: Apenas agendamentos atestados como atendidos (ou presente/confirmado) geram valor!
-  // Agendamentos "agendado", "em espera", "desmarcado", "cancelado" ficam obrigatoriamente com R$ 0,00.
-  const isAtendido = st === 'atendido' || st === 'presente' || st === 'confirmado' || pres === 'presente';
+  // REGRA EXPLICITA: Apenas agendamentos atestados como ATENDIDO (ou presente) geram valor!
+  // Agendamentos "confirmado", "agendado", "em espera", "desmarcado", "cancelado" ficam obrigatoriamente com R$ 0,00.
+  const isAtendido = st === 'atendido' || st === 'presente' || pres === 'presente';
 
   if (!isAtendido) {
     return 0;
