@@ -90,8 +90,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Fechamento.tsx": {
-    "mtime": 1787398875.4583354,
-    "ast_hash": "d9a630a765e6abb7c245d22de5def068",
+    "mtime": 1787616123.506512,
+    "ast_hash": "a95fc8b8a839ccf30ca61bc787ef1d26",
     "semantic_hash": ""
   },
   "clinicflow-app/src/pages/Feriados.tsx": {
@@ -175,8 +175,8 @@
     "semantic_hash": ""
   },
   "clinicflow-app/src/services/financeiroFluxoCaixaService.ts": {
-    "mtime": 1785517072.4691806,
-    "ast_hash": "f04dfd678bd8db1e25175c1f558c272c",
+    "mtime": 1787616114.048458,
+    "ast_hash": "f5854dffb2288857fb8eb969a8891c49",
     "semantic_hash": ""
   },
   "clinicflow-app/src/services/mappers.ts": {
@@ -377,6 +377,11 @@
   "fix_status_historico_and_logs.sql": {
     "mtime": 1786700199.2019634,
     "ast_hash": "b475de479171a9b871875d99705fccde",
+    "semantic_hash": ""
+  },
+  "clinicflow-app/supabase_detalhe_pagamentos_profissionais.sql": {
+    "mtime": 1787616092.9403386,
+    "ast_hash": "068051f9ae7dee93201ccf2bfa9419a3",
     "semantic_hash": ""
   }
 }

@@ -797,27 +797,64 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
 
       if (error) throw error;
 
-      // Automatically sync each professional's repasse to Contas a Pagar
+      // Automatically sync each professional's repasse to Contas a Pagar and detalhe_pagamentos_profissionais
       try {
         for (const tc of terapeutasCalculados) {
           if (tc.totalValor > 0) {
+            const vencimentoIso = new Date(Date.now() + 86400000 * 5).toISOString().substring(0, 10);
+            const descRepasse = `Repasse Profissional (${formatMonthLabel(selectedMonth)}) - ${tc.totalSessoes} atendimentos`;
+
+            // 1. Salva na tabela contas_pagar
             await financeiroFluxoCaixaService.salvarContaPagar({
               id: `pag_fech_${selectedMonth}_${tc.prof.id}`,
               fornecedorNome: tc.prof.nome,
               profId: tc.prof.id,
-              descricao: `Repasse Profissional (${formatMonthLabel(selectedMonth)}) - ${tc.totalSessoes} atendimentos`,
+              descricao: descRepasse,
               valor: tc.totalValor,
-              dataVencimento: new Date(Date.now() + 86400000 * 5).toISOString().substring(0, 10),
+              dataVencimento: vencimentoIso,
               status: 'Pendente',
               formaPagamento: 'PIX',
               categoriaId: 'cat_desp_1',
               categoriaNome: 'Repasse a Médicos e Psicólogos'
             });
+
+            // 2. Salva na tabela detalhe_pagamentos_profissionais
+            await financeiroFluxoCaixaService.salvarDetalhePagamentoProfissional({
+              id: `rep_${selectedMonth}_${tc.prof.id}`,
+              profId: tc.prof.id,
+              profissionalNome: tc.prof.nome,
+              competencia: selectedMonth,
+              descricao: descRepasse,
+              totalSessoes: tc.totalSessoes,
+              valorRepasse: tc.totalValor,
+              valorBruto: tc.totalBruto || tc.totalValor,
+              dataVencimento: vencimentoIso,
+              status: 'Pendente',
+              formaPagamento: 'PIX',
+              detalhesJson: {
+                count30: tc.count30,
+                valor30: tc.valor30,
+                count60: tc.count60,
+                valor60: tc.valor60,
+                countDev: tc.countDev,
+                valorDev: tc.valorDev,
+                countAval: tc.countAval,
+                countPart: tc.countPart,
+                valorPart: tc.valorPart,
+                countDesmarqueApos18: tc.countDesmarqueApos18,
+                valorDesmarqueApos18Total: tc.valorDesmarqueApos18Total,
+                valorDescontoMesAnterior: tc.valorDescontoMesAnterior,
+                obsDescontoMesAnterior: tc.obsDescontoMesAnterior,
+                valorAdicionalMesAnterior: tc.valorAdicionalMesAnterior,
+                obsAdicionalMesAnterior: tc.obsAdicionalMesAnterior
+              }
+            });
           }
         }
       } catch (syncErr) {
-        console.warn('[Fechamento] Erro ao sincronizar contas a pagar:', syncErr);
+        console.warn('[Fechamento] Erro ao sincronizar contas a pagar e repasses:', syncErr);
       }
+
 
       // Sync repasses to pagamentos_terapeutas (including discounts/adicionais)
       try {

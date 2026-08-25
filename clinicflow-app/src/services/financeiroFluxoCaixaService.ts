@@ -297,5 +297,48 @@ export const financeiroFluxoCaixaService = {
       entradasRecebidas,
       saidasPagas
     };
+  },
+
+  // --------------------------------------------------------------------------
+  // DETALHE DE PAGAMENTOS E REPASSES AOS PROFISSIONAIS (detalhe_pagamentos_profissionais)
+  // --------------------------------------------------------------------------
+  salvarDetalhePagamentoProfissional: async (item: {
+    id: string;
+    profId: number;
+    profissionalNome: string;
+    competencia: string;
+    descricao?: string;
+    totalSessoes?: number;
+    valorRepasse: number;
+    valorBruto?: number;
+    dataVencimento?: string;
+    status?: string;
+    formaPagamento?: string;
+    detalhesJson?: any;
+  }): Promise<void> => {
+    const payloadDb = {
+      id: item.id,
+      prof_id: item.profId,
+      profissional_nome: item.profissionalNome,
+      competencia: item.competencia,
+      descricao: item.descricao || '',
+      total_sessoes: item.totalSessoes || 0,
+      valor_repasse: item.valorRepasse || 0,
+      valor_bruto: item.valorBruto || item.valorRepasse || 0,
+      data_vencimento: item.dataVencimento || null,
+      status: item.status || 'Pendente',
+      forma_pagamento: item.formaPagamento || 'PIX',
+      detalhes_json: item.detalhesJson || {},
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      await supabase
+        .from('detalhe_pagamentos_profissionais')
+        .upsert([payloadDb], { onConflict: 'id' });
+    } catch (err) {
+      console.warn('[financeiroFluxoCaixaService] Erro ao salvar detalhe_pagamentos_profissionais:', err);
+    }
   }
 };
+
