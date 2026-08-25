@@ -55,6 +55,65 @@ export interface FechamentoHistoricoItem {
   observacao: string | null;
 }
 
+export function calcularValorSessao(a: any, profData?: any): number {
+  if (a.valor && Number(a.valor) > 0) {
+    return Number(a.valor);
+  }
+
+  let v30 = Number(profData?.valor_30 ?? profData?.valor30 ?? profData?.vlr30 ?? 0);
+  let v60 = Number(profData?.valor_60 ?? profData?.valor60 ?? profData?.vlr60 ?? 0);
+  let vPart = Number(profData?.valor_particular ?? profData?.valorParticular ?? profData?.vlrParticular ?? 0);
+  let vAval = Number(profData?.valor_aval ?? profData?.valorAval ?? profData?.vlrAval ?? 0);
+  let vDesm18 = Number(profData?.valor_desmarque_apos18 ?? profData?.valorDesmarqueApos18 ?? profData?.vlrDesmarqueApos18 ?? 0);
+
+  if (!v30) v30 = 60;
+  if (!v60) v60 = 100;
+
+  const st = (a.status || '').toLowerCase();
+  const pres = (a.presenca || '').toLowerCase();
+  const horaStr = a.hora_inicio || a.hora || a.horario || '';
+  const isApos18h = horaStr >= '18:00';
+  const isDesmarque = st === 'desmarcado' || st === 'cancelado' || pres === 'falta' || pres.includes('justif');
+
+  if (isApos18h && isDesmarque) {
+    return vDesm18;
+  }
+
+  if (isDesmarque) {
+    return 0;
+  }
+
+  const planoStr = (a.procedimento || a.plano || a.convenio || '').toLowerCase();
+  const tipoStr = (a.tipo_sessao || a.tipo || '').toLowerCase();
+  const obsStr = (a.obs || '').toLowerCase();
+  const pacStr = (a.paciente || a.paciente_nome || '').toLowerCase();
+
+  const isParticular = planoStr === 'particular';
+  const isDev = tipoStr.includes('devolutiva') || obsStr.includes('devolutiva') || pacStr.includes('devolutiva');
+  const isAval = tipoStr.includes('avaliacao') || tipoStr.includes('avaliac') || tipoStr.includes('continua') || obsStr.includes('avaliação') || obsStr.includes('aval');
+
+  if (isParticular) {
+    return vPart > 0 ? vPart : v30;
+  }
+
+  if (isAval) {
+    return 0;
+  }
+
+  if (isDev) {
+    return vAval;
+  }
+
+  let dur = Number(a.dur_min || a.durMin || 0);
+  if (!dur && a.dur) {
+    const parsed = parseInt(String(a.dur), 10);
+    if (!isNaN(parsed)) dur = parsed;
+  }
+  if (!dur) dur = 30;
+
+  return dur >= 45 ? v60 : v30;
+}
+
 export const fechamentoGestaoService = {
   /**
    * Executa a expiração de itens pendentes vencidos no banco via RPC
@@ -86,7 +145,6 @@ export const fechamentoGestaoService = {
     const periodosMap = new Map<number, any>();
     (periodos || []).forEach(p => periodosMap.set(p.profissional_id, p));
 
-    // Busca contadores de itens por período
     const pIds = (periodos || []).map(p => p.id);
     let itensRes: any[] = [];
 
@@ -138,7 +196,6 @@ export const fechamentoGestaoService = {
       });
     }
 
-    // Ordenação padrão da tela 5.2: por quantidade de contestados (decrescente)
     resultado.sort((a, b) => b.qtd_contestados - a.qtd_contestados);
 
     return resultado;
@@ -151,10 +208,14 @@ export const fechamentoGestaoService = {
     const competencia = `${anoMes}-01`;
     const [year, month] = anoMes.split('-').map(Number);
 
-    // Prazo padrão: dia X do mês seguinte às 23:59:59
     const prazoDate = new Date(year, month, diaPrazoMesSeguinte, 23, 59, 59);
 
-    // 1. Verifica se já existe período
+    const { data: profData } = await supabase
+      .from('profissionais')
+      .select('id, nome, valor_30, valor_60, valor_particular, valor_aval, valor_desmarque_apos18')
+      .eq('id', profId)
+      .maybeSingle();
+
     const { data: existente } = await supabase
       .from('fechamento_periodo')
       .select('*')
@@ -191,7 +252,6 @@ export const fechamentoGestaoService = {
         .eq('id', existente.id);
     }
 
-    // 2. Sincroniza agendamentos
     const primDay = `${anoMes}-01`;
     const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
 
@@ -215,7 +275,7 @@ export const fechamentoGestaoService = {
           fechamento_periodo_id: periodoId,
           atendimento_id: a.id,
           status_item: 'pendente',
-          valor_calculado: Number(a.valor || a.valor_sessao || 0)
+          valor_calculado: calcularValorSessao(a, profData)
         }));
 
       if (novosItens.length > 0) {
@@ -232,6 +292,22 @@ export const fechamentoGestaoService = {
   async buscarItensFechamentoPeriodo(periodoId: string): Promise<FechamentoItemGestao[]> {
     if (!periodoId) return [];
 
+    const { data: periodoData } = await supabase
+      .from('fechamento_periodo')
+      .select('profissional_id')
+      .eq('id', periodoId)
+      .maybeSingle();
+
+    let profData: any = null;
+    if (periodoData?.profissional_id) {
+      const { data: pData } = await supabase
+        .from('profissionais')
+        .select('id, nome, valor_30, valor_60, valor_particular, valor_aval, valor_desmarque_apos18')
+        .eq('id', periodoData.profissional_id)
+        .maybeSingle();
+      profData = pData;
+    }
+
     const { data: itens, error } = await supabase
       .from('fechamento_item')
       .select('*')
@@ -242,7 +318,6 @@ export const fechamentoGestaoService = {
       return [];
     }
 
-    // Coleta IDs de atendimento para buscar agendamentos
     const apptIds = (itens || []).map(i => i.atendimento_id).filter(Boolean);
     let apptsMap = new Map<number, any>();
 
@@ -255,11 +330,26 @@ export const fechamentoGestaoService = {
       (appts || []).forEach(a => apptsMap.set(a.id, a));
     }
 
-    const resultado: FechamentoItemGestao[] = (itens || []).map(it => {
+    const resultado: FechamentoItemGestao[] = [];
+
+    for (const it of (itens || [])) {
       const appt = it.atendimento_id ? apptsMap.get(it.atendimento_id) : null;
-      return {
+      let valCalc = Number(it.valor_calculado || 0);
+
+      if (valCalc === 0 && appt) {
+        valCalc = calcularValorSessao(appt, profData);
+        if (valCalc > 0) {
+          supabase
+            .from('fechamento_item')
+            .update({ valor_calculado: valCalc })
+            .eq('id', it.id)
+            .then();
+        }
+      }
+
+      resultado.push({
         ...it,
-        valor_calculado: Number(it.valor_calculado || 0),
+        valor_calculado: valCalc,
         valor_ajustado: it.valor_ajustado !== null ? Number(it.valor_ajustado) : null,
         atendimento: appt ? {
           id: appt.id,
@@ -270,8 +360,8 @@ export const fechamentoGestaoService = {
           procedimento: appt.procedimento || appt.convenio || 'Particular',
           status: appt.status || 'Agendado'
         } : undefined
-      };
-    });
+      });
+    }
 
     return resultado;
   },
