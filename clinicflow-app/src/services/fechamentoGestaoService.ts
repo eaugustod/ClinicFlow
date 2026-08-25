@@ -320,6 +320,7 @@ export const fechamentoGestaoService = {
 
     const apptIds = (itens || []).map(i => i.atendimento_id).filter(Boolean);
     let apptsMap = new Map<number, any>();
+    let apptsList: any[] = [];
 
     if (apptIds.length > 0) {
       const { data: appts } = await supabase
@@ -327,7 +328,70 @@ export const fechamentoGestaoService = {
         .select('*')
         .in('id', apptIds);
 
-      (appts || []).forEach(a => apptsMap.set(a.id, a));
+      apptsList = appts || [];
+      apptsList.forEach(a => apptsMap.set(a.id, a));
+    }
+
+    // Busca evoluções na tabela historico
+    const evolucaoMap = new Map<number, string>();
+    const evolucaoByPacDataMap = new Map<string, string>();
+    const evolucaoByNomeDataMap = new Map<string, string>();
+
+    if (apptsList.length > 0 && periodoData?.profissional_id) {
+      const { data: histData } = await supabase
+        .from('historico')
+        .select('*')
+        .or(`prof_id.eq.${periodoData.profissional_id},agendamento_id.in.(${apptIds.join(',')})`);
+
+      (histData || []).forEach((h: any) => {
+        let texto = '';
+        let pacienteNome = '';
+        try {
+          const conteudo = typeof h.conteudo === 'string' ? JSON.parse(h.conteudo) : (h.conteudo || {});
+          texto = conteudo.texto || h.observacao || h.descricao || h.detalhes || '';
+          pacienteNome = conteudo.paciente || '';
+        } catch {
+          texto = h.observacao || h.descricao || '';
+        }
+
+        if (!texto && h.titulo && h.titulo.includes('✓ Sessão')) {
+          texto = h.titulo;
+        }
+
+        if (texto) {
+          if (h.agendamento_id) {
+            evolucaoMap.set(Number(h.agendamento_id), texto);
+          }
+
+          let dataIsoFormatada = '';
+          if (h.titulo && h.titulo.includes('·')) {
+            const partes = h.titulo.split('·');
+            if (partes.length >= 2) {
+              const dataStr = partes[1].trim();
+              const dParts = dataStr.split('/');
+              if (dParts.length === 3) {
+                dataIsoFormatada = `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}`;
+              }
+            }
+          }
+          if (!dataIsoFormatada && h.data) {
+            dataIsoFormatada = h.data.split('T')[0];
+          }
+
+          if (!pacienteNome && h.titulo && h.titulo.includes('—')) {
+            pacienteNome = h.titulo.replace('✓ Sessão —', '').split('·')[0].trim();
+          }
+
+          if (h.pac_id && dataIsoFormatada) {
+            evolucaoByPacDataMap.set(`${h.pac_id}_${dataIsoFormatada}`, texto);
+          }
+
+          if (pacienteNome && dataIsoFormatada) {
+            const normNome = pacienteNome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            evolucaoByNomeDataMap.set(`${normNome}_${dataIsoFormatada}`, texto);
+          }
+        }
+      });
     }
 
     const resultado: FechamentoItemGestao[] = [];
@@ -344,6 +408,28 @@ export const fechamentoGestaoService = {
             .update({ valor_calculado: valCalc })
             .eq('id', it.id)
             .then();
+        }
+      }
+
+      let evolTexto = appt?.evolucao || '';
+      if (!evolTexto && appt) {
+        if (evolucaoMap.has(appt.id)) {
+          evolTexto = evolucaoMap.get(appt.id)!;
+        } else if (appt.pac_id && (appt.data_iso || appt.data)) {
+          const dt = appt.data_iso || appt.data;
+          const key = `${appt.pac_id}_${dt}`;
+          if (evolucaoByPacDataMap.has(key)) {
+            evolTexto = evolucaoByPacDataMap.get(key)!;
+          }
+        }
+
+        if (!evolTexto && appt.paciente && (appt.data_iso || appt.data)) {
+          const dt = appt.data_iso || appt.data;
+          const normNome = appt.paciente.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          const key = `${normNome}_${dt}`;
+          if (evolucaoByNomeDataMap.has(key)) {
+            evolTexto = evolucaoByNomeDataMap.get(key)!;
+          }
         }
       }
 
