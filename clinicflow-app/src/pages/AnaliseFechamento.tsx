@@ -90,21 +90,29 @@ export const AnaliseFechamento: React.FC = () => {
   }, [activeTab, selectedMonth, profissionais]);
 
   // Carrega detalhe de atendimentos de um período selecionado
-  const handleSelectPeriodoDetail = async (p: FechamentoPeriodoGestao) => {
-    setSelectedPeriodoDetail(p);
-    if (!p.id) {
+  const carregarItensDetalhados = async (periodoId: string) => {
+    if (!periodoId) {
       setItensPeriodoDetail([]);
       return;
     }
 
     setLoadingItensDetail(true);
     try {
-      const itens = await fechamentoGestaoService.buscarItensFechamentoPeriodo(p.id);
+      const itens = await fechamentoGestaoService.buscarItensFechamentoPeriodo(periodoId);
       setItensPeriodoDetail(itens);
     } catch (e) {
       console.error('[AnaliseFechamento] Erro ao carregar itens:', e);
     } finally {
       setLoadingItensDetail(false);
+    }
+  };
+
+  const handleSelectPeriodoDetail = async (p: FechamentoPeriodoGestao) => {
+    setSelectedPeriodoDetail(p);
+    if (p.id) {
+      await carregarItensDetalhados(p.id);
+    } else {
+      setItensPeriodoDetail([]);
     }
   };
 
