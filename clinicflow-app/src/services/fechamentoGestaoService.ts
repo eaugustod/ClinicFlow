@@ -56,6 +56,25 @@ export interface FechamentoHistoricoItem {
 }
 
 export function calcularValorSessao(a: any, profData?: any): number {
+  const st = (a.status || '').toLowerCase();
+  const pres = (a.presenca || '').toLowerCase();
+  const horaStr = a.hora_inicio || a.hora || a.horario || '';
+  const isApos18h = horaStr >= '18:00';
+  const isDesmarque = st === 'desmarcado' || st === 'cancelado' || pres === 'falta' || pres.includes('justif');
+
+  if (isApos18h && isDesmarque) {
+    let vDesm18 = Number(profData?.valor_desmarque_apos18 ?? profData?.valorDesmarqueApos18 ?? profData?.vlrDesmarqueApos18 ?? 0);
+    return vDesm18;
+  }
+
+  // REGRA EXPLICITA: Apenas agendamentos atestados como atendidos (ou presente/confirmado) geram valor!
+  // Agendamentos "agendado", "em espera", "desmarcado", "cancelado" ficam obrigatoriamente com R$ 0,00.
+  const isAtendido = st === 'atendido' || st === 'presente' || st === 'confirmado' || pres === 'presente';
+
+  if (!isAtendido) {
+    return 0;
+  }
+
   if (a.valor && Number(a.valor) > 0) {
     return Number(a.valor);
   }
@@ -64,24 +83,9 @@ export function calcularValorSessao(a: any, profData?: any): number {
   let v60 = Number(profData?.valor_60 ?? profData?.valor60 ?? profData?.vlr60 ?? 0);
   let vPart = Number(profData?.valor_particular ?? profData?.valorParticular ?? profData?.vlrParticular ?? 0);
   let vAval = Number(profData?.valor_aval ?? profData?.valorAval ?? profData?.vlrAval ?? 0);
-  let vDesm18 = Number(profData?.valor_desmarque_apos18 ?? profData?.valorDesmarqueApos18 ?? profData?.vlrDesmarqueApos18 ?? 0);
 
   if (!v30) v30 = 60;
   if (!v60) v60 = 100;
-
-  const st = (a.status || '').toLowerCase();
-  const pres = (a.presenca || '').toLowerCase();
-  const horaStr = a.hora_inicio || a.hora || a.horario || '';
-  const isApos18h = horaStr >= '18:00';
-  const isDesmarque = st === 'desmarcado' || st === 'cancelado' || pres === 'falta' || pres.includes('justif');
-
-  if (isApos18h && isDesmarque) {
-    return vDesm18;
-  }
-
-  if (isDesmarque) {
-    return 0;
-  }
 
   const planoStr = (a.procedimento || a.plano || a.convenio || '').toLowerCase();
   const tipoStr = (a.tipo_sessao || a.tipo || '').toLowerCase();
@@ -400,9 +404,10 @@ export const fechamentoGestaoService = {
       const appt = it.atendimento_id ? apptsMap.get(it.atendimento_id) : null;
       let valCalc = Number(it.valor_calculado || 0);
 
-      if (valCalc === 0 && appt) {
-        valCalc = calcularValorSessao(appt, profData);
-        if (valCalc > 0) {
+      if (appt) {
+        const valorEst = calcularValorSessao(appt, profData);
+        if (valCalc !== valorEst) {
+          valCalc = valorEst;
           supabase
             .from('fechamento_item')
             .update({ valor_calculado: valCalc })
