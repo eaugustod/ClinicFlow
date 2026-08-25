@@ -127,12 +127,12 @@ export const AnaliseFechamento: React.FC = () => {
     }
   };
 
-  // Abrir conferência para todos os terapeutas do mês
+  // Abrir conferência para todos os terapeutas com atendimento no mês
   const handleAbrirConferenciaTodos = async () => {
     setLoadingPainel(true);
     let count = 0;
-    for (const p of profissionais) {
-      const ok = await fechamentoGestaoService.abrirConferenciaProfissional(p.id, selectedMonth, diaPrazo);
+    for (const p of periodosGestao) {
+      const ok = await fechamentoGestaoService.abrirConferenciaProfissional(p.profissional_id, selectedMonth, diaPrazo);
       if (ok) count++;
     }
     setLoadingPainel(false);

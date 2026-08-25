@@ -163,11 +163,30 @@ export const fechamentoGestaoService = {
       }
     }
 
+    // Busca agendamentos do mês para identificar terapeutas ativos na competência
+    const primDay = `${anoMes}-01`;
+    const [year, month] = anoMes.split('-').map(Number);
+    const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
+
+    const { data: agendamentosMes } = await supabase
+      .from('agendamentos')
+      .select('prof_id')
+      .gte('data_iso', primDay)
+      .lte('data_iso', ultDay);
+
+    const profsComAgendamentoSet = new Set((agendamentosMes || []).map(a => Number(a.prof_id)));
+
     const resultado: FechamentoPeriodoGestao[] = [];
 
     for (const prof of profissionaisLista) {
       const p = periodosMap.get(prof.id);
       const profItens = p ? itensRes.filter(it => it.fechamento_periodo_id === p.id) : [];
+
+      // Filtra apenas terapeutas que possuem agendamentos no mês ou itens de fechamento gerados
+      const temAgendamentoNoMes = profsComAgendamentoSet.has(Number(prof.id)) || profItens.length > 0;
+      if (!temAgendamentoNoMes) {
+        continue;
+      }
 
       const qtdTotal = profItens.length;
       const qtdPend = profItens.filter(it => it.status_item === 'pendente').length;
