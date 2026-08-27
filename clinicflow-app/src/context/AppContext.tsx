@@ -487,6 +487,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .from('historico')
           .select('id')
           .eq('pac_id', targetPacId)
+          .is('agendamento_id', null)
           .gte('data', appt.dataISO)
           .lte('data', `${appt.dataISO}T23:59:59.999Z`)
           .order('id', { ascending: false })

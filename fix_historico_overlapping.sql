@@ -1,111 +1,23 @@
 -- =========================================================================
--- ClinicFlow & Agenda Terapeuta — Integridade de Status, Histórico e Auditoria
+-- ClinicFlow & Agenda Terapeuta — Correção de Sobreposição de Históricos
 -- =========================================================================
--- Execute este script no Supabase SQL Editor para criar a tabela de logs,
--- a trigger de auditoria e a função atômica de atualização de status.
+-- Execute este script no Supabase SQL Editor para:
+-- 1. Remover índice restritivo por data/prof que impedia múltiplos agendamentos do dia
+-- 2. Garantir o índice único exclusivo por agendamento_id
+-- 3. Atualizar a procedure sp_atualizar_status_agendamento com isolamento estrito por prof_id e agendamento_id
+-- 4. Reparar registros de histórico duplicados/sobrepostos (incluindo agendamentos 14041 e 14199)
 -- =========================================================================
 
--- 1. TABELA DE AUDITORIA DE ALTERAÇÃO DE STATUS
-CREATE TABLE IF NOT EXISTS public.log_status_agendamento (
-  id BIGSERIAL PRIMARY KEY,
-  agendamento_id BIGINT NOT NULL REFERENCES public.agendamentos(id) ON DELETE CASCADE,
-  status_anterior VARCHAR(100),
-  status_novo VARCHAR(100) NOT NULL,
-  stat_terap_anterior VARCHAR(100),
-  stat_terap_novo VARCHAR(100),
-  origem VARCHAR(100) DEFAULT 'sistema',
-  usuario_id VARCHAR(100),
-  usuario_nome VARCHAR(255),
-  detalhes JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 1. DESFAZER ÍNDICE ÚNICO QUE IMPEDIA MÚLTIPLOS ATENDIMENTOS NO MESMO DIA
+DROP INDEX IF EXISTS public.idx_historico_unique_pac_created_date;
+DROP INDEX IF EXISTS public.idx_historico_unique_pac_prof_created_date;
 
--- Ativar RLS permissivo equivalente a anon
-ALTER TABLE public.log_status_agendamento ENABLE ROW LEVEL SECURITY;
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'log_status_agendamento' AND policyname = 'cf_allow_anon'
-  ) THEN
-    CREATE POLICY "cf_allow_anon" ON public.log_status_agendamento FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-END $$;
-
--- Índices de auditoria rápida
-CREATE INDEX IF NOT EXISTS idx_log_status_agendamento_id ON public.log_status_agendamento(agendamento_id);
-CREATE INDEX IF NOT EXISTS idx_log_status_created_at ON public.log_status_agendamento(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_log_status_usuario ON public.log_status_agendamento(usuario_id);
-
--- 2. BACKUP PREVENTIVO, LIMPEZA DE DUPLICIDADES E CRIAÇÃO DO ÍNDICE ÚNICO EM HISTORICO
-
--- 2.A Criar cópia/backup completo da tabela historico
-CREATE TABLE IF NOT EXISTS public.historico_backup_20260814 AS 
-SELECT * FROM public.historico;
-
--- 2.B Limpeza preventiva de duplicidades legadas com o mesmo agendamento_id (mantém evoluções ou o maior ID)
-BEGIN;
-
-WITH DuplicadosAgendamento AS (
-    SELECT 
-        id,
-        agendamento_id,
-        ROW_NUMBER() OVER (
-            PARTITION BY agendamento_id
-            ORDER BY 
-                CASE WHEN LOWER(tipo) = 'evolucao' THEN 1 ELSE 2 END ASC,
-                id DESC
-        ) AS rnum
-    FROM public.historico
-    WHERE agendamento_id IS NOT NULL
-)
-DELETE FROM public.historico
-WHERE id IN (
-    SELECT id FROM DuplicadosAgendamento WHERE rnum > 1
-);
-
-COMMIT;
-
--- 2.C Criação do índice único por agendamento_id
+-- 2. GARANTIR ÍNDICE ÚNICO EXCLUSIVO POR AGENDAMENTO_ID
 CREATE UNIQUE INDEX IF NOT EXISTS idx_historico_unique_agendamento 
 ON public.historico (agendamento_id) 
 WHERE agendamento_id IS NOT NULL;
 
-
--- 3. TRIGGER DE AUDITORIA DE BANCO DE DADOS (Captura automatizada)
-CREATE OR REPLACE FUNCTION public.fn_log_status_agendamento_change()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF (OLD.status IS DISTINCT FROM NEW.status) OR (OLD.stat_terap IS DISTINCT FROM NEW.stat_terap) THEN
-    INSERT INTO public.log_status_agendamento (
-      agendamento_id,
-      status_anterior,
-      status_novo,
-      stat_terap_anterior,
-      stat_terap_novo,
-      origem,
-      created_at
-    ) VALUES (
-      NEW.id,
-      OLD.status,
-      NEW.status,
-      OLD.stat_terap,
-      NEW.stat_terap,
-      'database_trigger',
-      NOW()
-    );
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS tg_log_status_agendamento ON public.agendamentos;
-CREATE TRIGGER tg_log_status_agendamento
-AFTER UPDATE ON public.agendamentos
-FOR EACH ROW
-EXECUTE FUNCTION public.fn_log_status_agendamento_change();
-
-
--- 4. STORED PROCEDURE (RPC) PARA ATUALIZAÇÃO ATÔMICA DE STATUS E HISTÓRICO
+-- 3. ATUALIZAÇÃO DA STORED PROCEDURE (RPC) COM ISOLAMENTO SEGURO
 CREATE OR REPLACE FUNCTION public.sp_atualizar_status_agendamento(
   p_agendamento_id BIGINT,
   p_status_novo VARCHAR,
@@ -181,7 +93,7 @@ BEGIN
   -- 3. Sincroniza historico (usando a data real do agendamento)
   v_status_hist := p_stat_terap_novo;
   
-  -- Localiza histórico existente por agendamento_id
+  -- Localiza histórico existente estritamente por agendamento_id
   SELECT id INTO v_hist_id FROM public.historico WHERE agendamento_id = p_agendamento_id LIMIT 1;
 
   -- Fallback por pac_id, prof_id e data_iso SOMENTE se agendamento_id for nulo (registro órfão/legado daquele prof_id)
@@ -256,3 +168,36 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql;
+
+-- 4. CORREÇÃO E REPARO DE DADOS LEGADOS / CRUZADOS
+-- 4.A Sincroniza prof_id do historico com o prof_id do agendamento onde houver vínculo por agendamento_id
+UPDATE public.historico h
+SET prof_id = a.prof_id
+FROM public.agendamentos a
+WHERE h.agendamento_id = a.id
+  AND a.prof_id IS NOT NULL
+  AND (h.prof_id IS NULL OR h.prof_id <> a.prof_id);
+
+-- 4.B Gera entradas faltantes no histórico para agendamentos válidos que não possuíam histórico próprio
+INSERT INTO public.historico (pac_id, agendamento_id, prof_id, tipo, titulo, conteudo, status, data, fonte)
+SELECT 
+  a.pac_id,
+  a.id AS agendamento_id,
+  a.prof_id,
+  'agendamento',
+  'Status do Agendamento: ' || COALESCE(a.status, 'agendado'),
+  jsonb_build_object(
+    'texto', 'Agendamento no dia ' || COALESCE(a.data_iso, '') || ' às ' || COALESCE(a.hora, '') || ' (Status: ' || COALESCE(a.status, 'agendado') || ').',
+    'profId', a.prof_id,
+    'hora', a.hora,
+    'status', COALESCE(a.stat_terap, 'Agendado'),
+    'usuario', 'Sistema (Correção)'
+  ),
+  COALESCE(a.stat_terap, 'Agendado'),
+  COALESCE(a.data_iso || 'T' || COALESCE(a.hora, '08:00') || ':00.000Z', TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
+  'Correção Agendamento'
+FROM public.agendamentos a
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.historico h WHERE h.agendamento_id = a.id
+)
+AND a.pac_id IS NOT NULL;
