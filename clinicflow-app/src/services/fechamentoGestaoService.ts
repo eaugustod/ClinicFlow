@@ -193,6 +193,7 @@ export const fechamentoGestaoService = {
       const qtdCont = profItens.filter(it => it.status_item === 'contestado' || it.status_item === 'em_analise').length;
       const qtdConf = profItens.filter(it => it.status_item === 'confirmado' || it.status_item === 'confirmado_automaticamente' || it.status_item.startsWith('resolvido')).length;
 
+      // FIX: sempre recalcula o valor ao vivo (ignora campo do banco que pode estar desatualizado)
       const valorTotal = profItens.reduce((acc, it) => {
         if (it.status_item === 'resolvido_ajustado' && it.valor_ajustado !== null) {
           return acc + Number(it.valor_ajustado);
@@ -211,7 +212,7 @@ export const fechamentoGestaoService = {
         aprovado_em: p?.aprovado_em || null,
         fechado_em: p?.fechado_em || null,
         fechado_por: p?.fechado_por || null,
-        valor_total_calculado: p?.valor_total_calculado ? Number(p.valor_total_calculado) : valorTotal,
+        valor_total_calculado: valorTotal, // FIX: sempre usa valor recalculado ao vivo
         qtd_itens_total: qtdTotal,
         qtd_pendentes: qtdPend,
         qtd_contestados: qtdCont,
@@ -292,8 +293,23 @@ export const fechamentoGestaoService = {
         .eq('fechamento_periodo_id', periodoId);
 
       const jaExistentesSet = new Set((itensExistentes || []).map(i => i.atendimento_id));
+
+      // FIX: apenas agendamentos que efetivamente geram receita são incluídos.
+      // Agendamentos com status 'agendado', 'confirmado', 'em espera' (sem atendimento real)
+      // geram valor = 0 e poluem o painel com dezenas de itens pendentes sem sentido.
+      // A exceção é desmarcado/cancelado após 18h que pode gerar taxa de desmarque.
+      const STATUS_GERAM_RECEITA = new Set([
+        'atendido', 'presente',
+        'desmarcado', 'cancelado', // ← mantidos para capturar taxa de desmarque após 18h
+      ]);
+
       const novosItens = appts
-        .filter(a => !jaExistentesSet.has(a.id))
+        .filter(a => {
+          if (jaExistentesSet.has(a.id)) return false;
+          const st = (a.status || '').toLowerCase().trim();
+          // Incluir apenas se status gera receita OU se for desmarcado/cancelado (possível taxa após 18h)
+          return STATUS_GERAM_RECEITA.has(st);
+        })
         .map(a => ({
           fechamento_periodo_id: periodoId,
           atendimento_id: a.id,
