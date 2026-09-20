@@ -5,7 +5,7 @@ import {
   Video, MapPin, SlidersHorizontal, RefreshCw, Stethoscope
 } from 'lucide-react';
 import { ListaEspera, Profissional, Agendamento, ClinicaConfig, EncaixeOportunidade, SalaClinica } from '../../types';
-import { gerarOportunidadesEncaixe, obterSalasClinica } from '../../services/esperaMatchingService';
+import { gerarOportunidadesEncaixe, obterSalasClinica, extrairIdadeNumerica } from '../../services/esperaMatchingService';
 import { supabase } from '../../services/supabase';
 import { mappers } from '../../services/mappers';
 import { useApp } from '../../context/AppContext';
@@ -39,6 +39,7 @@ export const PainelDisponibilidadeEspera: React.FC<PainelDisponibilidadeEsperaPr
   const [modalidade, setModalidade] = useState<'presencial' | 'online'>('presencial');
   const [filtroProfId, setFiltroProfId] = useState<number | 'all'>('all');
   const [apenasSalasLivres, setApenasSalasLivres] = useState<boolean>(true);
+  const [estritoDisponibilidade, setEstritoDisponibilidade] = useState<boolean>(true);
 
   // Estado de confirmação de agendamento
   const [oportunidadeSelecionada, setOportunidadeSelecionada] = useState<EncaixeOportunidade | null>(null);
@@ -71,7 +72,8 @@ export const PainelDisponibilidadeEspera: React.FC<PainelDisponibilidadeEsperaPr
         duracaoMin,
         modalidade,
         filtroProfId,
-        apenasSalasLivres
+        apenasSalasLivres,
+        estritoDisponibilidadePaciente: estritoDisponibilidade
       }
     );
   }, [
@@ -83,7 +85,8 @@ export const PainelDisponibilidadeEspera: React.FC<PainelDisponibilidadeEsperaPr
     duracaoMin,
     modalidade,
     filtroProfId,
-    apenasSalasLivres
+    apenasSalasLivres,
+    estritoDisponibilidade
   ]);
 
   if (!isOpen || !pacienteEspera) return null;
@@ -310,7 +313,14 @@ export const PainelDisponibilidadeEspera: React.FC<PainelDisponibilidadeEsperaPr
                 </div>
 
                 <div className="flex justify-between text-slate-400">
-                  <span>Dias Preferidos:</span>
+                  <span>Faixa Etária / Idade:</span>
+                  <span className="font-bold text-amber-300 text-right">
+                    {pacienteEspera.idade || (pacienteEspera.nasc ? `${extrairIdadeNumerica(undefined, pacienteEspera.nasc)} anos` : 'Não informada')}
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-slate-400">
+                  <span>Dias Solicitados:</span>
                   <span className="font-bold text-slate-200 text-right">
                     {pacienteEspera.dias && pacienteEspera.dias.length > 0 ? pacienteEspera.dias.join(', ') : 'Qualquer dia'}
                   </span>
@@ -421,8 +431,18 @@ export const PainelDisponibilidadeEspera: React.FC<PainelDisponibilidadeEsperaPr
                 </select>
               </div>
 
-              {modalidade === 'presencial' && (
-                <div className="pt-2">
+              <div className="pt-2 space-y-2">
+                <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={estritoDisponibilidade}
+                    onChange={(e) => setEstritoDisponibilidade(e.target.checked)}
+                    className="rounded border-white/10 text-indigo-600 focus:ring-0 cursor-pointer"
+                  />
+                  <span>Apenas dias & horários solicitados</span>
+                </label>
+
+                {modalidade === 'presencial' && (
                   <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
                     <input
                       type="checkbox"
@@ -432,8 +452,8 @@ export const PainelDisponibilidadeEspera: React.FC<PainelDisponibilidadeEsperaPr
                     />
                     <span>Apenas horários com Sala Livre</span>
                   </label>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 

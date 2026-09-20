@@ -59,6 +59,8 @@ export interface Profissional {
   jornada?: JornadaProfissional[];
   salaPadrao?: string;
   salaPadraoId?: string;
+  idadeMinima?: number;
+  idadeMaxima?: number;
 }
 
 export interface JornadaProfissional {

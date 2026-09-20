@@ -105,7 +105,9 @@ export const mappers = {
     conta: p.conta || null,
     jornada: p.jornada || [],
     sala_padrao: p.salaPadrao || null,
-    sala_padrao_id: p.salaPadraoId || null
+    sala_padrao_id: p.salaPadraoId || null,
+    idade_minima: p.idadeMinima !== undefined && p.idadeMinima !== null ? Number(p.idadeMinima) : 0,
+    idade_maxima: p.idadeMaxima !== undefined && p.idadeMaxima !== null ? Number(p.idadeMaxima) : 120
   }),
   dbToProf: (r: any): Profissional => ({
     id: r.id,
@@ -138,7 +140,9 @@ export const mappers = {
     conta: r.conta || '',
     jornada: Array.isArray(r.jornada) ? r.jornada : [],
     salaPadrao: r.sala_padrao || '',
-    salaPadraoId: r.sala_padrao_id || ''
+    salaPadraoId: r.sala_padrao_id || '',
+    idadeMinima: r.idade_minima !== undefined && r.idade_minima !== null ? Number(r.idade_minima) : 0,
+    idadeMaxima: r.idade_maxima !== undefined && r.idade_maxima !== null ? Number(r.idade_maxima) : 120
   }),
 
   planoToDb: (p: Partial<PlanoSaude>) => ({

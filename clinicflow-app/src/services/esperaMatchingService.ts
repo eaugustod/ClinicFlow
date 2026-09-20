@@ -120,6 +120,49 @@ export const verificarSalasLivres = (
 };
 
 /**
+ * Extrai a idade numérica do paciente a partir do texto de idade ou da data de nascimento
+ */
+export const extrairIdadeNumerica = (idadeStr?: string, nascStr?: string): number | null => {
+  // 1. A partir da data de nascimento (ex: '2016-05-20' ou '20/05/2016')
+  if (nascStr && nascStr.trim()) {
+    const hoje = new Date();
+    let dNasc: Date | null = null;
+    const str = nascStr.trim();
+    if (str.includes('-')) {
+      const parts = str.split('-').map(Number);
+      if (parts[0] > 1900) dNasc = new Date(parts[0], parts[1] - 1, parts[2]);
+    } else if (str.includes('/')) {
+      const parts = str.split('/').map(Number);
+      if (parts[2] > 1900) dNasc = new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+    if (dNasc && !isNaN(dNasc.getTime())) {
+      let idade = hoje.getFullYear() - dNasc.getFullYear();
+      const m = hoje.getMonth() - dNasc.getMonth();
+      if (m < 0 || (m === 0 && hoje.getDate() < dNasc.getDate())) {
+        idade--;
+      }
+      return idade >= 0 ? idade : null;
+    }
+  }
+
+  // 2. A partir do campo de texto de idade (ex: "8 anos", "5", "10 meses", "32a")
+  if (!idadeStr || !idadeStr.trim()) return null;
+  const raw = idadeStr.toLowerCase().trim();
+
+  // Se expressa em meses (ex: "6 meses", "10m") -> idade em anos é 0
+  if (raw.includes('mes') || raw.includes('mês')) {
+    return 0;
+  }
+
+  const match = raw.match(/\d+/);
+  if (match) {
+    return parseInt(match[0], 10);
+  }
+
+  return null;
+};
+
+/**
  * Calcula a compatibilidade entre o paciente em espera e o profissional
  */
 export const calcularCompatibilidadeProfissional = (
@@ -161,7 +204,26 @@ export const calcularCompatibilidadeProfissional = (
     score = Math.max(10, score - 30);
   }
 
-  // 2. Convênio / Plano
+  // 2. Faixa Etária Atendida pelo Profissional
+  const idadePaciente = extrairIdadeNumerica(espera.idade, espera.nasc);
+  if (idadePaciente !== null) {
+    const min = prof.idadeMinima !== undefined && prof.idadeMinima !== null ? prof.idadeMinima : 0;
+    const max = prof.idadeMaxima !== undefined && prof.idadeMaxima !== null ? prof.idadeMaxima : 120;
+
+    if (idadePaciente < min || idadePaciente > max) {
+      return {
+        compativel: false,
+        score: 0,
+        motivos: [],
+        avisos: [`Fora da faixa etária: Paciente tem ${idadePaciente} anos (Terapeuta atende de ${min} a ${max} anos)`]
+      };
+    } else {
+      score += 20;
+      motivos.push(`Faixa etária atendida: ${idadePaciente} anos (${min} a ${max} anos)`);
+    }
+  }
+
+  // 3. Convênio / Plano
   const planoEspera = (espera.plano || '').toLowerCase().trim();
   if (planoEspera && planoEspera !== 'particular') {
     motivos.push(`Atendimento pelo convênio ${espera.plano}`);
@@ -180,72 +242,147 @@ export const calcularCompatibilidadeProfissional = (
 };
 
 /**
- * Verifica se um horário específico bate com as preferências do paciente
+ * Verifica se um dia e horário específico atende às preferências cadastradas na lista de espera
  */
-export const pontuarPreferenciaHorario = (
-  horaStr: string,
+export const verificarCompatibilidadeDisponibilidade = (
+  slotHora: string,
   diaSemanaNome: string,
   espera: ListaEspera
-): { bonusScore: number; matches: string[] } => {
-  let bonus = 0;
+): { compativel: boolean; matches: string[]; bonusScore: number } => {
   const matches: string[] = [];
-  const horaMin = timeToMinutes(horaStr);
+  let bonusScore = 0;
+  const horaMin = timeToMinutes(slotHora);
 
-  // 1. Dias da semana
+  // 1. Verificação de Dias da Semana
   const diasPreferencia = Array.isArray(espera.dias) ? espera.dias : [];
+  let matchDia = true;
   if (diasPreferencia.length > 0) {
     const diaEncontrado = diasPreferencia.some(d =>
       diaSemanaNome.toLowerCase().includes(d.toLowerCase()) ||
       d.toLowerCase().includes(diaSemanaNome.toLowerCase())
     );
     if (diaEncontrado) {
-      bonus += 15;
-      matches.push(`Dia da semana preferido: ${diaSemanaNome}`);
+      matches.push(`Dia solicitado: ${diaSemanaNome}`);
+      bonusScore += 20;
+    } else {
+      matchDia = false;
     }
-  } else {
-    bonus += 5;
   }
 
-  // 2. Turnos / Período
-  const periodosPreferencia = Array.isArray(espera.periodos) ? espera.periodos : [];
+  // 2. Verificação de Período Geral (Manhã, Tarde, Noite, Ambos)
   const periodoGeral = (espera.periodo || 'Ambos').toLowerCase();
-
-  const isManha = horaMin >= 420 && horaMin < 720; // 07:00 às 12:00
+  const isManha = horaMin >= 420 && horaMin < 720;  // 07:00 às 12:00
   const isTarde = horaMin >= 720 && horaMin < 1080; // 12:00 às 18:00
-  const isNoite = horaMin >= 1080; // 18:00+
+  const isNoite = horaMin >= 1080;                  // 18:00+
 
+  let matchPeriodoGeral = true;
   if (periodoGeral === 'manhã' || periodoGeral === 'manha') {
     if (isManha) {
-      bonus += 10;
-      matches.push('Turno matutino de preferência');
+      matches.push('Turno matutino solicitado');
+      bonusScore += 15;
+    } else {
+      matchPeriodoGeral = false;
     }
   } else if (periodoGeral === 'tarde') {
     if (isTarde) {
-      bonus += 10;
-      matches.push('Turno vespertino de preferência');
+      matches.push('Turno vespertino solicitado');
+      bonusScore += 15;
+    } else {
+      matchPeriodoGeral = false;
     }
-  } else if (periodoGeral === 'ambos') {
-    bonus += 5;
+  } else if (periodoGeral === 'noite') {
+    if (isNoite) {
+      matches.push('Turno noturno solicitado');
+      bonusScore += 15;
+    } else {
+      matchPeriodoGeral = false;
+    }
   }
 
-  // Horários específicos ou posições na agenda
-  periodosPreferencia.forEach(pref => {
-    const pLower = pref.toLowerCase();
-    if (pLower.includes('primeiro horário') && horaStr === '08:00') {
-      bonus += 15;
-      matches.push('Primeiro horário da agenda');
-    }
-    if (pLower.includes('último horário') && horaMin >= 1020) {
-      bonus += 15;
-      matches.push('Final do dia / Último horário');
-    }
-    if (pLower.includes(horaStr)) {
-      bonus += 20;
-      matches.push(`Horário exato pretendido: ${horaStr}`);
-    }
-  });
+  // 3. Verificação de Períodos Específicos / Posições na Agenda
+  const periodosEspecificos = Array.isArray(espera.periodos) ? espera.periodos : [];
+  let matchPeriodoEspecifico = periodosEspecificos.length === 0;
 
-  return { bonusScore: Math.min(30, bonus), matches };
+  if (periodosEspecificos.length > 0) {
+    for (const pref of periodosEspecificos) {
+      const pLower = pref.toLowerCase();
+
+      if (pLower.includes('manhã') || pLower.includes('manha')) {
+        if (isManha) {
+          matchPeriodoEspecifico = true;
+          matches.push('Manhã (08h-12h)');
+          bonusScore += 15;
+        }
+      }
+      if (pLower.includes('tarde')) {
+        if (isTarde) {
+          matchPeriodoEspecifico = true;
+          matches.push('Tarde (12h-18h)');
+          bonusScore += 15;
+        }
+      }
+      if (pLower.includes('noite')) {
+        if (isNoite) {
+          matchPeriodoEspecifico = true;
+          matches.push('Noite (18h-21h)');
+          bonusScore += 15;
+        }
+      }
+      if (pLower.includes('primeiro horário') && slotHora === '08:00') {
+        matchPeriodoEspecifico = true;
+        matches.push('Primeiro horário');
+        bonusScore += 20;
+      }
+      if (pLower.includes('último horário') && horaMin >= 1020) {
+        matchPeriodoEspecifico = true;
+        matches.push('Último horário');
+        bonusScore += 20;
+      }
+      if (pLower.includes('primeiro ou último') && (slotHora === '08:00' || horaMin >= 1020)) {
+        matchPeriodoEspecifico = true;
+        matches.push('Primeiro ou último horário');
+        bonusScore += 20;
+      }
+
+      // Janela "Após XX:XX"
+      const matchApos = pLower.match(/(?:após|apos|a partir)\s*(\d{1,2})(?::(\d{2}))?/);
+      if (matchApos) {
+        const hMin = parseInt(matchApos[1]) * 60 + (matchApos[2] ? parseInt(matchApos[2]) : 0);
+        if (horaMin >= hMin) {
+          matchPeriodoEspecifico = true;
+          matches.push(`Após ${matchApos[1]}:${matchApos[2] || '00'}`);
+          bonusScore += 15;
+        }
+      }
+
+      // Janela "Até XX:XX"
+      const matchAte = pLower.match(/até\s*(\d{1,2})(?::(\d{2}))?/);
+      if (matchAte) {
+        const hMax = parseInt(matchAte[1]) * 60 + (matchAte[2] ? parseInt(matchAte[2]) : 0);
+        if (horaMin <= hMax) {
+          matchPeriodoEspecifico = true;
+          matches.push(`Até ${matchAte[1]}:${matchAte[2] || '00'}`);
+          bonusScore += 15;
+        }
+      }
+
+      // Horário exato (ex: "14:00")
+      if (pLower.includes(slotHora)) {
+        matchPeriodoEspecifico = true;
+        matches.push(`Horário exato: ${slotHora}`);
+        bonusScore += 25;
+      }
+    }
+  }
+
+  // Compatível se o dia bate E (o turno geral bate OU algum horário específico bate)
+  const compativel = matchDia && (matchPeriodoGeral || matchPeriodoEspecifico);
+
+  return {
+    compativel,
+    matches: Array.from(new Set(matches)),
+    bonusScore: Math.min(35, bonusScore)
+  };
 };
 
 export interface GerarOportunidadesParams {
@@ -254,6 +391,7 @@ export interface GerarOportunidadesParams {
   modalidade?: 'presencial' | 'online';
   filtroProfId?: number | 'all';
   apenasSalasLivres?: boolean;
+  estritoDisponibilidadePaciente?: boolean; // Se true, filtra estritamente dia e horário do paciente
 }
 
 /**
@@ -272,7 +410,8 @@ export const gerarOportunidadesEncaixe = (
     duracaoMin = 30,
     modalidade = 'presencial',
     filtroProfId = 'all',
-    apenasSalasLivres = true
+    apenasSalasLivres = true,
+    estritoDisponibilidadePaciente = true
   } = params;
 
   const salasClinica = obterSalasClinica(clinicaConfig);
@@ -416,17 +555,21 @@ export const gerarOportunidadesEncaixe = (
           }
         }
 
-        // Pontuação de preferência de dia e horário
-        const prefPontos = pontuarPreferenciaHorario(slotHora, diaSemanaNome, esperaItem);
+        // REGRA 4: Respeitar disponibilidade do paciente (Dias da semana, períodos e horários solicitados)
+        const disp = verificarCompatibilidadeDisponibilidade(slotHora, diaSemanaNome, esperaItem);
+        if (estritoDisponibilidadePaciente && !disp.compativel) {
+          continue; // Vaga fora dos dias/horários solicitados pelo paciente na fila de espera
+        }
+
         let bonusVinculo = 0;
-        const motivosTodos = [...comp.motivos, ...prefPontos.matches];
+        const motivosTodos = [...comp.motivos, ...disp.matches];
 
         if (jornadaDia?.salaPadrao) {
           bonusVinculo = 10;
           motivosTodos.push(`Consultório vinculado: ${jornadaDia.salaPadrao}`);
         }
 
-        const scoreFinal = Math.min(100, comp.score + prefPontos.bonusScore + bonusVinculo);
+        const scoreFinal = Math.min(100, comp.score + disp.bonusScore + bonusVinculo);
 
         oportunidades.push({
           profissionalId: prof.id,

@@ -36,10 +36,12 @@ SET nome = EXCLUDED.nome,
     cor = EXCLUDED.cor,
     descricao = EXCLUDED.descricao;
 
--- 2. CADASTRO DE PROFISSIONAIS: JORNADA DE TRABALHO E VÍNCULO DE SALA
+-- 2. CADASTRO DE PROFISSIONAIS: JORNADA DE TRABALHO, VÍNCULO DE SALA E FAIXA ETÁRIA
 ALTER TABLE public.profissionais ADD COLUMN IF NOT EXISTS jornada jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE public.profissionais ADD COLUMN IF NOT EXISTS sala_padrao text;
 ALTER TABLE public.profissionais ADD COLUMN IF NOT EXISTS sala_padrao_id text;
+ALTER TABLE public.profissionais ADD COLUMN IF NOT EXISTS idade_minima integer DEFAULT 0;
+ALTER TABLE public.profissionais ADD COLUMN IF NOT EXISTS idade_maxima integer DEFAULT 120;
 
 -- 3. AGENDAMENTOS: VÍNCULO DO CONSULTÓRIO / SALA CLÍNICA
 ALTER TABLE public.agendamentos ADD COLUMN IF NOT EXISTS sala text;

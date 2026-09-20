@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark, Camera, Clock, DoorOpen } from 'lucide-react';
+import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark, Camera, Clock, DoorOpen, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Profissional, JornadaProfissional } from '../types';
 import { supabase } from '../services/supabase';
@@ -36,6 +36,8 @@ export const Profissionais: React.FC = () => {
   const [cor, setCor] = useState('#4f8ef7');
   const [status, setStatus] = useState('Ativo');
   const [foto, setFoto] = useState('');
+  const [idadeMinima, setIdadeMinima] = useState<number>(0);
+  const [idadeMaxima, setIdadeMaxima] = useState<number>(120);
   
   // Form State - Financeiro / Valores & Pagamento
   const [valor30, setValor30] = useState<number>(0);
@@ -103,6 +105,8 @@ export const Profissionais: React.FC = () => {
     setAgencia('');
     setConta('');
     setJornada(DEFAULT_JORNADA);
+    setIdadeMinima(0);
+    setIdadeMaxima(120);
     setIsModalOpen(true);
   };
 
@@ -143,6 +147,10 @@ export const Profissionais: React.FC = () => {
       setJornada(DEFAULT_JORNADA);
     }
 
+    // Set faixa etaria
+    setIdadeMinima(p.idadeMinima !== undefined && p.idadeMinima !== null ? p.idadeMinima : 0);
+    setIdadeMaxima(p.idadeMaxima !== undefined && p.idadeMaxima !== null ? p.idadeMaxima : 120);
+
     setIsModalOpen(true);
   };
 
@@ -175,7 +183,9 @@ export const Profissionais: React.FC = () => {
       banco,
       agencia,
       conta,
-      jornada
+      jornada,
+      idadeMinima,
+      idadeMaxima
     };
 
     try {
@@ -284,6 +294,14 @@ export const Profissionais: React.FC = () => {
 
               {/* General details */}
               <div className="mt-5 space-y-2 text-[10px] text-slate-400">
+                <div className="flex justify-between border-b border-white/[0.02] pb-1.5">
+                  <span className="font-medium text-amber-400">Faixa Etária:</span>
+                  <span className="text-slate-300 font-semibold">
+                    {(!p.idadeMinima && (!p.idadeMaxima || p.idadeMaxima >= 120))
+                      ? 'Todas as idades'
+                      : `${p.idadeMinima ?? 0} a ${p.idadeMaxima ?? 120} anos`}
+                  </span>
+                </div>
                 <div className="flex justify-between border-b border-white/[0.02] pb-1.5">
                   <span className="font-medium">Conselho / UF:</span>
                   <span className="font-mono text-slate-300">{p.conselho || '—'} {p.num ? `#${p.num}` : ''} / {p.uf || '—'}</span>
@@ -541,6 +559,86 @@ export const Profissionais: React.FC = () => {
                         <option value="Ativo">Ativo</option>
                         <option value="Inativo">Inativo</option>
                       </select>
+                    </div>
+
+                    {/* Faixa Etária Atendida */}
+                    <div className="md:col-span-2 p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-slate-200 font-bold text-xs flex items-center gap-1.5">
+                          <Users size={14} className="text-amber-400" />
+                          <span>Faixa Etária Atendida (Encaixe & Triagem)</span>
+                        </label>
+                        <span className="text-[10px] text-indigo-400 font-semibold">
+                          {idadeMinima === 0 && idadeMaxima >= 120
+                            ? 'Atende todas as idades'
+                            : `Atende de ${idadeMinima} a ${idadeMaxima} anos`}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-slate-400 text-[11px] font-semibold mb-1">Idade Inicial / Mínima (anos)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={120}
+                            value={idadeMinima}
+                            onChange={(e) => setIdadeMinima(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 text-[11px] font-semibold mb-1">Idade Final / Máxima (anos)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={120}
+                            value={idadeMaxima}
+                            onChange={(e) => setIdadeMaxima(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Presets Rápidos */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-slate-500 mr-1">Atalhos:</span>
+                        <button
+                          type="button"
+                          onClick={() => { setIdadeMinima(0); setIdadeMaxima(12); }}
+                          className="px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-300 text-[10px] font-medium border border-white/[0.04] transition-colors"
+                        >
+                          👶 Infantil (0-12a)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIdadeMinima(12); setIdadeMaxima(18); }}
+                          className="px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-300 text-[10px] font-medium border border-white/[0.04] transition-colors"
+                        >
+                          🧒 Adolescente (12-18a)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIdadeMinima(18); setIdadeMaxima(60); }}
+                          className="px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-300 text-[10px] font-medium border border-white/[0.04] transition-colors"
+                        >
+                          🧑 Adulto (18-60a)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIdadeMinima(60); setIdadeMaxima(120); }}
+                          className="px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-300 text-[10px] font-medium border border-white/[0.04] transition-colors"
+                        >
+                          👵 Idoso (60+a)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIdadeMinima(0); setIdadeMaxima(120); }}
+                          className="px-2 py-0.5 rounded-md bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 text-[10px] font-medium border border-indigo-500/30 transition-colors"
+                        >
+                          🌐 Todas as Idades (0-120a)
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
