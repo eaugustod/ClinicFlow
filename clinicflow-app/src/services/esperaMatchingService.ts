@@ -328,12 +328,47 @@ export const gerarOportunidadesEncaixe = (
     });
 
     for (const { prof, comp } of profsCompativeis) {
+      // 3.1. Verifica a escala/jornada semanal do terapeuta para o dia da semana
+      const jornadaDia = Array.isArray(prof.jornada)
+        ? prof.jornada.find(j => j.diaSemana === diaSemanaNome)
+        : undefined;
+
+      // Se o terapeuta possui jornada configurada e está marcado como inativo/folga neste dia, pula o terapeuta
+      if (jornadaDia && !jornadaDia.ativo) {
+        continue;
+      }
+
       const agendamentosProfDia = agendamentosDoDia.filter(a => a.profId === prof.id);
 
       for (const slotHora of slotsPadrao) {
         const slotHoraFim = minutesToTime(timeToMinutes(slotHora) + duracaoMin);
 
-        // Checa se o profissional está livre neste slot
+        // REGRA 1: Bloqueio estrito de horário de almoço (12:00 às 13:00)
+        if (isHorarioSobreposto(slotHora, slotHoraFim, '12:00', '13:00')) {
+          continue;
+        }
+
+        // REGRA 2: Respeitar horário de expediente do terapeuta
+        if (jornadaDia) {
+          const slotIniMin = timeToMinutes(slotHora);
+          const slotFimMin = timeToMinutes(slotHoraFim);
+          const jIniMin = timeToMinutes(jornadaDia.horaInicio || '08:00');
+          const jFimMin = timeToMinutes(jornadaDia.horaFim || '18:00');
+
+          // Fora do expediente de trabalho
+          if (slotIniMin < jIniMin || slotFimMin > jFimMin) {
+            continue;
+          }
+
+          // Intervalo de almoço customizado do terapeuta (se diferente de 12-13)
+          if (jornadaDia.intervaloInicio && jornadaDia.intervaloFim) {
+            if (isHorarioSobreposto(slotHora, slotHoraFim, jornadaDia.intervaloInicio, jornadaDia.intervaloFim)) {
+              continue;
+            }
+          }
+        }
+
+        // Checa se o profissional já tem agendamento ativo neste slot
         const conflitoProf = agendamentosProfDia.some(a => {
           const aHoraFim = a.horaFim || minutesToTime(timeToMinutes(a.hora) + (a.durMin || 30));
           return isHorarioSobreposto(slotHora, slotHoraFim, a.hora, aHoraFim);
@@ -343,7 +378,7 @@ export const gerarOportunidadesEncaixe = (
           continue; // Profissional ocupado
         }
 
-        // Checa disponibilidade de sala física (se presencial)
+        // REGRA 3: Checagem e Vínculo de Consultório Físico (se presencial)
         let salasLivresNoHorario: SalaClinica[] = [];
         let salaSugerida: string | undefined = undefined;
 
@@ -356,17 +391,42 @@ export const gerarOportunidadesEncaixe = (
             salasClinica
           );
 
-          if (apenasSalasLivres && salasLivresNoHorario.length === 0) {
-            continue; // Nenhuma sala física livre na clínica neste horário
-          }
+          // Se o terapeuta tem um consultório alocado para este dia da semana
+          if (jornadaDia?.salaPadrao && jornadaDia.salaPadrao.trim() !== '') {
+            const salaFixaNome = jornadaDia.salaPadrao.trim().toLowerCase();
+            const salaFixaDisponivel = salasLivresNoHorario.some(s => s.nome.trim().toLowerCase() === salaFixaNome);
 
-          salaSugerida = salasLivresNoHorario[0]?.nome;
+            if (salaFixaDisponivel) {
+              salaSugerida = jornadaDia.salaPadrao;
+              // Ordena para que o consultório fixo apareça em primeiro
+              salasLivresNoHorario.sort((a, b) =>
+                a.nome.trim().toLowerCase() === salaFixaNome ? -1 : (b.nome.trim().toLowerCase() === salaFixaNome ? 1 : 0)
+              );
+            } else if (apenasSalasLivres) {
+              // Se o consultório fixo deste terapeuta estiver ocupado por outra consulta, não oferece para evitar choque
+              continue;
+            } else {
+              salaSugerida = salasLivresNoHorario[0]?.nome || jornadaDia.salaPadrao;
+            }
+          } else {
+            if (apenasSalasLivres && salasLivresNoHorario.length === 0) {
+              continue; // Nenhuma sala física livre na clínica neste horário
+            }
+            salaSugerida = salasLivresNoHorario[0]?.nome;
+          }
         }
 
         // Pontuação de preferência de dia e horário
         const prefPontos = pontuarPreferenciaHorario(slotHora, diaSemanaNome, esperaItem);
-        const scoreFinal = Math.min(100, comp.score + prefPontos.bonusScore);
+        let bonusVinculo = 0;
         const motivosTodos = [...comp.motivos, ...prefPontos.matches];
+
+        if (jornadaDia?.salaPadrao) {
+          bonusVinculo = 10;
+          motivosTodos.push(`Consultório vinculado: ${jornadaDia.salaPadrao}`);
+        }
+
+        const scoreFinal = Math.min(100, comp.score + prefPontos.bonusScore + bonusVinculo);
 
         oportunidades.push({
           profissionalId: prof.id,

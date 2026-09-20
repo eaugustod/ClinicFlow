@@ -1,16 +1,27 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark, Camera } from 'lucide-react';
+import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark, Camera, Clock, DoorOpen } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Profissional } from '../types';
+import { Profissional, JornadaProfissional } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+import { obterSalasClinica } from '../services/esperaMatchingService';
+
+const DEFAULT_JORNADA: JornadaProfissional[] = [
+  { diaSemana: 'Segunda', ativo: true, horaInicio: '08:00', horaFim: '18:00', intervaloInicio: '12:00', intervaloFim: '13:00' },
+  { diaSemana: 'Terça', ativo: true, horaInicio: '08:00', horaFim: '18:00', intervaloInicio: '12:00', intervaloFim: '13:00' },
+  { diaSemana: 'Quarta', ativo: true, horaInicio: '08:00', horaFim: '18:00', intervaloInicio: '12:00', intervaloFim: '13:00' },
+  { diaSemana: 'Quinta', ativo: true, horaInicio: '08:00', horaFim: '18:00', intervaloInicio: '12:00', intervaloFim: '13:00' },
+  { diaSemana: 'Sexta', ativo: true, horaInicio: '08:00', horaFim: '18:00', intervaloInicio: '12:00', intervaloFim: '13:00' },
+  { diaSemana: 'Sábado', ativo: false, horaInicio: '08:00', horaFim: '13:00', intervaloInicio: '12:00', intervaloFim: '13:00' },
+];
 
 export const Profissionais: React.FC = () => {
-  const { profissionais, refreshAll } = useApp();
+  const { profissionais, refreshAll, clinicaConfig } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProf, setEditingProf] = useState<Profissional | null>(null);
-  const [modalTab, setModalTab] = useState<'cadastro' | 'financeiro'>('cadastro');
+  const [modalTab, setModalTab] = useState<'cadastro' | 'financeiro' | 'jornada'>('cadastro');
+  const [jornada, setJornada] = useState<JornadaProfissional[]>(DEFAULT_JORNADA);
 
   // Form State - Cadastro
   const [nome, setNome] = useState('');
@@ -53,6 +64,10 @@ export const Profissionais: React.FC = () => {
     }
   };
 
+  const updateJornadaDia = (diaNome: string, field: keyof JornadaProfissional, value: any) => {
+    setJornada(prev => prev.map(item => item.diaSemana === diaNome ? { ...item, [field]: value } : item));
+  };
+
   const filteredProfissionais = profissionais.filter(p =>
     p.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.esp.toLowerCase().includes(searchQuery.toLowerCase())
@@ -87,6 +102,7 @@ export const Profissionais: React.FC = () => {
     setBanco('');
     setAgencia('');
     setConta('');
+    setJornada(DEFAULT_JORNADA);
     setIsModalOpen(true);
   };
 
@@ -119,6 +135,14 @@ export const Profissionais: React.FC = () => {
     setBanco(p.banco || '');
     setAgencia(p.agencia || '');
     setConta(p.conta || '');
+
+    // Set jornada
+    if (p.jornada && Array.isArray(p.jornada) && p.jornada.length > 0) {
+      setJornada(p.jornada);
+    } else {
+      setJornada(DEFAULT_JORNADA);
+    }
+
     setIsModalOpen(true);
   };
 
@@ -150,7 +174,8 @@ export const Profissionais: React.FC = () => {
       pix,
       banco,
       agencia,
-      conta
+      conta,
+      jornada
     };
 
     try {
@@ -338,6 +363,16 @@ export const Profissionais: React.FC = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setModalTab('jornada')}
+                className={`flex items-center gap-1.5 py-3 px-4 border-b-2 font-bold tracking-wide transition-all ${
+                  modalTab === 'jornada' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Clock size={13} />
+                Jornada & Consultórios
+              </button>
+              <button
+                type="button"
                 onClick={() => setModalTab('financeiro')}
                 className={`flex items-center gap-1.5 py-3 px-4 border-b-2 font-bold tracking-wide transition-all ${
                   modalTab === 'financeiro' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -502,6 +537,95 @@ export const Profissionais: React.FC = () => {
                         <option value="Inativo">Inativo</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+              ) : modalTab === 'jornada' ? (
+                /* TAB: JORNADA & CONSULTÓRIOS */
+                <div className="space-y-4 animate-fade-in text-xs">
+                  <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-300 flex items-start gap-2.5">
+                    <Clock size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold block text-white text-xs">Escala Semanal & Consultório Fixo</span>
+                      <p className="text-[11px] text-slate-300 mt-0.5">
+                        Defina os dias e horários de atendimento deste terapeuta e o consultório vinculado. O horário de almoço das <strong>12:00 às 13:00</strong> é automaticamente bloqueado para o atendimento.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1">
+                    {jornada.map((item) => (
+                      <div
+                        key={item.diaSemana}
+                        className={`p-3 rounded-xl border transition-all ${
+                          item.ativo
+                            ? 'bg-[#141824] border-white/[0.08]'
+                            : 'bg-[#10121a] border-white/[0.03] opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={item.ativo}
+                              onChange={(e) => updateJornadaDia(item.diaSemana, 'ativo', e.target.checked)}
+                              className="rounded text-indigo-500 focus:ring-0 cursor-pointer"
+                            />
+                            <span className={`font-bold text-xs ${item.ativo ? 'text-white' : 'text-slate-500'}`}>
+                              {item.diaSemana}-feira
+                            </span>
+                          </label>
+
+                          <span className="text-[10px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-medium">
+                            🍽️ Almoço 12h-13h bloqueado
+                          </span>
+                        </div>
+
+                        {item.ativo ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-white/[0.04]">
+                            <div>
+                              <label className="block text-[10px] text-slate-400 font-semibold mb-1">Entrada</label>
+                              <input
+                                type="time"
+                                value={item.horaInicio}
+                                onChange={(e) => updateJornadaDia(item.diaSemana, 'horaInicio', e.target.value)}
+                                className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] text-slate-400 font-semibold mb-1">Saída</label>
+                              <input
+                                type="time"
+                                value={item.horaFim}
+                                onChange={(e) => updateJornadaDia(item.diaSemana, 'horaFim', e.target.value)}
+                                className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2.5 py-1 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] text-slate-400 font-semibold mb-1 flex items-center gap-1">
+                                <DoorOpen size={11} className="text-emerald-400" />
+                                <span>Consultório Alocado</span>
+                              </label>
+                              <select
+                                value={item.salaPadrao || ''}
+                                onChange={(e) => updateJornadaDia(item.diaSemana, 'salaPadrao', e.target.value)}
+                                className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                              >
+                                <option value="">Nenhum fixo (rotativo)</option>
+                                {obterSalasClinica(clinicaConfig).map(s => (
+                                  <option key={s.id} value={s.nome}>
+                                    {s.nome}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-500 italic">Sem expediente neste dia da semana</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (

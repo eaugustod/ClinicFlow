@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Building2, Save, CheckCircle, AlertTriangle, MessageSquare, Bell, Image as ImageIcon, Plus, Trash2, DoorOpen } from 'lucide-react';
+import { Database, Building2, Save, CheckCircle, AlertTriangle, MessageSquare, Bell, Image as ImageIcon, Plus, Trash2, DoorOpen, Edit3, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
+import { SalaClinica } from '../types';
+import { obterSalasClinica } from '../services/esperaMatchingService';
 
 export const Configuracoes: React.FC = () => {
   const { clinicaConfig, refreshAll } = useApp();
@@ -22,7 +24,13 @@ export const Configuracoes: React.FC = () => {
   const [logo, setLogo] = useState('');
 
   // Salas de Atendimento Clínico
-  const [salas, setSalas] = useState<string[]>([]);
+  const [salas, setSalas] = useState<SalaClinica[]>([]);
+  const [isSalaModalOpen, setIsSalaModalOpen] = useState(false);
+  const [editingSalaIndex, setEditingSalaIndex] = useState<number | null>(null);
+  const [salaNome, setSalaNome] = useState('');
+  const [salaTipo, setSalaTipo] = useState('Consultório');
+  const [salaCor, setSalaCor] = useState('#4f8ef7');
+  const [salaDescricao, setSalaDescricao] = useState('');
 
   // Notifications Form
   const [canalNotif, setCanalNotif] = useState<'whatsapp' | 'chat'>('whatsapp');
@@ -65,14 +73,7 @@ export const Configuracoes: React.FC = () => {
       { id: '1', name: 'Confirmação de Agendamento', body: 'Olá {nome}, seu agendamento com {terapeuta} está marcado para {data} às {hora} na {clinica}.' }
     ]);
 
-    setSalas(clinicaConfig.salas || [
-      'Sala 01 - Geral / Psicoterapia',
-      'Sala 02 - Ludoterapia / Infantil',
-      'Sala 03 - Integração Sensorial / T.O.',
-      'Sala 04 - Fonoaudiologia',
-      'Sala 05 - Multidisciplinar / Avaliação',
-      'Sala 06 - Atendimento Clínico'
-    ]);
+    setSalas(obterSalasClinica(clinicaConfig));
   }, [clinicaConfig]);
 
   const testConnection = async () => {
@@ -176,18 +177,52 @@ export const Configuracoes: React.FC = () => {
     setTemplates(templates.filter(t => t.id !== id));
   };
 
-  const addSala = () => {
-    setSalas([...salas, `Sala ${String(salas.length + 1).padStart(2, '0')} - Novo Consultório`]);
+  const openAddSalaModal = () => {
+    setEditingSalaIndex(null);
+    setSalaNome(`Sala ${String(salas.length + 1).padStart(2, '0')}`);
+    setSalaTipo('Consultório');
+    setSalaCor('#4f8ef7');
+    setSalaDescricao('');
+    setIsSalaModalOpen(true);
   };
 
-  const updateSala = (index: number, value: string) => {
-    const updated = [...salas];
-    updated[index] = value;
-    setSalas(updated);
+  const openEditSalaModal = (sala: SalaClinica, index: number) => {
+    setEditingSalaIndex(index);
+    setSalaNome(sala.nome);
+    setSalaTipo(sala.tipo || 'Consultório');
+    setSalaCor(sala.cor || '#4f8ef7');
+    setSalaDescricao(sala.descricao || '');
+    setIsSalaModalOpen(true);
   };
 
-  const deleteSala = (index: number) => {
-    setSalas(salas.filter((_, i) => i !== index));
+  const handleSaveSalaModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!salaNome.trim()) return;
+
+    const novaSala: SalaClinica = {
+      id: editingSalaIndex !== null && salas[editingSalaIndex]?.id ? salas[editingSalaIndex].id : `sala-${Date.now()}`,
+      nome: salaNome.trim(),
+      tipo: salaTipo.trim() || 'Consultório',
+      cor: salaCor || '#4f8ef7',
+      descricao: salaDescricao.trim() || undefined
+    };
+
+    if (editingSalaIndex !== null) {
+      const updated = [...salas];
+      updated[editingSalaIndex] = novaSala;
+      setSalas(updated);
+    } else {
+      setSalas([...salas, novaSala]);
+    }
+
+    setIsSalaModalOpen(false);
+  };
+
+  const handleDeleteSala = (index: number) => {
+    const s = salas[index];
+    if (confirm(`Deseja realmente remover o consultório "${s.nome}" das configurações?`)) {
+      setSalas(salas.filter((_, i) => i !== index));
+    }
   };
 
   return (
@@ -507,45 +542,62 @@ export const Configuracoes: React.FC = () => {
                   <DoorOpen size={18} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white uppercase tracking-wider text-xs">Salas de Atendimento Clínico</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Consultórios físicos da clínica utilizados para verificar disponibilidade e evitar conflitos de sala</p>
+                  <h3 className="font-bold text-white uppercase tracking-wider text-xs">Salas & Consultórios Clínicos</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Gerencie os consultórios físicos da clínica, utilizados no Painel de Disponibilidade e na Jornada dos Terapeutas</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={addSala}
+                onClick={openAddSalaModal}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 rounded-xl font-bold transition-all text-xs cursor-pointer"
               >
                 <Plus size={14} />
-                <span>Adicionar Sala</span>
+                <span>Nova Sala</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {salas.map((s, idx) => (
-                <div key={idx} className="p-3 bg-[#161a26]/60 border border-white/[0.04] rounded-xl flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                    <input
-                      type="text"
-                      value={s}
-                      onChange={(e) => updateSala(idx, e.target.value)}
-                      className="bg-transparent border-none text-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500/50 rounded px-1 w-full"
-                    />
+                <div key={s.id || idx} className="p-3.5 bg-[#161a26]/70 border border-white/[0.06] rounded-xl flex flex-col justify-between gap-2.5 hover:border-white/[0.12] transition-all">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: s.cor || '#4f8ef7' }} />
+                      <div>
+                        <span className="font-bold text-white text-xs block">{s.nome}</span>
+                        <span className="text-[10px] text-indigo-300/80 font-medium">{s.tipo || 'Consultório'}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEditSalaModal(s, idx)}
+                        className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 transition-all cursor-pointer"
+                        title="Editar consultório"
+                      >
+                        <Edit3 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSala(idx)}
+                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-all cursor-pointer"
+                        title="Excluir consultório"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => deleteSala(idx)}
-                    className="text-slate-500 hover:text-rose-400 p-1 transition-all cursor-pointer"
-                    title="Remover sala"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+
+                  {s.descricao && (
+                    <p className="text-[10px] text-slate-400 italic line-clamp-1 border-t border-white/[0.04] pt-1.5">
+                      {s.descricao}
+                    </p>
+                  )}
                 </div>
               ))}
               {salas.length === 0 && (
-                <div className="col-span-2 text-center py-4 text-slate-500 text-xs">
-                  Nenhuma sala personalizada cadastrada. As 6 salas padrão serão utilizadas.
+                <div className="col-span-full text-center py-6 text-slate-500 text-xs border border-dashed border-white/[0.06] rounded-xl">
+                  Nenhum consultório cadastrado. Clique em "Nova Sala" para adicionar.
                 </div>
               )}
             </div>
@@ -640,6 +692,103 @@ export const Configuracoes: React.FC = () => {
         </div>
 
       </form>
+
+      {/* Modal de Criação / Edição de Consultório */}
+      {isSalaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#10131e] border border-white/[0.1] w-full max-w-md rounded-2xl shadow-2xl p-5 space-y-4 animate-scale-up">
+            <div className="flex justify-between items-center border-b border-white/[0.06] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20">
+                  <DoorOpen size={16} />
+                </div>
+                <h3 className="text-sm font-bold text-white">
+                  {editingSalaIndex !== null ? 'Editar Consultório' : 'Novo Consultório'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSalaModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSalaModal} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Nome da Sala / Consultório *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Sala 01 - Ludoterapia"
+                  value={salaNome}
+                  onChange={(e) => setSalaNome(e.target.value)}
+                  className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Tipo / Finalidade</label>
+                  <select
+                    value={salaTipo}
+                    onChange={(e) => setSalaTipo(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="Consultório">Consultório Geral</option>
+                    <option value="Infantil">Ludoterapia / Infantil</option>
+                    <option value="T.O.">Integração Sensorial / T.O.</option>
+                    <option value="Fono">Fonoaudiologia</option>
+                    <option value="Psicoterapia">Psicoterapia</option>
+                    <option value="Multiuso">Multidisciplinar / Avaliação</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Cor de Identificação</label>
+                  <div className="flex items-center gap-2 bg-[#161a26] border border-white/[0.08] rounded-xl px-2.5 py-1.5">
+                    <input
+                      type="color"
+                      value={salaCor}
+                      onChange={(e) => setSalaCor(e.target.value)}
+                      className="w-6 h-6 rounded border-none bg-transparent cursor-pointer"
+                    />
+                    <span className="font-mono text-xs text-slate-300 uppercase">{salaCor}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Descrição / Recursos (Opcional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Ex: Ar condicionado, divã, balanço sensorial..."
+                  value={salaDescricao}
+                  onChange={(e) => setSalaDescricao(e.target.value)}
+                  className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white resize-none focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setIsSalaModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-white/[0.08] text-slate-300 font-bold hover:bg-white/[0.04] transition-all cursor-pointer text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold transition-all shadow-md shadow-emerald-500/20 text-xs cursor-pointer"
+                >
+                  Salvar Consultório
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

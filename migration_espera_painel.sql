@@ -12,6 +12,9 @@ ALTER TABLE public.lista_espera ADD COLUMN IF NOT EXISTS convertido_em timestamp
 ALTER TABLE public.lista_espera ADD COLUMN IF NOT EXISTS convertido_agendamento_id bigint;
 ALTER TABLE public.lista_espera ADD COLUMN IF NOT EXISTS convertido_por text;
 
--- 3. Índices para otimização de busca de horários e salas
+-- 3. Jornada e escala de trabalho dos profissionais
+ALTER TABLE public.profissionais ADD COLUMN IF NOT EXISTS jornada jsonb DEFAULT '[]'::jsonb;
+
+-- 4. Índices para otimização de busca de horários e salas
 CREATE INDEX IF NOT EXISTS idx_agendamentos_data_sala ON public.agendamentos (data_iso, sala);
 CREATE INDEX IF NOT EXISTS idx_agendamentos_data_prof ON public.agendamentos (data_iso, prof_id);

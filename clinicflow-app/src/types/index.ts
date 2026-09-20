@@ -56,6 +56,18 @@ export interface Profissional {
   banco?: string;
   agencia?: string;
   conta?: string;
+  jornada?: JornadaProfissional[];
+}
+
+export interface JornadaProfissional {
+  diaSemana: 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado';
+  ativo: boolean;
+  horaInicio: string;       // ex: '08:00'
+  horaFim: string;          // ex: '18:00'
+  intervaloInicio?: string; // ex: '12:00'
+  intervaloFim?: string;    // ex: '13:00'
+  salaPadrao?: string;      // ex: 'Sala 02 - Ludoterapia'
+  salaPadraoId?: string;
 }
 
 export interface PlanoSaude {

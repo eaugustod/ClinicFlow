@@ -101,7 +101,8 @@ export const mappers = {
     pix: p.pix || null,
     banco: p.banco || null,
     agencia: p.agencia || null,
-    conta: p.conta || null
+    conta: p.conta || null,
+    jornada: p.jornada || []
   }),
   dbToProf: (r: any): Profissional => ({
     id: r.id,
@@ -131,7 +132,8 @@ export const mappers = {
     pix: r.pix || '',
     banco: r.banco || '',
     agencia: r.agencia || '',
-    conta: r.conta || ''
+    conta: r.conta || '',
+    jornada: Array.isArray(r.jornada) ? r.jornada : []
   }),
 
   planoToDb: (p: Partial<PlanoSaude>) => ({
