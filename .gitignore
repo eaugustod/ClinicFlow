@@ -7,3 +7,4 @@ deploy-vps.sh
 rls_and_audit.sql
 supabase_schema.sql
 clinicflow.html
+*.code-workspace

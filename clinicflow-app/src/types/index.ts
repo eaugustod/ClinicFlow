@@ -123,6 +123,8 @@ export interface Agendamento {
   elegivel?: boolean;
   statusElegibilidade?: 'ELEGIVEL' | 'INELEGIVEL' | 'PENDENTE';
   tipo?: string;
+  sala?: string;
+  salaId?: string | number | null;
 }
 
 export interface ProcedimentoGuia {
@@ -222,6 +224,37 @@ export interface ListaEspera {
   status: 'Aguardando' | 'Convertido' | 'Cancelado';
   dataEntrada: string;
   dataCadastro?: string;
+  convertidoEm?: string;
+  convertidoAgendamentoId?: number;
+  convertidoPor?: string;
+}
+
+export interface SalaClinica {
+  id: string;
+  nome: string;
+  tipo?: string;
+  cor?: string;
+  capacidade?: number;
+  descricao?: string;
+}
+
+export interface EncaixeOportunidade {
+  profissionalId: number;
+  profissionalNome: string;
+  profissionalFoto?: string;
+  especialidade: string;
+  cor: string;
+  dataISO: string;
+  dataFormatada: string;
+  diaSemana: string;
+  horaInicio: string;
+  horaFim: string;
+  duracaoMin: number;
+  salaSugerida?: string;
+  salasLivres: SalaClinica[];
+  scoreMatch: number;
+  motivosMatch: string[];
+  avisos?: string[];
 }
 
 export interface Historico {

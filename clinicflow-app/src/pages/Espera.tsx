@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { ListaEspera } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+import { PainelDisponibilidadeEspera } from '../components/espera/PainelDisponibilidadeEspera';
 
 const ESPECIALIDADES_OPCOES = [
   'AN',
@@ -119,7 +120,7 @@ export const parsePreferencesFromText = (text: string): { dias: string[]; period
 };
 
 export const Espera: React.FC = () => {
-  const { espera, lazyLoadEspera, refreshAll } = useApp();
+  const { espera, lazyLoadEspera, refreshAll, profissionais, agendamentos, clinicaConfig } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [mesFiltro, setMesFiltro] = useState('');
   const [especialidadeFiltro, setEspecialidadeFiltro] = useState('');
@@ -127,6 +128,10 @@ export const Espera: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ListaEspera | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Painel de Encaixe e Disponibilidade
+  const [isPainelOpen, setIsPainelOpen] = useState(false);
+  const [painelPaciente, setPainelPaciente] = useState<ListaEspera | null>(null);
 
   // Form State
   const [nome, setNome] = useState('');
@@ -721,6 +726,23 @@ export const Espera: React.FC = () => {
           </button>
 
           <button
+            onClick={() => {
+              const primeiro = filteredEspera.find(e => e.status === 'Aguardando') || espera.find(e => e.status === 'Aguardando') || filteredEspera[0] || espera[0];
+              if (primeiro) {
+                setPainelPaciente(primeiro);
+                setIsPainelOpen(true);
+              } else {
+                alert('Nenhum paciente na lista de espera para encaixe.');
+              }
+            }}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/30 text-emerald-300 rounded-xl font-bold transition-all active:scale-95 cursor-pointer shrink-0 text-xs shadow-sm"
+            title="Abrir o Painel Inteligente de Compatibilidade, Horários e Salas Livres"
+          >
+            <Sparkles size={15} className="text-emerald-400" />
+            <span>Painel de Encaixes</span>
+          </button>
+
+          <button
             onClick={openAddModal}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0 text-xs"
           >
@@ -974,6 +996,20 @@ export const Espera: React.FC = () => {
                     {/* Ações */}
                     <td className="py-3 px-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
+                        {e.status === 'Aguardando' && (
+                          <button
+                            onClick={() => {
+                              setPainelPaciente(e);
+                              setIsPainelOpen(true);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/30 rounded-lg text-emerald-300 hover:text-white font-bold text-[10px] transition-all cursor-pointer shadow-sm mr-1"
+                            title="Ver compatibilidade, horários livres e consultórios para agendar"
+                          >
+                            <Sparkles size={11} className="text-emerald-400" />
+                            <span>Encontrar Vaga</span>
+                          </button>
+                        )}
+
                         <button
                           onClick={() => openEditModal(e)}
                           className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-lg text-indigo-300 transition-all cursor-pointer"
@@ -1260,6 +1296,21 @@ export const Espera: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Painel de Disponibilidade e Encaixe Inteligente */}
+      <PainelDisponibilidadeEspera
+        isOpen={isPainelOpen}
+        onClose={() => setIsPainelOpen(false)}
+        pacienteEspera={painelPaciente}
+        listaCompletaEspera={espera}
+        onSelectOutroPaciente={(p) => setPainelPaciente(p)}
+        profissionais={profissionais}
+        agendamentos={agendamentos}
+        clinicaConfig={clinicaConfig}
+        onAgendamentoSucesso={async () => {
+          await refreshAll();
+        }}
+      />
     </div>
   );
 };

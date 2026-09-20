@@ -229,7 +229,9 @@ export const mappers = {
     wa_sent: a.waSent || false,
     carteirinha: a.carteirinha || null,
     guia: a.guia || null,
-    tipo: a.tipo || 'sessao'
+    tipo: a.tipo || 'sessao',
+    sala: a.sala || null,
+    sala_id: a.salaId ? String(a.salaId) : null
   }),
   dbToAppt: (r: any): Agendamento => ({
     id: r.id,
@@ -249,7 +251,9 @@ export const mappers = {
     waSent: r.wa_sent || false,
     carteirinha: r.carteirinha || '',
     guia: r.guia || null,
-    tipo: r.tipo || 'sessao'
+    tipo: r.tipo || 'sessao',
+    sala: r.sala || '',
+    salaId: r.sala_id || null
   }),
 
   guiaToDb: (g: Partial<GuiaSadt>) => ({
@@ -386,7 +390,10 @@ export const mappers = {
     procedimentos: e.procedimentos || [],
     status: e.status || 'Aguardando',
     data_entrada: e.dataEntrada || e.dataCadastro || null,
-    data_cadastro: e.dataCadastro || e.dataEntrada || null
+    data_cadastro: e.dataCadastro || e.dataEntrada || null,
+    convertido_em: e.convertidoEm || null,
+    convertido_agendamento_id: e.convertidoAgendamentoId || null,
+    convertido_por: e.convertidoPor || null
   }),
   dbToEspera: (r: any): ListaEspera => ({
     id: r.id,
@@ -406,7 +413,10 @@ export const mappers = {
     procedimentos: r.procedimentos || [],
     status: r.status || 'Aguardando',
     dataEntrada: r.data_entrada || r.data_cadastro || '',
-    dataCadastro: r.data_cadastro || r.data_entrada || ''
+    dataCadastro: r.data_cadastro || r.data_entrada || '',
+    convertidoEm: r.convertido_em || undefined,
+    convertidoAgendamentoId: r.convertido_agendamento_id || undefined,
+    convertidoPor: r.convertido_por || undefined
   }),
 
   histToDb: (h: Partial<Historico>) => ({

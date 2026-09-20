@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Building2, Save, CheckCircle, AlertTriangle, MessageSquare, Bell, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { Database, Building2, Save, CheckCircle, AlertTriangle, MessageSquare, Bell, Image as ImageIcon, Plus, Trash2, DoorOpen } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
 
@@ -20,6 +20,9 @@ export const Configuracoes: React.FC = () => {
   const [codPrestador, setCodPrestador] = useState('');
   const [cnes, setCnes] = useState('');
   const [logo, setLogo] = useState('');
+
+  // Salas de Atendimento Clínico
+  const [salas, setSalas] = useState<string[]>([]);
 
   // Notifications Form
   const [canalNotif, setCanalNotif] = useState<'whatsapp' | 'chat'>('whatsapp');
@@ -60,6 +63,15 @@ export const Configuracoes: React.FC = () => {
 
     setTemplates(clinicaConfig.templates || [
       { id: '1', name: 'Confirmação de Agendamento', body: 'Olá {nome}, seu agendamento com {terapeuta} está marcado para {data} às {hora} na {clinica}.' }
+    ]);
+
+    setSalas(clinicaConfig.salas || [
+      'Sala 01 - Geral / Psicoterapia',
+      'Sala 02 - Ludoterapia / Infantil',
+      'Sala 03 - Integração Sensorial / T.O.',
+      'Sala 04 - Fonoaudiologia',
+      'Sala 05 - Multidisciplinar / Avaliação',
+      'Sala 06 - Atendimento Clínico'
     ]);
   }, [clinicaConfig]);
 
@@ -112,6 +124,7 @@ export const Configuracoes: React.FC = () => {
       codPrestador,
       cnes,
       logo,
+      salas,
       canalNotif,
       waMethod,
       evoUrl,
@@ -161,6 +174,20 @@ export const Configuracoes: React.FC = () => {
 
   const deleteTemplate = (id: string) => {
     setTemplates(templates.filter(t => t.id !== id));
+  };
+
+  const addSala = () => {
+    setSalas([...salas, `Sala ${String(salas.length + 1).padStart(2, '0')} - Novo Consultório`]);
+  };
+
+  const updateSala = (index: number, value: string) => {
+    const updated = [...salas];
+    updated[index] = value;
+    setSalas(updated);
+  };
+
+  const deleteSala = (index: number) => {
+    setSalas(salas.filter((_, i) => i !== index));
   };
 
   return (
@@ -470,6 +497,60 @@ export const Configuracoes: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Salas & Consultórios de Atendimento Clínico */}
+        <div className="p-6 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl flex flex-col justify-between">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-white/[0.04] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 rounded-xl">
+                  <DoorOpen size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white uppercase tracking-wider text-xs">Salas de Atendimento Clínico</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Consultórios físicos da clínica utilizados para verificar disponibilidade e evitar conflitos de sala</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={addSala}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 rounded-xl font-bold transition-all text-xs cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Adicionar Sala</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {salas.map((s, idx) => (
+                <div key={idx} className="p-3 bg-[#161a26]/60 border border-white/[0.04] rounded-xl flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={s}
+                      onChange={(e) => updateSala(idx, e.target.value)}
+                      className="bg-transparent border-none text-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500/50 rounded px-1 w-full"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteSala(idx)}
+                    className="text-slate-500 hover:text-rose-400 p-1 transition-all cursor-pointer"
+                    title="Remover sala"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+              {salas.length === 0 && (
+                <div className="col-span-2 text-center py-4 text-slate-500 text-xs">
+                  Nenhuma sala personalizada cadastrada. As 6 salas padrão serão utilizadas.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Database Config */}
         <div className="p-6 bg-[#131622]/50 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-xl flex flex-col justify-between">
