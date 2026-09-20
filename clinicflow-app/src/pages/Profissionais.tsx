@@ -16,7 +16,7 @@ const DEFAULT_JORNADA: JornadaProfissional[] = [
 ];
 
 export const Profissionais: React.FC = () => {
-  const { profissionais, refreshAll, clinicaConfig } = useApp();
+  const { profissionais, refreshAll, clinicaConfig, salasClinica } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProf, setEditingProf] = useState<Profissional | null>(null);
@@ -193,9 +193,14 @@ export const Profissionais: React.FC = () => {
       }
       setIsModalOpen(false);
       await refreshAll();
-    } catch (e) {
-      console.error(e);
-      alert('Erro ao salvar profissional');
+    } catch (e: any) {
+      console.error('Erro ao salvar profissional:', e);
+      const msg = e?.message || '';
+      if (msg.includes('jornada') || msg.includes('column') || msg.includes('schema cache')) {
+        alert('Atenção: A coluna "jornada" ainda não foi criada na tabela "profissionais" no Supabase.\n\nPor favor, execute o script SQL "migration_espera_painel.sql" no SQL Editor do seu Supabase Dashboard.');
+      } else {
+        alert('Erro ao salvar profissional: ' + (e?.message || 'Verifique sua conexão.'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -613,7 +618,7 @@ export const Profissionais: React.FC = () => {
                                 className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
                               >
                                 <option value="">Nenhum fixo (rotativo)</option>
-                                {obterSalasClinica(clinicaConfig).map(s => (
+                                {(salasClinica && salasClinica.length > 0 ? salasClinica : obterSalasClinica(clinicaConfig)).map(s => (
                                   <option key={s.id} value={s.nome}>
                                     {s.nome}
                                   </option>

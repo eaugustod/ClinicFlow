@@ -57,6 +57,8 @@ export interface Profissional {
   agencia?: string;
   conta?: string;
   jornada?: JornadaProfissional[];
+  salaPadrao?: string;
+  salaPadraoId?: string;
 }
 
 export interface JornadaProfissional {
@@ -244,10 +246,13 @@ export interface ListaEspera {
 export interface SalaClinica {
   id: string;
   nome: string;
+  categoria?: string;
   tipo?: string;
   cor?: string;
   capacidade?: number;
   descricao?: string;
+  ativo?: boolean;
+  ordem?: number;
 }
 
 export interface EncaixeOportunidade {

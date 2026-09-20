@@ -8,6 +8,7 @@ import { ListaEspera, Profissional, Agendamento, ClinicaConfig, EncaixeOportunid
 import { gerarOportunidadesEncaixe, obterSalasClinica } from '../../services/esperaMatchingService';
 import { supabase } from '../../services/supabase';
 import { mappers } from '../../services/mappers';
+import { useApp } from '../../context/AppContext';
 
 interface PainelDisponibilidadeEsperaProps {
   isOpen: boolean;
@@ -46,7 +47,11 @@ export const PainelDisponibilidadeEspera: React.FC<PainelDisponibilidadeEsperaPr
   const [sucessoModal, setSucessoModal] = useState<boolean>(false);
   const [whatsAppUrl, setWhatsAppUrl] = useState<string>('');
 
-  const salasClinica = useMemo(() => obterSalasClinica(clinicaConfig), [clinicaConfig]);
+  const { salasClinica: ctxSalasClinica } = useApp();
+  const salasClinica = useMemo(() => {
+    if (ctxSalasClinica && ctxSalasClinica.length > 0) return ctxSalasClinica;
+    return obterSalasClinica(clinicaConfig);
+  }, [ctxSalasClinica, clinicaConfig]);
 
   // Lista de pacientes aguardando vaga para troca rápida
   const pacientesAguardando = useMemo(() => {

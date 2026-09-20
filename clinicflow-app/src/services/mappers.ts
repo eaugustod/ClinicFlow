@@ -14,7 +14,8 @@ import {
   ControleMeses,
   Usuario,
   PerfilAcesso,
-  StatusAgendamento
+  StatusAgendamento,
+  SalaClinica
 } from '../types';
 
 export const mappers = {
@@ -102,7 +103,9 @@ export const mappers = {
     banco: p.banco || null,
     agencia: p.agencia || null,
     conta: p.conta || null,
-    jornada: p.jornada || []
+    jornada: p.jornada || [],
+    sala_padrao: p.salaPadrao || null,
+    sala_padrao_id: p.salaPadraoId || null
   }),
   dbToProf: (r: any): Profissional => ({
     id: r.id,
@@ -133,7 +136,9 @@ export const mappers = {
     banco: r.banco || '',
     agencia: r.agencia || '',
     conta: r.conta || '',
-    jornada: Array.isArray(r.jornada) ? r.jornada : []
+    jornada: Array.isArray(r.jornada) ? r.jornada : [],
+    salaPadrao: r.sala_padrao || '',
+    salaPadraoId: r.sala_padrao_id || ''
   }),
 
   planoToDb: (p: Partial<PlanoSaude>) => ({
@@ -895,6 +900,26 @@ export const mappers = {
     tipo: r.tipo || 'Despesa',
     cor: r.cor || '#6366f1',
     icone: r.icone || 'Tag'
+  }),
+
+  salaClinicaToDb: (s: Partial<SalaClinica>) => ({
+    id: s.id,
+    nome: s.nome,
+    categoria: s.categoria || s.tipo || 'Consultório',
+    cor: s.cor || '#4f8ef7',
+    descricao: s.descricao || '',
+    ativo: s.ativo !== false,
+    ordem: s.ordem || 0
+  }),
+  dbToSalaClinica: (r: any): SalaClinica => ({
+    id: String(r.id),
+    nome: r.nome || '',
+    categoria: r.categoria || 'Consultório',
+    tipo: r.categoria || 'Consultório',
+    cor: r.cor || '#4f8ef7',
+    descricao: r.descricao || '',
+    ativo: r.ativo !== false,
+    ordem: r.ordem || 0
   })
 };
 

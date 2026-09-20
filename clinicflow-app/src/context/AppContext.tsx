@@ -13,8 +13,10 @@ import {
   ListaEspera,
   Historico,
   ClinicaConfig,
-  StatusAgendamento
+  StatusAgendamento,
+  SalaClinica
 } from '../types';
+import { obterSalasClinica } from '../services/esperaMatchingService';
 
 interface AppContextType {
   pacientes: Paciente[];
@@ -29,6 +31,7 @@ interface AppContextType {
   espera: ListaEspera[];
   historico: Historico[];
   statusAgendamentos: StatusAgendamento[];
+  salasClinica: SalaClinica[];
 
   loading: boolean;
   syncing: boolean;
@@ -45,6 +48,8 @@ interface AppContextType {
   loadAgendamentosPeriodo: (start: string, end: string) => Promise<Agendamento[]>;
 
   refreshAll: () => Promise<void>;
+  setSalasClinica: React.Dispatch<React.SetStateAction<SalaClinica[]>>;
+  refreshSalasClinica: () => Promise<void>;
   getBaseStatus: (statusName: string) => 'agendado' | 'confirmado' | 'atendido' | 'desmarcado' | 'cancelado';
   getStatusColor: (statusName: string) => string;
   logStatusChange: (apptId: number, newStatus: string) => Promise<void>;
@@ -115,6 +120,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [espera, setEspera] = useState<ListaEspera[]>([]);
   const [historico, setHistorico] = useState<Historico[]>([]);
   const [statusAgendamentos, setStatusAgendamentos] = useState<StatusAgendamento[]>([]);
+  const [salasClinica, setSalasClinica] = useState<SalaClinica[]>([]);
 
   const defaultStatusAgendamentos: StatusAgendamento[] = [
     { nome: 'Agendado', cor: '#6366f1', statusAgendamento: 'agendado', statusHistorico: 'Agendado' },
@@ -149,6 +155,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (cache.agendamentos) setAgendamentos(cache.agendamentos);
           if (cache.clinica) setClinicaConfig(cache.clinica);
           if (cache.statusAgendamentos) setStatusAgendamentos(cache.statusAgendamentos);
+          if (cache.salasClinica) setSalasClinica(cache.salasClinica);
           setLoading(false);
         } catch (e) {
           localStorage.removeItem(CACHE_KEY);
@@ -234,6 +241,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setClinicaConfig(cfg.data[0].dados || {});
       }
 
+      // Fetch salas_clinica from database table with graceful fallback
+      let loadedSalas: SalaClinica[] = [];
+      try {
+        const { data: salasDb, error: salasErr } = await supabase
+          .from('salas_clinica')
+          .select('*')
+          .order('ordem', { ascending: true });
+        if (!salasErr && salasDb && salasDb.length > 0) {
+          loadedSalas = salasDb.map(mappers.dbToSalaClinica);
+        }
+      } catch (err) {
+        console.warn('[ClinicFlow] Fallback ao carregar salas_clinica:', err);
+      }
+      if (loadedSalas.length === 0) {
+        loadedSalas = obterSalasClinica(cfg.data?.[0]?.dados);
+      }
+      setSalasClinica(loadedSalas);
+
       // Save to Cache (Safely handled to prevent QuotaExceededError)
       safeSaveCache(CACHE_KEY, {
         profissionais: mappedProf,
@@ -243,6 +268,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         agendamentos: mappedAg,
         clinica: cfg.data?.[0]?.dados || {},
         statusAgendamentos: mappedStatus,
+        salasClinica: loadedSalas,
         ts: Date.now()
       });
 
@@ -411,6 +437,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('[ClinicFlow AppContext] Error loading period:', e);
     }
     return [];
+  };
+
+  const refreshSalasClinica = async () => {
+    try {
+      const { data: salasDb, error: salasErr } = await supabase
+        .from('salas_clinica')
+        .select('*')
+        .order('ordem', { ascending: true });
+      if (!salasErr && salasDb && salasDb.length > 0) {
+        setSalasClinica(salasDb.map(mappers.dbToSalaClinica));
+        return;
+      }
+    } catch (err) {
+      console.warn('[ClinicFlow] Erro ao atualizar salas_clinica:', err);
+    }
+    setSalasClinica(obterSalasClinica(clinicaConfig));
   };
 
   const refreshAll = async () => {
@@ -644,6 +686,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       espera,
       historico,
       statusAgendamentos,
+      salasClinica,
       loading,
       syncing,
       loadedSenhas,
@@ -656,6 +699,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadAgendamentosMes,
       loadAgendamentosPeriodo,
       refreshAll,
+      setSalasClinica,
+      refreshSalasClinica,
       getBaseStatus,
       getStatusColor,
       logStatusChange,

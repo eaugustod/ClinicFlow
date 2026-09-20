@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Database, Building2, Save, CheckCircle, AlertTriangle, MessageSquare, Bell, Image as ImageIcon, Plus, Trash2, DoorOpen, Edit3, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../services/supabase';
+import { mappers } from '../services/mappers';
 import { SalaClinica } from '../types';
 import { obterSalasClinica } from '../services/esperaMatchingService';
 
 export const Configuracoes: React.FC = () => {
-  const { clinicaConfig, refreshAll } = useApp();
+  const { clinicaConfig, refreshAll, salasClinica, refreshSalasClinica, setSalasClinica } = useApp();
   
   // DB Config
   const [supaUrl, setSupaUrl] = useState('');
@@ -73,8 +74,12 @@ export const Configuracoes: React.FC = () => {
       { id: '1', name: 'Confirmação de Agendamento', body: 'Olá {nome}, seu agendamento com {terapeuta} está marcado para {data} às {hora} na {clinica}.' }
     ]);
 
-    setSalas(obterSalasClinica(clinicaConfig));
-  }, [clinicaConfig]);
+    if (salasClinica && salasClinica.length > 0) {
+      setSalas(salasClinica);
+    } else {
+      setSalas(obterSalasClinica(clinicaConfig));
+    }
+  }, [clinicaConfig, salasClinica]);
 
   const testConnection = async () => {
     setDbStatus('testing');
@@ -151,6 +156,20 @@ export const Configuracoes: React.FC = () => {
           .insert([{ dados: payload }]);
         if (error) throw error;
       }
+
+      // Persistir também todas as salas na tabela dedicada salas_clinica
+      try {
+        if (salas && salas.length > 0) {
+          for (const s of salas) {
+            await supabase
+              .from('salas_clinica')
+              .upsert(mappers.salaClinicaToDb(s), { onConflict: 'id' });
+          }
+        }
+        await refreshSalasClinica();
+      } catch (errDb) {
+        console.warn('Aviso: Tabela salas_clinica pode requerer execução da migration:', errDb);
+      }
       
       setSaveSuccess(true);
       await refreshAll();
@@ -195,33 +214,88 @@ export const Configuracoes: React.FC = () => {
     setIsSalaModalOpen(true);
   };
 
-  const handleSaveSalaModal = (e: React.FormEvent) => {
+  const handleSaveSalaModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!salaNome.trim()) return;
 
     const novaSala: SalaClinica = {
       id: editingSalaIndex !== null && salas[editingSalaIndex]?.id ? salas[editingSalaIndex].id : `sala-${Date.now()}`,
       nome: salaNome.trim(),
+      categoria: salaTipo.trim() || 'Consultório',
       tipo: salaTipo.trim() || 'Consultório',
       cor: salaCor || '#4f8ef7',
-      descricao: salaDescricao.trim() || undefined
+      descricao: salaDescricao.trim() || undefined,
+      ativo: true,
+      ordem: editingSalaIndex !== null ? (salas[editingSalaIndex].ordem ?? editingSalaIndex + 1) : salas.length + 1
     };
 
+    let updatedSalas: SalaClinica[];
     if (editingSalaIndex !== null) {
-      const updated = [...salas];
-      updated[editingSalaIndex] = novaSala;
-      setSalas(updated);
+      updatedSalas = [...salas];
+      updatedSalas[editingSalaIndex] = novaSala;
     } else {
-      setSalas([...salas, novaSala]);
+      updatedSalas = [...salas, novaSala];
     }
 
+    setSalas(updatedSalas);
+    setSalasClinica(updatedSalas);
     setIsSalaModalOpen(false);
+
+    // 1. Salvar no Banco de Dados (tabela salas_clinica)
+    try {
+      await supabase
+        .from('salas_clinica')
+        .upsert(mappers.salaClinicaToDb(novaSala), { onConflict: 'id' });
+      await refreshSalasClinica();
+    } catch (errDb) {
+      console.warn('Erro ao salvar na tabela salas_clinica (certifique-se de aplicar a migration):', errDb);
+    }
+
+    // 2. Sincronizar também no config_clinica (garantia dupla de persistência)
+    try {
+      const { data: cfgData } = await supabase.from('config_clinica').select('*').limit(1);
+      if (cfgData && cfgData.length > 0) {
+        const dadosAtuais = cfgData[0].dados || {};
+        await supabase
+          .from('config_clinica')
+          .update({ dados: { ...dadosAtuais, salas: updatedSalas } })
+          .eq('id', cfgData[0].id);
+      }
+    } catch (errCfg) {
+      console.warn('Erro ao sincronizar config_clinica:', errCfg);
+    }
   };
 
-  const handleDeleteSala = (index: number) => {
+  const handleDeleteSala = async (index: number) => {
     const s = salas[index];
     if (confirm(`Deseja realmente remover o consultório "${s.nome}" das configurações?`)) {
-      setSalas(salas.filter((_, i) => i !== index));
+      const updated = salas.filter((_, i) => i !== index);
+      setSalas(updated);
+      setSalasClinica(updated);
+
+      // 1. Excluir do Banco de Dados (tabela salas_clinica)
+      try {
+        if (s.id) {
+          await supabase.from('salas_clinica').delete().eq('id', s.id);
+        }
+        await refreshSalasClinica();
+      } catch (errDb) {
+        console.warn('Erro ao deletar de salas_clinica:', errDb);
+      }
+
+      // 2. Sincronizar exclusão no config_clinica
+      try {
+        const { data: cfgData } = await supabase.from('config_clinica').select('*').limit(1);
+        if (cfgData && cfgData.length > 0) {
+          const dadosAtuais = cfgData[0].dados || {};
+          await supabase
+            .from('config_clinica')
+            .update({ dados: { ...dadosAtuais, salas: updated } })
+            .eq('id', cfgData[0].id);
+        }
+      } catch (errCfg) {
+        console.warn('Erro ao atualizar config_clinica:', errCfg);
+      }
     }
   };
 
