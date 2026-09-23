@@ -165,13 +165,34 @@ export const fechamentoGestaoService = {
     let itensRes: any[] = [];
 
     if (pIds.length > 0) {
-      const { data: itens, error: iErr } = await supabase
-        .from('fechamento_item')
-        .select('id, fechamento_periodo_id, status_item, valor_calculado, valor_ajustado')
-        .in('fechamento_periodo_id', pIds);
+      // PostgREST limita consultas a 1000 registros por padrão.
+      // Pagina para recuperar 100% dos itens de todos os períodos do mês.
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      let hasMore = true;
 
-      if (!iErr && itens) {
-        itensRes = itens;
+      while (hasMore) {
+        const { data: pageItens, error: iErr } = await supabase
+          .from('fechamento_item')
+          .select('id, fechamento_periodo_id, status_item, valor_calculado, valor_ajustado, motivo_contestacao')
+          .in('fechamento_periodo_id', pIds)
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (iErr) {
+          console.error('[fechamentoGestaoService] Erro ao listar itens paginados:', iErr);
+          break;
+        }
+
+        if (pageItens && pageItens.length > 0) {
+          itensRes.push(...pageItens);
+          if (pageItens.length < PAGE_SIZE) {
+            hasMore = false;
+          } else {
+            from += PAGE_SIZE;
+          }
+        } else {
+          hasMore = false;
+        }
       }
     }
 
@@ -200,10 +221,16 @@ export const fechamentoGestaoService = {
         continue;
       }
 
-      const qtdTotal = profItens.length;
-      const qtdPend = profItens.filter(it => it.status_item === 'pendente').length;
-      const qtdCont = profItens.filter(it => it.status_item === 'contestado' || it.status_item === 'em_analise').length;
-      const qtdConf = profItens.filter(it => it.status_item === 'confirmado' || it.status_item === 'confirmado_automaticamente' || it.status_item.startsWith('resolvido')).length;
+      // Desconsidera da contagem de atendimentos sessões resolvidas como R$ 0,00 por duplicidade ou cancelamento
+      const itensValidos = profItens.filter(it => {
+        const ehZeradoNaoAtendido = it.status_item === 'resolvido_ajustado' && Number(it.valor_ajustado) === 0 && (it.motivo_contestacao === 'paciente_duplicidade' || it.motivo_contestacao === 'sessao_nao_realizada');
+        return !ehZeradoNaoAtendido;
+      });
+
+      const qtdTotal = itensValidos.length;
+      const qtdPend = itensValidos.filter(it => it.status_item === 'pendente').length;
+      const qtdCont = itensValidos.filter(it => it.status_item === 'contestado' || it.status_item === 'em_analise').length;
+      const qtdConf = itensValidos.filter(it => it.status_item === 'confirmado' || it.status_item === 'confirmado_automaticamente' || it.status_item.startsWith('resolvido')).length;
 
       // FIX: sempre recalcula o valor ao vivo (ignora campo do banco que pode estar desatualizado)
       const valorTotal = profItens.reduce((acc, it) => {
@@ -664,6 +691,39 @@ export const fechamentoGestaoService = {
       alterado_por: usuarioNome,
       observacao: `Decisão da Gestão (${acao}): ${observacaoGestao}`
     });
+
+    // Se a contestação ajustada foi por sessão não realizada ou duplicidade com valor 0,
+    // atualiza o agendamento na agenda para Desmarcado para manter consistência total
+    if (acao === 'ajustar' && Number(valorAjustado) === 0 && itemAtual.atendimento_id) {
+      if (itemAtual.motivo_contestacao === 'sessao_nao_realizada' || itemAtual.motivo_contestacao === 'paciente_duplicidade') {
+        try {
+          await supabase
+            .from('agendamentos')
+            .update({ status: 'Desmarcado', stat_terap: 'Desmarcado' })
+            .eq('id', itemAtual.atendimento_id);
+        } catch (errAppt) {
+          console.warn('[fechamentoGestaoService] Aviso ao atualizar status do agendamento:', errAppt);
+        }
+      }
+    }
+
+    // Recalcula o valor_total_calculado no fechamento_periodo
+    const { data: todosItensPeriodo } = await supabase
+      .from('fechamento_item')
+      .select('valor_calculado, valor_ajustado, status_item')
+      .eq('fechamento_periodo_id', itemAtual.fechamento_periodo_id);
+
+    const novoTotalPeriodo = (todosItensPeriodo || []).reduce((acc, it) => {
+      if (it.status_item === 'resolvido_ajustado' && it.valor_ajustado !== null) {
+        return acc + Number(it.valor_ajustado);
+      }
+      return acc + Number(it.valor_calculado || 0);
+    }, 0);
+
+    await supabase
+      .from('fechamento_periodo')
+      .update({ valor_total_calculado: novoTotalPeriodo })
+      .eq('id', itemAtual.fechamento_periodo_id);
 
     // Verifica se ainda restam contestações em aberto no período
     const { data: contestaRestantes } = await supabase

@@ -157,6 +157,50 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
     const [year, month] = selectedMonth.split('-').map(Number);
     const primDay = `${selectedMonth}-01`;
     const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
+
+    // Carrega itens de conferência da gestão para sincronizar contestações e ajustes manuais
+    const itensFechamentoMap = new Map<number, any>();
+    try {
+      const { data: periodosMes } = await supabase
+        .from('fechamento_periodo')
+        .select('id, profissional_id')
+        .eq('competencia', `${selectedMonth}-01`);
+
+      if (periodosMes && periodosMes.length > 0) {
+        const pIds = periodosMes.map(p => p.id);
+        const PAGE_SIZE = 1000;
+        let from = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          const { data: pageItens, error: pageErr } = await supabase
+            .from('fechamento_item')
+            .select('id, atendimento_id, status_item, valor_calculado, valor_ajustado, motivo_contestacao')
+            .in('fechamento_periodo_id', pIds)
+            .range(from, from + PAGE_SIZE - 1);
+
+          if (pageErr) {
+            console.error('[ClinicFlow Fechamento] Erro ao carregar itens de conferencia:', pageErr);
+            break;
+          }
+
+          if (pageItens && pageItens.length > 0) {
+            pageItens.forEach(it => {
+              if (it.atendimento_id) itensFechamentoMap.set(Number(it.atendimento_id), it);
+            });
+            if (pageItens.length < PAGE_SIZE) {
+              hasMore = false;
+            } else {
+              from += PAGE_SIZE;
+            }
+          } else {
+            hasMore = false;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[ClinicFlow Fechamento] Aviso ao sincronizar fechamento_item:', e);
+    }
     
     // Filter attended appointments of selected month
     const atendidos = currentAgendamentos.filter(a => 
@@ -192,6 +236,13 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       } = {};
 
       profApptsAll.forEach(a => {
+        const fItem = itensFechamentoMap.get(a.id);
+        const isAjustado0 = fItem?.status_item === 'resolvido_ajustado' && Number(fItem.valor_ajustado) === 0 && (fItem.motivo_contestacao === 'sessao_nao_realizada' || fItem.motivo_contestacao === 'paciente_duplicidade');
+        if (isAjustado0) {
+          // Desconsidera sessão contestada e cancelada/duplicada
+          return;
+        }
+
         const pacNome = a.paciente;
         if (!pacientesMap[pacNome]) {
           pacientesMap[pacNome] = {
@@ -242,6 +293,10 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       })).sort((a, b) => a.nome.localeCompare(b.nome));
 
       const profDesmarquesApos18 = profApptsAll.filter(a => {
+        const fItem = itensFechamentoMap.get(a.id);
+        const isAjustado0 = fItem?.status_item === 'resolvido_ajustado' && Number(fItem.valor_ajustado) === 0 && (fItem.motivo_contestacao === 'sessao_nao_realizada' || fItem.motivo_contestacao === 'paciente_duplicidade');
+        if (isAjustado0) return false;
+
         const isDesmarcado = getBaseStatus(a.status) === 'desmarcado' || a.status.toLowerCase().includes('desmarcado');
         return isDesmarcado && a.hora >= '18:00';
       });
@@ -260,6 +315,13 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
       let valorPart = 0;
 
       profAppts.forEach(a => {
+        const fItem = itensFechamentoMap.get(a.id);
+        const isAjustado0 = fItem?.status_item === 'resolvido_ajustado' && Number(fItem.valor_ajustado) === 0 && (fItem.motivo_contestacao === 'sessao_nao_realizada' || fItem.motivo_contestacao === 'paciente_duplicidade');
+        if (isAjustado0) {
+          // Desconsidera sessão contestada e cancelada/duplicada
+          return;
+        }
+
         const isParticular = a.plano?.toLowerCase() === 'particular' || a.planoId === 5;
         const tipoLower = a.tipo?.toLowerCase() || '';
         const obsLower = a.obs?.toLowerCase() || '';
@@ -268,25 +330,34 @@ export const Fechamento: React.FC<FechamentoProps> = ({ initialTab = 'calculo' }
         const isDev = tipoLower.includes('devolutiva') || obsLower.includes('devolutiva') || pacLower.includes('devolutiva');
         const isAval = tipoLower.includes('avaliacao') || tipoLower.includes('avaliac') || tipoLower.includes('continua') || obsLower.includes('avaliação') || obsLower.includes('aval');
 
+        // Se a sessão teve valor customizado ajustado pela gestão na conferência:
+        const temValorAjustadoManual = fItem?.status_item === 'resolvido_ajustado' && fItem.valor_ajustado !== null;
+
         if (isParticular) {
           countPart++;
-          const partSessionVal = parseFloat((p as any).valorParticular || 0);
+          let partSessionVal = temValorAjustadoManual ? Number(fItem.valor_ajustado) : parseFloat((p as any).valorParticular || 0);
+          if (!temValorAjustadoManual && partSessionVal <= 0) {
+            partSessionVal = parseFloat((p as any).valor30 || (p as any).valorHora || 0);
+          }
           valorPart += partSessionVal;
         } else if (isAval) {
           countAval++;
+          if (temValorAjustadoManual) {
+            valorPart += Number(fItem.valor_ajustado);
+          }
         } else if (isDev) {
           countDev++;
-          const devSessionVal = p.valorAval || 0;
+          const devSessionVal = temValorAjustadoManual ? Number(fItem.valor_ajustado) : (p.valorAval || 0);
           valorDev += devSessionVal;
         } else {
           const dur = a.durMin || 30;
           if (dur >= 45) {
             count60++;
-            const sessionVal = parseFloat((p as any).valor60 || 100);
+            const sessionVal = temValorAjustadoManual ? Number(fItem.valor_ajustado) : parseFloat((p as any).valor60 || 100);
             valor60 += sessionVal;
           } else {
             count30++;
-            const sessionVal = parseFloat((p as any).valor30 || 60);
+            const sessionVal = temValorAjustadoManual ? Number(fItem.valor_ajustado) : parseFloat((p as any).valor30 || 60);
             valor30 += sessionVal;
           }
         }
