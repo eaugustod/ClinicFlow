@@ -47,6 +47,8 @@ export const AnaliseFechamento: React.FC = () => {
   const [closingPeriodo, setClosingPeriodo] = useState<FechamentoPeriodoGestao | null>(null);
   const [executingClose, setExecutingClose] = useState(false);
   const [diaPrazo, setDiaPrazo] = useState<number>(10);
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncingItem, setSyncingItem] = useState(false);
 
   // Auto-select first professional when loaded for single search tab
   useEffect(() => {
@@ -138,6 +140,40 @@ export const AnaliseFechamento: React.FC = () => {
     setLoadingPainel(false);
     showToast(`Conferência aberta para ${count} terapeuta(s)!`);
     carregarPainelFechamento();
+  };
+
+  // Sincronizar todos os períodos com a agenda do mês
+  const handleSincronizarTodos = async () => {
+    setSyncingAll(true);
+    try {
+      const res = await fechamentoGestaoService.sincronizarTodosPeriodosMes(selectedMonth, profissionais);
+      showToast(`Agenda sincronizada! +${res.totalInseridos} novos, ${res.totalAtualizados} atualizados, ${res.totalRemovidos} desmarques zerados removidos.`);
+      await carregarPainelFechamento();
+      if (selectedPeriodoDetail?.id) {
+        await carregarItensDetalhados(selectedPeriodoDetail.id);
+      }
+    } catch (e) {
+      console.error('[AnaliseFechamento] Erro ao sincronizar todos:', e);
+      showToast('Erro ao sincronizar com a agenda.');
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
+  // Sincronizar período específico de um terapeuta
+  const handleSincronizarPeriodo = async (periodoId: string) => {
+    setSyncingItem(true);
+    try {
+      const res = await fechamentoGestaoService.sincronizarAgendamentosPeriodo(periodoId);
+      showToast(`Período sincronizado! +${res.inseridos} novos, ${res.atualizados} atualizados, ${res.removidos} desmarques zerados removidos.`);
+      await carregarPainelFechamento();
+      await carregarItensDetalhados(periodoId);
+    } catch (e) {
+      console.error('[AnaliseFechamento] Erro ao sincronizar período:', e);
+      showToast('Erro ao sincronizar período.');
+    } finally {
+      setSyncingItem(false);
+    }
   };
 
   // Abrir modal de resolução de contestação
@@ -464,13 +500,25 @@ export const AnaliseFechamento: React.FC = () => {
                 <h3 className="font-bold text-[var(--text-primary)] text-sm">Status dos Terapeutas</h3>
                 <p className="text-[11px] text-[var(--text-muted)]">Ordenado por quantidade de contestações</p>
               </div>
-              <button
-                onClick={handleAbrirConferenciaTodos}
-                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition-all cursor-pointer"
-                title="Abrir conferência para todos os terapeutas no mês"
-              >
-                Abrir Todos
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSincronizarTodos}
+                  disabled={loadingPainel || syncingAll}
+                  className="px-2.5 py-1.5 rounded-xl bg-[var(--bg-raised)] hover:bg-[var(--bg-raised)]/80 border border-[var(--border)] text-[var(--text-primary)] font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                  title="Sincronizar todos os períodos abertos com as alterações recentes da agenda"
+                >
+                  <RefreshCw size={13} className={syncingAll ? 'animate-spin text-[var(--accent)]' : 'text-[var(--accent)]'} />
+                  <span>{syncingAll ? 'Sincronizando...' : 'Sincronizar Agenda'}</span>
+                </button>
+                <button
+                  onClick={handleAbrirConferenciaTodos}
+                  disabled={loadingPainel || syncingAll}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition-all cursor-pointer disabled:opacity-50"
+                  title="Abrir conferência para todos os terapeutas no mês"
+                >
+                  Abrir Todos
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 scrollbar-thin">
@@ -573,6 +621,18 @@ export const AnaliseFechamento: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {selectedPeriodoDetail.id && selectedPeriodoDetail.status !== 'fechado_pela_clinica' && (
+                      <button
+                        onClick={() => handleSincronizarPeriodo(selectedPeriodoDetail.id)}
+                        disabled={syncingItem}
+                        className="px-2.5 py-1.5 rounded-xl bg-[var(--bg-raised)] hover:bg-[var(--bg-raised)]/80 border border-[var(--border)] text-[var(--text-primary)] font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                        title="Recalcular atendimentos e sincronizar com a agenda deste profissional"
+                      >
+                        <RefreshCw size={13} className={syncingItem ? 'animate-spin text-[var(--accent)]' : 'text-[var(--accent)]'} />
+                        <span>{syncingItem ? 'Sincronizando...' : 'Sincronizar'}</span>
+                      </button>
+                    )}
+
                     {selectedPeriodoDetail.status === 'aprovado_pelo_terapeuta' && (
                       <button
                         onClick={() => setClosingPeriodo(selectedPeriodoDetail)}

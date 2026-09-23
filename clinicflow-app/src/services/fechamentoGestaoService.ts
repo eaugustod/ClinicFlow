@@ -56,11 +56,11 @@ export interface FechamentoHistoricoItem {
 }
 
 export function calcularValorSessao(a: any, profData?: any): number {
-  const st = (a.status || '').toLowerCase();
-  const pres = (a.presenca || '').toLowerCase();
+  const st = (a.status || '').toLowerCase().trim();
+  const pres = (a.presenca || '').toLowerCase().trim();
   const horaStr = a.hora_inicio || a.hora || a.horario || '';
   const isApos18h = horaStr >= '18:00';
-  const isDesmarque = st === 'desmarcado' || st === 'cancelado' || pres === 'falta' || pres.includes('justif');
+  const isDesmarque = st.includes('desmarc') || st.includes('cancel') || pres === 'falta' || pres.includes('justif');
 
   if (isApos18h && isDesmarque) {
     let vDesm18 = Number(profData?.valor_desmarque_apos18 ?? profData?.valorDesmarqueApos18 ?? profData?.vlrDesmarqueApos18 ?? 0);
@@ -69,7 +69,7 @@ export function calcularValorSessao(a: any, profData?: any): number {
 
   // REGRA EXPLICITA: Apenas agendamentos atestados como ATENDIDO (ou presente) geram valor!
   // Agendamentos "confirmado", "agendado", "em espera", "desmarcado", "cancelado" ficam obrigatoriamente com R$ 0,00.
-  const isAtendido = st === 'atendido' || st === 'presente' || pres === 'presente';
+  const isAtendido = st.includes('atendid') || st === 'presente' || pres === 'presente';
 
   if (!isAtendido) {
     return 0;
@@ -92,7 +92,7 @@ export function calcularValorSessao(a: any, profData?: any): number {
   const obsStr = (a.obs || '').toLowerCase();
   const pacStr = (a.paciente || a.paciente_nome || '').toLowerCase();
 
-  const isParticular = planoStr === 'particular';
+  const isParticular = planoStr === 'particular' || planoStr.includes('particular') || a.plano_id === 5 || a.planoId === 5;
   const isDev = tipoStr.includes('devolutiva') || obsStr.includes('devolutiva') || pacStr.includes('devolutiva');
   const isAval = tipoStr.includes('avaliacao') || tipoStr.includes('avaliac') || tipoStr.includes('continua') || obsStr.includes('avaliação') || obsStr.includes('aval');
 
@@ -116,6 +116,18 @@ export function calcularValorSessao(a: any, profData?: any): number {
   if (!dur) dur = 30;
 
   return dur >= 45 ? v60 : v30;
+}
+
+export function qualificaParaFechamento(a: any): boolean {
+  const st = (a.status || '').toLowerCase().trim();
+  const pres = (a.presenca || '').toLowerCase().trim();
+  const horaStr = a.hora_inicio || a.hora || a.horario || '';
+  const isApos18h = horaStr >= '18:00';
+  const isDesmarque = st.includes('desmarc') || st.includes('cancel') || pres === 'falta' || pres.includes('justif');
+  const isAtendido = st.includes('atendid') || st === 'presente' || pres === 'presente';
+
+  // Inclui apenas agendamentos efetivamente atendidos OU desmarques/cancelados pós-18h (taxa de desmarque)
+  return isAtendido || (isDesmarque && isApos18h);
 }
 
 export const fechamentoGestaoService = {
@@ -231,14 +243,7 @@ export const fechamentoGestaoService = {
   async abrirConferenciaProfissional(profId: number, anoMes: string, diaPrazoMesSeguinte: number = 10): Promise<boolean> {
     const competencia = `${anoMes}-01`;
     const [year, month] = anoMes.split('-').map(Number);
-
     const prazoDate = new Date(year, month, diaPrazoMesSeguinte, 23, 59, 59);
-
-    const { data: profData } = await supabase
-      .from('profissionais')
-      .select('id, nome, valor_30, valor_60, valor_particular, valor_aval, valor_desmarque_apos18')
-      .eq('id', profId)
-      .maybeSingle();
 
     const { data: existente } = await supabase
       .from('fechamento_periodo')
@@ -276,9 +281,50 @@ export const fechamentoGestaoService = {
         .eq('id', existente.id);
     }
 
+    if (periodoId) {
+      await this.sincronizarAgendamentosPeriodo(periodoId);
+    }
+
+    return true;
+  },
+
+  /**
+   * Sincroniza os itens de um período com os agendamentos atuais na agenda:
+   * - Recalcula valores de atendimentos cujo status foi alterado para Atendido
+   * - Insere novos atendimentos do mês que ainda não estavam no período
+   * - Remove desmarques/cancelamentos diurnos zerados que não qualificam para repasse
+   * - Recalcula e atualiza o valor_total_calculado no fechamento_periodo
+   */
+  async sincronizarAgendamentosPeriodo(periodoId: string): Promise<{ inseridos: number; atualizados: number; removidos: number }> {
+    if (!periodoId) return { inseridos: 0, atualizados: 0, removidos: 0 };
+
+    // 1. Busca período
+    const { data: periodo, error: pErr } = await supabase
+      .from('fechamento_periodo')
+      .select('*')
+      .eq('id', periodoId)
+      .maybeSingle();
+
+    if (pErr || !periodo) {
+      console.error('[fechamentoGestaoService] Período não encontrado para sincronização:', pErr);
+      return { inseridos: 0, atualizados: 0, removidos: 0 };
+    }
+
+    const profId = periodo.profissional_id;
+    const competencia = periodo.competencia; // YYYY-MM-01
+    const anoMes = competencia.slice(0, 7);
+    const [year, month] = anoMes.split('-').map(Number);
     const primDay = `${anoMes}-01`;
     const ultDay = new Date(year, month, 0).toISOString().split('T')[0];
 
+    // 2. Busca dados do profissional para cálculo de taxas
+    const { data: profData } = await supabase
+      .from('profissionais')
+      .select('id, nome, valor_30, valor_60, valor_particular, valor_aval, valor_desmarque_apos18')
+      .eq('id', profId)
+      .maybeSingle();
+
+    // 3. Busca agendamentos do profissional no mês
     const { data: appts } = await supabase
       .from('agendamentos')
       .select('*')
@@ -286,43 +332,128 @@ export const fechamentoGestaoService = {
       .gte('data_iso', primDay)
       .lte('data_iso', ultDay);
 
-    if (appts && appts.length > 0 && periodoId) {
-      const { data: itensExistentes } = await supabase
-        .from('fechamento_item')
-        .select('atendimento_id')
-        .eq('fechamento_periodo_id', periodoId);
+    const apptsList = appts || [];
+    const apptsMap = new Map<number, any>(apptsList.map(a => [a.id, a]));
 
-      const jaExistentesSet = new Set((itensExistentes || []).map(i => i.atendimento_id));
+    // 4. Busca itens existentes no fechamento_item
+    const { data: itensExistentes } = await supabase
+      .from('fechamento_item')
+      .select('*')
+      .eq('fechamento_periodo_id', periodoId);
 
-      // FIX: apenas agendamentos que efetivamente geram receita são incluídos.
-      // Agendamentos com status 'agendado', 'confirmado', 'em espera' (sem atendimento real)
-      // geram valor = 0 e poluem o painel com dezenas de itens pendentes sem sentido.
-      // A exceção é desmarcado/cancelado após 18h que pode gerar taxa de desmarque.
-      const STATUS_GERAM_RECEITA = new Set([
-        'atendido', 'presente',
-        'desmarcado', 'cancelado', // ← mantidos para capturar taxa de desmarque após 18h
-      ]);
+    const itensList = itensExistentes || [];
+    const itensApptIdMap = new Map<number, any>();
+    itensList.forEach(it => {
+      if (it.atendimento_id) itensApptIdMap.set(it.atendimento_id, it);
+    });
 
-      const novosItens = appts
-        .filter(a => {
-          if (jaExistentesSet.has(a.id)) return false;
-          const st = (a.status || '').toLowerCase().trim();
-          // Incluir apenas se status gera receita OU se for desmarcado/cancelado (possível taxa após 18h)
-          return STATUS_GERAM_RECEITA.has(st);
-        })
-        .map(a => ({
-          fechamento_periodo_id: periodoId,
-          atendimento_id: a.id,
-          status_item: 'pendente',
-          valor_calculado: calcularValorSessao(a, profData)
-        }));
+    let inseridos = 0;
+    let atualizados = 0;
+    let removidos = 0;
 
-      if (novosItens.length > 0) {
-        await supabase.from('fechamento_item').insert(novosItens);
+    // 5. Atualiza itens existentes ou remove itens que não qualificam mais
+    for (const it of itensList) {
+      if (!it.atendimento_id) continue;
+      const appt = apptsMap.get(it.atendimento_id);
+
+      // Se o agendamento foi apagado da agenda ou não qualifica (ex: desmarque diurno zerado)
+      // e não é um item com contestação resolvida manualmente pela gestão:
+      const qualifica = appt ? qualificaParaFechamento(appt) : false;
+      const ehItemManual = it.status_item === 'resolvido_ajustado' || it.status_item === 'resolvido_mantido' || it.status_item === 'contestado';
+
+      if (!qualifica && !ehItemManual) {
+        // Remove item não qualificado para não inflar atendimentos com zeros
+        await supabase.from('fechamento_item').delete().eq('id', it.id);
+        removidos++;
+        continue;
+      }
+
+      if (appt && !ehItemManual) {
+        const valorRecalculado = calcularValorSessao(appt, profData);
+        if (Number(it.valor_calculado) !== valorRecalculado) {
+          await supabase
+            .from('fechamento_item')
+            .update({ valor_calculado: valorRecalculado })
+            .eq('id', it.id);
+          atualizados++;
+        }
       }
     }
 
-    return true;
+    // 6. Insere agendamentos qualificantes novos que ainda não estavam no fechamento_item
+    const novosParaInserir: any[] = [];
+    for (const appt of apptsList) {
+      if (!itensApptIdMap.has(appt.id) && qualificaParaFechamento(appt)) {
+        novosParaInserir.push({
+          fechamento_periodo_id: periodoId,
+          atendimento_id: appt.id,
+          status_item: 'pendente',
+          valor_calculado: calcularValorSessao(appt, profData)
+        });
+      }
+    }
+
+    if (novosParaInserir.length > 0) {
+      await supabase.from('fechamento_item').insert(novosParaInserir);
+      inseridos += novosParaInserir.length;
+
+      // Se novos itens foram inseridos e o período estava como 'aprovado_pelo_terapeuta',
+      // retorna para 'aberto_para_conferencia' para que o terapeuta aprove os novos itens.
+      if (periodo.status === 'aprovado_pelo_terapeuta') {
+        await supabase
+          .from('fechamento_periodo')
+          .update({ status: 'aberto_para_conferencia' })
+          .eq('id', periodoId);
+      }
+    }
+
+    // 7. Recalcula o valor_total_calculado do período e atualiza fechamento_periodo
+    const { data: itensAtualizados } = await supabase
+      .from('fechamento_item')
+      .select('valor_calculado, valor_ajustado, status_item')
+      .eq('fechamento_periodo_id', periodoId);
+
+    const totalAtualizado = (itensAtualizados || []).reduce((acc, it) => {
+      if (it.status_item === 'resolvido_ajustado' && it.valor_ajustado !== null) {
+        return acc + Number(it.valor_ajustado);
+      }
+      return acc + Number(it.valor_calculado || 0);
+    }, 0);
+
+    await supabase
+      .from('fechamento_periodo')
+      .update({ valor_total_calculado: totalAtualizado })
+      .eq('id', periodoId);
+
+    return { inseridos, atualizados, removidos };
+  },
+
+  /**
+   * Sincroniza todos os períodos de uma competência (ou cria para quem teve atendimento)
+   */
+  async sincronizarTodosPeriodosMes(anoMes: string, profissionaisLista: any[]): Promise<{ totalPeriodos: number; totalInseridos: number; totalAtualizados: number; totalRemovidos: number }> {
+    const competencia = `${anoMes}-01`;
+    const { data: periodos } = await supabase
+      .from('fechamento_periodo')
+      .select('id, status, profissional_id')
+      .eq('competencia', competencia);
+
+    let totalInseridos = 0;
+    let totalAtualizados = 0;
+    let totalRemovidos = 0;
+    let count = 0;
+
+    for (const p of (periodos || [])) {
+      if (p.status !== 'fechado_pela_clinica') {
+        const res = await this.sincronizarAgendamentosPeriodo(p.id);
+        totalInseridos += res.inseridos;
+        totalAtualizados += res.atualizados;
+        totalRemovidos += res.removidos;
+        count++;
+      }
+    }
+
+    return { totalPeriodos: count, totalInseridos, totalAtualizados, totalRemovidos };
   },
 
   /**
