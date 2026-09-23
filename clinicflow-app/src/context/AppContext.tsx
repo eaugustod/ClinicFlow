@@ -479,15 +479,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logStatusChange = async (apptId: number, newStatusName: string): Promise<void> => {
-    const appt = agendamentos.find(a => a.id === apptId);
-    if (!appt) return;
+    let appt = agendamentos.find(a => a.id === apptId);
+    if (!appt) {
+      try {
+        const { data: dbAppt, error: dbApptErr } = await supabase
+          .from('agendamentos')
+          .select('*')
+          .eq('id', apptId)
+          .maybeSingle();
+        if (!dbApptErr && dbAppt) {
+          appt = mappers.dbToAppt(dbAppt);
+        }
+      } catch (err) {
+        console.warn('[ClinicFlow AppContext] Erro ao buscar agendamento no banco:', err);
+      }
+    }
+
+    if (!appt) {
+      console.warn('[ClinicFlow AppContext] Agendamento não localizado para logStatusChange:', apptId);
+      return;
+    }
+
     const foundStatus = statusAgendamentos.find(s => s.nome.toLowerCase() === newStatusName.toLowerCase()) || 
                         defaultStatusAgendamentos.find(s => s.nome.toLowerCase() === newStatusName.toLowerCase());
     const histStatus = foundStatus?.statusHistorico || newStatusName;
 
-    const pac = pacientes.find(p => p.nome.toLowerCase().trim() === appt.paciente.toLowerCase().trim());
-    const targetPacId = appt.pacId || pac?.id;
-    if (!targetPacId) return;
+    // Resolução resiliente do ID do paciente (pacId direto, memória ou busca no banco)
+    let targetPacId = appt.pacId || null;
+    if (!targetPacId && appt.paciente) {
+      const pac = pacientes.find(p => p.nome.toLowerCase().trim() === appt.paciente.toLowerCase().trim());
+      targetPacId = pac?.id || null;
+      if (!targetPacId) {
+        try {
+          const { data: dbPac } = await supabase
+            .from('pacientes')
+            .select('id')
+            .ilike('nome', appt.paciente.trim())
+            .limit(1)
+            .maybeSingle();
+          if (dbPac) {
+            targetPacId = dbPac.id;
+          }
+        } catch (pErr) {
+          console.warn('[ClinicFlow AppContext] Erro ao buscar paciente por nome:', pErr);
+        }
+      }
+    }
+
+    // Se encontrou o paciente e o agendamento estava sem pac_id, corrige agendamentos no banco
+    if (targetPacId && !appt.pacId) {
+      supabase.from('agendamentos').update({ pac_id: targetPacId }).eq('id', apptId).then();
+    }
 
     const titulo = `Status do Agendamento: ${newStatusName}`;
     const conteudo = {
@@ -499,21 +541,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      // Tenta executar via RPC atômica do Supabase se disponível no banco
-      const { data: rpcRes, error: rpcErr } = await supabase.rpc('sp_atualizar_status_agendamento', {
+      // 1. Tenta executar via RPC atômica do Supabase passando p_stat_terap_novo e p_pac_id
+      let rpcRes: any = null;
+      let rpcErr: any = null;
+
+      const rpcPayload: any = {
         p_agendamento_id: apptId,
         p_status_novo: newStatusName,
+        p_stat_terap_novo: histStatus,
         p_origem: 'ClinicFlow Web',
         p_usuario_id: user?.id ? String(user.id) : null,
-        p_usuario_nome: user?.nome || 'Sistema'
-      });
+        p_usuario_nome: user?.nome || 'Sistema',
+        p_pac_id: targetPacId || null
+      };
+
+      const resp = await supabase.rpc('sp_atualizar_status_agendamento', rpcPayload);
+      rpcRes = resp.data;
+      rpcErr = resp.error;
+
+      // Fallback para assinatura antiga da procedure caso p_pac_id ainda não exista no banco
+      if (rpcErr && rpcErr.message && (rpcErr.message.includes('p_pac_id') || rpcErr.message.includes('argument'))) {
+        delete rpcPayload.p_pac_id;
+        const retryResp = await supabase.rpc('sp_atualizar_status_agendamento', rpcPayload);
+        rpcRes = retryResp.data;
+        rpcErr = retryResp.error;
+      }
 
       if (!rpcErr && rpcRes && rpcRes.success) {
-        await lazyLoadHistorico(targetPacId);
+        if (targetPacId) {
+          await lazyLoadHistorico(targetPacId);
+        }
         return;
       }
 
-      // Fallback local se a RPC não estiver disponível
+      // 2. Fallback local se a RPC não estiver disponível ou falhar
+      if (!targetPacId) {
+        console.warn('[ClinicFlow AppContext] Não foi possível vincular historico sem pacId para agendamento:', apptId);
+        return;
+      }
+
       let existingId: number | null = null;
 
       const { data: byAgend } = await supabase
@@ -572,7 +638,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           fonte: 'ClinicFlow Web'
         }]);
       }
-      await lazyLoadHistorico(targetPacId);
+      if (targetPacId) {
+        await lazyLoadHistorico(targetPacId);
+      }
     } catch (e) {
       console.error('[ClinicFlow AppContext] Exception in logStatusChange:', e);
     }

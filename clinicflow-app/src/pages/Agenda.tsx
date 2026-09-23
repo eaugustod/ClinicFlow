@@ -466,9 +466,10 @@ export const Agenda: React.FC = () => {
       const plName = planos.find(pl => pl.id === Number(planoId))?.nome || 'Particular';
       const totalSadtVal = sadtProcs.reduce((acc, curr) => acc + curr.total, 0);
 
-      // Find the matched patient object from datalist options to get their pacId
+      // Find the matched patient object from datalist options to get their pacId, preserving existing pacId as fallback
+      const oldAppt = editId ? agendamentos.find(a => a.id === editId) : null;
       const matchedPac = getDatalistOptions().find(p => p.nome.trim().toLowerCase() === patientsToSchedule[0]?.trim().toLowerCase());
-      const pacId = matchedPac ? matchedPac.id : null;
+      const pacId = matchedPac ? matchedPac.id : (oldAppt?.pacId || null);
 
       if (editId) {
         // Edit flow
@@ -494,8 +495,7 @@ export const Agenda: React.FC = () => {
           } : null
         };
 
-        const oldAppt = agendamentos.find(a => a.id === editId);
-        const statusChanged = oldAppt && oldAppt.status !== status;
+        const statusChanged = !oldAppt || oldAppt.status !== status;
 
         const { error } = await supabase
           .from('agendamentos')
