@@ -813,6 +813,22 @@ export const Importador: React.FC<ImportadorProps> = ({ tipo }) => {
         </p>
       </div>
 
+      {tipo === 'guias_sadt' && (
+        <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+              <ClipboardList size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">Possui um arquivo XML de Lote TISS da ANS?</p>
+              <p className="text-[11px] text-slate-400">
+                Você pode importar o arquivo XML TISS diretamente (com o lote e todas as guias SADT vinculadas) pelo botão <strong>Importar XML TISS</strong> na tela de <strong>Lotes TISS</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Progress Wizard Steps */}
       <div className="flex items-center gap-2 bg-[#131622]/40 border border-white/[0.04] p-3 rounded-2xl">
         {[

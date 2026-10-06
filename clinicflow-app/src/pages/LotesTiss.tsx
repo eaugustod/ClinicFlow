@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Layers, Download, CheckCircle2, AlertTriangle, ExternalLink, Edit3, FileText, Loader, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Plus, Layers, Download, CheckCircle2, AlertTriangle, ExternalLink, Edit3, FileText, Loader, Trash2, Upload, FileCode, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { LoteTiss, GuiaSadt } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
 import { financeiroFluxoCaixaService } from '../services/financeiroFluxoCaixaService';
+import { parseXmlTiss, ParsedTissLote } from '../services/xmlTissParser';
 
 const TISS_CONSELHOS: { [key: string]: string } = {
   'CRESS': '01', 'COREN': '02', 'CRF': '03', 'CREFONO': '04', 'CREFITO': '05',
@@ -92,7 +93,7 @@ const removeAccentsAndSpecial = (str: string): string => {
 };
 
 export const LotesTiss: React.FC = () => {
-  const { lotes, guias, lazyLoadGuias, planos, profissionais, clinicaConfig, refreshAll } = useApp();
+  const { lotes, guias, lazyLoadGuias, planos, profissionais, pacientes, clinicaConfig, refreshAll } = useApp();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,6 +108,16 @@ export const LotesTiss: React.FC = () => {
   const [planoId, setPlanoId] = useState<number>(planos[0]?.id || 5);
   const [competencia, setCompetencia] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
   const [obs, setObs] = useState('');
+
+  // Import XML TISS States
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importingLote, setImportingLote] = useState<ParsedTissLote | null>(null);
+  const [importPlanoId, setImportPlanoId] = useState<number>(0);
+  const [importStatus, setImportStatus] = useState<'Enviado' | 'Gerado' | 'Pendente' | 'Faturado'>('Enviado');
+  const [importFileName, setImportFileName] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [isParsingXml, setIsParsingXml] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Editing Lote States
   const [editingLote, setEditingLote] = useState<LoteTiss | null>(null);
@@ -600,7 +611,265 @@ export const LotesTiss: React.FC = () => {
     }
   };
 
+  const openImportModal = () => {
+    setImportingLote(null);
+    setImportFileName('');
+    setImportError(null);
+    setIsParsingXml(false);
+    setImportStatus('Enviado');
+    setIsImportModalOpen(true);
+  };
+
+  const handleXmlFileSelect = (file: File) => {
+    if (!file) return;
+    setImportFileName(file.name);
+    setImportError(null);
+    setIsParsingXml(true);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const parsed = parseXmlTiss(text);
+        if (!parsed.success || parsed.errors.length > 0) {
+          setImportError(parsed.errors.join(' | ') || 'Não foi possível ler o arquivo TISS.');
+          setImportingLote(null);
+        } else {
+          setImportingLote(parsed);
+          // Tenta associar plano automaticamente pelo registro ANS ou nome
+          const matchedPlano = planos.find(p =>
+            (parsed.registroANS && p.ans && p.ans.trim() === parsed.registroANS.trim()) ||
+            (parsed.codigoPrestadorNaOperadora && p.codPrestador && p.codPrestador.trim() === parsed.codigoPrestadorNaOperadora.trim()) ||
+            (p.nome && parsed.registroANS === '315478' && p.nome.toLowerCase().includes('bradesco'))
+          ) || planos.find(p => p.usaTiss) || planos[0];
+
+          if (matchedPlano) {
+            setImportPlanoId(matchedPlano.id);
+          }
+        }
+      } catch (err: any) {
+        setImportError(`Erro ao processar o arquivo: ${err?.message || err}`);
+      } finally {
+        setIsParsingXml(false);
+      }
+    };
+    reader.onerror = () => {
+      setImportError('Erro ao abrir o arquivo no navegador.');
+      setIsParsingXml(false);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExecuteImport = async () => {
+    if (!importingLote || !importPlanoId) {
+      alert('Selecione um plano de saúde válido para o lote.');
+      return;
+    }
+
+    const plano = planos.find(p => p.id === Number(importPlanoId));
+    if (!plano) {
+      alert('Plano de saúde não encontrado.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // 1. Verificar se já existe um lote com este número para este plano
+      const { data: existingLotes } = await supabase
+        .from('lotes_tiss')
+        .select('id, num')
+        .eq('num', importingLote.numeroLote)
+        .eq('plano_id', plano.id);
+
+      let targetLoteId: number;
+
+      if (existingLotes && existingLotes.length > 0) {
+        const confirmar = confirm(`Já existe um lote com o número ${importingLote.numeroLote} para ${plano.nome}. Deseja atualizar este lote e vincular as guias importadas?`);
+        if (!confirmar) {
+          setSubmitting(false);
+          return;
+        }
+        targetLoteId = existingLotes[0].id;
+
+        await supabase
+          .from('lotes_tiss')
+          .update(mappers.loteToDb({
+            num: importingLote.numeroLote,
+            competencia: importingLote.competencia,
+            planoId: plano.id,
+            plano: plano.nome,
+            qtd: importingLote.qtdGuias,
+            valor: importingLote.valorTotal,
+            status: importStatus,
+            dataCriacao: importingLote.dataRegistroTransacao || new Date().toISOString().split('T')[0],
+            obs: `Importado de XML TISS (${importFileName || 'Arquivo externo'})`,
+            guiaIds: []
+          }))
+          .eq('id', targetLoteId);
+      } else {
+        const newLoteData = {
+          num: importingLote.numeroLote,
+          competencia: importingLote.competencia,
+          planoId: plano.id,
+          plano: plano.nome,
+          qtd: importingLote.qtdGuias,
+          valor: importingLote.valorTotal,
+          status: importStatus,
+          dataCriacao: importingLote.dataRegistroTransacao || new Date().toISOString().split('T')[0],
+          obs: `Importado de XML TISS (${importFileName || 'Arquivo externo'})`,
+          guiaIds: []
+        };
+
+        const { data: createdLote, error: loteErr } = await supabase
+          .from('lotes_tiss')
+          .insert([mappers.loteToDb(newLoteData)])
+          .select()
+          .single();
+
+        if (loteErr) throw loteErr;
+        targetLoteId = createdLote.id;
+      }
+
+      // 2. Salvar guias SADT importadas
+      const guideIds: number[] = [];
+      const cleanNum = (s: string) => (s || '').replace(/\D/g, '');
+
+      for (const g of importingLote.guias) {
+        // Encontra paciente pela carteirinha
+        const matchedPac = pacientes.find(p => {
+          if (!p.carteirinha || p.carteirinha === '—') return false;
+          const c1 = cleanNum(p.carteirinha);
+          const c2 = cleanNum(g.numeroCarteira);
+          return c1 && c2 && (c1 === c2 || c1.includes(c2) || c2.includes(c1));
+        });
+
+        // Encontra profissional executante
+        const matchedProf = profissionais.find(p => {
+          const cpf1 = cleanNum((p as any).cpf || '');
+          const cpf2 = cleanNum(g.procedimentos[0]?.equipeSadt?.cpfContratado || '');
+          if (cpf1 && cpf2 && cpf1 === cpf2) return true;
+          const nomeGuia = (g.procedimentos[0]?.equipeSadt?.nomeProf || '').toLowerCase();
+          return nomeGuia && p.nome.toLowerCase().includes(nomeGuia.split(' ')[0]);
+        }) || profissionais[0];
+
+        const guiaPayload: Partial<GuiaSadt> = {
+          num: g.numeroGuiaPrestador,
+          pac: matchedPac?.nome || `Beneficiário (${g.numeroCarteira})`,
+          pacId: matchedPac?.id || null,
+          planoId: plano.id,
+          plano: plano.nome,
+          profId: matchedProf?.id || 1,
+          valor: g.valorTotalGeral,
+          status: importStatus === 'Pendente' ? 'Pendente' : 'Enviado',
+          data: g.dataExecucaoPrincipal || importingLote.dataRegistroTransacao,
+          loteId: targetLoteId,
+          loteNum: importingLote.numeroLote,
+          carteirinha: g.numeroCarteira,
+          numOp: g.numeroGuiaOperadora || g.guiaPrincipal,
+          codigoProcedimento: g.procedimentos[0]?.codigoProcedimento || '50000470',
+          dados: {
+            senha: g.senha,
+            dataAut: g.dataAutorizacao,
+            validade: g.dataValidadeSenha,
+            guiaPrincipal: g.guiaPrincipal,
+            numGuiaOperadora: g.numeroGuiaOperadora,
+            cnes: g.cnes,
+            codPrestador: g.codigoPrestadorExecutante || importingLote.codigoPrestadorNaOperadora,
+            registroAns: importingLote.registroANS,
+            solicitante: g.solicitante,
+            procs: g.procedimentos.map(p => ({
+              codigo: p.codigoProcedimento,
+              desc: p.descricaoProcedimento,
+              qtd: p.quantidadeExecutada,
+              valor: p.valorUnitario,
+              total: p.valorTotal
+            }))
+          }
+        };
+
+        const { data: existingGuia } = await supabase
+          .from('guias_sadt')
+          .select('id')
+          .eq('num', g.numeroGuiaPrestador)
+          .eq('plano_id', plano.id)
+          .maybeSingle();
+
+        if (existingGuia) {
+          const { error: updErr } = await supabase
+            .from('guias_sadt')
+            .update(mappers.guiaToDb(guiaPayload))
+            .eq('id', existingGuia.id);
+          if (updErr) throw updErr;
+          guideIds.push(existingGuia.id);
+        } else {
+          const { data: insGuia, error: insErr } = await supabase
+            .from('guias_sadt')
+            .insert([mappers.guiaToDb(guiaPayload)])
+            .select('id')
+            .single();
+          if (insErr) throw insErr;
+          if (insGuia) guideIds.push(insGuia.id);
+        }
+      }
+
+      // 3. Atualizar guia_ids no lote
+      await supabase
+        .from('lotes_tiss')
+        .update({ guia_ids: guideIds })
+        .eq('id', targetLoteId);
+
+      // 4. Salvar cópia do XML original em cache para download exato
+      try {
+        localStorage.setItem(`cf_lote_xml_${targetLoteId}`, importingLote.rawXml);
+      } catch (e) {}
+
+      // 5. Integração com Contas a Receber
+      if (importStatus === 'Enviado' || importStatus === 'Faturado') {
+        try {
+          await financeiroFluxoCaixaService.salvarContaReceber({
+            id: `rec_lote_${importingLote.numeroLote}`,
+            pacienteNome: `Faturamento ${plano.nome}`,
+            descricao: `Faturamento Lote TISS #${importingLote.numeroLote} - ${plano.nome} (${guideIds.length} guias)`,
+            valor: importingLote.valorTotal,
+            dataVencimento: new Date(Date.now() + 86400000 * 30).toISOString().substring(0, 10),
+            status: importStatus === 'Faturado' ? 'Recebido' : 'Pendente',
+            formaPagamento: 'Convenio',
+            categoriaId: 'cat_rec_2',
+            categoriaNome: 'Faturamento Convênios (TISS)'
+          });
+        } catch (syncErr) {
+          console.warn('[Lotes TISS] Erro ao sincronizar Contas a Receber:', syncErr);
+        }
+      }
+
+      setIsImportModalOpen(false);
+      setImportingLote(null);
+      await refreshAll();
+      alert(`Lote TISS #${importingLote.numeroLote} importado com sucesso!\n${guideIds.length} guias SADT cadastradas no valor total de R$ ${importingLote.valorTotal.toFixed(2)}.`);
+    } catch (err: any) {
+      console.error('Erro ao importar lote TISS:', err);
+      alert(`Erro na importação: ${err?.message || err}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDownloadXml = async (lote: LoteTiss) => {
+    // 1. Verifica se temos o XML original salvo em cache
+    const cachedXml = localStorage.getItem(`cf_lote_xml_${lote.id}`);
+    if (cachedXml) {
+      const blob = new Blob([cachedXml], { type: 'application/xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lote_${lote.num}_TISS_${new Date().toISOString().slice(0, 10)}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
     const plano = planos.find(p => p.id === lote.planoId);
     if (!plano) {
       alert('Plano do lote não encontrado.');
@@ -657,13 +926,23 @@ export const LotesTiss: React.FC = () => {
           <h2 className="text-2xl font-black tracking-wide text-white mt-0.5">Lotes TISS</h2>
           <p className="text-xs text-slate-400 mt-1">Gere e gerencie lotes consolidados de guias SADT no padrão XML da ANS</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-        >
-          <Plus size={16} />
-          Fechar Novo Lote
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openImportModal}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#161a26] hover:bg-[#1f2438] text-indigo-300 border border-indigo-500/30 hover:border-indigo-500/60 rounded-xl font-bold transition-all active:scale-95 shadow-md"
+            title="Importar arquivo XML de lote e guias SADT gerados fora do sistema"
+          >
+            <Upload size={16} />
+            Importar XML TISS
+          </button>
+          <button
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+          >
+            <Plus size={16} />
+            Fechar Novo Lote
+          </button>
+        </div>
       </div>
 
       {/* INDICATORS SECTION */}
@@ -1081,6 +1360,267 @@ export const LotesTiss: React.FC = () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* IMPORT XML TISS MODAL */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden my-6 animate-fade-in flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-white/[0.04] flex justify-between items-center bg-[#131622]/60 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <Upload size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white tracking-wide">
+                    Importar Arquivo XML TISS (Lote e Guias SADT)
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Importe lotes gerados fora do sistema para cadastrar automaticamente o lote e todas as guias SADT
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="text-slate-400 hover:text-white text-xl font-bold transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+              {/* UPLOAD DROPZONE */}
+              {!importingLote && (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleXmlFileSelect(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  className="border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/60 bg-indigo-500/5 hover:bg-indigo-500/10 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all text-center group"
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".xml,text/xml"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleXmlFileSelect(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    {isParsingXml ? <Loader size={26} className="animate-spin" /> : <FileCode size={26} />}
+                  </div>
+                  <p className="text-sm font-bold text-white mb-1">
+                    {isParsingXml ? 'Processando arquivo XML TISS...' : 'Clique ou arraste seu arquivo XML TISS aqui'}
+                  </p>
+                  <p className="text-xs text-slate-400 max-w-md">
+                    Suporta arquivos padrão ANS TISS com lote de guias SP-SADT (ex: <code className="text-indigo-300">TISS_2026_08_sessoes.xml</code>)
+                  </p>
+                </div>
+              )}
+
+              {importError && (
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-3 text-xs text-rose-300">
+                  <AlertTriangle size={18} className="shrink-0 text-rose-400 mt-0.5" />
+                  <div>
+                    <strong className="block text-rose-200">Falha ao ler o arquivo XML:</strong>
+                    <span>{importError}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* PREVIEW DO LOTE E GUIAS */}
+              {importingLote && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="flex items-center justify-between p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <FileCode size={16} className="text-indigo-400" />
+                      <span className="font-bold text-slate-200">{importFileName}</span>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full font-mono">
+                        Padrão TISS {importingLote.padraoVersao}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImportingLote(null);
+                        setImportFileName('');
+                        setImportError(null);
+                      }}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline"
+                    >
+                      Trocar arquivo
+                    </button>
+                  </div>
+
+                  {/* CARDS RESUMO DO LOTE */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 bg-[#161a26] border border-white/[0.06] rounded-xl">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Nº do Lote</span>
+                      <span className="text-base font-black font-mono text-white mt-0.5 block">#{importingLote.numeroLote}</span>
+                    </div>
+                    <div className="p-3 bg-[#161a26] border border-white/[0.06] rounded-xl">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Competência</span>
+                      <span className="text-base font-black font-mono text-indigo-400 mt-0.5 block">{importingLote.competencia}</span>
+                    </div>
+                    <div className="p-3 bg-[#161a26] border border-white/[0.06] rounded-xl">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Qtd. de Guias</span>
+                      <span className="text-base font-black text-sky-400 mt-0.5 block">{importingLote.qtdGuias} guias SP-SADT</span>
+                    </div>
+                    <div className="p-3 bg-[#161a26] border border-white/[0.06] rounded-xl">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Valor Total</span>
+                      <span className="text-base font-black text-emerald-400 mt-0.5 block">
+                        R$ {importingLote.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* CONFIGURAÇÃO DE DESTINO NO SISTEMA */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#131622]/40 border border-white/[0.06] rounded-xl">
+                    <div>
+                      <label className="block text-slate-300 font-bold text-xs mb-1.5">
+                        Plano de Saúde no Sistema *
+                        {importingLote.registroANS && (
+                          <span className="text-[10px] text-slate-400 font-normal ml-2 font-mono">
+                            (ANS: {importingLote.registroANS})
+                          </span>
+                        )}
+                      </label>
+                      <select
+                        value={importPlanoId}
+                        onChange={(e) => setImportPlanoId(Number(e.target.value))}
+                        className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      >
+                        {planos.filter(p => p.status === 'Ativo').map(pl => (
+                          <option key={pl.id} value={pl.id}>
+                            {pl.nome} {pl.ans ? `(ANS ${pl.ans})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-bold text-xs mb-1.5">
+                        Status do Lote e das Guias
+                      </label>
+                      <select
+                        value={importStatus}
+                        onChange={(e) => setImportStatus(e.target.value as any)}
+                        className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      >
+                        <option value="Enviado">Enviado (Padrão para lotes já submetidos)</option>
+                        <option value="Gerado">Gerado</option>
+                        <option value="Pendente">Pendente</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* LISTAGEM PREVIEW DAS GUIAS */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                        Prévia das Guias Detectadas ({importingLote.guias.length})
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        O sistema vinculará automaticamente pacientes cadastrados pela carteirinha
+                      </span>
+                    </div>
+
+                    <div className="border border-white/[0.06] rounded-xl overflow-hidden bg-[#131622]/30 max-h-64 overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#161a26] border-b border-white/[0.06] text-[9px] uppercase tracking-wider text-slate-400 font-bold sticky top-0 z-10">
+                          <tr>
+                            <th className="p-3">Nº Guia</th>
+                            <th className="p-3">Carteirinha</th>
+                            <th className="p-3">Paciente Identificado</th>
+                            <th className="p-3 text-center">Data Exec.</th>
+                            <th className="p-3">Procedimento</th>
+                            <th className="p-3 text-right">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.02]">
+                          {importingLote.guias.map((g, idx) => {
+                            const cleanNum = (s: string) => (s || '').replace(/\D/g, '');
+                            const matchedPac = pacientes.find(p => {
+                              if (!p.carteirinha || p.carteirinha === '—') return false;
+                              const c1 = cleanNum(p.carteirinha);
+                              const c2 = cleanNum(g.numeroCarteira);
+                              return c1 && c2 && (c1 === c2 || c1.includes(c2) || c2.includes(c1));
+                            });
+
+                            return (
+                              <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="p-3 font-mono font-bold text-slate-200">{g.numeroGuiaPrestador}</td>
+                                <td className="p-3 font-mono text-slate-400">{g.numeroCarteira}</td>
+                                <td className="p-3">
+                                  {matchedPac ? (
+                                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                                      <Check size={12} />
+                                      {matchedPac.nome}
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-400/80 font-medium">
+                                      Carteira {g.numeroCarteira}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-3 text-center font-mono text-slate-300">{g.dataExecucaoPrincipal}</td>
+                                <td className="p-3 text-slate-300">
+                                  {g.procedimentos[0]?.codigoProcedimento} - {g.procedimentos[0]?.descricaoProcedimento}
+                                </td>
+                                <td className="p-3 text-right font-mono font-bold text-emerald-400">
+                                  R$ {g.valorTotalGeral.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* MODAL FOOTER */}
+            <div className="p-5 border-t border-white/[0.04] bg-[#131622]/60 flex justify-between items-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="px-4 py-2 border border-white/[0.06] rounded-xl text-slate-300 font-bold hover:bg-white/[0.02]"
+              >
+                Cancelar
+              </button>
+              {importingLote && (
+                <button
+                  type="button"
+                  onClick={handleExecuteImport}
+                  disabled={submitting}
+                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader size={14} className="animate-spin" />
+                      Importando {importingLote.qtdGuias} guias...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} />
+                      Confirmar e Importar Lote ({importingLote.qtdGuias} Guias — R$ {importingLote.valorTotal.toFixed(2)})
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
