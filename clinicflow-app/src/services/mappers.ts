@@ -44,7 +44,8 @@ export const mappers = {
     profissao: p.profissao || null,
     titular: p.titular || null,
     foto: p.foto || null,
-    senha_chat: p.senhaChat || null
+    senha_chat: p.senhaChat || null,
+    assinatura: p.assinatura || null
   }),
   dbToPac: (r: any): Paciente => ({
     id: r.id,
@@ -72,7 +73,8 @@ export const mappers = {
     profissao: r.profissao || '',
     titular: r.titular || '',
     foto: r.foto || '',
-    senhaChat: r.senha_chat || r.senhaChat || ''
+    senhaChat: r.senha_chat || r.senhaChat || '',
+    assinatura: r.assinatura || ''
   }),
 
   profToDb: (p: Partial<Profissional>) => ({
@@ -88,6 +90,7 @@ export const mappers = {
     cor: p.cor || '#4f8ef7',
     status: p.status || 'Ativo',
     foto: p.foto || null,
+    assinatura: p.assinatura || null,
     instagram: p.instagram || null,
     linkedin: p.linkedin || null,
     google_cal_id: p.googleCalendarId || null,
@@ -123,6 +126,7 @@ export const mappers = {
     cor: r.cor || '#4f8ef7',
     status: r.status || 'Ativo',
     foto: r.foto || '',
+    assinatura: r.assinatura || '',
     instagram: r.instagram || '',
     linkedin: r.linkedin || '',
     googleCalendarId: r.google_cal_id || '',

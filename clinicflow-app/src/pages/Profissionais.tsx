@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark, Camera, Clock, DoorOpen, Users } from 'lucide-react';
+import { Search, UserPlus, Edit3, CheckCircle2, AlertCircle, Calendar, CreditCard, Landmark, Camera, Clock, DoorOpen, Users, PenTool } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Profissional, JornadaProfissional } from '../types';
 import { supabase } from '../services/supabase';
@@ -52,6 +52,7 @@ export const Profissionais: React.FC = () => {
   const [banco, setBanco] = useState('');
   const [agencia, setAgencia] = useState('');
   const [conta, setConta] = useState('');
+  const [assinatura, setAssinatura] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -61,6 +62,17 @@ export const Profissionais: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setFoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAssinaturaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAssinatura(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -90,6 +102,7 @@ export const Profissionais: React.FC = () => {
     setCor('#4f8ef7');
     setStatus('Ativo');
     setFoto('');
+    setAssinatura('');
     
     // Reset financial
     setValor30(0);
@@ -125,6 +138,7 @@ export const Profissionais: React.FC = () => {
     setCor(p.cor || '#4f8ef7');
     setStatus(p.status || 'Ativo');
     setFoto(p.foto || '');
+    setAssinatura(p.assinatura || '');
     
     // Set financial
     setValor30(p.valor30 || 0);
@@ -171,6 +185,7 @@ export const Profissionais: React.FC = () => {
       cor,
       status,
       foto,
+      assinatura,
       valor30,
       valor60,
       valorAval,
@@ -278,9 +293,16 @@ export const Profissionais: React.FC = () => {
                     <h3 className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors text-xs">
                       {p.nome}
                     </h3>
-                    <p className="text-[10px] text-indigo-400 font-semibold tracking-wide uppercase mt-0.5">
-                      {p.esp || 'Sem Especialidade'}
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <p className="text-[10px] text-indigo-400 font-semibold tracking-wide uppercase">
+                        {p.esp || 'Sem Especialidade'}
+                      </p>
+                      {p.assinatura && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold" title="Assinatura TISS SADT cadastrada">
+                          ✍️ Assinatura
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
@@ -434,6 +456,58 @@ export const Profissionais: React.FC = () => {
                             <Camera size={12} />
                             <span>Escolher Foto do Computador</span>
                             <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Assinatura Digital do Profissional (Campo 68 Guia SADT / TISS) */}
+                    <div className="md:col-span-2 space-y-2 bg-[#161a26]/50 p-3 rounded-xl border border-white/[0.06]">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-slate-300 font-bold text-xs">
+                          Assinatura do Profissional (Campo 68 - Guia SADT / Lotes TISS)
+                        </label>
+                        {assinatura && (
+                          <button
+                            type="button"
+                            onClick={() => setAssinatura('')}
+                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold transition-colors"
+                          >
+                            Remover Assinatura
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        Anexe a assinatura escaneada/digitalizada. Utilizada no Campo 68 (Assinatura do Contratado).
+                        {nome.toLowerCase().includes('maria cecilia') && (
+                          <span className="text-indigo-400 font-semibold block mt-0.5">
+                            ★ Esta assinatura de Maria Cecilia Benessuti Donato será aplicada automaticamente como assinatura fixa das Guias e Lotes TISS.
+                          </span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-4 pt-1">
+                        {assinatura ? (
+                          <div className="h-14 w-44 bg-white rounded-lg p-1 border border-slate-200 flex items-center justify-center shrink-0 shadow-sm">
+                            <img src={assinatura} alt="Assinatura Profissional" className="max-h-full max-w-full object-contain" />
+                          </div>
+                        ) : (
+                          <div className="h-14 w-44 rounded-lg bg-[#1c2234] border border-dashed border-white/20 flex flex-col items-center justify-center text-slate-500 font-medium text-[10px] shrink-0 text-center px-2">
+                            <span>Sem assinatura</span>
+                            <span className="text-[9px] text-slate-600">Nenhum arquivo anexado</span>
+                          </div>
+                        )}
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            placeholder="URL da imagem da assinatura ou escolha um arquivo..."
+                            value={assinatura}
+                            onChange={(e) => setAssinatura(e.target.value)}
+                            className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                          />
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all shadow-sm">
+                            <PenTool size={12} />
+                            <span>Anexar Assinatura Escaneada (PNG/JPG)</span>
+                            <input type="file" accept="image/*" onChange={handleAssinaturaChange} className="hidden" />
                           </label>
                         </div>
                       </div>

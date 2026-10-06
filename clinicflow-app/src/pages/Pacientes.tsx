@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Edit3, Trash2, CheckCircle2, AlertCircle, Loader, Camera, Key } from 'lucide-react';
+import { Search, UserPlus, Edit3, Trash2, CheckCircle2, AlertCircle, Loader, Camera, Key, PenTool } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Paciente } from '../types';
 import { supabase } from '../services/supabase';
@@ -60,6 +60,7 @@ export const Pacientes: React.FC = () => {
   const [obs, setObs] = useState('');
   const [foto, setFoto] = useState('');
   const [senhaChat, setSenhaChat] = useState('');
+  const [assinatura, setAssinatura] = useState('');
   
   const [submitting, setSubmitting] = useState(false);
 
@@ -69,6 +70,17 @@ export const Pacientes: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setFoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAssinaturaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAssinatura(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -110,6 +122,7 @@ export const Pacientes: React.FC = () => {
     setObs('');
     setFoto('');
     setSenhaChat('');
+    setAssinatura('');
     setIsModalOpen(true);
   };
 
@@ -135,6 +148,7 @@ export const Pacientes: React.FC = () => {
     setObs(p.obs);
     setFoto(p.foto || '');
     setSenhaChat(p.senhaChat || '');
+    setAssinatura(p.assinatura || '');
     setIsModalOpen(true);
   };
 
@@ -166,7 +180,8 @@ export const Pacientes: React.FC = () => {
       status,
       obs,
       foto,
-      senhaChat
+      senhaChat,
+      assinatura
     };
 
     try {
@@ -282,7 +297,14 @@ export const Pacientes: React.FC = () => {
                     </div>
                   </td>
                   <td className="p-4">
-                    <p className="font-semibold text-slate-300">{p.plano}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-semibold text-slate-300">{p.plano}</p>
+                      {p.assinatura && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold" title="Assinatura anexada">
+                          ✍️ Assinatura
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{p.carteirinha}</p>
                   </td>
                   <td className="p-4 font-mono text-slate-400">{p.cpf || '—'}</td>
@@ -363,6 +385,53 @@ export const Pacientes: React.FC = () => {
                         <Camera size={12} />
                         <span>Escolher Foto do Computador</span>
                         <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Assinatura Escaneada do Beneficiário */}
+                <div className="md:col-span-2 space-y-2 bg-[#161a26]/50 p-3 rounded-xl border border-white/[0.06]">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-slate-300 font-bold text-xs">
+                      Assinatura do Beneficiário / Responsável (Guia SADT / TISS)
+                    </label>
+                    {assinatura && (
+                      <button
+                        type="button"
+                        onClick={() => setAssinatura('')}
+                        className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold transition-colors"
+                      >
+                        Remover Assinatura
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Anexe a imagem da assinatura escaneada. Ela será inserida automaticamente nos campos 57 e 67 das Guias SADT e Lotes TISS.
+                  </p>
+                  <div className="flex items-center gap-4 pt-1">
+                    {assinatura ? (
+                      <div className="h-14 w-44 bg-white rounded-lg p-1 border border-slate-200 flex items-center justify-center shrink-0 shadow-sm">
+                        <img src={assinatura} alt="Assinatura" className="max-h-full max-w-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="h-14 w-44 rounded-lg bg-[#1c2234] border border-dashed border-white/20 flex flex-col items-center justify-center text-slate-500 font-medium text-[10px] shrink-0 text-center px-2">
+                        <span>Sem assinatura</span>
+                        <span className="text-[9px] text-slate-600">Nenhum arquivo anexado</span>
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="text"
+                        placeholder="URL da imagem da assinatura ou escolha um arquivo..."
+                        value={assinatura}
+                        onChange={(e) => setAssinatura(e.target.value)}
+                        className="w-full bg-[#161a26] border border-white/[0.06] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all shadow-sm">
+                        <PenTool size={12} />
+                        <span>Anexar Assinatura Escaneada (PNG/JPG)</span>
+                        <input type="file" accept="image/*" onChange={handleAssinaturaChange} className="hidden" />
                       </label>
                     </div>
                   </div>

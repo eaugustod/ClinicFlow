@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Layers, Download, CheckCircle2, AlertTriangle, ExternalLink, Edit3, FileText, Loader, Trash2, Upload, FileCode, Check } from 'lucide-react';
+import { Search, Plus, Layers, Download, CheckCircle2, AlertTriangle, ExternalLink, Edit3, FileText, Loader, Trash2, Upload, FileCode, Check, Printer } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { LoteTiss, GuiaSadt } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
 import { financeiroFluxoCaixaService } from '../services/financeiroFluxoCaixaService';
 import { parseXmlTiss, ParsedTissLote } from '../services/xmlTissParser';
+import { tissPrintService } from '../services/tissPrintService';
 
 const TISS_CONSELHOS: { [key: string]: string } = {
   'CRESS': '01', 'COREN': '02', 'CRF': '03', 'CREFONO': '04', 'CREFITO': '05',
@@ -93,7 +94,7 @@ const removeAccentsAndSpecial = (str: string): string => {
 };
 
 export const LotesTiss: React.FC = () => {
-  const { lotes, guias, lazyLoadGuias, planos, profissionais, pacientes, clinicaConfig, refreshAll } = useApp();
+  const { lotes, guias, lazyLoadGuias, planos, profissionais, pacientes, senhas, lazyLoadSenhas, clinicaConfig, refreshAll } = useApp();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,6 +131,7 @@ export const LotesTiss: React.FC = () => {
 
   useEffect(() => {
     lazyLoadGuias();
+    if (lazyLoadSenhas) lazyLoadSenhas();
   }, []);
 
   // Update available guias when editing a lote or changing health insurance
@@ -291,6 +293,25 @@ export const LotesTiss: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handlePrintLoteGuias = (lote: LoteTiss, customGuiaIds?: number[]) => {
+    const targetGuias = customGuiaIds && customGuiaIds.length > 0
+      ? guias.filter(g => customGuiaIds.includes(g.id))
+      : guias.filter(g => g.loteId === lote.id);
+
+    if (!targetGuias.length) {
+      alert(`Nenhuma guia vinculada ao Lote ${lote.num} foi encontrada para impressão.`);
+      return;
+    }
+
+    tissPrintService.imprimirLoteGuias(lote, targetGuias, {
+      planos,
+      profissionais,
+      pacientes,
+      senhas: senhas || [],
+      clinicaConfig
+    });
   };
 
   const buildXmlString = (loteNum: string, plano: any, loteGuias: GuiaSadt[]) => {
@@ -1070,6 +1091,13 @@ export const LotesTiss: React.FC = () => {
                       <Download size={11} />
                     </button>
                     <button
+                      onClick={() => handlePrintLoteGuias(l)}
+                      className="p-1.5 bg-white/[0.02] border border-white/[0.04] hover:bg-emerald-500/15 hover:text-emerald-400 hover:border-emerald-500/20 rounded-lg text-slate-300 transition-all"
+                      title="Gerar Relatório / Imprimir Todas as Guias do Lote em PDF"
+                    >
+                      <Printer size={11} />
+                    </button>
+                    <button
                       onClick={() => handleDeleteLote(l)}
                       className="p-1.5 bg-white/[0.02] border border-white/[0.04] hover:bg-rose-500/15 hover:text-rose-500 hover:border-rose-500/20 rounded-lg text-slate-300 transition-all"
                       title="Excluir Lote"
@@ -1332,15 +1360,27 @@ export const LotesTiss: React.FC = () => {
               </div>
 
               <div className="pt-4 border-t border-white/[0.04] flex justify-between items-center">
-                <button
-                  type="button"
-                  onClick={handleDownloadXmlForEditing}
-                  disabled={selectedGuiasIds.size === 0}
-                  className="px-4 py-2 bg-[#161a26] hover:bg-[#1f2433] text-slate-300 border border-white/[0.06] rounded-xl font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Download size={13} />
-                  Gerar XML
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadXmlForEditing}
+                    disabled={selectedGuiasIds.size === 0}
+                    className="px-4 py-2 bg-[#161a26] hover:bg-[#1f2433] text-slate-300 border border-white/[0.06] rounded-xl font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <Download size={13} />
+                    Gerar XML
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => editingLote && handlePrintLoteGuias(editingLote, Array.from(selectedGuiasIds))}
+                    disabled={selectedGuiasIds.size === 0}
+                    className="px-4 py-2 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
+                    title="Imprimir todas as guias deste lote em PDF"
+                  >
+                    <Printer size={13} />
+                    Imprimir Guias (PDF)
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
