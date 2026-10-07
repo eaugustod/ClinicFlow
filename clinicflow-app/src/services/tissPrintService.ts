@@ -1,4 +1,6 @@
 import { GuiaSadt, LoteTiss, PlanoSaude, Profissional, Paciente, SenhaPlano } from '../types';
+import { supabase } from './supabase';
+import { mappers } from './mappers';
 
 interface PrintContext {
   planos: PlanoSaude[];
@@ -8,6 +10,14 @@ interface PrintContext {
   clinicaConfig?: any;
 }
 
+const normalizeName = (s?: string) =>
+  (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+
 const formattedDate = (iso?: string) => {
   if (!iso) return '';
   const clean = iso.split('T')[0].trim();
@@ -15,6 +25,111 @@ const formattedDate = (iso?: string) => {
     return clean.split('-').reverse().join('/');
   }
   return clean;
+};
+
+/**
+ * Garante que todos os pacientes das guias a serem impressas tenham seus dados e assinaturas
+ * carregados diretamente do banco, contornando qualquer limitação de paginação em memória.
+ */
+const resolvePacientesForGuias = async (
+  guias: GuiaSadt[],
+  existingPacientes: Paciente[]
+): Promise<Paciente[]> => {
+  const pacientesMap = new Map<string, Paciente>();
+
+  for (const p of existingPacientes) {
+    if (p.id) pacientesMap.set(`id:${p.id}`, p);
+    if (p.nome) pacientesMap.set(`name:${normalizeName(p.nome)}`, p);
+    if (p.carteirinha && p.carteirinha !== '—') {
+      pacientesMap.set(`card:${p.carteirinha.replace(/\D/g, '')}`, p);
+    }
+  }
+
+  // Verifica guias cujo paciente está ausente ou sem assinatura carregada
+  const missingGuias = guias.filter(g => {
+    let p = g.pacId ? pacientesMap.get(`id:${g.pacId}`) : undefined;
+    if (!p && g.carteirinha && g.carteirinha !== '—') {
+      p = pacientesMap.get(`card:${g.carteirinha.replace(/\D/g, '')}`);
+    }
+    if (!p && g.pac) {
+      p = pacientesMap.get(`name:${normalizeName(g.pac)}`);
+    }
+    return !p || !p.assinatura;
+  });
+
+  if (missingGuias.length === 0) {
+    return existingPacientes;
+  }
+
+  try {
+    // 1. Busca por ID
+    const missingIds = Array.from(new Set(missingGuias.map(g => g.pacId).filter((id): id is number => !!id)));
+    if (missingIds.length > 0) {
+      const { data: dbPacsById } = await supabase
+        .from('pacientes')
+        .select('*')
+        .in('id', missingIds);
+      if (dbPacsById) {
+        for (const row of dbPacsById) {
+          const pac = mappers.dbToPac(row);
+          pacientesMap.set(`id:${pac.id}`, pac);
+          if (pac.nome) pacientesMap.set(`name:${normalizeName(pac.nome)}`, pac);
+          if (pac.carteirinha && pac.carteirinha !== '—') {
+            pacientesMap.set(`card:${pac.carteirinha.replace(/\D/g, '')}`, pac);
+          }
+        }
+      }
+    }
+
+    // 2. Busca por Nome
+    const stillMissingNames = Array.from(new Set(
+      missingGuias
+        .filter(g => {
+          const p = (g.pacId && pacientesMap.get(`id:${g.pacId}`)) ||
+                    (g.carteirinha && pacientesMap.get(`card:${g.carteirinha.replace(/\D/g, '')}`)) ||
+                    (g.pac && pacientesMap.get(`name:${normalizeName(g.pac)}`));
+          return !p || !p.assinatura;
+        })
+        .map(g => g.pac.trim())
+        .filter(Boolean)
+    ));
+
+    for (const name of stillMissingNames) {
+      const { data: dbPacsByName } = await supabase
+        .from('pacientes')
+        .select('*')
+        .ilike('nome', name)
+        .limit(5);
+      if (dbPacsByName && dbPacsByName.length > 0) {
+        for (const row of dbPacsByName) {
+          const pac = mappers.dbToPac(row);
+          pacientesMap.set(`id:${pac.id}`, pac);
+          if (pac.nome) pacientesMap.set(`name:${normalizeName(pac.nome)}`, pac);
+          if (pac.carteirinha && pac.carteirinha !== '—') {
+            pacientesMap.set(`card:${pac.carteirinha.replace(/\D/g, '')}`, pac);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[tissPrintService] Aviso ao carregar assinaturas adicionais de pacientes:', err);
+  }
+
+  const allResolved = [...existingPacientes];
+  const existingIdSet = new Set(existingPacientes.map(p => p.id));
+  for (const pac of pacientesMap.values()) {
+    if (!existingIdSet.has(pac.id)) {
+      allResolved.push(pac);
+      existingIdSet.add(pac.id);
+    } else {
+      const idx = allResolved.findIndex(p => p.id === pac.id);
+      if (idx !== -1 && !allResolved[idx].assinatura && pac.assinatura) {
+        allResolved[idx] = pac;
+      }
+    }
+  }
+
+  return allResolved;
 };
 
 const buildGuiaInnerHtml = (
@@ -28,18 +143,31 @@ const buildGuiaInnerHtml = (
   const plano = planos.find(p => p.id === g.planoId);
   const prof = profissionais.find(p => p.id === g.profId);
 
-  // Encontra paciente por ID, nome ou carteirinha
+  // Encontra paciente por ID, carteirinha ou nome normalizado
+  const pacCleanCard = g.carteirinha && g.carteirinha !== '—' ? g.carteirinha.replace(/\D/g, '') : '';
+  const pacCleanNome = normalizeName(g.pac);
+
   const pacInfo = pacientes.find(p => {
-    if (g.pacId && p.id === g.pacId) return true;
-    if (g.carteirinha && p.carteirinha && g.carteirinha !== '—' && p.carteirinha === g.carteirinha) return true;
-    return p.nome.trim().toLowerCase() === g.pac.trim().toLowerCase();
+    if (g.pacId && (p.id === g.pacId || String(p.id) === String(g.pacId))) return true;
+    if (pacCleanCard && p.carteirinha && p.carteirinha !== '—') {
+      const pCard = p.carteirinha.replace(/\D/g, '');
+      if (pCard === pacCleanCard || (pCard.length > 6 && (pCard.includes(pacCleanCard) || pacCleanCard.includes(pCard)))) {
+        return true;
+      }
+    }
+    if (pacCleanNome && p.nome) {
+      const pNome = normalizeName(p.nome);
+      if (pNome === pacCleanNome) return true;
+      if (pNome.length > 5 && (pNome.startsWith(pacCleanNome) || pacCleanNome.startsWith(pNome))) return true;
+    }
+    return false;
   });
 
   // Busca objeto de senha correspondente no contexto
   const senhaObj = senhas.find(s =>
     (g.dados?.senha && s.numSenha === g.dados.senha) ||
     (g.numOp && (s.numGuiaOp === g.numOp || s.numSenha === g.numOp)) ||
-    (s.paciente.toLowerCase().trim() === g.pac.toLowerCase().trim() && (s.carteirinha === g.carteirinha || !g.carteirinha))
+    (normalizeName(s.paciente) === pacCleanNome && (s.carteirinha === g.carteirinha || !g.carteirinha))
   );
 
   const valSenha = g.dados?.senha || g.dados?.numSenha || senhaObj?.numSenha || '';
@@ -141,8 +269,8 @@ const buildGuiaInnerHtml = (
     p.nome.toLowerCase().includes('benessuti')
   );
 
-  // Assinatura do Beneficiário (anexada no cadastro do paciente)
-  const pacAssinatura = pacInfo?.assinatura || '';
+  // Assinatura do Beneficiário (anexada no cadastro do paciente ou diretamente na guia)
+  const pacAssinatura = pacInfo?.assinatura || g.dados?.pacAssinatura || g.dados?.assinatura || '';
 
   // Assinatura do Profissional: fixa Maria Cecilia Benessuti Donato, com fallback para o profissional executante
   const profAssinatura = mariaCecilia?.assinatura || prof?.assinatura || '';
@@ -151,18 +279,21 @@ const buildGuiaInnerHtml = (
   const dataSessao = formattedDate(g.data) || '__/__/____';
 
   // HTML da assinatura no Campo 57 (ao lado da data da sessão)
+  // Tamanho que o Campo 68 tinha anteriormente (altura 24px, largura máx 180px)
   const assinaturaGridItem1 = pacAssinatura
-    ? `<span style="display:inline-flex;align-items:center;height:16px;max-width:140px;overflow:hidden;"><img src="${pacAssinatura}" style="max-height:16px;max-width:140px;object-fit:contain;" alt="Assinatura" /></span>`
+    ? `<span style="display:inline-flex;align-items:center;height:24px;max-width:180px;overflow:hidden;"><img src="${pacAssinatura}" style="max-height:24px;max-width:180px;object-fit:contain;" alt="Assinatura Beneficiário" /></span>`
     : `<span>_________________________________________</span>`;
 
   // HTML da assinatura no Campo 67 (Assinatura Beneficiário ou Responsável)
+  // Configurada com o mesmo tamanho aumentado do Campo 68 (+40%: altura 34px, largura máx 250px)
   const assinaturaCampo67 = pacAssinatura
-    ? `<div style="height:24px;display:flex;align-items:flex-end;justify-content:center;"><img src="${pacAssinatura}" style="max-height:24px;max-width:180px;object-fit:contain;" alt="Assinatura Beneficiário" /></div>`
+    ? `<div style="height:34px;display:flex;align-items:flex-end;justify-content:center;"><img src="${pacAssinatura}" style="max-height:34px;max-width:250px;object-fit:contain;" alt="Assinatura Beneficiário" /></div>`
     : '';
 
   // HTML da assinatura no Campo 68 (Assinatura do Contratado / Profissional Maria Cecilia Benessuti Donato)
+  // Aumentada em 40% (altura 34px, largura máx 250px)
   const assinaturaCampo68 = profAssinatura
-    ? `<div style="height:24px;display:flex;align-items:flex-end;justify-content:center;"><img src="${profAssinatura}" style="max-height:24px;max-width:180px;object-fit:contain;" alt="Assinatura Profissional" /></div>`
+    ? `<div style="height:34px;display:flex;align-items:flex-end;justify-content:center;"><img src="${profAssinatura}" style="max-height:34px;max-width:250px;object-fit:contain;" alt="Assinatura Profissional" /></div>`
     : '';
 
   return `
@@ -378,7 +509,7 @@ const buildGuiaInnerHtml = (
 
       <!-- ASSINATURAS FINAIS (CAMPOS 66, 67, 68) -->
       <table class="tiss-tbl" style="margin-bottom: 2px;">
-        <tr style="height: 34px; vertical-align: top;">
+        <tr style="height: 48px; vertical-align: top;">
           <td style="width: 33%;"><span class="lbl">66 - Assinatura Responsável Autorização</span></td>
           <td style="width: 34%; position: relative;">
             <span class="lbl">67 - Assinatura Beneficiário ou Responsável</span>
@@ -532,7 +663,7 @@ const getCommonCss = () => `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 16px;
+    min-height: 24px;
   }
   .footer-line {
     display: flex;
@@ -566,8 +697,19 @@ export const tissPrintService = {
   /**
    * Imprime uma Guia SADT individual
    */
-  imprimirGuiaIndividual: (guia: GuiaSadt, ctx: PrintContext) => {
-    const guiaHtml = buildGuiaInnerHtml(guia, ctx, 1, 1);
+  imprimirGuiaIndividual: async (guia: GuiaSadt, ctx: PrintContext) => {
+    // Abre aba imediatamente para contornar bloqueio de popups durante o await
+    let win: Window | null = null;
+    try {
+      win = window.open('', '_blank');
+      if (win && win.document) {
+        win.document.write('<!DOCTYPE html><html><head><title>Carregando Guia SADT...</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#475569;"><p>Carregando guia e assinaturas para impress\u00e3o...</p></body></html>');
+      }
+    } catch (e) {}
+
+    const resolvedPacientes = await resolvePacientesForGuias([guia], ctx.pacientes || []);
+    const enrichedCtx = { ...ctx, pacientes: resolvedPacientes };
+    const guiaHtml = buildGuiaInnerHtml(guia, enrichedCtx, 1, 1);
 
     const fullHtml = `
       <!DOCTYPE html>
@@ -608,28 +750,44 @@ export const tissPrintService = {
 
     const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank', 'width=1000,height=850');
-    if (!win) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `guia_sadt_${guia.num}.html`;
-      a.click();
+    if (win && !win.closed) {
+      win.location.href = url;
+    } else {
+      const fallbackWin = window.open(url, '_blank', 'width=1000,height=850');
+      if (!fallbackWin) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `guia_sadt_${guia.num}.html`;
+        a.click();
+      }
     }
   },
 
   /**
    * Imprime todas as Guias pertencentes a um Lote TISS em um único documento PDF (uma por página A4)
    */
-  imprimirLoteGuias: (lote: LoteTiss, guiasDoLote: GuiaSadt[], ctx: PrintContext) => {
+  imprimirLoteGuias: async (lote: LoteTiss, guiasDoLote: GuiaSadt[], ctx: PrintContext) => {
     if (!guiasDoLote || guiasDoLote.length === 0) {
       alert(`Nenhuma guia vinculada ao Lote ${lote.num} para impressão.`);
       return;
     }
 
+    // Abre aba imediatamente para contornar bloqueio de popups durante o await
+    let win: Window | null = null;
+    try {
+      win = window.open('', '_blank');
+      if (win && win.document) {
+        win.document.write('<!DOCTYPE html><html><head><title>Carregando Lote TISS...</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#475569;"><p>Carregando guias e assinaturas do lote...</p></body></html>');
+      }
+    } catch (e) {}
+
+    const resolvedPacientes = await resolvePacientesForGuias(guiasDoLote, ctx.pacientes || []);
+    const enrichedCtx = { ...ctx, pacientes: resolvedPacientes };
+
     const totalGuias = guiasDoLote.length;
     const guiasHtmlArr = guiasDoLote.map((g, idx) => `
       <div class="guia-page-wrapper">
-        ${buildGuiaInnerHtml(g, ctx, idx + 1, totalGuias)}
+        ${buildGuiaInnerHtml(g, enrichedCtx, idx + 1, totalGuias)}
       </div>
     `).join('');
 
@@ -670,12 +828,16 @@ export const tissPrintService = {
 
     const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank', 'width=1000,height=850');
-    if (!win) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `lote_${lote.num}_guias.html`;
-      a.click();
+    if (win && !win.closed) {
+      win.location.href = url;
+    } else {
+      const fallbackWin = window.open(url, '_blank', 'width=1000,height=850');
+      if (!fallbackWin) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lote_${lote.num}_guias.html`;
+        a.click();
+      }
     }
   }
 };
