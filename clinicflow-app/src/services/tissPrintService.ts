@@ -278,22 +278,47 @@ const buildGuiaInnerHtml = (
   // Data formatada da sessão para o campo 56
   const dataSessao = formattedDate(g.data) || '__/__/____';
 
-  // HTML da assinatura no Campo 57 (ao lado da data da sessão)
-  // Tamanho que o Campo 68 tinha anteriormente (altura 24px, largura máx 180px)
-  const assinaturaGridItem1 = pacAssinatura
-    ? `<span style="display:inline-flex;align-items:center;height:24px;max-width:180px;overflow:hidden;"><img src="${pacAssinatura}" style="max-height:24px;max-width:180px;object-fit:contain;" alt="Assinatura Beneficiário" /></span>`
-    : `<span>_________________________________________</span>`;
+  // Gera pequenas variações orgânicas/humanizadas para cada guia e impressão (escala ±6%, rotação ±1.7°, posição ±4px)
+  const getHumanJitter = () => {
+    const scale = Number((0.94 + Math.random() * 0.12).toFixed(3)); // Variação de tamanho (94% a 106%)
+    const rotate = Number(((Math.random() - 0.5) * 3.4).toFixed(2)); // Leve inclinação manual (-1.7° a +1.7°)
+    const offsetX = Number(((Math.random() - 0.5) * 8).toFixed(1));  // Deslocamento horizontal (-4px a +4px)
+    const offsetY = Number(((Math.random() - 0.5) * 4).toFixed(1));  // Deslocamento vertical (-2px a +2px)
+    return { scale, rotate, offsetX, offsetY };
+  };
 
-  // HTML da assinatura no Campo 67 (Assinatura Beneficiário ou Responsável)
-  // Configurada com o mesmo tamanho aumentado do Campo 68 (+40%: altura 34px, largura máx 250px)
+  const j57 = getHumanJitter();
+  const j67 = getHumanJitter();
+  const j68 = getHumanJitter();
+
+  // HTML da assinatura no Campo 57 (mantém a linha com a assinatura sobreposta de forma humanizada)
+  const assinaturaGridItem1 = `
+    <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:140px;height:24px;">
+      <span style="color:#000;letter-spacing:-1px;user-select:none;">_________________________________________</span>
+      ${pacAssinatura ? `
+        <img src="${pacAssinatura}" 
+             style="position:absolute;bottom:1px;left:50%;transform:translateX(calc(-50% + ${j57.offsetX}px)) translateY(${j57.offsetY}px) rotate(${j57.rotate}deg) scale(${j57.scale});transform-origin:center bottom;max-height:24px;max-width:180px;object-fit:contain;pointer-events:none;" 
+             alt="Assinatura Beneficiário" />
+      ` : ''}
+    </span>
+  `;
+
+  // HTML da assinatura no Campo 67 (Assinatura Beneficiário ou Responsável com variação humanizada)
   const assinaturaCampo67 = pacAssinatura
-    ? `<div style="height:34px;display:flex;align-items:flex-end;justify-content:center;"><img src="${pacAssinatura}" style="max-height:34px;max-width:250px;object-fit:contain;" alt="Assinatura Beneficiário" /></div>`
+    ? `<div style="height:34px;display:flex;align-items:flex-end;justify-content:center;overflow:visible;">
+         <img src="${pacAssinatura}" 
+              style="transform:translate(${j67.offsetX}px, ${j67.offsetY}px) rotate(${j67.rotate}deg) scale(${j67.scale});transform-origin:center bottom;max-height:34px;max-width:250px;object-fit:contain;" 
+              alt="Assinatura Beneficiário" />
+       </div>`
     : '';
 
-  // HTML da assinatura no Campo 68 (Assinatura do Contratado / Profissional Maria Cecilia Benessuti Donato)
-  // Aumentada em 40% (altura 34px, largura máx 250px)
+  // HTML da assinatura no Campo 68 (Assinatura do Contratado com variação humanizada)
   const assinaturaCampo68 = profAssinatura
-    ? `<div style="height:34px;display:flex;align-items:flex-end;justify-content:center;"><img src="${profAssinatura}" style="max-height:34px;max-width:250px;object-fit:contain;" alt="Assinatura Profissional" /></div>`
+    ? `<div style="height:34px;display:flex;align-items:flex-end;justify-content:center;overflow:visible;">
+         <img src="${profAssinatura}" 
+              style="transform:translate(${j68.offsetX}px, ${j68.offsetY}px) rotate(${j68.rotate}deg) scale(${j68.scale});transform-origin:center bottom;max-height:34px;max-width:250px;object-fit:contain;" 
+              alt="Assinatura Profissional" />
+       </div>`
     : '';
 
   return `
