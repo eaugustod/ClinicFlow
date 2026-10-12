@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Edit3, Trash2, CheckCircle2, AlertCircle, Loader, Camera, Key, PenTool } from 'lucide-react';
+import { Search, UserPlus, Edit3, Trash2, CheckCircle2, AlertCircle, Loader, Camera, Key, PenTool, FileText } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Paciente } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+import { AnexosAutorizacaoManager } from '../components/AnexosAutorizacaoManager';
 
 export const Pacientes: React.FC = () => {
   const { pacientes, planos, refreshAll } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<'dados' | 'documentos'>('dados');
   const [editingPac, setEditingPac] = useState<Paciente | null>(null);
   
   // Database Search State
@@ -123,6 +125,7 @@ export const Pacientes: React.FC = () => {
     setFoto('');
     setSenhaChat('');
     setAssinatura('');
+    setModalTab('dados');
     setIsModalOpen(true);
   };
 
@@ -149,7 +152,13 @@ export const Pacientes: React.FC = () => {
     setFoto(p.foto || '');
     setSenhaChat(p.senhaChat || '');
     setAssinatura(p.assinatura || '');
+    setModalTab('dados');
     setIsModalOpen(true);
+  };
+
+  const openDocumentsModal = (p: Paciente) => {
+    openEditModal(p);
+    setModalTab('documentos');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -322,6 +331,13 @@ export const Pacientes: React.FC = () => {
                   <td className="p-4 text-center">
                     <div className="flex justify-center items-center gap-2">
                       <button
+                        onClick={() => openDocumentsModal(p)}
+                        className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-lg text-indigo-400 transition-all"
+                        title="Documentos & Anexos de Autorização"
+                      >
+                        <FileText size={12} />
+                      </button>
+                      <button
                         onClick={() => openEditModal(p)}
                         className="p-2 bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] rounded-lg text-slate-300 transition-all"
                         title="Editar Paciente"
@@ -347,10 +363,10 @@ export const Pacientes: React.FC = () => {
       {/* Edit/Add Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-white/[0.04] flex justify-between items-center bg-[#131622]/40">
+          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-white/[0.04] flex justify-between items-center bg-[#131622]/40">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                {editingPac ? 'Editar Paciente' : 'Novo Paciente'}
+                {editingPac ? `Paciente: ${editingPac.nome}` : 'Novo Paciente'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -359,8 +375,41 @@ export const Pacientes: React.FC = () => {
                 &times;
               </button>
             </div>
-            
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 px-5 border-b border-white/[0.04] bg-[#131622]/20">
+              <button
+                type="button"
+                onClick={() => setModalTab('dados')}
+                className={`py-2.5 px-3 border-b-2 font-bold tracking-wide transition-all text-xs flex items-center gap-1.5 ${
+                  modalTab === 'dados'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>Dados Cadastrais</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab('documentos')}
+                className={`py-2.5 px-3 border-b-2 font-bold tracking-wide transition-all text-xs flex items-center gap-1.5 ${
+                  modalTab === 'documentos'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <FileText size={13} />
+                <span>Documentos & Autorizações</span>
+                {editingPac && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-indigo-500/20 text-indigo-300 font-semibold">
+                    DUT / Amil
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {modalTab === 'dados' ? (
+              <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Foto do Paciente */}
                 <div className="md:col-span-2 space-y-2 bg-[#161a26]/50 p-3 rounded-xl border border-white/[0.06]">
@@ -664,6 +713,35 @@ export const Pacientes: React.FC = () => {
                 </button>
               </div>
             </form>
+            ) : (
+              <div className="p-5 overflow-y-auto flex-1 text-xs space-y-4">
+                {editingPac ? (
+                  <AnexosAutorizacaoManager
+                    pacId={editingPac.id}
+                    pacienteNome={editingPac.nome}
+                    planoNome={editingPac.plano}
+                    planoId={editingPac.planoId}
+                  />
+                ) : (
+                  <div className="p-8 text-center text-slate-400 space-y-2 bg-[#161a26]/30 rounded-xl border border-dashed border-white/10">
+                    <FileText size={32} className="mx-auto text-slate-600" />
+                    <p className="font-semibold text-white">Salve o paciente primeiro</p>
+                    <p className="text-xs text-slate-500">
+                      Para anexar relatórios e pedidos médicos, finalize o cadastro inicial do paciente na aba "Dados Cadastrais".
+                    </p>
+                  </div>
+                )}
+                <div className="pt-4 border-t border-white/[0.04] flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 border border-white/[0.06] rounded-xl hover:bg-white/5 text-slate-300 font-bold transition-all text-xs"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

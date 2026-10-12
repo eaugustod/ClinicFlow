@@ -511,4 +511,36 @@ export interface ResumoFluxoCaixa {
   saidasPagas: number;
 }
 
+export type TipoDocumentoAutorizacao =
+  | 'relatorio_medico'
+  | 'pedido_medico'
+  | 'laudo_patologia'
+  | 'exame_complementar'
+  | 'justificativa_clinica';
 
+export type StatusEnvioDocumento =
+  | 'PENDENTE_ENVIO'
+  | 'ENVIADO_PLANO'
+  | 'REJEITADO_PLANO'
+  | 'DISPENSADO';
+
+export interface AnexoAutorizacao {
+  id: string;
+  pacId: number;
+  agendamentoId?: number | null;
+  planoId?: number | null;
+  tipoDocumento: TipoDocumentoAutorizacao;
+  nomeOriginal: string;
+  storagePath: string;
+  mimeType: string;
+  tamanhoBytes: number;
+  dataEmissao: string;
+  dataValidade?: string | null;
+  observacoes?: string | null;
+  statusEnvio: StatusEnvioDocumento;
+  protocoloEnvio?: string | null;
+  enviadoEm?: string | null;
+  motivoRecusa?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+}

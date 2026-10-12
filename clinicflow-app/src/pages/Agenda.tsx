@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Plus, ChevronLeft, ChevronRight, Calendar, FileText, Trash2, Video, Sparkles, Loader, CalendarDays, Lock, Unlock, HelpCircle, Key, Check } from 'lucide-react';
+import { Clock, Plus, ChevronLeft, ChevronRight, Calendar, FileText, Trash2, Video, Sparkles, Loader, CalendarDays, Lock, Unlock, HelpCircle, Key, Check, FileCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Agendamento, GuiaSadt, ProcedimentoGuia } from '../types';
 import { supabase } from '../services/supabase';
 import { mappers } from '../services/mappers';
+import { AnexosAutorizacaoManager } from '../components/AnexosAutorizacaoManager';
 
 export const Agenda: React.FC = () => {
   const { agendamentos, profissionais, planos, procedimentos, pacientes, statusAgendamentos, getBaseStatus, getStatusColor: getStatusColorHex, logStatusChange, refreshAll, loadAgendamentosMes, loadAgendamentosPeriodo } = useApp();
@@ -19,7 +20,7 @@ export const Agenda: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [modalTab, setModalTab] = useState<'dados' | 'sadt'>('dados');
+  const [modalTab, setModalTab] = useState<'dados' | 'sadt' | 'anexos'>('dados');
 
   // Form State - Tab 1 (Dados)
   const [profIdForm, setProfIdForm] = useState<number>(profissionais[0]?.id || 0);
@@ -743,6 +744,15 @@ export const Agenda: React.FC = () => {
     return 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 hover:border-indigo-500/40';
   };
 
+  const currentSelectedPac = pacientes.find(
+    p => p.nome.trim().toLowerCase() === paciente.trim().toLowerCase()
+  ) || searchPacientes.find(
+    p => p.nome?.trim().toLowerCase() === paciente.trim().toLowerCase()
+  );
+  const currentPacId = currentSelectedPac?.id || (editId ? agendamentos.find(a => a.id === editId)?.pacId : null);
+  const selectedPlano = planos.find(pl => pl.id === Number(planoId));
+  const isAmilPlano = (selectedPlano?.nome || '').toLowerCase().includes('amil');
+
   return (
     <div className="space-y-6 animate-fade-in text-xs">
 
@@ -950,9 +960,16 @@ export const Agenda: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide truncate max-w-[140px] ${getPlanoBadgeStyles(appt.plano)}`}>
-                          {appt.plano}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide truncate max-w-[140px] ${getPlanoBadgeStyles(appt.plano)}`}>
+                            {appt.plano}
+                          </span>
+                          {appt.plano?.toLowerCase().includes('amil') && (
+                            <span className="shrink-0 text-[7.5px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1 py-0.25 rounded" title="Convênio Amil com Diretriz de Anexos (DUT)">
+                              DUT
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-[9px] text-slate-500 flex justify-between items-center font-mono">
                         <span>{appt.durMin} min</span>
@@ -1008,9 +1025,16 @@ export const Agenda: React.FC = () => {
                             <span className="font-mono text-[9px] text-slate-500">{appt.hora}</span>
                           </div>
                           <div className="flex justify-between items-center text-[9px] text-slate-400">
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide truncate max-w-[90px] ${getPlanoBadgeStyles(appt.plano)}`}>
-                              {appt.plano}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide truncate max-w-[90px] ${getPlanoBadgeStyles(appt.plano)}`}>
+                                {appt.plano}
+                              </span>
+                              {appt.plano?.toLowerCase().includes('amil') && (
+                                <span className="shrink-0 text-[7.5px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1 py-0.25 rounded" title="Convênio Amil com Diretriz de Anexos (DUT)">
+                                  DUT
+                                </span>
+                              )}
+                            </div>
                             {prof && (
                               <span className="w-2 h-2 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: prof.cor }} title={prof.nome} />
                             )}
@@ -1164,6 +1188,20 @@ export const Agenda: React.FC = () => {
                   Guia SADT / TISS
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setModalTab('anexos')}
+                className={`flex items-center gap-1.5 py-3 px-4 border-b-2 font-bold tracking-wide transition-all ${modalTab === 'anexos' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+              >
+                <FileCheck size={13} />
+                <span>Anexos Convênio</span>
+                {isAmilPlano && (
+                  <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold">
+                    DUT
+                  </span>
+                )}
+              </button>
             </div>
 
             <form onSubmit={handleScheduleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
@@ -1371,6 +1409,36 @@ export const Agenda: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Informação sobre Diretrizes DUT (ex: Amil) */}
+                  {isAmilPlano && (
+                    <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                          <FileCheck size={16} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white">Convênio Amil (Diretriz DUT / Anexos Clínicos)</p>
+                          <p className="text-[10px] text-slate-400">
+                            Requer pedido médico e laudo vigentes para que o robô emita a guia SADT automaticamente.
+                          </p>
+                        </div>
+                      </div>
+                      {currentPacId ? (
+                        <button
+                          type="button"
+                          onClick={() => setModalTab('anexos')}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shrink-0 transition-all shadow-sm"
+                        >
+                          Gerenciar Anexos
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 shrink-0">
+                          Selecione o paciente
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-slate-400 font-semibold mb-1">Nº Carteirinha</label>
@@ -1478,7 +1546,7 @@ export const Agenda: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : modalTab === 'sadt' ? (
                 /* TAB 2: GUIA SADT / TISS */
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
@@ -1654,6 +1722,27 @@ export const Agenda: React.FC = () => {
                       ))}
                     </div>
                   </div>
+                </div>
+              ) : (
+                /* TAB 3: ANEXOS CONVÊNIO */
+                <div className="space-y-4">
+                  {currentPacId ? (
+                    <AnexosAutorizacaoManager
+                      pacId={Number(currentPacId)}
+                      pacienteNome={paciente}
+                      planoNome={selectedPlano?.nome}
+                      planoId={Number(planoId)}
+                      agendamentoId={editId || undefined}
+                    />
+                  ) : (
+                    <div className="p-8 text-center text-slate-400 space-y-2 bg-[#161a26]/40 rounded-xl border border-dashed border-white/10">
+                      <FileText size={32} className="mx-auto text-slate-600" />
+                      <p className="font-semibold text-white">Nenhum paciente selecionado</p>
+                      <p className="text-xs text-slate-500">
+                        Informe o nome de um paciente cadastrado na aba "Dados do Agendamento" para anexar e visualizar documentos clínicos.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

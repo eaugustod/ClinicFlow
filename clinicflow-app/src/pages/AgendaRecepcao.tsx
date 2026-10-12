@@ -643,7 +643,14 @@ export const AgendaRecepcao: React.FC = () => {
                     <div className={`flex items-center justify-between gap-2 text-[11px] pt-0.5 ${
                       isDark ? 'text-slate-300' : 'text-slate-600'
                     }`}>
-                      <span className="truncate">💳 Plano: <strong>{appt.plano}</strong></span>
+                      <div className="truncate flex items-center gap-1.5">
+                        <span>💳 Plano: <strong>{appt.plano}</strong></span>
+                        {appt.plano?.toLowerCase().includes('amil') && (
+                          <span className="text-[8.5px] px-1 py-0.2 rounded font-extrabold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shrink-0" title="Convênio Amil com Diretriz de Anexos (DUT)">
+                            DUT
+                          </span>
+                        )}
+                      </div>
                       <span className="flex items-center gap-1.5 font-bold shrink-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pColor }} />
                         <span className="truncate max-w-[90px]">{prof?.nomeAgenda || prof?.nome || 'Profissional'}</span>
