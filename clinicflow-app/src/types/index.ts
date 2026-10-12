@@ -534,6 +534,9 @@ export interface AnexoAutorizacao {
   storagePath: string;
   mimeType: string;
   tamanhoBytes: number;
+  medicoSolicitanteNome?: string | null;
+  medicoSolicitanteCrm?: string | null;
+  medicoSolicitanteCbo?: string | null;
   dataEmissao: string;
   dataValidade?: string | null;
   observacoes?: string | null;

@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS public.documentos_autorizacao (
   mime_type VARCHAR(100) NOT NULL,
   tamanho_bytes BIGINT NOT NULL,
   
+  -- Dados do Médico Solicitante
+  medico_solicitante_nome VARCHAR(255),
+  medico_solicitante_crm VARCHAR(50),
+  medico_solicitante_cbo VARCHAR(50),
+
   -- Controle de Vigência Clínica
   data_emissao DATE NOT NULL DEFAULT CURRENT_DATE,
   data_validade DATE,        -- Ex: Pedido médico (30 a 90 dias); Laudos (até 1 ano)
@@ -59,11 +64,17 @@ CREATE TABLE IF NOT EXISTS public.documentos_autorizacao (
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
+-- 2.1 Adição retrocompatível das colunas do Médico Solicitante (para bases onde a tabela já foi criada)
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_nome VARCHAR(255);
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_crm VARCHAR(50);
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_cbo VARCHAR(50);
+
 -- 3. Índices de alta performance para busca e filtros
 CREATE INDEX IF NOT EXISTS idx_doc_autorizacao_pac_tipo ON public.documentos_autorizacao (pac_id, tipo_documento);
 CREATE INDEX IF NOT EXISTS idx_doc_autorizacao_agendamento ON public.documentos_autorizacao (agendamento_id);
 CREATE INDEX IF NOT EXISTS idx_doc_autorizacao_status ON public.documentos_autorizacao (status_envio);
 CREATE INDEX IF NOT EXISTS idx_doc_autorizacao_validade ON public.documentos_autorizacao (data_validade);
+CREATE INDEX IF NOT EXISTS idx_doc_autorizacao_medico_crm ON public.documentos_autorizacao (medico_solicitante_crm);
 
 -- 4. Habilitar Row Level Security (RLS)
 ALTER TABLE public.documentos_autorizacao ENABLE ROW LEVEL SECURITY;

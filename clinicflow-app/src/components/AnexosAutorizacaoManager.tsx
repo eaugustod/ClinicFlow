@@ -15,7 +15,10 @@ import {
   AlertCircle,
   Plus,
   Loader2,
+  Stethoscope,
+  UserCheck,
 } from 'lucide-react';
+import { supabase } from '../services/supabase';
 import { anexosAutorizacaoService } from '../services/anexosAutorizacaoService';
 import type { AnexoAutorizacao, TipoDocumentoAutorizacao } from '../types';
 
@@ -46,6 +49,9 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [tipo, setTipo] = useState<TipoDocumentoAutorizacao>('pedido_medico');
   const [file, setFile] = useState<File | null>(null);
+  const [medicoSolicitanteNome, setMedicoSolicitanteNome] = useState('');
+  const [medicoSolicitanteCrm, setMedicoSolicitanteCrm] = useState('');
+  const [medicoSolicitanteCbo, setMedicoSolicitanteCbo] = useState('');
   const [dataEmissao, setDataEmissao] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -53,12 +59,36 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
   const [observacoes, setObservacoes] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
+  // Profissionais da clínica para seleção rápida opcional
+  const [profissionaisSugeridos, setProfissionaisSugeridos] = useState<
+    Array<{ id: number; nome: string; num?: string; cbo?: string; conselho?: string }>
+  >([]);
+
   // Preview State
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<AnexoAutorizacao | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Buscar profissionais cadastrados para preenchimento assistido
+  useEffect(() => {
+    const buscarProfissionais = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profissionais')
+          .select('id, nome, conselho, num, cbo')
+          .eq('status', 'Ativo')
+          .order('nome');
+        if (!error && data) {
+          setProfissionaisSugeridos(data);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar profissionais sugeridos:', err);
+      }
+    };
+    buscarProfissionais();
+  }, []);
 
   // Recalcular validade sugerida ao trocar tipo ou emissão
   useEffect(() => {
@@ -121,6 +151,16 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
     }
   };
 
+  const abrirModalUpload = () => {
+    setShowUploadModal(true);
+    setFile(null);
+    setMedicoSolicitanteNome('');
+    setMedicoSolicitanteCrm('');
+    setMedicoSolicitanteCbo('');
+    setObservacoes('');
+    setErrorMsg(null);
+  };
+
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -140,10 +180,16 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
         observacoes: observacoes.trim() || null,
         planoId: planoId || null,
         agendamentoId: agendamentoId || null,
+        medicoSolicitanteNome: medicoSolicitanteNome.trim() || null,
+        medicoSolicitanteCrm: medicoSolicitanteCrm.trim() || null,
+        medicoSolicitanteCbo: medicoSolicitanteCbo.trim() || null,
       });
 
       setSuccessMsg('Documento anexado com sucesso!');
       setFile(null);
+      setMedicoSolicitanteNome('');
+      setMedicoSolicitanteCrm('');
+      setMedicoSolicitanteCbo('');
       setObservacoes('');
       setShowUploadModal(false);
       await carregarDocumentos();
@@ -217,11 +263,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
 
         <button
           type="button"
-          onClick={() => {
-            setShowUploadModal(true);
-            setFile(null);
-            setErrorMsg(null);
-          }}
+          onClick={abrirModalUpload}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
         >
           <Plus size={14} />
@@ -259,7 +301,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
           </p>
           <button
             type="button"
-            onClick={() => setShowUploadModal(true)}
+            onClick={abrirModalUpload}
             className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-medium transition-all"
           >
             <Upload size={13} />
@@ -343,6 +385,28 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                       )}
                     </div>
                   </div>
+
+                  {/* Dados do Médico Solicitante */}
+                  {(doc.medicoSolicitanteNome || doc.medicoSolicitanteCrm || doc.medicoSolicitanteCbo) && (
+                    <div className="mt-2.5 p-2 rounded-lg bg-indigo-500/[0.07] border border-indigo-500/15 text-[11px] text-slate-300">
+                      <div className="flex items-center gap-1.5 font-semibold text-indigo-300 mb-0.5">
+                        <Stethoscope size={13} className="text-indigo-400 shrink-0" />
+                        <span className="truncate">{doc.medicoSolicitanteNome || 'Médico Solicitante'}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-400 pl-4 font-mono">
+                        {doc.medicoSolicitanteCrm && (
+                          <span>
+                            CRM: <strong className="text-slate-200">{doc.medicoSolicitanteCrm}</strong>
+                          </span>
+                        )}
+                        {doc.medicoSolicitanteCbo && (
+                          <span>
+                            CBO: <strong className="text-slate-200">{doc.medicoSolicitanteCbo}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {doc.observacoes && (
                     <p className="mt-2 text-[10px] text-slate-400 bg-black/20 p-1.5 rounded border border-white/[0.02]">
@@ -486,6 +550,79 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                 </div>
               </div>
 
+              {/* Dados do Médico Solicitante */}
+              <div className="p-3.5 bg-[#131622] border border-white/[0.06] rounded-xl space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <label className="text-[11px] text-indigo-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <Stethoscope size={13} />
+                    Médico Solicitante
+                  </label>
+                  {profissionaisSugeridos.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        const pId = Number(e.target.value);
+                        if (!pId) return;
+                        const pr = profissionaisSugeridos.find((x) => x.id === pId);
+                        if (pr) {
+                          setMedicoSolicitanteNome(pr.nome);
+                          setMedicoSolicitanteCrm(pr.num || '');
+                          setMedicoSolicitanteCbo(pr.cbo || '225125');
+                        }
+                      }}
+                      className="bg-[#161a26] border border-white/[0.08] rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-indigo-500 max-w-[210px] truncate"
+                    >
+                      <option value="">Preencher de médico da clínica...</option>
+                      {profissionaisSugeridos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome} {p.num ? `(${p.conselho || 'CRM'} ${p.num})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold text-xs mb-1">
+                    Nome Completo do Médico
+                  </label>
+                  <input
+                    type="text"
+                    value={medicoSolicitanteNome}
+                    onChange={(e) => setMedicoSolicitanteNome(e.target.value)}
+                    placeholder="Ex: Dr. Roberto Alencar Silva"
+                    className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold text-xs mb-1">
+                      CRM (com UF)
+                    </label>
+                    <input
+                      type="text"
+                      value={medicoSolicitanteCrm}
+                      onChange={(e) => setMedicoSolicitanteCrm(e.target.value)}
+                      placeholder="Ex: 123456/SP"
+                      className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold text-xs mb-1">
+                      Código CBO
+                    </label>
+                    <input
+                      type="text"
+                      value={medicoSolicitanteCbo}
+                      onChange={(e) => setMedicoSolicitanteCbo(e.target.value)}
+                      placeholder="Ex: 225125"
+                      className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Datas de Emissão e Validade */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -574,10 +711,19 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                   <FileText size={16} className="text-indigo-400" />
                   {previewDoc.nomeOriginal}
                 </h3>
-                <span className="text-[11px] text-slate-400">
-                  {anexosAutorizacaoService.obterRotuloTipo(previewDoc.tipoDocumento)} • Emitido em{' '}
-                  {new Date(previewDoc.dataEmissao + 'T12:00:00').toLocaleDateString('pt-BR')}
-                </span>
+                <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400 mt-0.5">
+                  <span>
+                    {anexosAutorizacaoService.obterRotuloTipo(previewDoc.tipoDocumento)} • Emitido em{' '}
+                    {new Date(previewDoc.dataEmissao + 'T12:00:00').toLocaleDateString('pt-BR')}
+                  </span>
+                  {previewDoc.medicoSolicitanteNome && (
+                    <span className="text-indigo-300 font-medium">
+                      • Médico: {previewDoc.medicoSolicitanteNome}
+                      {previewDoc.medicoSolicitanteCrm ? ` (CRM: ${previewDoc.medicoSolicitanteCrm})` : ''}
+                      {previewDoc.medicoSolicitanteCbo ? ` (CBO: ${previewDoc.medicoSolicitanteCbo})` : ''}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {previewUrl && (

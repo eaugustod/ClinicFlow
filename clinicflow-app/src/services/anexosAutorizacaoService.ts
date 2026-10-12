@@ -11,6 +11,9 @@ interface RawDocumentoAutorizacao {
   storage_path: string;
   mime_type: string;
   tamanho_bytes: number;
+  medico_solicitante_nome?: string | null;
+  medico_solicitante_crm?: string | null;
+  medico_solicitante_cbo?: string | null;
   data_emissao: string;
   data_validade?: string | null;
   observacoes?: string | null;
@@ -32,6 +35,9 @@ const mapRowToAnexo = (row: RawDocumentoAutorizacao): AnexoAutorizacao => ({
   storagePath: row.storage_path,
   mimeType: row.mime_type,
   tamanhoBytes: Number(row.tamanho_bytes),
+  medicoSolicitanteNome: row.medico_solicitante_nome || null,
+  medicoSolicitanteCrm: row.medico_solicitante_crm || null,
+  medicoSolicitanteCbo: row.medico_solicitante_cbo || null,
   dataEmissao: row.data_emissao,
   dataValidade: row.data_validade || null,
   observacoes: row.observacoes || null,
@@ -91,6 +97,9 @@ export const anexosAutorizacaoService = {
       agendamentoId?: number | null;
       planoId?: number | null;
       observacoes?: string | null;
+      medicoSolicitanteNome?: string | null;
+      medicoSolicitanteCrm?: string | null;
+      medicoSolicitanteCbo?: string | null;
     }
   ): Promise<AnexoAutorizacao> {
     if (!pacId) throw new Error('ID do paciente é obrigatório para anexar documento.');
@@ -130,6 +139,9 @@ export const anexosAutorizacaoService = {
         storage_path: storagePath,
         mime_type: file.type || 'application/pdf',
         tamanho_bytes: file.size,
+        medico_solicitante_nome: dados.medicoSolicitanteNome?.trim() || null,
+        medico_solicitante_crm: dados.medicoSolicitanteCrm?.trim() || null,
+        medico_solicitante_cbo: dados.medicoSolicitanteCbo?.trim() || null,
         data_emissao: dados.dataEmissao,
         data_validade: dados.dataValidade || null,
         observacoes: dados.observacoes || null,

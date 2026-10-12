@@ -114,8 +114,11 @@ CREATE TABLE IF NOT EXISTS public.documentos_autorizacao (
   nome_original VARCHAR(255) NOT NULL,
   storage_path TEXT NOT NULL,
   mime_type VARCHAR(100) NOT NULL,
-  tamanho_bytes BIGINT NOT NULL,
-  
+  -- Dados do Médico Solicitante
+  medico_solicitante_nome VARCHAR(255),
+  medico_solicitante_crm VARCHAR(50),
+  medico_solicitante_cbo VARCHAR(50),
+
   -- Controle de Vigência Clínica
   data_emissao DATE NOT NULL DEFAULT CURRENT_DATE,
   data_validade DATE,        -- Ex: Pedido médico costuma ter 30 a 90 dias; Laudos até 1 ano
@@ -132,6 +135,11 @@ CREATE TABLE IF NOT EXISTS public.documentos_autorizacao (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
+
+-- Adição retrocompatível para tabelas existentes
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_nome VARCHAR(255);
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_crm VARCHAR(50);
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_cbo VARCHAR(50);
 
 -- 4. Índices para performance de busca do RPA e do ClinicFlow
 CREATE INDEX IF NOT EXISTS idx_doc_autorizacao_pac_tipo ON public.documentos_autorizacao (pac_id, tipo_documento);
