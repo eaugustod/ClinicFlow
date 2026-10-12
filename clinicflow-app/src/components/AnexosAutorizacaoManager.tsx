@@ -123,6 +123,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!file) {
       setErrorMsg('Selecione um arquivo para upload.');
       return;
@@ -406,7 +407,14 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
               </button>
             </div>
 
-            <form onSubmit={handleUploadSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleUploadSubmit(e);
+              }}
+              className="p-5 space-y-4 overflow-y-auto flex-1"
+            >
               {/* Seletor do Tipo de Documento */}
               <div className="space-y-1.5">
                 <label className="block text-slate-300 font-semibold text-xs">

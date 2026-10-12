@@ -1204,8 +1204,39 @@ export const Agenda: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleScheduleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
-              {modalTab === 'dados' ? (
+            {modalTab === 'anexos' ? (
+              /* TAB 3: ANEXOS CONVÊNIO */
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+                {currentPacId ? (
+                  <AnexosAutorizacaoManager
+                    pacId={Number(currentPacId)}
+                    pacienteNome={paciente}
+                    planoNome={selectedPlano?.nome}
+                    planoId={Number(planoId)}
+                    agendamentoId={editId || undefined}
+                  />
+                ) : (
+                  <div className="p-8 text-center text-slate-400 space-y-2 bg-[#161a26]/40 rounded-xl border border-dashed border-white/10">
+                    <FileText size={32} className="mx-auto text-slate-600" />
+                    <p className="font-semibold text-white">Nenhum paciente selecionado</p>
+                    <p className="text-xs text-slate-500">
+                      Informe o nome de um paciente cadastrado na aba "Dados do Agendamento" para anexar e visualizar documentos clínicos.
+                    </p>
+                  </div>
+                )}
+                <div className="pt-4 border-t border-white/[0.04] flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 border border-white/[0.06] rounded-xl text-slate-300 font-bold hover:bg-white/5 transition-all text-xs"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleScheduleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+                {modalTab === 'dados' ? (
                 /* TAB 1: DADOS DO AGENDAMENTO */
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -1546,7 +1577,7 @@ export const Agenda: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ) : modalTab === 'sadt' ? (
+              ) : (
                 /* TAB 2: GUIA SADT / TISS */
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
@@ -1723,27 +1754,6 @@ export const Agenda: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              ) : (
-                /* TAB 3: ANEXOS CONVÊNIO */
-                <div className="space-y-4">
-                  {currentPacId ? (
-                    <AnexosAutorizacaoManager
-                      pacId={Number(currentPacId)}
-                      pacienteNome={paciente}
-                      planoNome={selectedPlano?.nome}
-                      planoId={Number(planoId)}
-                      agendamentoId={editId || undefined}
-                    />
-                  ) : (
-                    <div className="p-8 text-center text-slate-400 space-y-2 bg-[#161a26]/40 rounded-xl border border-dashed border-white/10">
-                      <FileText size={32} className="mx-auto text-slate-600" />
-                      <p className="font-semibold text-white">Nenhum paciente selecionado</p>
-                      <p className="text-xs text-slate-500">
-                        Informe o nome de um paciente cadastrado na aba "Dados do Agendamento" para anexar e visualizar documentos clínicos.
-                      </p>
-                    </div>
-                  )}
-                </div>
               )}
 
               <div className="pt-4 border-t border-white/[0.04] flex justify-between items-center bg-[#131622]/20">
@@ -1777,6 +1787,7 @@ export const Agenda: React.FC = () => {
                 </div>
               </div>
             </form>
+          )}
           </div>
         </div>
       )}
