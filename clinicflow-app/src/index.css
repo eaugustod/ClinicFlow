@@ -2,6 +2,7 @@
 
 @layer base {
   :root, [data-theme="dark-obsidian"] {
+    color-scheme: dark;
     --bg-base: #080b11;
     --bg-surface: #101624;
     --bg-raised: #182032;
@@ -28,6 +29,7 @@
   }
 
   [data-theme="dark-emerald"] {
+    color-scheme: dark;
     --bg-base: #041210;
     --bg-surface: #0a1f1c;
     --bg-raised: #122b27;
@@ -51,6 +53,7 @@
   }
 
   [data-theme="dark-violet"] {
+    color-scheme: dark;
     --bg-base: #0d0914;
     --bg-surface: #171024;
     --bg-raised: #211733;
@@ -74,6 +77,7 @@
   }
 
   [data-theme="light-snow"] {
+    color-scheme: light;
     --bg-base: #f8fafc;
     --bg-surface: #ffffff;
     --bg-raised: #f1f5f9;
@@ -97,6 +101,7 @@
   }
 
   [data-theme="light-warm"] {
+    color-scheme: light;
     --bg-base: #faf8f5;
     --bg-surface: #ffffff;
     --bg-raised: #f4f0e8;
@@ -120,6 +125,7 @@
   }
 
   [data-theme="light-nordic"] {
+    color-scheme: light;
     --bg-base: #f0f7ff;
     --bg-surface: #ffffff;
     --bg-raised: #e0f2fe;
@@ -140,6 +146,11 @@
     --warning: #d97706;
     --danger: #e11d48;
     --info: #0284c7;
+  }
+
+  select option {
+    background-color: var(--bg-surface, #101624);
+    color: var(--text-primary, #f8fafc);
   }
 
   body {
@@ -209,5 +220,10 @@
 
   .text-slate-500 {
     color: var(--text-muted) !important;
+  }
+
+  select option {
+    background-color: var(--bg-surface, #ffffff) !important;
+    color: var(--text-primary, #0f172a) !important;
   }
 }

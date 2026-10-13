@@ -160,16 +160,33 @@ export const GuiasSadt: React.FC = () => {
     lazyLoadSenhas();
   }, []);
 
+  // Convênios ativos para o filtro
+  const activePlanos = planos.filter(p => {
+    const isStatusAtivo = !p.status || p.status.trim().toLowerCase() === 'ativo' || p.status === '1';
+    const isNomeDesativado = p.nome.toLowerCase().includes('desativado') || p.nome.toLowerCase().includes('inativo');
+    return isStatusAtivo && !isNomeDesativado;
+  });
+
   // Filter logic
   const filteredGuias = guias.filter(g => {
     if (isRecepcao) {
       if (g.status !== 'Pendente') return false;
       if (!isGuiaNoMesVigente(g.data)) return false;
     }
-    const matchesSearch = g.pac.toLowerCase().includes(searchQuery.toLowerCase()) || g.num.includes(searchQuery);
+    const matchesSearch = 
+      g.pac.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      g.num.includes(searchQuery) ||
+      Boolean(g.carteirinha?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const selectedPlano = planos.find(p => p.id === planoFilter);
+    const matchesPlano = !planoFilter || 
+      Number(g.planoId) === Number(planoFilter) || 
+      (Boolean(selectedPlano) && Boolean(g.plano) && g.plano.trim().toLowerCase() === selectedPlano!.nome.trim().toLowerCase());
+
     const matchesStatus = statusFilter === 'Todos' || g.status === statusFilter;
     const matchesPeriodo = !periodoFilter || g.data.startsWith(periodoFilter);
-    return matchesSearch && matchesStatus && matchesPeriodo;
+
+    return matchesSearch && matchesPlano && matchesStatus && matchesPeriodo;
   });
 
   // Stats calculation
@@ -929,11 +946,11 @@ export const GuiasSadt: React.FC = () => {
             <select
               value={planoFilter}
               onChange={(e) => setPlanoFilter(Number(e.target.value))}
-              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs"
+              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs [color-scheme:dark] cursor-pointer"
             >
-              <option value="0">Todos os convênios</option>
-              {planos.map(p => (
-                <option key={p.id} value={p.id}>{p.nome}</option>
+              <option value="0" className="bg-[#101624] text-slate-200">Todos os convênios</option>
+              {activePlanos.map(p => (
+                <option key={p.id} value={p.id} className="bg-[#101624] text-slate-200">{p.nome}</option>
               ))}
             </select>
           </div>
@@ -944,17 +961,17 @@ export const GuiasSadt: React.FC = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               disabled={isRecepcao}
-              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs disabled:opacity-60"
+              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs disabled:opacity-60 [color-scheme:dark] cursor-pointer"
             >
               {isRecepcao ? (
-                <option value="Pendente">Status: Pendente (Recepção)</option>
+                <option value="Pendente" className="bg-[#101624] text-slate-200">Status: Pendente (Recepção)</option>
               ) : (
                 <>
-                  <option value="Todos">— Todos os Status —</option>
-                  <option value="Pendente">Pendente</option>
-                  <option value="Enviado">Enviado</option>
-                  <option value="Pago">Pago</option>
-                  <option value="Glosado">Glosado</option>
+                  <option value="Todos" className="bg-[#101624] text-slate-200">— Todos os Status —</option>
+                  <option value="Pendente" className="bg-[#101624] text-slate-200">Pendente</option>
+                  <option value="Enviado" className="bg-[#101624] text-slate-200">Enviado</option>
+                  <option value="Pago" className="bg-[#101624] text-slate-200">Pago</option>
+                  <option value="Glosado" className="bg-[#101624] text-slate-200">Glosado</option>
                 </>
               )}
             </select>
@@ -967,8 +984,18 @@ export const GuiasSadt: React.FC = () => {
               value={isRecepcao ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}` : periodoFilter}
               onChange={(e) => setPeriodoFilter(e.target.value)}
               disabled={isRecepcao}
-              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs disabled:opacity-60"
+              className="flex-1 bg-transparent border-0 text-slate-200 focus:outline-none text-xs disabled:opacity-60 [color-scheme:dark] cursor-pointer"
             />
+            {!isRecepcao && periodoFilter && (
+              <button
+                type="button"
+                onClick={() => setPeriodoFilter('')}
+                className="text-slate-400 hover:text-white text-xs px-1"
+                title="Limpar filtro de emissão"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
       </div>
