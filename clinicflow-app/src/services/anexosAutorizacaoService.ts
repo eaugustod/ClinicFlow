@@ -13,7 +13,9 @@ interface RawDocumentoAutorizacao {
   tamanho_bytes: number;
   medico_solicitante_nome?: string | null;
   medico_solicitante_crm?: string | null;
+  medico_solicitante_uf?: string | null;
   medico_solicitante_cbo?: string | null;
+  uf?: string | null;
   data_emissao: string;
   data_validade?: string | null;
   observacoes?: string | null;
@@ -37,7 +39,9 @@ const mapRowToAnexo = (row: RawDocumentoAutorizacao): AnexoAutorizacao => ({
   tamanhoBytes: Number(row.tamanho_bytes),
   medicoSolicitanteNome: row.medico_solicitante_nome || null,
   medicoSolicitanteCrm: row.medico_solicitante_crm || null,
+  medicoSolicitanteUf: row.medico_solicitante_uf || row.uf || null,
   medicoSolicitanteCbo: row.medico_solicitante_cbo || null,
+  uf: row.uf || row.medico_solicitante_uf || null,
   dataEmissao: row.data_emissao,
   dataValidade: row.data_validade || null,
   observacoes: row.observacoes || null,
@@ -99,6 +103,7 @@ export const anexosAutorizacaoService = {
       observacoes?: string | null;
       medicoSolicitanteNome?: string | null;
       medicoSolicitanteCrm?: string | null;
+      medicoSolicitanteUf?: string | null;
       medicoSolicitanteCbo?: string | null;
     }
   ): Promise<AnexoAutorizacao> {
@@ -141,6 +146,7 @@ export const anexosAutorizacaoService = {
         tamanho_bytes: file.size,
         medico_solicitante_nome: dados.medicoSolicitanteNome?.trim() || null,
         medico_solicitante_crm: dados.medicoSolicitanteCrm?.trim() || null,
+        medico_solicitante_uf: dados.medicoSolicitanteUf?.trim().toUpperCase() || null,
         medico_solicitante_cbo: dados.medicoSolicitanteCbo?.trim() || null,
         data_emissao: dados.dataEmissao,
         data_validade: dados.dataValidade || null,
@@ -154,6 +160,63 @@ export const anexosAutorizacaoService = {
       // Rollback no storage caso inserção no banco falhe
       await supabase.storage.from(BUCKET_ANEXOS).remove([storagePath]);
       throw new Error(`Falha ao registrar documento no banco: ${dbError.message}`);
+    }
+
+    return mapRowToAnexo(data as RawDocumentoAutorizacao);
+  },
+
+  /**
+   * Atualiza os metadados de um documento de autorização existente (correção cadastral)
+   */
+  async atualizarAnexo(
+    id: string,
+    dados: {
+      tipoDocumento?: TipoDocumentoAutorizacao;
+      dataEmissao?: string;
+      dataValidade?: string | null;
+      observacoes?: string | null;
+      medicoSolicitanteNome?: string | null;
+      medicoSolicitanteCrm?: string | null;
+      medicoSolicitanteUf?: string | null;
+      medicoSolicitanteCbo?: string | null;
+      statusEnvio?: StatusEnvioDocumento;
+      protocoloEnvio?: string | null;
+    }
+  ): Promise<AnexoAutorizacao> {
+    if (!id) throw new Error('ID do documento é obrigatório para atualização.');
+
+    const payload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (dados.tipoDocumento !== undefined) payload.tipo_documento = dados.tipoDocumento;
+    if (dados.dataEmissao !== undefined) payload.data_emissao = dados.dataEmissao;
+    if (dados.dataValidade !== undefined) payload.data_validade = dados.dataValidade || null;
+    if (dados.observacoes !== undefined) payload.observacoes = dados.observacoes ? dados.observacoes.trim() : null;
+    if (dados.medicoSolicitanteNome !== undefined) {
+      payload.medico_solicitante_nome = dados.medicoSolicitanteNome ? dados.medicoSolicitanteNome.trim() : null;
+    }
+    if (dados.medicoSolicitanteCrm !== undefined) {
+      payload.medico_solicitante_crm = dados.medicoSolicitanteCrm ? dados.medicoSolicitanteCrm.trim() : null;
+    }
+    if (dados.medicoSolicitanteUf !== undefined) {
+      payload.medico_solicitante_uf = dados.medicoSolicitanteUf ? dados.medicoSolicitanteUf.trim().toUpperCase() : null;
+    }
+    if (dados.medicoSolicitanteCbo !== undefined) {
+      payload.medico_solicitante_cbo = dados.medicoSolicitanteCbo ? dados.medicoSolicitanteCbo.trim() : null;
+    }
+    if (dados.statusEnvio !== undefined) payload.status_envio = dados.statusEnvio;
+    if (dados.protocoloEnvio !== undefined) payload.protocolo_envio = dados.protocoloEnvio ? dados.protocoloEnvio.trim() : null;
+
+    const { data, error } = await supabase
+      .from('documentos_autorizacao')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Falha ao atualizar documento: ${error.message}`);
     }
 
     return mapRowToAnexo(data as RawDocumentoAutorizacao);

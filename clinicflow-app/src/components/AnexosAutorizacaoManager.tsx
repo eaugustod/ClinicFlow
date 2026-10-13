@@ -17,10 +17,11 @@ import {
   Loader2,
   Stethoscope,
   UserCheck,
+  Pencil,
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { anexosAutorizacaoService } from '../services/anexosAutorizacaoService';
-import type { AnexoAutorizacao, TipoDocumentoAutorizacao } from '../types';
+import type { AnexoAutorizacao, TipoDocumentoAutorizacao, StatusEnvioDocumento } from '../types';
 
 interface AnexosAutorizacaoManagerProps {
   pacId: number;
@@ -45,12 +46,13 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Form State
+  // Form State (Novo Upload)
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [tipo, setTipo] = useState<TipoDocumentoAutorizacao>('pedido_medico');
   const [file, setFile] = useState<File | null>(null);
   const [medicoSolicitanteNome, setMedicoSolicitanteNome] = useState('');
   const [medicoSolicitanteCrm, setMedicoSolicitanteCrm] = useState('');
+  const [medicoSolicitanteUf, setMedicoSolicitanteUf] = useState('SP');
   const [medicoSolicitanteCbo, setMedicoSolicitanteCbo] = useState('');
   const [dataEmissao, setDataEmissao] = useState<string>(
     new Date().toISOString().split('T')[0]
@@ -59,9 +61,23 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
   const [observacoes, setObservacoes] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
+  // Form State (Edição de Registro Existente)
+  const [editingDoc, setEditingDoc] = useState<AnexoAutorizacao | null>(null);
+  const [editTipo, setEditTipo] = useState<TipoDocumentoAutorizacao>('pedido_medico');
+  const [editMedicoNome, setEditMedicoNome] = useState('');
+  const [editMedicoCrm, setEditMedicoCrm] = useState('');
+  const [editMedicoUf, setEditMedicoUf] = useState('SP');
+  const [editMedicoCbo, setEditMedicoCbo] = useState('');
+  const [editDataEmissao, setEditDataEmissao] = useState('');
+  const [editDataValidade, setEditDataValidade] = useState('');
+  const [editObservacoes, setEditObservacoes] = useState('');
+  const [editStatusEnvio, setEditStatusEnvio] = useState<StatusEnvioDocumento>('PENDENTE_ENVIO');
+  const [editProtocoloEnvio, setEditProtocoloEnvio] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // Profissionais da clínica para seleção rápida opcional
   const [profissionaisSugeridos, setProfissionaisSugeridos] = useState<
-    Array<{ id: number; nome: string; num?: string; cbo?: string; conselho?: string }>
+    Array<{ id: number; nome: string; num?: string; cbo?: string; conselho?: string; uf?: string }>
   >([]);
 
   // Preview State
@@ -77,7 +93,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
       try {
         const { data, error } = await supabase
           .from('profissionais')
-          .select('id, nome, conselho, num, cbo')
+          .select('id, nome, conselho, num, cbo, uf')
           .eq('status', 'Ativo')
           .order('nome');
         if (!error && data) {
@@ -156,6 +172,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
     setFile(null);
     setMedicoSolicitanteNome('');
     setMedicoSolicitanteCrm('');
+    setMedicoSolicitanteUf('SP');
     setMedicoSolicitanteCbo('');
     setObservacoes('');
     setErrorMsg(null);
@@ -182,6 +199,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
         agendamentoId: agendamentoId || null,
         medicoSolicitanteNome: medicoSolicitanteNome.trim() || null,
         medicoSolicitanteCrm: medicoSolicitanteCrm.trim() || null,
+        medicoSolicitanteUf: medicoSolicitanteUf.trim().toUpperCase() || null,
         medicoSolicitanteCbo: medicoSolicitanteCbo.trim() || null,
       });
 
@@ -189,6 +207,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
       setFile(null);
       setMedicoSolicitanteNome('');
       setMedicoSolicitanteCrm('');
+      setMedicoSolicitanteUf('SP');
       setMedicoSolicitanteCbo('');
       setObservacoes('');
       setShowUploadModal(false);
@@ -202,6 +221,55 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
       setErrorMsg(err.message || 'Erro ao realizar upload do documento.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleAbrirEdicao = (doc: AnexoAutorizacao) => {
+    setEditingDoc(doc);
+    setEditTipo(doc.tipoDocumento);
+    setEditMedicoNome(doc.medicoSolicitanteNome || '');
+    setEditMedicoCrm(doc.medicoSolicitanteCrm || '');
+    setEditMedicoUf(doc.medicoSolicitanteUf || doc.uf || 'SP');
+    setEditMedicoCbo(doc.medicoSolicitanteCbo || '');
+    setEditDataEmissao(doc.dataEmissao);
+    setEditDataValidade(doc.dataValidade || '');
+    setEditObservacoes(doc.observacoes || '');
+    setEditStatusEnvio(doc.statusEnvio);
+    setEditProtocoloEnvio(doc.protocoloEnvio || '');
+    setErrorMsg(null);
+  };
+
+  const handleSalvarEdicao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!editingDoc) return;
+
+    setSavingEdit(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      await anexosAutorizacaoService.atualizarAnexo(editingDoc.id, {
+        tipoDocumento: editTipo,
+        medicoSolicitanteNome: editMedicoNome,
+        medicoSolicitanteCrm: editMedicoCrm,
+        medicoSolicitanteUf: editMedicoUf,
+        medicoSolicitanteCbo: editMedicoCbo,
+        dataEmissao: editDataEmissao,
+        dataValidade: editDataValidade || null,
+        observacoes: editObservacoes,
+        statusEnvio: editStatusEnvio,
+        protocoloEnvio: editProtocoloEnvio,
+      });
+
+      setSuccessMsg('Registro de autorização atualizado com sucesso!');
+      setEditingDoc(null);
+      await carregarDocumentos();
+    } catch (err: any) {
+      console.error('Erro ao atualizar documento:', err);
+      setErrorMsg(err.message || 'Erro ao atualizar documento.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -387,7 +455,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                   </div>
 
                   {/* Dados do Médico Solicitante */}
-                  {(doc.medicoSolicitanteNome || doc.medicoSolicitanteCrm || doc.medicoSolicitanteCbo) && (
+                  {(doc.medicoSolicitanteNome || doc.medicoSolicitanteCrm || doc.medicoSolicitanteUf || doc.uf || doc.medicoSolicitanteCbo) && (
                     <div className="mt-2.5 p-2 rounded-lg bg-indigo-500/[0.07] border border-indigo-500/15 text-[11px] text-slate-300">
                       <div className="flex items-center gap-1.5 font-semibold text-indigo-300 mb-0.5">
                         <Stethoscope size={13} className="text-indigo-400 shrink-0" />
@@ -396,7 +464,15 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-400 pl-4 font-mono">
                         {doc.medicoSolicitanteCrm && (
                           <span>
-                            CRM: <strong className="text-slate-200">{doc.medicoSolicitanteCrm}</strong>
+                            CRM: <strong className="text-slate-200">
+                              {doc.medicoSolicitanteCrm}
+                              {doc.medicoSolicitanteUf || doc.uf ? `/${doc.medicoSolicitanteUf || doc.uf}` : ''}
+                            </strong>
+                          </span>
+                        )}
+                        {(doc.medicoSolicitanteUf || doc.uf) && !doc.medicoSolicitanteCrm && (
+                          <span>
+                            UF: <strong className="text-slate-200">{doc.medicoSolicitanteUf || doc.uf}</strong>
                           </span>
                         )}
                         {doc.medicoSolicitanteCbo && (
@@ -436,6 +512,15 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                     >
                       <Eye size={13} />
                       <span>Ver</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAbrirEdicao(doc)}
+                      className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white transition-all flex items-center gap-1 text-[11px]"
+                      title="Editar registro do documento"
+                    >
+                      <Pencil size={13} />
+                      <span>Editar</span>
                     </button>
                     <button
                       type="button"
@@ -566,6 +651,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                         if (pr) {
                           setMedicoSolicitanteNome(pr.nome);
                           setMedicoSolicitanteCrm(pr.num || '');
+                          setMedicoSolicitanteUf(pr.uf || 'SP');
                           setMedicoSolicitanteCbo(pr.cbo || '225125');
                         }
                       }}
@@ -594,17 +680,31 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-slate-300 font-semibold text-xs mb-1">
-                      CRM (com UF)
+                      CRM
                     </label>
                     <input
                       type="text"
                       value={medicoSolicitanteCrm}
                       onChange={(e) => setMedicoSolicitanteCrm(e.target.value)}
-                      placeholder="Ex: 123456/SP"
+                      placeholder="Ex: 123456"
                       className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold text-xs mb-1">
+                      UF
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={medicoSolicitanteUf}
+                      onChange={(e) => setMedicoSolicitanteUf(e.target.value.toUpperCase())}
+                      placeholder="SP"
+                      className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 uppercase text-center font-mono focus:outline-none focus:border-indigo-500"
                     />
                   </div>
 
@@ -701,6 +801,254 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
         </div>
       )}
 
+      {/* Modal de Edição de Registro de Autorização */}
+      {editingDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-[#0f111a] border border-white/[0.08] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-white/[0.04] flex justify-between items-center bg-[#131622]/60">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+                  <Pencil size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Editar Documento de Autorização</h3>
+                  <span className="text-[10px] text-slate-400 block truncate max-w-xs" title={editingDoc.nomeOriginal}>
+                    {editingDoc.nomeOriginal}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDoc(null)}
+                className="p-1 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSalvarEdicao} className="p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Seletor do Tipo de Documento */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-semibold text-xs">
+                  Tipo de Documento <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={editTipo}
+                  onChange={(e) => setEditTipo(e.target.value as TipoDocumentoAutorizacao)}
+                  className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="pedido_medico">Pedido Médico / Encaminhamento (Guia de Solicitação)</option>
+                  <option value="relatorio_medico">Relatório Médico Assistente (com Diagnóstico / CID)</option>
+                  <option value="laudo_patologia">Laudo / Avaliação de Patologia (Neuropsicologia / TEA / etc)</option>
+                  <option value="exame_complementar">Exame Complementar (Audiometria, Laboratorial, etc)</option>
+                  <option value="justificativa_clinica">Justificativa Clínica para Extensão de Sessões</option>
+                </select>
+              </div>
+
+              {/* Dados do Médico Solicitante */}
+              <div className="p-3.5 bg-[#131622] border border-white/[0.06] rounded-xl space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <label className="text-[11px] text-indigo-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <Stethoscope size={13} />
+                    Médico Solicitante
+                  </label>
+                  {profissionaisSugeridos.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        const pId = Number(e.target.value);
+                        if (!pId) return;
+                        const pr = profissionaisSugeridos.find((x) => x.id === pId);
+                        if (pr) {
+                          setEditMedicoNome(pr.nome);
+                          setEditMedicoCrm(pr.num || '');
+                          setEditMedicoUf(pr.uf || 'SP');
+                          setEditMedicoCbo(pr.cbo || '225125');
+                        }
+                      }}
+                      className="bg-[#161a26] border border-white/[0.08] rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-indigo-500 max-w-[210px] truncate"
+                    >
+                      <option value="">Preencher de médico da clínica...</option>
+                      {profissionaisSugeridos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome} {p.num ? `(${p.conselho || 'CRM'} ${p.num})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold text-xs mb-1">
+                    Nome Completo do Médico
+                  </label>
+                  <input
+                    type="text"
+                    value={editMedicoNome}
+                    onChange={(e) => setEditMedicoNome(e.target.value)}
+                    placeholder="Ex: Dr. Roberto Alencar Silva"
+                    className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold text-xs mb-1">
+                      CRM
+                    </label>
+                    <input
+                      type="text"
+                      value={editMedicoCrm}
+                      onChange={(e) => setEditMedicoCrm(e.target.value)}
+                      placeholder="Ex: 123456"
+                      className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold text-xs mb-1">
+                      UF
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={editMedicoUf}
+                      onChange={(e) => setEditMedicoUf(e.target.value.toUpperCase())}
+                      placeholder="SP"
+                      className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 uppercase text-center font-mono focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold text-xs mb-1">
+                      Código CBO
+                    </label>
+                    <input
+                      type="text"
+                      value={editMedicoCbo}
+                      onChange={(e) => setEditMedicoCbo(e.target.value)}
+                      placeholder="Ex: 225125"
+                      className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Datas de Emissão e Validade */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-slate-300 font-semibold text-xs">
+                    Data de Emissão <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={editDataEmissao}
+                    onChange={(e) => setEditDataEmissao(e.target.value)}
+                    required
+                    className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-slate-300 font-semibold text-xs">
+                      Validade Estimada
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEditDataValidade(anexosAutorizacaoService.calcularValidadeSugerida(editTipo, editDataEmissao))}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium"
+                    >
+                      Recalcular
+                    </button>
+                  </div>
+                  <input
+                    type="date"
+                    value={editDataValidade}
+                    onChange={(e) => setEditDataValidade(e.target.value)}
+                    className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Status de Envio e Protocolo */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-slate-300 font-semibold text-xs">
+                    Status de Envio (Robô)
+                  </label>
+                  <select
+                    value={editStatusEnvio}
+                    onChange={(e) => setEditStatusEnvio(e.target.value as StatusEnvioDocumento)}
+                    className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="PENDENTE_ENVIO">PENDENTE_ENVIO (Aguardando robô)</option>
+                    <option value="ENVIADO_PLANO">ENVIADO_PLANO (Enviado com sucesso)</option>
+                    <option value="REJEITADO_PLANO">REJEITADO_PLANO (Recusado pelo convênio)</option>
+                    <option value="DISPENSADO">DISPENSADO (Não exigido)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-slate-300 font-semibold text-xs">
+                    Protocolo de Envio
+                  </label>
+                  <input
+                    type="text"
+                    value={editProtocoloEnvio}
+                    onChange={(e) => setEditProtocoloEnvio(e.target.value)}
+                    placeholder="Ex: AMIL-20261013-001"
+                    className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs placeholder-slate-500 font-mono focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Observações */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-semibold text-xs">
+                  Observações (Opcional)
+                </label>
+                <textarea
+                  value={editObservacoes}
+                  onChange={(e) => setEditObservacoes(e.target.value)}
+                  placeholder="Ex: Correção de CRM e CBO do médico assistente."
+                  rows={2}
+                  className="w-full bg-[#161a26] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+
+              {/* Botões do Rodapé */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.04]">
+                <button
+                  type="button"
+                  onClick={() => setEditingDoc(null)}
+                  disabled={savingEdit}
+                  className="px-3 py-1.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md transition-all"
+                >
+                  {savingEdit ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={13} />
+                      <span>Salvar Alterações</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Preview Seguro */}
       {previewDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -719,7 +1067,7 @@ export const AnexosAutorizacaoManager: React.FC<AnexosAutorizacaoManagerProps> =
                   {previewDoc.medicoSolicitanteNome && (
                     <span className="text-indigo-300 font-medium">
                       • Médico: {previewDoc.medicoSolicitanteNome}
-                      {previewDoc.medicoSolicitanteCrm ? ` (CRM: ${previewDoc.medicoSolicitanteCrm})` : ''}
+                      {previewDoc.medicoSolicitanteCrm ? ` (CRM: ${previewDoc.medicoSolicitanteCrm}${previewDoc.medicoSolicitanteUf || previewDoc.uf ? `/${previewDoc.medicoSolicitanteUf || previewDoc.uf}` : ''})` : ''}
                       {previewDoc.medicoSolicitanteCbo ? ` (CBO: ${previewDoc.medicoSolicitanteCbo})` : ''}
                     </span>
                   )}

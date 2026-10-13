@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS public.documentos_autorizacao (
   -- Dados do Médico Solicitante
   medico_solicitante_nome VARCHAR(255),
   medico_solicitante_crm VARCHAR(50),
+  medico_solicitante_uf VARCHAR(2),
   medico_solicitante_cbo VARCHAR(50),
 
   -- Controle de Vigência Clínica
@@ -67,6 +68,8 @@ CREATE TABLE IF NOT EXISTS public.documentos_autorizacao (
 -- 2.1 Adição retrocompatível das colunas do Médico Solicitante (para bases onde a tabela já foi criada)
 ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_nome VARCHAR(255);
 ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_crm VARCHAR(50);
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_uf VARCHAR(2);
+ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS uf VARCHAR(2);
 ALTER TABLE public.documentos_autorizacao ADD COLUMN IF NOT EXISTS medico_solicitante_cbo VARCHAR(50);
 
 -- 3. Índices de alta performance para busca e filtros
